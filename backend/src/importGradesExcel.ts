@@ -287,7 +287,14 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
   return { sheetName, activities, rows: gradeRows };
 }
 
-export function parseGradesExcel(buffer: Buffer): ParsedGradesSheet | null {
+export function parseGradesExcel(buffer: Buffer, targetGroupCode?: string): ParsedGradesSheet | null {
+  if (targetGroupCode) {
+    const { sheets, skippedSheets } = parseGradesWorkbook(buffer, [targetGroupCode]);
+    const first = sheets[0];
+    if (first) return first;
+    if (skippedSheets.length > 0) return null;
+  }
+
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) return null;
@@ -303,9 +310,10 @@ export function parseGradesWorkbook(
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const sheets: (ParsedGradesSheet & { groupCode: string })[] = [];
   const skippedSheets: string[] = [];
+  const codes = [...groupCodes].sort((a, b) => b.length - a.length);
 
   for (const sheetName of workbook.SheetNames) {
-    const groupCode = matchSheetToGroupCode(sheetName, groupCodes);
+    const groupCode = matchSheetToGroupCode(sheetName, codes);
     if (!groupCode) {
       skippedSheets.push(sheetName);
       continue;

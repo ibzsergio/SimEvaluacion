@@ -316,7 +316,7 @@ teacherGroupsRouter.post(
       return res.status(400).json({ error: "invalid_file_type" });
     }
 
-    const parsed = parseStudentsExcel(req.file.buffer);
+    const parsed = parseStudentsExcel(req.file.buffer, group.code);
     if (!parsed.length) {
       return res.status(400).json({
         error: "empty_file",
@@ -468,12 +468,11 @@ teacherGroupsRouter.post(
       });
     }
 
-    const parsed = parseGradesExcel(req.file.buffer);
+    const parsed = parseGradesExcel(req.file.buffer, group.code);
     if (!parsed?.activities.length) {
       return res.status(400).json({
         error: "empty_file",
-        message:
-          "Formato: encabezados con NOMBRE DEL ALUMNO y columnas de actividades (CARATULA, etc.). Importa alumnos antes.",
+        message: `No se encontró una hoja llamada "${group.code}" (o "Grupo ${group.code}") con actividades. Usa el archivo completo con hojas 201 y 202, o renombra la pestaña del Excel.`,
       });
     }
 

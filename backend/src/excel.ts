@@ -131,18 +131,18 @@ export function normalizeControlNumber(value: unknown): string {
 /** Detecta si el nombre de la hoja corresponde a un grupo (ej. "201", "Grupo 202"). */
 export function matchSheetToGroupCode(sheetName: string, groupCodes: string[]): string | null {
   const norm = normalizeHeader(sheetName);
+  const codes = [...groupCodes].sort((a, b) => b.length - a.length);
 
-  for (const code of groupCodes) {
+  for (const code of codes) {
     if (norm === code) return code;
     if (norm === `grupo ${code}` || norm === `grupo${code}`) return code;
+  }
+
+  for (const code of codes) {
     if (norm.includes(`grupo ${code}`) || norm.includes(`grupo${code}`)) return code;
     if (norm.startsWith(`${code} `) || norm.endsWith(` ${code}`) || norm.includes(` ${code} `)) {
       return code;
     }
-  }
-
-  for (const code of groupCodes) {
-    if (norm.includes(code)) return code;
   }
 
   return null;
@@ -202,8 +202,14 @@ function parseSheetRows(sheet: XLSX.WorkSheet): ParsedStudentRow[] {
   return students;
 }
 
-/** Un solo grupo: primera hoja del archivo. */
-export function parseStudentsExcel(buffer: Buffer): ParsedStudentRow[] {
+/** Un solo grupo: busca hoja con el nombre del grupo; si no, la primera hoja. */
+export function parseStudentsExcel(buffer: Buffer, targetGroupCode?: string): ParsedStudentRow[] {
+  if (targetGroupCode) {
+    const { sheets } = parseStudentsWorkbook(buffer, [targetGroupCode]);
+    const first = sheets[0];
+    if (first) return first.students;
+  }
+
   const workbook = XLSX.read(buffer, { type: "buffer" });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) return [];
@@ -222,9 +228,10 @@ export function parseStudentsWorkbook(
   const workbook = XLSX.read(buffer, { type: "buffer" });
   const sheets: SheetImportResult[] = [];
   const skippedSheets: string[] = [];
+  const codes = [...groupCodes].sort((a, b) => b.length - a.length);
 
   for (const sheetName of workbook.SheetNames) {
-    const groupCode = matchSheetToGroupCode(sheetName, groupCodes);
+    const groupCode = matchSheetToGroupCode(sheetName, codes);
     if (!groupCode) {
       skippedSheets.push(sheetName);
       continue;

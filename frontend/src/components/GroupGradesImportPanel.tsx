@@ -110,9 +110,13 @@ export default function GroupGradesImportPanel({
       );
       const skipped =
         data.skippedSheets.length > 0
-          ? ` Hojas no usadas: ${data.skippedSheets.join(", ")}.`
+          ? ` Hojas omitidas: ${data.skippedSheets.join(", ")} (revisa que se llamen 201 y 202).`
           : "";
-      setMessage({ type: "ok", text: lines.join(" · ") + skipped });
+      const missing =
+        data.results.length < 2
+          ? " Si falta un grupo, verifica el nombre de la pestaña en Excel."
+          : "";
+      setMessage({ type: "ok", text: lines.join(" · ") + skipped + missing });
       invalidate();
     },
     onError: (err) => setMessage({ type: "err", text: getApiErrorMessage(err) }),
@@ -218,7 +222,10 @@ export default function GroupGradesImportPanel({
       </div>
 
       <p className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">
-        O solo el grupo {selected?.code}
+        O un solo grupo ({selected?.code}) — usa la pestaña &quot;{selected?.code}&quot; del Excel
+      </p>
+      <p className="mt-1 text-xs text-amber-200/90">
+        Si el archivo tiene hojas 201 y 202, usa los botones de arriba (archivo completo), no esta sección.
       </p>
       <div className="mt-2 grid gap-3 lg:grid-cols-3">
         <FileInput
