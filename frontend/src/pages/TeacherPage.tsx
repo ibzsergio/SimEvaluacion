@@ -7,11 +7,13 @@ import WeeklyWinnersPanel from "../components/WeeklyWinnersPanel";
 import Layout from "../components/Layout";
 import {
   createActivity,
+  deleteActivity,
   fetchActivities,
   fetchActivityGrades,
   fetchGroups,
   getApiErrorMessage,
   saveGrade,
+  updateActivity,
 } from "../lib/api";
 import type { Activity, GradeRow } from "../lib/types";
 
@@ -29,6 +31,7 @@ export default function TeacherPage() {
     name: "",
     maxPoints: 10,
   });
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
 
@@ -69,13 +72,86 @@ export default function TeacherPage() {
       setFormSuccess(`Actividad "${activity.name}" publicada en grupo ${selectedGroup?.code}.`);
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
       setSelectedId(activity.id);
-      setForm({ date: todayIso(), name: "", maxPoints: 10 });
+      resetActivityForm();
     },
     onError: (error) => {
       setFormSuccess("");
       setFormError(getApiErrorMessage(error));
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: { activityId: string; date: string; name: string; maxPoints: number }) =>
+      updateActivity(payload.activityId, {
+        date: payload.date,
+        name: payload.name,
+        maxPoints: payload.maxPoints,
+      }),
+    onSuccess: async (activity) => {
+      setFormError("");
+      setFormSuccess(`Actividad "${activity.name}" actualizada.`);
+      setEditingActivityId(null);
+      resetActivityForm();
+      await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["grades", activity.id] });
+      setSelectedId(activity.id);
+    },
+    onError: (error) => {
+      setFormSuccess("");
+      setFormError(getApiErrorMessage(error));
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteActivity,
+    onSuccess: async (_data, deletedId) => {
+      setFormError("");
+      setFormSuccess("Actividad eliminada.");
+      if (editingActivityId === deletedId) {
+        setEditingActivityId(null);
+        resetActivityForm();
+      }
+      if (selectedId === deletedId) setSelectedId(null);
+      await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
+    },
+    onError: (error) => {
+      setFormError(getApiErrorMessage(error));
+    },
+  });
+
+  function resetActivityForm() {
+    setForm({ date: todayIso(), name: "", maxPoints: 10 });
+  }
+
+  function startEditActivity(activity: Activity) {
+    setEditingActivityId(activity.id);
+    setFormError("");
+    setFormSuccess("");
+    setForm({
+      date: toDateInputValue(activity.date),
+      name: activity.name,
+      maxPoints: activity.maxPoints,
+    });
+    setSelectedId(activity.id);
+  }
+
+  function cancelEditActivity() {
+    setEditingActivityId(null);
+    resetActivityForm();
+    setFormError("");
+  }
+
+  function handleDeleteActivity(activity: Activity) {
+    const ok = window.confirm(
+      `¿Eliminar la actividad "${activity.name}"?\n\nSe borrarán también las calificaciones de todos los alumnos.`,
+    );
+    if (!ok) return;
+    setFormSuccess("");
+    deleteMutation.mutate(activity.id);
+  }
+
+  const activityFormPending = createMutation.isPending || updateMutation.isPending;
 
   const selectedActivity = useMemo(
     () => activities.find((a) => a.id === activeId) ?? gradesQuery.data?.activity,
@@ -167,7 +243,9 @@ export default function TeacherPage() {
 
           <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
             <section className="glass p-5">
-              <h2 className="mb-1 text-lg font-semibold text-white">Nueva actividad</h2>
+              <h2 className="mb-1 text-lg font-semibold text-white">
+                {editingActivityId ? "Editar actividad" : "Nueva actividad"}
+              </h2>
               <p className="mb-4 text-xs text-cyan-300/90">Grupo {selectedGroup?.code} · {selectedGroup?.shift}</p>
               <form
                 className="space-y-3"
@@ -187,12 +265,16 @@ export default function TeacherPage() {
                     setFormError("El valor máximo debe ser al menos 1 punto.");
                     return;
                   }
-                  createMutation.mutate({
-                    groupId: selectedGroupId,
+                  const payload = {
                     date: form.date,
                     name: form.name.trim(),
                     maxPoints: form.maxPoints,
-                  });
+                  };
+                  if (editingActivityId) {
+                    updateMutation.mutate({ activityId: editingActivityId, ...payload });
+                  } else {
+                    createMutation.mutate({ groupId: selectedGroupId, ...payload });
+                  }
                 }}
               >
                 <label className="block text-xs text-slate-400">
@@ -238,34 +320,78 @@ export default function TeacherPage() {
                     {formSuccess}
                   </p>
                 ) : null}
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="w-full rounded-xl bg-indigo-500 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
-                >
-                  {createMutation.isPending ? "Guardando..." : "Publicar actividad"}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={activityFormPending}
+                    className="flex-1 rounded-xl bg-indigo-500 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
+                  >
+                    {activityFormPending
+                      ? "Guardando..."
+                      : editingActivityId
+                        ? "Guardar cambios"
+                        : "Publicar actividad"}
+                  </button>
+                  {editingActivityId ? (
+                    <button
+                      type="button"
+                      onClick={cancelEditActivity}
+                      disabled={activityFormPending}
+                      className="rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 disabled:opacity-60"
+                    >
+                      Cancelar
+                    </button>
+                  ) : null}
+                </div>
               </form>
 
               <div className="mt-6">
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Actividades del grupo</h3>
                 <ul className="max-h-64 space-y-2 overflow-auto pr-1">
                   {activities.map((a) => (
-                    <li key={a.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(a.id)}
-                        className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
-                          a.id === activeId
-                            ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-100"
-                            : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
-                        }`}
-                      >
-                        <p className="font-medium">{a.name}</p>
-                        <p className="text-xs text-slate-400">
-                          {formatDate(a.date)} · {a.maxPoints} pts
-                        </p>
-                      </button>
+                    <li
+                      key={a.id}
+                      className={`rounded-xl border text-sm transition ${
+                        a.id === activeId
+                          ? "border-cyan-400/50 bg-cyan-500/10"
+                          : "border-white/10 bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-start gap-1 p-1">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(a.id)}
+                          className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left hover:bg-white/5"
+                        >
+                          <p
+                            className={`font-medium ${a.id === activeId ? "text-cyan-100" : "text-slate-200"}`}
+                          >
+                            {a.name}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {formatDate(a.date)} · {a.maxPoints} pts
+                          </p>
+                        </button>
+                        <div className="flex shrink-0 flex-col gap-1 pt-1">
+                          <button
+                            type="button"
+                            title="Editar"
+                            onClick={() => startEditActivity(a)}
+                            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            title="Eliminar"
+                            onClick={() => handleDeleteActivity(a)}
+                            disabled={deleteMutation.isPending}
+                            className="rounded-lg border border-rose-400/30 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/15 disabled:opacity-50"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
                     </li>
                   ))}
                   {!activities.length && !activitiesQuery.isLoading ? (
@@ -544,6 +670,12 @@ function GradesTable({
       )}
     </div>
   );
+}
+
+function toDateInputValue(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value.slice(0, 10);
+  return d.toISOString().slice(0, 10);
 }
 
 function formatDate(value: string) {

@@ -246,6 +246,53 @@ app.post("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedR
   return res.json({ activity: created });
 });
 
+app.put("/teacher/activities/:activityId", requireAuth, requireTeacher, async (req: AuthedRequest, res) => {
+  const activityId = String(req.params.activityId);
+  const body = z
+    .object({
+      date: z.string(),
+      name: z.string().min(2),
+      maxPoints: z.number().int().min(1),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const existing = await prisma.activity.findFirst({
+    where: { id: activityId, createdById: req.auth!.userId },
+  });
+  if (!existing) return res.status(404).json({ error: "activity_not_found" });
+
+  const updated = await prisma.activity.update({
+    where: { id: activityId },
+    data: {
+      date: new Date(body.data.date),
+      name: body.data.name.trim(),
+      maxPoints: body.data.maxPoints,
+    },
+    include: { group: { select: { code: true, shift: true } } },
+  });
+
+  return res.json({ activity: updated });
+});
+
+app.delete(
+  "/teacher/activities/:activityId",
+  requireAuth,
+  requireTeacher,
+  async (req: AuthedRequest, res) => {
+    const activityId = String(req.params.activityId);
+
+    const existing = await prisma.activity.findFirst({
+      where: { id: activityId, createdById: req.auth!.userId },
+    });
+    if (!existing) return res.status(404).json({ error: "activity_not_found" });
+
+    await prisma.activity.delete({ where: { id: activityId } });
+
+    return res.json({ ok: true, deletedId: activityId });
+  },
+);
+
 // Teacher: list students + their grade for an activity
 app.get(
   "/teacher/activities/:activityId/grades",

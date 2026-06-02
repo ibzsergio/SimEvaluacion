@@ -322,6 +322,21 @@ export async function createActivity(payload: {
   return data.activity;
 }
 
+export async function updateActivity(
+  activityId: string,
+  payload: { date: string; name: string; maxPoints: number },
+) {
+  const { data } = await api.put<{ activity: Activity }>(`/teacher/activities/${activityId}`, payload);
+  return data.activity;
+}
+
+export async function deleteActivity(activityId: string) {
+  const { data } = await api.delete<{ ok: boolean; deletedId: string }>(
+    `/teacher/activities/${activityId}`,
+  );
+  return data;
+}
+
 export async function fetchActivityGrades(activityId: string) {
   const { data } = await api.get<{ activity: Activity; rows: GradeRow[] }>(
     `/teacher/activities/${activityId}/grades`,
