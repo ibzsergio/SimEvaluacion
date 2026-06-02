@@ -76,6 +76,8 @@ model Activity {
   name         String
   maxPoints    Int
   signatureMax Int      @default(0)
+  /// Orden de columna en el Excel (CARATULA, PROGRAMA RADIO, …).
+  sortOrder    Int      @default(0)
 
   groupId String
   group   ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)

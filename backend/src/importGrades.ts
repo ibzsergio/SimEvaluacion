@@ -98,6 +98,7 @@ export async function importGradesForGroup(
 
   let existingActivities = await prisma.activity.findMany({
     where: { groupId: group.id, createdById: teacherId },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
 
   const summary: GradeImportSummary = {
@@ -124,10 +125,12 @@ export async function importGradesForGroup(
         summary.activityDetails.push({ name: col.name, date: col.date, action: "missing" });
         continue;
       }
-      if (col.maxPoints > activity.maxPoints) {
+      const updateData: { maxPoints?: number; sortOrder: number } = { sortOrder: col.sortOrder };
+      if (col.maxPoints > activity.maxPoints) updateData.maxPoints = col.maxPoints;
+      if (updateData.maxPoints !== undefined || activity.sortOrder !== col.sortOrder) {
         activity = await prisma.activity.update({
           where: { id: activity.id },
-          data: { maxPoints: col.maxPoints },
+          data: updateData,
         });
         const idx = existingActivities.findIndex((a) => a.id === activity!.id);
         if (idx >= 0) existingActivities[idx] = activity;
@@ -145,6 +148,7 @@ export async function importGradesForGroup(
           date: new Date(`${col.date}T12:00:00.000Z`),
           maxPoints: col.maxPoints,
           signatureMax: 0,
+          sortOrder: col.sortOrder,
           groupId: group.id,
           createdById: teacherId,
         },
@@ -153,14 +157,14 @@ export async function importGradesForGroup(
       summary.activitiesCreated++;
       summary.activityDetails.push({ name: col.name, date: col.date, action: "created" });
     } else if (activity) {
-      if (col.maxPoints > activity.maxPoints) {
-        activity = await prisma.activity.update({
-          where: { id: activity.id },
-          data: { maxPoints: col.maxPoints },
-        });
-        const idx = existingActivities.findIndex((a) => a.id === activity!.id);
-        if (idx >= 0) existingActivities[idx] = activity;
-      }
+      const updateData: { maxPoints?: number; sortOrder: number } = { sortOrder: col.sortOrder };
+      if (col.maxPoints > activity.maxPoints) updateData.maxPoints = col.maxPoints;
+      activity = await prisma.activity.update({
+        where: { id: activity.id },
+        data: updateData,
+      });
+      const idx = existingActivities.findIndex((a) => a.id === activity!.id);
+      if (idx >= 0) existingActivities[idx] = activity;
       summary.activitiesMatched++;
       summary.activityDetails.push({ name: col.name, date: col.date, action: "matched" });
     }

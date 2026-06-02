@@ -210,7 +210,7 @@ app.get("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedRe
 
   const activities = await prisma.activity.findMany({
     where: { createdById: req.auth!.userId, groupId },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     include: { group: { select: { code: true, shift: true } } },
   });
   return res.json({ activities });
@@ -232,12 +232,19 @@ app.post("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedR
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
+  const lastOrder = await prisma.activity.aggregate({
+    where: { groupId: group.id },
+    _max: { sortOrder: true },
+  });
+  const sortOrder = (lastOrder._max.sortOrder ?? -1) + 1;
+
   const created = await prisma.activity.create({
     data: {
       date: new Date(body.data.date),
       name: body.data.name,
       maxPoints: body.data.maxPoints,
       signatureMax: 0,
+      sortOrder,
       groupId: group.id,
       createdById: req.auth!.userId,
     },
@@ -403,7 +410,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
   const activities = await prisma.activity.findMany({
     where: { groupId: me.groupId },
-    orderBy: [{ createdAt: "desc" }, { date: "desc" }],
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: { id: true, date: true, name: true, maxPoints: true, createdAt: true },
   });
 

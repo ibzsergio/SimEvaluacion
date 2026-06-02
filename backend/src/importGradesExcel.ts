@@ -9,6 +9,8 @@ import {
 
 export type ParsedActivityColumn = {
   columnIndex: number;
+  /** Posición izquierda→derecha en el Excel (0 = primera actividad tras nombre). */
+  sortOrder: number;
   name: string;
   date: string;
   maxPoints: number;
@@ -245,7 +247,7 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
   }
 
   const defaultDate = new Date().toISOString().slice(0, 10);
-  const activities: ParsedActivityColumn[] = activityColIndices.map((columnIndex) => {
+  const activities: ParsedActivityColumn[] = activityColIndices.map((columnIndex, sortOrder) => {
     const headerCell = headerRow[columnIndex];
     const name = parseActivityNameFromHeader(headerCell);
     const date =
@@ -257,7 +259,7 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
       parseMaxPoints(headerCell) ??
       inferMaxPointsFromColumn(tableRows, columnIndex, dataStart);
 
-    return { columnIndex, name, date, maxPoints };
+    return { columnIndex, sortOrder, name, date, maxPoints };
   });
 
   const gradeRows: ParsedGradeRow[] = [];
