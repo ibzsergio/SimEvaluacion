@@ -2,6 +2,8 @@ import { Router } from "express";
 import multer from "multer";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+import PDFDocument from "pdfkit";
+import * as XLSX from "xlsx";
 import { prisma } from "./prisma.js";
 import { parseStudentsExcel, parseStudentsWorkbook } from "./excel.js";
 import { parseGradesExcel, parseGradesWorkbook } from "./importGradesExcel.js";
@@ -21,6 +23,96 @@ const upload = multer({
 export const teacherGroupsRouter = Router();
 
 teacherGroupsRouter.use(requireAuth, requireTeacher);
+
+function asTrimmedString(value: unknown) {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
+function normalizeControlNumber(input: string) {
+  return input.trim().replace(/\s/g, "");
+}
+
+function clamp01(n: number) {
+  return Math.max(0, Math.min(1, n));
+}
+
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+async function getPartialCutoffForGroup(groupId: string) {
+  const group = await prisma.classGroup.findUnique({
+    where: { id: groupId },
+    select: { id: true, code: true, shift: true, partialClosed: true, partialClosedAt: true },
+  });
+  if (!group) return null;
+  const cutoff = group.partialClosed && group.partialClosedAt ? group.partialClosedAt : new Date();
+  return { group, cutoff, isClosed: Boolean(group.partialClosed && group.partialClosedAt) };
+}
+
+function buildGroupWorkbook(params: {
+  group: { code: string; shift: string };
+  cutoff: Date;
+  isClosed: boolean;
+  maxPointsTotal: number;
+  activityCount: number;
+  rows: Array<{
+    listNumber: number | null;
+    controlNumber: string | null;
+    displayName: string;
+    delivered: number;
+    notDelivered: number;
+    deliveredPercent: number;
+    points: number;
+    calif6: number;
+  }>;
+}) {
+  const sheetRows = params.rows.map((r) => ({
+    "No. Lista": r.listNumber ?? "",
+    "No. Control": r.controlNumber ?? "",
+    Alumno: r.displayName,
+    "Actividades (parcial)": params.activityCount,
+    Entregadas: r.delivered,
+    "No entregadas": r.notDelivered,
+    "% entregadas": `${r.deliveredPercent}%`,
+    "Puntos obtenidos": r.points,
+    "Puntos máximos": params.maxPointsTotal,
+    "Calificación (0-6)": r.calif6,
+    "Examen (0-4)": "",
+    "Total (0-10)": "",
+  }));
+
+  const infoRows = [
+    ["Grupo", `${params.group.code} (${params.group.shift})`],
+    ["Corte", params.cutoff.toISOString()],
+    ["Parcial", params.isClosed ? "Cerrado" : "Preliminar"],
+  ];
+
+  const wsInfo = XLSX.utils.aoa_to_sheet(infoRows);
+  const ws = XLSX.utils.json_to_sheet(sheetRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsInfo, "INFO");
+  XLSX.utils.book_append_sheet(wb, ws, "RESUMEN");
+  return wb;
+}
+
+function sendXlsx(res: { setHeader: (k: string, v: string) => void; send: (b: Buffer) => void }, wb: XLSX.WorkBook, filename: string) {
+  const out = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(out);
+}
+
+function sendPdf(res: { setHeader: (k: string, v: string) => void; status?: (n: number) => any }, build: (doc: PDFDocument) => void, filename: string) {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const doc = new PDFDocument({ margin: 40, size: "A4" });
+  // @ts-expect-error express response has pipe
+  doc.pipe(res);
+  build(doc);
+  doc.end();
+}
 
 teacherGroupsRouter.get("/groups", async (req: AuthedRequest, res) => {
   const groups = await ensureTeacherGroups(req.auth!.userId);
@@ -121,6 +213,153 @@ teacherGroupsRouter.put("/groups/:groupId/partial-settings", async (req: AuthedR
   });
 
   return res.json({ group: updated });
+});
+
+teacherGroupsRouter.post("/groups/:groupId/students", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      controlNumber: z.string().min(1).max(64),
+      displayName: z.string().min(2).max(160),
+      listNumber: z.number().int().min(1).max(999).nullable().optional(),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true, code: true, shift: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  const controlNumber = normalizeControlNumber(body.data.controlNumber);
+  const unsetHash = await placeholderPasswordHash();
+  try {
+    const created = await prisma.user.create({
+      data: {
+        role: "STUDENT",
+        groupId: group.id,
+        controlNumber,
+        displayName: body.data.displayName.trim(),
+        listNumber: body.data.listNumber ?? null,
+        passwordHash: unsetHash,
+        passwordSet: false,
+        recoverablePassword: null,
+      },
+      select: {
+        id: true,
+        controlNumber: true,
+        listNumber: true,
+        displayName: true,
+        passwordSet: true,
+        recoverablePassword: true,
+      },
+    });
+    return res.json({
+      student: {
+        id: created.id,
+        controlNumber: created.controlNumber,
+        listNumber: created.listNumber,
+        displayName: created.displayName,
+        passwordSet: created.passwordSet,
+        passwordLabel: "Pendiente — el alumno debe crearla al entrar",
+      },
+    });
+  } catch (err) {
+    const msg = String(err);
+    if (msg.includes("Unique constraint") || msg.includes("P2002")) {
+      return res.status(400).json({
+        error: "control_number_taken",
+        message: "Ya existe un alumno con ese número de control.",
+      });
+    }
+    throw err;
+  }
+});
+
+teacherGroupsRouter.put("/groups/:groupId/students/:studentId", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const studentId = String(req.params.studentId);
+  const body = z
+    .object({
+      controlNumber: z.string().min(1).max(64).optional(),
+      displayName: z.string().min(2).max(160).optional(),
+      listNumber: z.number().int().min(1).max(999).nullable().optional(),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const student = await prisma.user.findFirst({
+    where: { id: studentId, role: "STUDENT", groupId, group: { teacherId: req.auth!.userId } },
+    select: {
+      id: true,
+      controlNumber: true,
+      listNumber: true,
+      displayName: true,
+      passwordSet: true,
+      recoverablePassword: true,
+    },
+  });
+  if (!student) return res.status(404).json({ error: "student_not_found" });
+
+  const nextControl =
+    body.data.controlNumber === undefined ? undefined : normalizeControlNumber(body.data.controlNumber);
+
+  try {
+    const updated = await prisma.user.update({
+      where: { id: student.id },
+      data: {
+        controlNumber: nextControl,
+        displayName: body.data.displayName?.trim(),
+        listNumber: body.data.listNumber === undefined ? undefined : body.data.listNumber,
+      },
+      select: {
+        id: true,
+        controlNumber: true,
+        listNumber: true,
+        displayName: true,
+        passwordSet: true,
+        recoverablePassword: true,
+      },
+    });
+    return res.json({
+      student: {
+        id: updated.id,
+        controlNumber: updated.controlNumber,
+        listNumber: updated.listNumber,
+        displayName: updated.displayName,
+        passwordSet: updated.passwordSet,
+        passwordLabel: updated.passwordSet
+          ? updated.recoverablePassword
+            ? updated.recoverablePassword
+            : "Contraseña personal (solo el alumno la conoce)"
+          : "Pendiente — el alumno debe crearla al entrar",
+      },
+    });
+  } catch (err) {
+    const msg = String(err);
+    if (msg.includes("Unique constraint") || msg.includes("P2002")) {
+      return res.status(400).json({
+        error: "control_number_taken",
+        message: "Ya existe un alumno con ese número de control.",
+      });
+    }
+    throw err;
+  }
+});
+
+teacherGroupsRouter.delete("/groups/:groupId/students/:studentId", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const studentId = String(req.params.studentId);
+
+  const student = await prisma.user.findFirst({
+    where: { id: studentId, role: "STUDENT", groupId, group: { teacherId: req.auth!.userId } },
+    select: { id: true, displayName: true, controlNumber: true },
+  });
+  if (!student) return res.status(404).json({ error: "student_not_found" });
+
+  await prisma.user.delete({ where: { id: student.id } });
+  return res.json({ ok: true, deletedId: student.id });
 });
 
 teacherGroupsRouter.get("/groups/:groupId/ranking", async (req: AuthedRequest, res) => {
@@ -268,6 +507,356 @@ teacherGroupsRouter.get("/groups/:groupId/partial-summary", async (req: AuthedRe
       weeklyWinnerScoreSum: winScoreSumByStudent.get(s.id) ?? 0,
     })),
   });
+});
+
+teacherGroupsRouter.get("/groups/:groupId/report.xlsx", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const partial = await getPartialCutoffForGroup(groupId);
+  if (!partial) return res.status(404).json({ error: "group_not_found" });
+
+  const owned = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true, code: true, shift: true },
+  });
+  if (!owned) return res.status(404).json({ error: "group_not_found" });
+
+  const activities = await prisma.activity.findMany({
+    where: {
+      groupId,
+      createdAt: { lte: partial.cutoff },
+    },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true, name: true, date: true, maxPoints: true, createdAt: true },
+  });
+  const activityIds = activities.map((a) => a.id);
+  const activityCount = activityIds.length;
+  const maxPointsTotal = activities.reduce((acc, a) => acc + (a.maxPoints ?? 0), 0);
+
+  const students = await prisma.user.findMany({
+    where: { role: "STUDENT", groupId },
+    select: { id: true, displayName: true, listNumber: true, controlNumber: true },
+    orderBy: [{ displayName: "asc" }],
+  });
+  const studentIds = students.map((s) => s.id);
+
+  const [pointsGrouped, deliveredGrouped] = await Promise.all([
+    prisma.grade.groupBy({
+      by: ["studentId"],
+      where: { studentId: { in: studentIds }, activityId: { in: activityIds } },
+      _sum: { points: true },
+    }),
+    prisma.submission.groupBy({
+      by: ["studentId"],
+      where: { studentId: { in: studentIds }, activityId: { in: activityIds } },
+      _count: { _all: true },
+    }),
+  ]);
+  const pointsByStudent = new Map(pointsGrouped.map((g) => [g.studentId, g._sum.points ?? 0]));
+  const deliveredByStudent = new Map(deliveredGrouped.map((g) => [g.studentId, g._count._all]));
+
+  const rows = students.map((s) => {
+    const points = pointsByStudent.get(s.id) ?? 0;
+    const delivered = deliveredByStudent.get(s.id) ?? 0;
+    const notDelivered = Math.max(0, activityCount - delivered);
+    const deliveredPercent = activityCount > 0 ? Math.round(clamp01(delivered / activityCount) * 100) : 0;
+    const calif6 =
+      maxPointsTotal > 0 ? round2(Math.min(6, (points / maxPointsTotal) * 6)) : 0;
+    return {
+      listNumber: s.listNumber ?? null,
+      controlNumber: s.controlNumber ?? null,
+      displayName: s.displayName,
+      delivered,
+      notDelivered,
+      deliveredPercent,
+      points,
+      calif6,
+    };
+  });
+
+  const wb = buildGroupWorkbook({
+    group: { code: owned.code, shift: owned.shift },
+    cutoff: partial.cutoff,
+    isClosed: partial.isClosed,
+    maxPointsTotal,
+    activityCount,
+    rows,
+  });
+
+  return sendXlsx(res, wb, `reporte_parcial_grupo_${owned.code}.xlsx`);
+});
+
+teacherGroupsRouter.get("/groups/:groupId/report.pdf", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const partial = await getPartialCutoffForGroup(groupId);
+  if (!partial) return res.status(404).json({ error: "group_not_found" });
+
+  const owned = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true, code: true, shift: true },
+  });
+  if (!owned) return res.status(404).json({ error: "group_not_found" });
+
+  const activities = await prisma.activity.findMany({
+    where: { groupId, createdAt: { lte: partial.cutoff } },
+    select: { id: true, maxPoints: true },
+  });
+  const activityIds = activities.map((a) => a.id);
+  const activityCount = activityIds.length;
+  const maxPointsTotal = activities.reduce((acc, a) => acc + (a.maxPoints ?? 0), 0);
+
+  const students = await prisma.user.findMany({
+    where: { role: "STUDENT", groupId },
+    select: { id: true, displayName: true, listNumber: true, controlNumber: true },
+    orderBy: [{ displayName: "asc" }],
+  });
+  const studentIds = students.map((s) => s.id);
+
+  const [pointsGrouped, deliveredGrouped] = await Promise.all([
+    prisma.grade.groupBy({
+      by: ["studentId"],
+      where: { studentId: { in: studentIds }, activityId: { in: activityIds } },
+      _sum: { points: true },
+    }),
+    prisma.submission.groupBy({
+      by: ["studentId"],
+      where: { studentId: { in: studentIds }, activityId: { in: activityIds } },
+      _count: { _all: true },
+    }),
+  ]);
+  const pointsByStudent = new Map(pointsGrouped.map((g) => [g.studentId, g._sum.points ?? 0]));
+  const deliveredByStudent = new Map(deliveredGrouped.map((g) => [g.studentId, g._count._all]));
+
+  return sendPdf(
+    res,
+    (doc) => {
+      const title = `Reporte del parcial — Grupo ${owned.code} (${owned.shift})`;
+      doc.fontSize(16).text(title);
+      doc.moveDown(0.25);
+      doc
+        .fontSize(10)
+        .fillColor("gray")
+        .text(
+          `Corte: ${partial.cutoff.toLocaleString("es-MX")} · Estado: ${partial.isClosed ? "CERRADO" : "PRELIMINAR"}`,
+        )
+        .fillColor("black");
+      doc.moveDown(0.75);
+
+      doc.fontSize(10).text(`Actividades consideradas: ${activityCount}`);
+      doc.text(`Puntos máximos del parcial: ${maxPointsTotal}`);
+      doc.moveDown(0.75);
+
+      const header = ["Control", "Alumno", "Ent", "NoEnt", "%", "Pts", "Calif(6)"];
+      const colX = [40, 120, 330, 360, 405, 450, 500];
+      doc.fontSize(9).font("Helvetica-Bold");
+      header.forEach((h, i) => doc.text(h, colX[i], doc.y, { continued: false }));
+      doc.moveDown(0.4);
+      doc.font("Helvetica").fontSize(9);
+
+      for (const s of students) {
+        const points = pointsByStudent.get(s.id) ?? 0;
+        const delivered = deliveredByStudent.get(s.id) ?? 0;
+        const notDelivered = Math.max(0, activityCount - delivered);
+        const percent = activityCount > 0 ? Math.round(clamp01(delivered / activityCount) * 100) : 0;
+        const calif6 = maxPointsTotal > 0 ? round2(Math.min(6, (points / maxPointsTotal) * 6)) : 0;
+
+        const row = [
+          s.controlNumber ?? String(s.listNumber ?? ""),
+          s.displayName,
+          String(delivered),
+          String(notDelivered),
+          `${percent}%`,
+          String(points),
+          String(calif6),
+        ];
+
+        // Simple pagination
+        if (doc.y > 760) {
+          doc.addPage();
+          doc.fontSize(9).font("Helvetica-Bold");
+          header.forEach((h, i) => doc.text(h, colX[i], doc.y, { continued: false }));
+          doc.moveDown(0.4);
+          doc.font("Helvetica").fontSize(9);
+        }
+
+        doc.text(row[0], colX[0], doc.y);
+        doc.text(row[1], colX[1], doc.y, { width: 200 });
+        doc.text(row[2], colX[2], doc.y);
+        doc.text(row[3], colX[3], doc.y);
+        doc.text(row[4], colX[4], doc.y);
+        doc.text(row[5], colX[5], doc.y);
+        doc.text(row[6], colX[6], doc.y);
+        doc.moveDown(0.35);
+      }
+    },
+    `reporte_parcial_grupo_${owned.code}.pdf`,
+  );
+});
+
+teacherGroupsRouter.get("/groups/:groupId/students/:studentId/report.xlsx", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const studentId = String(req.params.studentId);
+  const partial = await getPartialCutoffForGroup(groupId);
+  if (!partial) return res.status(404).json({ error: "group_not_found" });
+
+  const student = await prisma.user.findFirst({
+    where: { id: studentId, role: "STUDENT", groupId, group: { teacherId: req.auth!.userId } },
+    select: { id: true, displayName: true, listNumber: true, controlNumber: true },
+  });
+  if (!student) return res.status(404).json({ error: "student_not_found" });
+
+  const activities = await prisma.activity.findMany({
+    where: { groupId, createdAt: { lte: partial.cutoff } },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true, name: true, date: true, maxPoints: true },
+  });
+  const activityIds = activities.map((a) => a.id);
+  const maxPointsTotal = activities.reduce((acc, a) => acc + (a.maxPoints ?? 0), 0);
+
+  const [grades, submissions] = await Promise.all([
+    prisma.grade.findMany({
+      where: { studentId, activityId: { in: activityIds } },
+      select: { activityId: true, points: true },
+    }),
+    prisma.submission.findMany({
+      where: { studentId, activityId: { in: activityIds } },
+      select: { activityId: true, submittedAt: true },
+    }),
+  ]);
+  const gradeByActivity = new Map(grades.map((g) => [g.activityId, g.points]));
+  const subByActivity = new Map(submissions.map((s) => [s.activityId, s.submittedAt]));
+
+  const delivered = submissions.length;
+  const notDelivered = Math.max(0, activities.length - delivered);
+  const deliveredPercent = activities.length > 0 ? Math.round(clamp01(delivered / activities.length) * 100) : 0;
+  const points = grades.reduce((acc, g) => acc + (g.points ?? 0), 0);
+  const calif6 = maxPointsTotal > 0 ? round2(Math.min(6, (points / maxPointsTotal) * 6)) : 0;
+
+  const info = [
+    ["Alumno", student.displayName],
+    ["No. Control", student.controlNumber ?? ""],
+    ["No. Lista", student.listNumber ?? ""],
+    ["Corte", partial.cutoff.toISOString()],
+    ["Parcial", partial.isClosed ? "Cerrado" : "Preliminar"],
+    ["Actividades", activities.length],
+    ["Entregadas", delivered],
+    ["No entregadas", notDelivered],
+    ["% entregadas", `${deliveredPercent}%`],
+    ["Puntos", points],
+    ["Puntos máximos", maxPointsTotal],
+    ["Calificación (0-6)", calif6],
+    ["Examen (0-4)", ""],
+    ["Total (0-10)", ""],
+  ];
+
+  const details = activities.map((a) => ({
+    Fecha: a.date.toISOString().slice(0, 10),
+    Actividad: a.name,
+    "Max puntos": a.maxPoints,
+    Entregada: subByActivity.has(a.id) ? "Sí" : "No",
+    "Fecha entrega": subByActivity.get(a.id)?.toISOString() ?? "",
+    Puntos: gradeByActivity.get(a.id) ?? "",
+  }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(info), "RESUMEN");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(details), "ACTIVIDADES");
+  return sendXlsx(res, wb, `reporte_parcial_${normalizeControlNumber(student.controlNumber ?? student.id)}.xlsx`);
+});
+
+teacherGroupsRouter.get("/groups/:groupId/students/:studentId/report.pdf", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const studentId = String(req.params.studentId);
+  const partial = await getPartialCutoffForGroup(groupId);
+  if (!partial) return res.status(404).json({ error: "group_not_found" });
+
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true, code: true, shift: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  const student = await prisma.user.findFirst({
+    where: { id: studentId, role: "STUDENT", groupId, group: { teacherId: req.auth!.userId } },
+    select: { id: true, displayName: true, listNumber: true, controlNumber: true },
+  });
+  if (!student) return res.status(404).json({ error: "student_not_found" });
+
+  const activities = await prisma.activity.findMany({
+    where: { groupId, createdAt: { lte: partial.cutoff } },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true, name: true, date: true, maxPoints: true },
+  });
+  const activityIds = activities.map((a) => a.id);
+  const maxPointsTotal = activities.reduce((acc, a) => acc + (a.maxPoints ?? 0), 0);
+
+  const [grades, submissions] = await Promise.all([
+    prisma.grade.findMany({
+      where: { studentId, activityId: { in: activityIds } },
+      select: { activityId: true, points: true },
+    }),
+    prisma.submission.findMany({
+      where: { studentId, activityId: { in: activityIds } },
+      select: { activityId: true, submittedAt: true },
+    }),
+  ]);
+  const gradeByActivity = new Map(grades.map((g) => [g.activityId, g.points]));
+  const subByActivity = new Map(submissions.map((s) => [s.activityId, s.submittedAt]));
+
+  const delivered = submissions.length;
+  const notDelivered = Math.max(0, activities.length - delivered);
+  const deliveredPercent = activities.length > 0 ? Math.round(clamp01(delivered / activities.length) * 100) : 0;
+  const points = grades.reduce((acc, g) => acc + (g.points ?? 0), 0);
+  const calif6 = maxPointsTotal > 0 ? round2(Math.min(6, (points / maxPointsTotal) * 6)) : 0;
+
+  return sendPdf(
+    res,
+    (doc) => {
+      doc.fontSize(16).text(`Reporte del parcial — ${student.displayName}`);
+      doc.moveDown(0.25);
+      doc
+        .fontSize(10)
+        .fillColor("gray")
+        .text(
+          `Grupo ${group.code} (${group.shift}) · Corte: ${partial.cutoff.toLocaleString("es-MX")} · ${
+            partial.isClosed ? "CERRADO" : "PRELIMINAR"
+          }`,
+        )
+        .fillColor("black");
+      doc.moveDown(0.75);
+
+      doc.fontSize(10).text(`Control: ${student.controlNumber ?? "—"} · No. Lista: ${student.listNumber ?? "—"}`);
+      doc.text(`Entregadas: ${delivered} · No entregadas: ${notDelivered} · %: ${deliveredPercent}%`);
+      doc.text(`Puntos: ${points} / ${maxPointsTotal} · Calificación (0–6): ${calif6}`);
+      doc.moveDown(0.75);
+
+      const header = ["Fecha", "Actividad", "Max", "Ent", "Pts"];
+      const colX = [40, 120, 420, 470, 520];
+      doc.fontSize(9).font("Helvetica-Bold");
+      header.forEach((h, i) => doc.text(h, colX[i], doc.y));
+      doc.moveDown(0.4);
+      doc.font("Helvetica").fontSize(9);
+
+      for (const a of activities) {
+        if (doc.y > 760) {
+          doc.addPage();
+          doc.fontSize(9).font("Helvetica-Bold");
+          header.forEach((h, i) => doc.text(h, colX[i], doc.y));
+          doc.moveDown(0.4);
+          doc.font("Helvetica").fontSize(9);
+        }
+        const date = a.date.toISOString().slice(0, 10);
+        const deliveredLabel = subByActivity.has(a.id) ? "Sí" : "No";
+        const pts = gradeByActivity.get(a.id);
+        doc.text(date, colX[0], doc.y);
+        doc.text(a.name, colX[1], doc.y, { width: 280 });
+        doc.text(String(a.maxPoints), colX[2], doc.y);
+        doc.text(deliveredLabel, colX[3], doc.y);
+        doc.text(pts == null ? "—" : String(pts), colX[4], doc.y);
+        doc.moveDown(0.35);
+      }
+    },
+    `reporte_parcial_${normalizeControlNumber(student.controlNumber ?? student.id)}.pdf`,
+  );
 });
 
 teacherGroupsRouter.get("/groups/:groupId/students", async (req: AuthedRequest, res) => {
