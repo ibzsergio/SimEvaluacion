@@ -336,11 +336,14 @@ function GradesTable({
 }) {
   const [drafts, setDrafts] = useState<Record<string, PointsDraft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     setDrafts({});
     setSaveError(null);
+    setSaveSuccess(null);
   }, [activity.id]);
 
   function getDraft(row: GradeRow): PointsDraft {
@@ -364,28 +367,105 @@ function GradesTable({
       return;
     }
     setSaveError(null);
+    setSaveSuccess(null);
     setSavingId(studentId);
     try {
       await saveGrade(activity.id, studentId, { points });
+      setSaveSuccess("Calificación guardada.");
       onSaved();
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err));
     } finally {
       setSavingId(null);
     }
   }
 
+  function collectRowsToSave(): { studentId: string; points: number }[] | null {
+    const toSave: { studentId: string; points: number }[] = [];
+    for (const row of rows) {
+      const draft = getDraft(row);
+      const trimmed = draft.points.trim();
+      if (trimmed === "") continue;
+      const points = Number(trimmed);
+      if (!Number.isFinite(points) || points < 0 || points > activity.maxPoints) {
+        setSaveError(
+          `Puntos inválidos para ${row.student.displayName}: deben estar entre 0 y ${activity.maxPoints}.`,
+        );
+        return null;
+      }
+      toSave.push({ studentId: row.student.id, points });
+    }
+    return toSave;
+  }
+
+  async function handleSaveAll() {
+    const toSave = collectRowsToSave();
+    if (toSave === null) return;
+    if (toSave.length === 0) {
+      setSaveError("Escribe al menos un puntaje antes de guardar todo.");
+      return;
+    }
+
+    setSaveError(null);
+    setSaveSuccess(null);
+    setSavingAll(true);
+    let saved = 0;
+    try {
+      for (const item of toSave) {
+        await saveGrade(activity.id, item.studentId, { points: item.points });
+        saved++;
+      }
+      setSaveSuccess(
+        saved === toSave.length
+          ? `Guardadas ${saved} calificaciones.`
+          : `Guardadas ${saved} de ${toSave.length} calificaciones.`,
+      );
+      onSaved();
+    } catch (err) {
+      setSaveError(
+        saved > 0
+          ? `Se guardaron ${saved} calificaciones y luego falló: ${getApiErrorMessage(err)}`
+          : getApiErrorMessage(err),
+      );
+      if (saved > 0) onSaved();
+    } finally {
+      setSavingAll(false);
+    }
+  }
+
+  const pendingCount = rows.filter((row) => getDraft(row).points.trim() !== "").length;
+  const isBusy = savingAll || savingId !== null;
+
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-white">{activity.name}</h2>
-        <p className="text-sm text-slate-400">
-          {formatDate(activity.date)} · Valor máximo: {activity.maxPoints} pts
-        </p>
-        {saveError ? (
-          <p className="mt-2 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-            {saveError}
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-white">{activity.name}</h2>
+          <p className="text-sm text-slate-400">
+            {formatDate(activity.date)} · Valor máximo: {activity.maxPoints} pts
           </p>
+        </div>
+        {rows.length > 0 ? (
+          <button
+            type="button"
+            onClick={handleSaveAll}
+            disabled={isBusy || pendingCount === 0}
+            className="rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-50"
+          >
+            {savingAll ? "Guardando todo..." : `Guardar todo (${pendingCount})`}
+          </button>
         ) : null}
       </div>
+      {saveError ? (
+        <p className="mb-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+          {saveError}
+        </p>
+      ) : null}
+      {saveSuccess ? (
+        <p className="mb-3 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+          {saveSuccess}
+        </p>
+      ) : null}
 
       {loading ? (
         <p className="text-slate-400">Cargando alumnos...</p>
@@ -449,10 +529,10 @@ function GradesTable({
                       <button
                         type="button"
                         onClick={() => handleSave(row.student.id)}
-                        disabled={savingId === row.student.id || draft.points.trim() === ""}
+                        disabled={isBusy || draft.points.trim() === ""}
                         className="rounded-lg bg-cyan-500/90 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-60"
                       >
-                        {savingId === row.student.id ? "..." : "Guardar"}
+                        {savingId === row.student.id ? "..." : savingAll ? "—" : "Guardar"}
                       </button>
                     </td>
                   </tr>
