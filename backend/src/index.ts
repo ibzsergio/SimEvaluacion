@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { execSync } from "node:child_process";
 import express from "express";
 import cors from "cors";
 import bcrypt from "bcrypt";
@@ -448,8 +449,48 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
 const port = Number(process.env.PORT ?? 4000);
 const host = "0.0.0.0";
+
+function resolveDatabaseUrl() {
+  if (process.env.DATABASE_URL?.trim()) return;
+  const direct = ["MYSQL_URL", "MYSQL_PUBLIC_URL", "MYSQL_PRIVATE_URL"];
+  for (const key of direct) {
+    const value = process.env[key]?.trim();
+    if (value) {
+      process.env.DATABASE_URL = value;
+      console.log(`[startup] DATABASE_URL set from ${key}`);
+      return;
+    }
+  }
+  const mysqlHost = process.env.MYSQLHOST ?? process.env.MYSQL_HOST;
+  if (!mysqlHost) return;
+  const mysqlPort = process.env.MYSQLPORT ?? process.env.MYSQL_PORT ?? "3306";
+  const mysqlUser = process.env.MYSQLUSER ?? process.env.MYSQL_USER ?? "root";
+  const mysqlPass = process.env.MYSQLPASSWORD ?? process.env.MYSQL_PASSWORD ?? "";
+  const mysqlDb = process.env.MYSQLDATABASE ?? process.env.MYSQL_DATABASE ?? "railway";
+  process.env.DATABASE_URL = `mysql://${encodeURIComponent(mysqlUser)}:${encodeURIComponent(mysqlPass)}@${mysqlHost}:${mysqlPort}/${mysqlDb}`;
+  console.log("[startup] DATABASE_URL built from MYSQLHOST/MYSQLUSER/MYSQLDATABASE");
+}
+
+function runMigrations() {
+  if (process.env.NODE_ENV !== "production") return;
+  if (!process.env.DATABASE_URL?.trim()) {
+    console.error("[startup] Missing DATABASE_URL for migrations.");
+    process.exit(1);
+  }
+  console.log("[startup] Running prisma migrate deploy...");
+  execSync("npx prisma migrate deploy", { stdio: "inherit" });
+  console.log("[startup] Migrations complete.");
+}
+
+// Listen first so Railway healthcheck can reach /health while migrations run.
 app.listen(port, host, () => {
-  // eslint-disable-next-line no-console
-  console.log(`API listening on http://${host}:${port}`);
+  console.log(`[startup] API listening on http://${host}:${port}`);
+  resolveDatabaseUrl();
+  try {
+    runMigrations();
+  } catch (err) {
+    console.error("[startup] Migration failed:", err);
+    process.exit(1);
+  }
 });
 

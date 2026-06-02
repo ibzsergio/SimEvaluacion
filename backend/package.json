@@ -13,7 +13,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "railway:build": "prisma generate && tsc -p tsconfig.json",
-    "railway:start": "node scripts/start-production.mjs",
+    "railway:start": "node dist/index.js",
     "seed:teacher": "tsx scripts/seed-teacher.ts"
   },
   "keywords": [],
