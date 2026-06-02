@@ -24,17 +24,27 @@ teacherGroupsRouter.use(requireAuth, requireTeacher);
 
 teacherGroupsRouter.get("/groups", async (req: AuthedRequest, res) => {
   const groups = await ensureTeacherGroups(req.auth!.userId);
-  const counts = await prisma.user.groupBy({
-    by: ["groupId"],
-    where: { role: "STUDENT", groupId: { in: groups.map((g) => g.id) } },
-    _count: { _all: true },
-  });
-  const countByGroup = new Map(counts.map((c) => [c.groupId, c._count._all]));
+  const groupIds = groups.map((g) => g.id);
+  const [studentCounts, activityCounts] = await Promise.all([
+    prisma.user.groupBy({
+      by: ["groupId"],
+      where: { role: "STUDENT", groupId: { in: groupIds } },
+      _count: { _all: true },
+    }),
+    prisma.activity.groupBy({
+      by: ["groupId"],
+      where: { groupId: { in: groupIds }, createdById: req.auth!.userId },
+      _count: { _all: true },
+    }),
+  ]);
+  const studentsByGroup = new Map(studentCounts.map((c) => [c.groupId, c._count._all]));
+  const activitiesByGroup = new Map(activityCounts.map((c) => [c.groupId, c._count._all]));
 
   return res.json({
     groups: groups.map((g) => ({
       ...g,
-      studentCount: countByGroup.get(g.id) ?? 0,
+      studentCount: studentsByGroup.get(g.id) ?? 0,
+      activityCount: activitiesByGroup.get(g.id) ?? 0,
     })),
   });
 });

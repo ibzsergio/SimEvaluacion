@@ -48,6 +48,14 @@ export default function TeacherPage() {
     }
   }, [groups, selectedGroupId]);
 
+  useEffect(() => {
+    setSelectedId(null);
+    setEditingActivityId(null);
+    if (selectedGroupId) {
+      void qc.refetchQueries({ queryKey: ["activities", selectedGroupId] });
+    }
+  }, [selectedGroupId, qc]);
+
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
 
   const activitiesQuery = useQuery({
@@ -71,6 +79,7 @@ export default function TeacherPage() {
       setFormError("");
       setFormSuccess(`Actividad "${activity.name}" publicada en grupo ${selectedGroup?.code}.`);
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["groups"] });
       setSelectedId(activity.id);
       resetActivityForm();
     },
@@ -226,6 +235,9 @@ export default function TeacherPage() {
                 }`}
               >
                 Grupo {g.code}
+                {typeof g.activityCount === "number" ? (
+                  <span className="ml-1 font-normal opacity-80">({g.activityCount} act.)</span>
+                ) : null}
               </button>
             ))}
           </div>

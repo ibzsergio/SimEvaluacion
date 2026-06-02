@@ -191,14 +191,27 @@ function inferMaxPointsFromColumn(rows: unknown[][], columnIndex: number, dataSt
   return 1500;
 }
 
+function findHeaderRowIndex(rows: unknown[][]): number {
+  const limit = Math.min(rows.length, 10);
+  for (let i = 0; i < limit; i++) {
+    const row = rows[i];
+    if (Array.isArray(row) && detectStudentColumns(row)) return i;
+  }
+  return 0;
+}
+
 function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): ParsedGradesSheet | null {
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", raw: true });
-  if (!rows.length || !Array.isArray(rows[0])) return null;
+  if (!rows.length) return null;
 
-  const studentCols = detectStudentColumns(rows[0]);
+  const tableRows = rows.filter((r): r is unknown[] => Array.isArray(r));
+  if (!tableRows.length) return null;
+
+  const headerRowIndex = findHeaderRowIndex(tableRows);
+  const studentCols = detectStudentColumns(tableRows[headerRowIndex]!);
   if (!studentCols) return null;
 
-  const headerRow = rows[0] as unknown[];
+  const headerRow = tableRows[headerRowIndex]!;
   const activityColIndices: number[] = [];
 
   for (let c = 0; c < headerRow.length; c++) {
@@ -213,19 +226,21 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
 
   let metaDateRow: unknown[] | null = null;
   let metaMaxRow: unknown[] | null = null;
-  let dataStart = 1;
+  let dataStart = headerRowIndex + 1;
 
-  if (rows[1] && Array.isArray(rows[1])) {
-    if (rowLooksLikeDates(rows[1], activityColIndices)) {
-      metaDateRow = rows[1];
-      dataStart = 2;
-      if (rows[2] && Array.isArray(rows[2]) && rowLooksLikeMaxPoints(rows[2], activityColIndices)) {
-        metaMaxRow = rows[2];
-        dataStart = 3;
+  const rowAfterHeader = tableRows[headerRowIndex + 1];
+  if (rowAfterHeader) {
+    if (rowLooksLikeDates(rowAfterHeader, activityColIndices)) {
+      metaDateRow = rowAfterHeader;
+      dataStart = headerRowIndex + 2;
+      const rowAfterDates = tableRows[headerRowIndex + 2];
+      if (rowAfterDates && rowLooksLikeMaxPoints(rowAfterDates, activityColIndices)) {
+        metaMaxRow = rowAfterDates;
+        dataStart = headerRowIndex + 3;
       }
-    } else if (rowLooksLikeMaxPoints(rows[1], activityColIndices)) {
-      metaMaxRow = rows[1];
-      dataStart = 2;
+    } else if (rowLooksLikeMaxPoints(rowAfterHeader, activityColIndices)) {
+      metaMaxRow = rowAfterHeader;
+      dataStart = headerRowIndex + 2;
     }
   }
 
@@ -240,7 +255,7 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
     const maxPoints =
       parseMaxPoints(metaMaxRow?.[columnIndex]) ??
       parseMaxPoints(headerCell) ??
-      inferMaxPointsFromColumn(rows, columnIndex, dataStart);
+      inferMaxPointsFromColumn(tableRows, columnIndex, dataStart);
 
     return { columnIndex, name, date, maxPoints };
   });
@@ -248,8 +263,8 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
   const gradeRows: ParsedGradeRow[] = [];
   const seenKeys = new Set<string>();
 
-  for (let r = dataStart; r < rows.length; r++) {
-    const row = rows[r];
+  for (let r = dataStart; r < tableRows.length; r++) {
+    const row = tableRows[r];
     if (!Array.isArray(row)) continue;
 
     let controlNumber =

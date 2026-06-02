@@ -5,6 +5,7 @@ export type ClassGroup = {
   code: string;
   shift: string;
   studentCount?: number;
+  activityCount?: number;
   plannedActivities?: number | null;
   progressClosed?: boolean;
   progressClosedAt?: string | null;

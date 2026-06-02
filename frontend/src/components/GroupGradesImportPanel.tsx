@@ -95,10 +95,13 @@ export default function GroupGradesImportPanel({
   const selected = groups.find((g) => g.id === selectedGroupId);
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
+    for (const g of groups) {
+      qc.invalidateQueries({ queryKey: ["activities", g.id] });
+      qc.invalidateQueries({ queryKey: ["group-ranking", g.id] });
+    }
     qc.invalidateQueries({ queryKey: ["activities"] });
     qc.invalidateQueries({ queryKey: ["grades"] });
-    qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
+    qc.invalidateQueries({ queryKey: ["groups"] });
   };
 
   const workbookMutation = useMutation({
@@ -180,6 +183,7 @@ export default function GroupGradesImportPanel({
             }`}
           >
             Grupo {g.code}
+            {typeof g.activityCount === "number" ? ` (${g.activityCount})` : ""}
           </button>
         ))}
       </div>

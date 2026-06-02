@@ -143,6 +143,8 @@ export function matchSheetToGroupCode(sheetName: string, groupCodes: string[]): 
     if (norm.startsWith(`${code} `) || norm.endsWith(` ${code}`) || norm.includes(` ${code} `)) {
       return code;
     }
+    const boundary = new RegExp(`(?:^|[\\s_.-])${code}(?:[\\s_.-]|$)`);
+    if (boundary.test(norm)) return code;
   }
 
   return null;
