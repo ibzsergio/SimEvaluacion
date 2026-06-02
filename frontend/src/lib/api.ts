@@ -66,11 +66,22 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "partial_closed") {
       return (error.response.data as { message?: string })?.message ?? "El parcial está cerrado.";
     }
-    if (error.response.status === 404) {
+    if (code === "group_not_found") {
+      return "No se encontró el grupo. Cierra sesión, vuelve a entrar y selecciona el grupo 201 o 202.";
+    }
+    if (code === "activity_not_found") {
+      return "No se encontró la actividad. Recarga la página e inténtalo de nuevo.";
+    }
+    if (code === "not_found") {
       return (
-        "No se encontró la API (404). En Netlify, VITE_API_URL debe ser la URL de Railway sin /api " +
-        `(ej. https://tu-app.up.railway.app). Luego redeploy con caché limpia. Base actual: ${getApiBaseUrl()}`
+        "Ruta no encontrada en el servidor. Verifica que Railway esté desplegado y que VITE_API_URL sea " +
+        `https://tu-backend.up.railway.app (sin /api). Base actual: ${getApiBaseUrl()}`
       );
+    }
+    if (error.response.status === 404) {
+      const message = (error.response.data as { message?: string })?.message;
+      if (message) return message;
+      return `No encontrado (404). Si persiste, recarga la página o vuelve a iniciar sesión.`;
     }
     return `Error del servidor (${error.response.status}).`;
   }

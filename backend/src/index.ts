@@ -543,6 +543,10 @@ function runMigrations() {
   console.log("[startup] Migrations complete.");
 }
 
+app.use((req, res) => {
+  res.status(404).json({ error: "not_found", method: req.method, path: req.path });
+});
+
 // Listen first so Railway healthcheck can reach /health while migrations run.
 app.listen(port, host, () => {
   console.log(`[startup] API listening on http://${host}:${port}`);
