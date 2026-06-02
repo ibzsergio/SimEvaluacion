@@ -47,6 +47,14 @@ export function isLikelyRowIndexControl(controlNumber: string): boolean {
   return /^[0-9]{1,4}$/.test(controlNumber);
 }
 
+/** Nombre que en realidad es una calificación (500, 1000, 1500…) por error de importación. */
+export function isLikelyGradeValueAsName(displayName: string): boolean {
+  const trimmed = displayName.trim();
+  if (!/^\d{1,4}$/.test(trimmed)) return false;
+  const n = Number.parseInt(trimmed, 10);
+  return Number.isFinite(n) && n >= 0 && n <= 2000;
+}
+
 /** Filas de encabezado del Excel que no son alumnos (ej. "No." + "NOMBRE DEL ALUMNO"). */
 export function isJunkStudentRecord(
   controlNumber: string | null | undefined,
@@ -62,6 +70,7 @@ export function isJunkStudentRecord(
     "n control",
   ]);
   if (junkNames.has(nameKey)) return true;
+  if (isLikelyGradeValueAsName(displayName)) return true;
 
   const ctrlRaw = String(controlNumber ?? "")
     .trim()

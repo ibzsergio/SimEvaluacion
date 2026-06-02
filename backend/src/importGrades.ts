@@ -1,6 +1,6 @@
 import type { Activity, ClassGroup } from "@prisma/client";
 import { prisma } from "./prisma.js";
-import { findBestNameMatch, normalizePersonName } from "./excel.js";
+import { findBestNameMatch, isJunkStudentRecord, normalizePersonName } from "./excel.js";
 import { placeholderPasswordHash } from "./groups.js";
 import type { ParsedGradesSheet } from "./importGradesExcel.js";
 
@@ -213,6 +213,11 @@ export async function importGradesForGroup(
 
     if (!studentId && row.studentName && importGrades) {
       const displayName = row.studentName.trim();
+      if (isJunkStudentRecord(null, displayName)) {
+        unknownNameSet.add(displayName);
+        summary.gradesSkipped += row.grades.length;
+        continue;
+      }
       const created = await prisma.user.create({
         data: {
           displayName,

@@ -132,7 +132,7 @@ export default function GroupStudentsPanel({
           disabled={dedupeMutation.isPending}
           className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/25 disabled:opacity-60"
         >
-          {dedupeMutation.isPending ? "Limpiando..." : "Limpiar alumnos (encabezados y duplicados)"}
+          {dedupeMutation.isPending ? "Limpiando..." : "Limpiar alumnos (encabezados, duplicados y basura)"}
         </button>
       </section>
 
