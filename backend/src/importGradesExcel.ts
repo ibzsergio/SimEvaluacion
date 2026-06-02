@@ -47,7 +47,9 @@ function isControlHeader(value: string) {
 }
 
 function isNameHeader(value: string) {
-  return value.includes("nombre") || value.includes("alumno");
+  if (value.includes("nombre")) return true;
+  if (value === "alumno" || value === "alumnos") return true;
+  return false;
 }
 
 function isRowIndexHeader(value: string) {
@@ -112,6 +114,12 @@ export function parseDateCell(value: unknown): string | null {
 
   const raw = String(value).trim();
   if (!raw) return null;
+
+  // Calificaciones típicas (500, 1000, 1500): no son fechas.
+  if (/^\d{1,4}$/.test(raw)) {
+    const n = Number.parseInt(raw, 10);
+    if (n >= 0 && n <= 2000) return null;
+  }
 
   const iso = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
   if (iso) return parseIsoDateParts(Number(iso[1]), Number(iso[2]), Number(iso[3]));
@@ -242,6 +250,8 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
     if (studentCols.control >= 0 && c === studentCols.control) continue;
     const header = String(headerRow[c] ?? "").trim();
     if (shouldSkipActivityColumn(header)) continue;
+    if (isNameHeader(normalizeHeader(header))) continue;
+    if (isControlHeader(normalizeHeader(header))) continue;
     activityColIndices.push(c);
   }
 

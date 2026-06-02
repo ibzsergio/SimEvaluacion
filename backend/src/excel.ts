@@ -31,7 +31,9 @@ function isControlHeader(value: string) {
 }
 
 function isNameHeader(value: string) {
-  return value.includes("nombre") || value.includes("alumno");
+  if (value.includes("nombre")) return true;
+  if (value === "alumno" || value === "alumnos") return true;
+  return false;
 }
 
 function isRowIndexHeader(value: string) {
