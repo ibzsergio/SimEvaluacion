@@ -3,14 +3,17 @@ import { prisma } from "./prisma.js";
 import { normalizePersonName } from "./excel.js";
 import type { ParsedGradesSheet } from "./importGradesExcel.js";
 
+export type GradeImportMode = "full" | "activitiesOnly" | "gradesOnly";
+
 export type GradeImportSummary = {
   activitiesCreated: number;
   activitiesMatched: number;
+  activitiesMissing: string[];
   gradesUpserted: number;
   gradesSkipped: number;
   unknownControls: string[];
   unknownStudents: string[];
-  activityDetails: { name: string; date: string; action: "created" | "matched" }[];
+  activityDetails: { name: string; date: string; action: "created" | "matched" | "missing" }[];
 };
 
 function normalizeActivityNameKey(name: string): string {
@@ -75,6 +78,7 @@ export async function importGradesForGroup(
   group: ClassGroup,
   parsed: ParsedGradesSheet,
   teacherId: string,
+  mode: GradeImportMode = "full",
 ): Promise<GradeImportSummary> {
   const students = await prisma.user.findMany({
     where: { role: "STUDENT", groupId: group.id },
@@ -99,6 +103,7 @@ export async function importGradesForGroup(
   const summary: GradeImportSummary = {
     activitiesCreated: 0,
     activitiesMatched: 0,
+    activitiesMissing: [],
     gradesUpserted: 0,
     gradesSkipped: 0,
     unknownControls: [],
@@ -107,11 +112,33 @@ export async function importGradesForGroup(
   };
 
   const activityIdByColumn = new Map<number, string>();
+  const importActivities = mode === "full" || mode === "activitiesOnly";
+  const importGrades = mode === "full" || mode === "gradesOnly";
 
   for (const col of parsed.activities) {
     let activity = findMatchingActivityByName(existingActivities, col.name);
 
-    if (!activity) {
+    if (mode === "gradesOnly") {
+      if (!activity) {
+        summary.activitiesMissing.push(col.name);
+        summary.activityDetails.push({ name: col.name, date: col.date, action: "missing" });
+        continue;
+      }
+      if (col.maxPoints > activity.maxPoints) {
+        activity = await prisma.activity.update({
+          where: { id: activity.id },
+          data: { maxPoints: col.maxPoints },
+        });
+        const idx = existingActivities.findIndex((a) => a.id === activity!.id);
+        if (idx >= 0) existingActivities[idx] = activity;
+      }
+      summary.activitiesMatched++;
+      summary.activityDetails.push({ name: col.name, date: col.date, action: "matched" });
+      activityIdByColumn.set(col.columnIndex, activity.id);
+      continue;
+    }
+
+    if (!activity && importActivities) {
       activity = await prisma.activity.create({
         data: {
           name: col.name.trim(),
@@ -125,7 +152,7 @@ export async function importGradesForGroup(
       existingActivities.push(activity);
       summary.activitiesCreated++;
       summary.activityDetails.push({ name: col.name, date: col.date, action: "created" });
-    } else {
+    } else if (activity) {
       if (col.maxPoints > activity.maxPoints) {
         activity = await prisma.activity.update({
           where: { id: activity.id },
@@ -138,7 +165,11 @@ export async function importGradesForGroup(
       summary.activityDetails.push({ name: col.name, date: col.date, action: "matched" });
     }
 
-    activityIdByColumn.set(col.columnIndex, activity.id);
+    if (activity) activityIdByColumn.set(col.columnIndex, activity.id);
+  }
+
+  if (!importGrades) {
+    return summary;
   }
 
   const unknownControlSet = new Set<string>();

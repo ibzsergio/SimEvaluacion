@@ -136,12 +136,19 @@ export default function GroupStudentsPanel({
         </button>
       </section>
 
+      <section className="glass border-rose-400/20 p-4">
+        <p className="text-sm text-rose-200/95">
+          <strong>No subas aquí</strong> el Excel de calificaciones (CARATULA, P1 SUMA, etc.). Ese archivo va en la
+          pestaña <strong>Actividades y calificaciones</strong>.
+        </p>
+      </section>
+
       <section className="glass border-cyan-400/20 p-5">
-        <h2 className="text-lg font-semibold text-white">Importar archivo completo (201 + 202)</h2>
+        <h2 className="text-lg font-semibold text-white">Importar lista de alumnos (201 + 202)</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Sube un solo Excel con <strong>dos hojas</strong> llamadas <strong>201</strong> y{" "}
-          <strong>202</strong> (también sirve &quot;Grupo 201&quot;, &quot;Grupo 202&quot;). Cada hoja:
-          número de control y nombre completo.
+          Excel con <strong>número de control</strong> y <strong>nombre completo</strong> en hojas{" "}
+          <strong>201</strong> y <strong>202</strong>. Si solo tienes nombres como en el Excel de calificaciones,
+          importa primero alumnos y luego calificaciones en la otra pestaña.
         </p>
         <input
           ref={workbookRef}

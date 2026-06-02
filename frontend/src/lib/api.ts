@@ -225,42 +225,59 @@ export async function resetStudentPassword(groupId: string, studentId: string, n
   return data;
 }
 
+export type GradeImportMode = "full" | "activitiesOnly" | "gradesOnly";
+
 export type GradeImportSummary = {
   activitiesCreated: number;
   activitiesMatched: number;
+  activitiesMissing: string[];
   gradesUpserted: number;
   gradesSkipped: number;
   unknownControls: string[];
   unknownStudents: string[];
-  activityDetails?: { name: string; date: string; action: "created" | "matched" }[];
+  activityDetails?: { name: string; date: string; action: "created" | "matched" | "missing" }[];
 };
 
 export type GradesImportResult = {
   group: { id: string; code: string; shift: string };
   sheetName: string;
+  mode: GradeImportMode;
   summary: GradeImportSummary;
 };
 
 export type GradesImportWorkbookResult = {
+  mode: GradeImportMode;
   results: { groupCode: string; sheetName: string; summary: GradeImportSummary }[];
   skippedSheets: string[];
 };
 
-export async function importGradesWorkbook(file: File) {
+export async function importGradesWorkbook(file: File, mode: GradeImportMode = "full") {
   const form = new FormData();
   form.append("file", file);
-  const { data } = await api.post<GradesImportWorkbookResult>("/teacher/grades/import-workbook", form, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await api.post<GradesImportWorkbookResult>(
+    `/teacher/grades/import-workbook?mode=${mode}`,
+    form,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
   return data;
 }
 
-export async function importGradesExcel(groupId: string, file: File) {
+export async function importGradesExcel(
+  groupId: string,
+  file: File,
+  mode: GradeImportMode = "full",
+) {
   const form = new FormData();
   form.append("file", file);
-  const { data } = await api.post<GradesImportResult>(`/teacher/groups/${groupId}/grades/import`, form, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await api.post<GradesImportResult>(
+    `/teacher/groups/${groupId}/grades/import?mode=${mode}`,
+    form,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
   return data;
 }
 

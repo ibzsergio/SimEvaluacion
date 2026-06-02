@@ -8,7 +8,7 @@ import { parseGradesExcel, parseGradesWorkbook } from "./importGradesExcel.js";
 import { ensureTeacherGroups, placeholderPasswordHash } from "./groups.js";
 import { dedupeStudentsForTeacher } from "./dedupeStudents.js";
 import { importStudentRows } from "./importStudents.js";
-import { importGradesForGroup } from "./importGrades.js";
+import { importGradesForGroup, type GradeImportMode } from "./importGrades.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { closeWeekForGroup, ensureCurrentGroupWeek } from "./weeks.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
@@ -441,6 +441,11 @@ teacherGroupsRouter.put(
   },
 );
 
+function parseGradeImportMode(value: unknown): GradeImportMode {
+  if (value === "activitiesOnly" || value === "gradesOnly" || value === "full") return value;
+  return "full";
+}
+
 teacherGroupsRouter.post(
   "/groups/:groupId/grades/import",
   upload.single("file"),
@@ -472,11 +477,13 @@ teacherGroupsRouter.post(
       });
     }
 
-    const summary = await importGradesForGroup(group, parsed, req.auth!.userId);
+    const mode = parseGradeImportMode(req.query.mode);
+    const summary = await importGradesForGroup(group, parsed, req.auth!.userId, mode);
 
     return res.json({
       group: { id: group.id, code: group.code, shift: group.shift },
       sheetName: parsed.sheetName,
+      mode,
       summary,
     });
   },
@@ -510,6 +517,7 @@ teacherGroupsRouter.post("/grades/import-workbook", upload.single("file"), async
     });
   }
 
+  const mode = parseGradeImportMode(req.query.mode);
   const results: {
     groupCode: string;
     sheetName: string;
@@ -519,11 +527,11 @@ teacherGroupsRouter.post("/grades/import-workbook", upload.single("file"), async
   for (const sheet of sheets) {
     const group = groupByCode.get(sheet.groupCode);
     if (!group) continue;
-    const summary = await importGradesForGroup(group, sheet, req.auth!.userId);
+    const summary = await importGradesForGroup(group, sheet, req.auth!.userId, mode);
     results.push({ groupCode: sheet.groupCode, sheetName: sheet.sheetName, summary });
   }
 
-  return res.json({ results, skippedSheets });
+  return res.json({ mode, results, skippedSheets });
 });
 
 teacherGroupsRouter.get("/groups/:groupId/grades/template", async (req: AuthedRequest, res) => {
