@@ -118,10 +118,10 @@ export default function GroupStudentsPanel({
       </div>
 
       <section className="glass border-amber-400/20 p-5">
-        <h2 className="text-lg font-semibold text-white">¿Alumnos duplicados?</h2>
+        <h2 className="text-lg font-semibold text-white">Limpiar lista de alumnos</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Si importaste por error el Excel de calificaciones como lista de alumnos, usa esto para dejar un solo
-          registro por nombre (conserva contraseñas y calificaciones).
+          Quita filas inválidas (ej. &quot;No.&quot; / &quot;NOMBRE DEL ALUMNO&quot;) y duplicados por nombre.
+          Conserva contraseñas y calificaciones del alumno correcto.
         </p>
         <button
           type="button"
@@ -132,7 +132,7 @@ export default function GroupStudentsPanel({
           disabled={dedupeMutation.isPending}
           className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/25 disabled:opacity-60"
         >
-          {dedupeMutation.isPending ? "Limpiando..." : "Quitar duplicados por nombre"}
+          {dedupeMutation.isPending ? "Limpiando..." : "Limpiar alumnos (encabezados y duplicados)"}
         </button>
       </section>
 

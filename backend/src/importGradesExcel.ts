@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import {
+  isJunkStudentRecord,
   matchSheetToGroupCode,
   normalizeControlNumber,
   normalizePersonName,
@@ -256,6 +257,7 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
     const studentName = String(row[studentCols.name] ?? "").trim();
 
     if (!studentName || studentName.length < 3) continue;
+    if (isJunkStudentRecord(controlNumber || null, studentName)) continue;
 
     if (controlNumber && controlNumber.length <= 3) {
       controlNumber = "";

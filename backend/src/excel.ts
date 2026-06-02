@@ -45,6 +45,35 @@ export function isLikelyRowIndexControl(controlNumber: string): boolean {
   return /^[0-9]{1,4}$/.test(controlNumber);
 }
 
+/** Filas de encabezado del Excel que no son alumnos (ej. "No." + "NOMBRE DEL ALUMNO"). */
+export function isJunkStudentRecord(
+  controlNumber: string | null | undefined,
+  displayName: string,
+): boolean {
+  const nameKey = normalizePersonName(displayName);
+  const junkNames = new Set([
+    "nombre del alumno",
+    "nombre completo",
+    "numero de control",
+    "numero control",
+    "no control",
+    "n control",
+  ]);
+  if (junkNames.has(nameKey)) return true;
+
+  const ctrlRaw = String(controlNumber ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s/g, "");
+  if (ctrlRaw === "no" || ctrlRaw === "no." || ctrlRaw === "n°" || ctrlRaw === "#") return true;
+
+  if (junkNames.has(nameKey) && (!controlNumber || isLikelyRowIndexControl(controlNumber))) {
+    return true;
+  }
+
+  return false;
+}
+
 function isListHeader(value: string) {
   return value.includes("lista") && !value.includes("control");
 }
@@ -155,6 +184,8 @@ function parseSheetRows(sheet: XLSX.WorkSheet): ParsedStudentRow[] {
     if (isLikelyRowIndexControl(controlNumber)) {
       controlNumber = "";
     }
+
+    if (isJunkStudentRecord(controlNumber || null, fullName)) continue;
 
     const dedupeKey = controlNumber || normalizePersonName(fullName);
     if (seen.has(dedupeKey)) continue;

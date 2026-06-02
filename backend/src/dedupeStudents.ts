@@ -1,5 +1,5 @@
 import { prisma } from "./prisma.js";
-import { isLikelyRowIndexControl, normalizePersonName } from "./excel.js";
+import { isJunkStudentRecord, isLikelyRowIndexControl, normalizePersonName } from "./excel.js";
 
 function scoreStudent(s: {
   passwordSet: boolean;
@@ -64,13 +64,45 @@ async function mergeStudentData(keeperId: string, removeId: string) {
   await prisma.submission.deleteMany({ where: { studentId: removeId } });
 }
 
-export async function dedupeStudentsForTeacher(teacherId: string): Promise<{
+async function deleteStudentAndRelated(studentId: string) {
+  await prisma.grade.deleteMany({ where: { studentId } });
+  await prisma.submission.deleteMany({ where: { studentId } });
+  await prisma.weeklyWinner.deleteMany({ where: { studentId } });
+  await prisma.user.delete({ where: { id: studentId } });
+}
+
+export async function removeJunkStudentsForTeacher(teacherId: string): Promise<{
   removed: number;
   details: string[];
 }> {
   const groups = await prisma.classGroup.findMany({ where: { teacherId } });
   let removed = 0;
   const details: string[] = [];
+
+  for (const group of groups) {
+    const students = await prisma.user.findMany({
+      where: { role: "STUDENT", groupId: group.id },
+    });
+
+    for (const s of students) {
+      if (!isJunkStudentRecord(s.controlNumber, s.displayName)) continue;
+      await deleteStudentAndRelated(s.id);
+      removed++;
+      details.push(`Grupo ${group.code}: eliminado "${s.displayName}" (fila de encabezado)`);
+    }
+  }
+
+  return { removed, details };
+}
+
+export async function dedupeStudentsForTeacher(teacherId: string): Promise<{
+  removed: number;
+  details: string[];
+}> {
+  const junk = await removeJunkStudentsForTeacher(teacherId);
+  const groups = await prisma.classGroup.findMany({ where: { teacherId } });
+  let removed = junk.removed;
+  const details: string[] = [...junk.details];
 
   for (const group of groups) {
     const students = await prisma.user.findMany({
@@ -99,7 +131,7 @@ export async function dedupeStudentsForTeacher(teacherId: string): Promise<{
 
       for (const dupe of toRemove) {
         await mergeStudentData(keeper.id, dupe.id);
-        await prisma.user.delete({ where: { id: dupe.id } });
+        await deleteStudentAndRelated(dupe.id);
         removed++;
       }
     }
