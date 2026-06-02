@@ -478,7 +478,21 @@ function runMigrations() {
     process.exit(1);
   }
   console.log("[startup] Running prisma migrate deploy...");
-  execSync("npx prisma migrate deploy", { stdio: "inherit" });
+  try {
+    execSync("npx prisma migrate deploy", { stdio: "pipe", encoding: "utf8" });
+  } catch (err) {
+    const output = `${(err as { stdout?: string }).stdout ?? ""}${(err as { stderr?: string }).stderr ?? ""}${String(err)}`;
+    if (output.includes("P3009") && output.includes("20260528023800_group_progress_settings")) {
+      console.log("[startup] Recovering failed migration 20260528023800_group_progress_settings...");
+      execSync("npx prisma migrate resolve --rolled-back 20260528023800_group_progress_settings", {
+        stdio: "inherit",
+      });
+      execSync("npx prisma migrate deploy", { stdio: "inherit" });
+    } else {
+      console.error(output);
+      throw err;
+    }
+  }
   console.log("[startup] Migrations complete.");
 }
 

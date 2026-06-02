@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE `classgroup` ADD COLUMN `plannedActivities` INTEGER NULL,
+ALTER TABLE `ClassGroup` ADD COLUMN `plannedActivities` INTEGER NULL,
     ADD COLUMN `progressClosed` BOOLEAN NOT NULL DEFAULT false,
     ADD COLUMN `progressClosedAt` DATETIME(3) NULL;
 
