@@ -8,6 +8,7 @@ import { prisma } from "./prisma.js";
 import { signAuthToken } from "./auth.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 import { ensureTeacherGroups } from "./groups.js";
+import { removeJunkStudentsForGroup } from "./dedupeStudents.js";
 import { teacherGroupsRouter } from "./teacherGroups.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 
@@ -311,6 +312,8 @@ app.get(
       where: { id: activityId, createdById: req.auth!.userId },
     });
     if (!activity) return res.status(404).json({ error: "activity_not_found" });
+
+    await removeJunkStudentsForGroup(activity.groupId);
 
     const students = await prisma.user.findMany({
       where: { role: "STUDENT", groupId: activity.groupId },

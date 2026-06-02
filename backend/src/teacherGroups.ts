@@ -6,7 +6,7 @@ import { prisma } from "./prisma.js";
 import { parseStudentsExcel, parseStudentsWorkbook } from "./excel.js";
 import { parseGradesExcel, parseGradesWorkbook } from "./importGradesExcel.js";
 import { ensureTeacherGroups, placeholderPasswordHash } from "./groups.js";
-import { dedupeStudentsForTeacher } from "./dedupeStudents.js";
+import { dedupeStudentsForTeacher, removeJunkStudentsForGroup } from "./dedupeStudents.js";
 import { importStudentRows } from "./importStudents.js";
 import { importGradesForGroup, type GradeImportMode } from "./importGrades.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
@@ -276,6 +276,8 @@ teacherGroupsRouter.get("/groups/:groupId/students", async (req: AuthedRequest, 
     where: { id: groupId, teacherId: req.auth!.userId },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  await removeJunkStudentsForGroup(groupId);
 
   const students = await prisma.user.findMany({
     where: { role: "STUDENT", groupId },

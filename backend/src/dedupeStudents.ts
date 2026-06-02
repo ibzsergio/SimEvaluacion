@@ -71,6 +71,20 @@ async function deleteStudentAndRelated(studentId: string) {
   await prisma.user.delete({ where: { id: studentId } });
 }
 
+export async function removeJunkStudentsForGroup(groupId: string): Promise<number> {
+  const students = await prisma.user.findMany({
+    where: { role: "STUDENT", groupId },
+  });
+
+  let removed = 0;
+  for (const s of students) {
+    if (!isJunkStudentRecord(s.controlNumber, s.displayName)) continue;
+    await deleteStudentAndRelated(s.id);
+    removed++;
+  }
+  return removed;
+}
+
 export async function removeJunkStudentsForTeacher(teacherId: string): Promise<{
   removed: number;
   details: string[];
@@ -88,7 +102,10 @@ export async function removeJunkStudentsForTeacher(teacherId: string): Promise<{
       if (!isJunkStudentRecord(s.controlNumber, s.displayName)) continue;
       await deleteStudentAndRelated(s.id);
       removed++;
-      details.push(`Grupo ${group.code}: eliminado "${s.displayName}" (fila de encabezado)`);
+      const reason = /^\d{1,4}$/.test(s.displayName.trim())
+        ? "calificación importada por error"
+        : "fila de encabezado";
+      details.push(`Grupo ${group.code}: eliminado "${s.displayName}" (${reason})`);
     }
   }
 
