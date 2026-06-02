@@ -108,6 +108,58 @@ export function normalizePersonName(name: string): string {
     .replace(/\s+/g, " ");
 }
 
+function nameTokens(name: string): string[] {
+  return normalizePersonName(name)
+    .split(" ")
+    .filter((t) => t.length > 1);
+}
+
+/** Coincide aunque cambie el orden (Apellidos Nombre vs Nombre Apellidos). */
+export function namesMatchLoose(a: string, b: string): boolean {
+  const na = normalizePersonName(a);
+  const nb = normalizePersonName(b);
+  if (na === nb) return true;
+
+  const ta = nameTokens(a);
+  const tb = nameTokens(b);
+  if (!ta.length || !tb.length) return false;
+
+  const setB = new Set(tb);
+  let overlap = 0;
+  for (const t of ta) {
+    if (setB.has(t)) overlap++;
+  }
+
+  const minLen = Math.min(ta.length, tb.length);
+  const maxLen = Math.max(ta.length, tb.length);
+  if (overlap < minLen) return false;
+  return overlap >= maxLen - 1;
+}
+
+export function findBestNameMatch<T extends { displayName: string }>(
+  candidates: T[],
+  searchName: string,
+): T | undefined {
+  const exact = candidates.find((s) => normalizePersonName(s.displayName) === normalizePersonName(searchName));
+  if (exact) return exact;
+
+  let best: T | undefined;
+  let bestScore = 0;
+  for (const s of candidates) {
+    if (!namesMatchLoose(searchName, s.displayName)) continue;
+    const setB = new Set(nameTokens(s.displayName));
+    let overlap = 0;
+    for (const t of nameTokens(searchName)) {
+      if (setB.has(t)) overlap++;
+    }
+    if (overlap > bestScore) {
+      bestScore = overlap;
+      best = s;
+    }
+  }
+  return best;
+}
+
 export function normalizeControlNumber(value: unknown): string {
   if (value === null || value === undefined) return "";
 

@@ -1,6 +1,7 @@
 import type { Activity, ClassGroup } from "@prisma/client";
 import { prisma } from "./prisma.js";
-import { normalizePersonName } from "./excel.js";
+import { findBestNameMatch, normalizePersonName } from "./excel.js";
+import { placeholderPasswordHash } from "./groups.js";
 import type { ParsedGradesSheet } from "./importGradesExcel.js";
 
 export type GradeImportMode = "full" | "activitiesOnly" | "gradesOnly";
@@ -11,6 +12,8 @@ export type GradeImportSummary = {
   activitiesRemoved: number;
   activitiesMissing: string[];
   parsedActivityNames: string[];
+  parsedStudentRows: number;
+  studentsCreated: number;
   gradesUpserted: number;
   gradesSkipped: number;
   unknownControls: string[];
@@ -61,6 +64,7 @@ async function upsertGradeForStudent(
 
 function resolveStudentId(
   row: { controlNumber?: string; studentName?: string },
+  students: { id: string; displayName: string; controlNumber: string | null }[],
   studentByControl: Map<string, string>,
   studentByName: Map<string, string>,
 ): string | undefined {
@@ -72,6 +76,12 @@ function resolveStudentId(
     const key = normalizePersonName(row.studentName);
     const byName = studentByName.get(key);
     if (byName) return byName;
+
+    const loose = findBestNameMatch(students, row.studentName);
+    if (loose) {
+      studentByName.set(key, loose.id);
+      return loose.id;
+    }
   }
   return undefined;
 }
@@ -87,6 +97,8 @@ export async function importGradesForGroup(
     select: { id: true, controlNumber: true, displayName: true },
   });
 
+  const studentList = [...students];
+
   const studentByControl = new Map(
     students
       .filter((s) => s.controlNumber)
@@ -94,7 +106,7 @@ export async function importGradesForGroup(
   );
 
   const studentByName = new Map<string, string>();
-  for (const s of students) {
+  for (const s of studentList) {
     studentByName.set(normalizePersonName(s.displayName), s.id);
   }
 
@@ -109,6 +121,8 @@ export async function importGradesForGroup(
     activitiesRemoved: 0,
     activitiesMissing: [],
     parsedActivityNames: parsed.activities.map((a) => a.name),
+    parsedStudentRows: parsed.rows.length,
+    studentsCreated: 0,
     gradesUpserted: 0,
     gradesSkipped: 0,
     unknownControls: [],
@@ -192,9 +206,28 @@ export async function importGradesForGroup(
 
   const unknownControlSet = new Set<string>();
   const unknownNameSet = new Set<string>();
+  const unsetHash = importGrades ? await placeholderPasswordHash() : "";
 
   for (const row of parsed.rows) {
-    const studentId = resolveStudentId(row, studentByControl, studentByName);
+    let studentId = resolveStudentId(row, studentList, studentByControl, studentByName);
+
+    if (!studentId && row.studentName && importGrades) {
+      const displayName = row.studentName.trim();
+      const created = await prisma.user.create({
+        data: {
+          displayName,
+          groupId: group.id,
+          role: "STUDENT",
+          passwordHash: unsetHash,
+          passwordSet: false,
+        },
+      });
+      studentList.push(created);
+      studentByName.set(normalizePersonName(displayName), created.id);
+      studentId = created.id;
+      summary.studentsCreated++;
+    }
+
     if (!studentId) {
       if (row.controlNumber) unknownControlSet.add(row.controlNumber);
       if (row.studentName) unknownNameSet.add(row.studentName);

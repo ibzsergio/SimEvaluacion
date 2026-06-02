@@ -145,6 +145,10 @@ function parseMaxPoints(value: unknown): number | null {
 
 function parsePointsCell(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (value < 0) return null;
+    return Math.round(value);
+  }
   const raw = String(value).trim().toLowerCase();
   if (!raw || raw === "-" || raw === "—" || raw === "pendiente" || raw === "n/a") return null;
   const n = Number.parseFloat(raw.replace(",", "."));
@@ -281,6 +285,7 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
 
   const gradeRows: ParsedGradeRow[] = [];
   const seenKeys = new Set<string>();
+  let lastStudentName = "";
 
   for (let r = dataStart; r < tableRows.length; r++) {
     const row = tableRows[r];
@@ -288,7 +293,13 @@ function parseGradesSheetInternal(sheet: XLSX.WorkSheet, sheetName: string): Par
 
     let controlNumber =
       studentCols.control >= 0 ? normalizeControlNumber(row[studentCols.control]) : "";
-    const studentName = String(row[studentCols.name] ?? "").trim();
+    let studentName = String(row[studentCols.name] ?? "").trim();
+
+    if (studentName.length >= 3) {
+      lastStudentName = studentName;
+    } else if (lastStudentName) {
+      studentName = lastStudentName;
+    }
 
     if (!studentName || studentName.length < 3) continue;
     if (isJunkStudentRecord(controlNumber || null, studentName)) continue;

@@ -15,6 +15,8 @@ type GradeImportSummary = {
   activitiesRemoved: number;
   activitiesMissing: string[];
   parsedActivityNames: string[];
+  parsedStudentRows?: number;
+  studentsCreated?: number;
   gradesUpserted: number;
   gradesSkipped: number;
   unknownControls: string[];
@@ -34,7 +36,13 @@ function formatSummary(summary: GradeImportSummary, mode: GradeImportMode) {
   }
 
   if (mode === "gradesOnly" || mode === "full") {
+    if (summary.parsedStudentRows !== undefined) {
+      parts.push(`${summary.parsedStudentRows} filas de alumnos en el Excel`);
+    }
     parts.push(`${summary.gradesUpserted} calificaciones guardadas`);
+    if (summary.studentsCreated) {
+      parts.push(`${summary.studentsCreated} alumnos creados al vuelo (no estaban en el grupo)`);
+    }
     if (summary.activitiesMissing.length) {
       parts.push(
         `${summary.activitiesMissing.length} actividades no encontradas (${summary.activitiesMissing.slice(0, 3).join(", ")}${summary.activitiesMissing.length > 3 ? "…" : ""})`,
