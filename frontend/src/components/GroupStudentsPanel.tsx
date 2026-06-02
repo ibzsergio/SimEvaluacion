@@ -4,6 +4,7 @@ import {
   downloadStudentsTemplate,
   fetchGroupStudents,
   getApiErrorMessage,
+  dedupeStudents,
   importStudentsExcel,
   importStudentsWorkbook,
   resetStudentPassword,
@@ -41,7 +42,7 @@ export default function GroupStudentsPanel({
     onSuccess: (data) => {
       const lines = data.results.map(
         (r) =>
-          `Grupo ${r.groupCode} (hoja "${r.sheetName}"): ${r.summary.total} alumnos (${r.summary.created} nuevos, ${r.summary.updated} actualizados)`,
+          `Grupo ${r.groupCode} (hoja "${r.sheetName}"): ${r.summary.total} filas (${r.summary.created} nuevos, ${r.summary.updated} actualizados${r.summary.skipped ? `, ${r.summary.skipped} omitidos` : ""})`,
       );
       const skipped =
         data.skippedSheets.length > 0
@@ -60,11 +61,24 @@ export default function GroupStudentsPanel({
     onSuccess: (data) => {
       setMessage({
         type: "ok",
-        text: `Importados ${data.summary.total} alumnos (${data.summary.created} nuevos, ${data.summary.updated} actualizados). Cada alumno entra con su número de control y crea su contraseña.`,
+        text: `Importados ${data.summary.total} filas (${data.summary.created} nuevos, ${data.summary.updated} actualizados${data.summary.skipped ? `, ${data.summary.skipped} omitidos sin número de control` : ""}). Si subes el mismo archivo, solo actualiza.`,
       });
       qc.invalidateQueries({ queryKey: ["group-students", selectedGroupId] });
       qc.invalidateQueries({ queryKey: ["groups"] });
       if (fileRef.current) fileRef.current.value = "";
+    },
+    onError: (err) => setMessage({ type: "err", text: getApiErrorMessage(err) }),
+  });
+
+  const dedupeMutation = useMutation({
+    mutationFn: () => dedupeStudents(),
+    onSuccess: (data) => {
+      setMessage({
+        type: "ok",
+        text: data.message + (data.details.length ? ` ${data.details.join(" · ")}` : ""),
+      });
+      qc.invalidateQueries({ queryKey: ["group-students"] });
+      qc.invalidateQueries({ queryKey: ["groups"] });
     },
     onError: (err) => setMessage({ type: "err", text: getApiErrorMessage(err) }),
   });
@@ -102,6 +116,25 @@ export default function GroupStudentsPanel({
           </button>
         ))}
       </div>
+
+      <section className="glass border-amber-400/20 p-5">
+        <h2 className="text-lg font-semibold text-white">¿Alumnos duplicados?</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Si importaste por error el Excel de calificaciones como lista de alumnos, usa esto para dejar un solo
+          registro por nombre (conserva contraseñas y calificaciones).
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setMessage(null);
+            dedupeMutation.mutate();
+          }}
+          disabled={dedupeMutation.isPending}
+          className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/25 disabled:opacity-60"
+        >
+          {dedupeMutation.isPending ? "Limpiando..." : "Quitar duplicados por nombre"}
+        </button>
+      </section>
 
       <section className="glass border-cyan-400/20 p-5">
         <h2 className="text-lg font-semibold text-white">Importar archivo completo (201 + 202)</h2>

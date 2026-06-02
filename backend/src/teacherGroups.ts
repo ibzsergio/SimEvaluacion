@@ -6,6 +6,7 @@ import { prisma } from "./prisma.js";
 import { parseStudentsExcel, parseStudentsWorkbook } from "./excel.js";
 import { parseGradesExcel, parseGradesWorkbook } from "./importGradesExcel.js";
 import { ensureTeacherGroups, placeholderPasswordHash } from "./groups.js";
+import { dedupeStudentsForTeacher } from "./dedupeStudents.js";
 import { importStudentRows } from "./importStudents.js";
 import { importGradesForGroup } from "./importGrades.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
@@ -337,6 +338,18 @@ teacherGroupsRouter.post(
     });
   },
 );
+
+teacherGroupsRouter.post("/students/dedupe", async (req: AuthedRequest, res) => {
+  const { removed, details } = await dedupeStudentsForTeacher(req.auth!.userId);
+  return res.json({
+    removed,
+    details,
+    message:
+      removed > 0
+        ? `Se eliminaron ${removed} registros duplicados.`
+        : "No había duplicados por nombre en tus grupos.",
+  });
+});
 
 teacherGroupsRouter.post("/students/import-workbook", upload.single("file"), async (req: AuthedRequest, res) => {
   if (!req.file?.buffer) {

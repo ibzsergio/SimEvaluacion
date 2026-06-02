@@ -34,6 +34,17 @@ function isNameHeader(value: string) {
   return value.includes("nombre") || value.includes("alumno");
 }
 
+function isRowIndexHeader(value: string) {
+  return value === "no" || value === "no." || value === "n°" || value === "#";
+}
+
+/** No usar 1, 2, 3… de la columna "No." como número de control. */
+export function isLikelyRowIndexControl(controlNumber: string): boolean {
+  if (!controlNumber) return true;
+  if (controlNumber.length > 6) return false;
+  return /^[0-9]{1,4}$/.test(controlNumber);
+}
+
 function isListHeader(value: string) {
   return value.includes("lista") && !value.includes("control");
 }
@@ -47,12 +58,13 @@ function detectColumns(headerRow: unknown[]): ColumnMap | null {
   let list = -1;
 
   headers.forEach((h, i) => {
+    if (isRowIndexHeader(h)) return;
     if (isControlHeader(h)) control = i;
     else if (isNameHeader(h)) name = i;
     else if (isListHeader(h)) list = i;
   });
 
-  if (control >= 0 && name >= 0) {
+  if (name >= 0) {
     return { control, name, list: list >= 0 ? list : undefined };
   }
   return null;
@@ -121,14 +133,15 @@ function parseSheetRows(sheet: XLSX.WorkSheet): ParsedStudentRow[] {
   }
 
   if (!columns) {
-    columns = { control: 0, name: 1, list: undefined };
+    columns = { control: -1, name: 0, list: undefined };
   }
 
   for (let i = startIndex; i < rows.length; i++) {
     const row = rows[i];
     if (!Array.isArray(row)) continue;
 
-    const controlNumber = normalizeControlNumber(row[columns.control]);
+    let controlNumber =
+      columns.control >= 0 ? normalizeControlNumber(row[columns.control]) : "";
     const fullName = String(row[columns.name] ?? "").trim();
     let listNumber: number | undefined;
 
@@ -137,14 +150,24 @@ function parseSheetRows(sheet: XLSX.WorkSheet): ParsedStudentRow[] {
       if (Number.isFinite(parsed) && parsed > 0) listNumber = parsed;
     }
 
-    if (!controlNumber || fullName.length < 2) continue;
-    if (seen.has(controlNumber)) continue;
+    if (fullName.length < 2) continue;
 
-    seen.add(controlNumber);
+    if (isLikelyRowIndexControl(controlNumber)) {
+      controlNumber = "";
+    }
+
+    const dedupeKey = controlNumber || normalizePersonName(fullName);
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
     students.push({ controlNumber, fullName, listNumber });
   }
 
-  students.sort((a, b) => a.controlNumber.localeCompare(b.controlNumber, undefined, { numeric: true }));
+  students.sort((a, b) =>
+    (a.controlNumber || a.fullName).localeCompare(b.controlNumber || b.fullName, undefined, {
+      numeric: true,
+    }),
+  );
   return students;
 }
 

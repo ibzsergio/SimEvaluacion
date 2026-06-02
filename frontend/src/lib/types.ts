@@ -92,7 +92,7 @@ export type GradeRow = {
 };
 
 export type ImportResult = {
-  summary: { total: number; created: number; updated: number };
+  summary: { total: number; created: number; updated: number; skipped: number };
   loginHint?: { usuario: string; primeraVez: string; ejemplo?: string };
 };
 
@@ -150,7 +150,7 @@ export type ImportWorkbookResult = {
   results: {
     groupCode: string;
     sheetName: string;
-    summary: { total: number; created: number; updated: number };
+    summary: { total: number; created: number; updated: number; skipped: number };
   }[];
   skippedSheets: string[];
   message: string;

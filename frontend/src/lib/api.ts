@@ -188,6 +188,15 @@ export async function fetchGroupStudents(groupId: string) {
   return data;
 }
 
+export async function dedupeStudents() {
+  const { data } = await api.post<{
+    removed: number;
+    details: string[];
+    message: string;
+  }>("/teacher/students/dedupe");
+  return data;
+}
+
 export async function importStudentsWorkbook(file: File) {
   const form = new FormData();
   form.append("file", file);
