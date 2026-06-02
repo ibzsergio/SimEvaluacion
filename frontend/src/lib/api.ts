@@ -12,6 +12,17 @@ import type {
   User,
 } from "./types";
 
+/** Normaliza VITE_API_URL (sin barra final ni sufijo /api de desarrollo). */
+export function getApiBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_URL?.trim();
+  if (!raw) return "/api";
+  let url = raw.replace(/\/$/, "");
+  if (url.endsWith("/api")) url = url.slice(0, -4);
+  return url;
+}
+
+const baseURL = getApiBaseUrl();
+
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
@@ -51,14 +62,16 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "partial_closed") {
       return (error.response.data as { message?: string })?.message ?? "El parcial está cerrado.";
     }
+    if (error.response.status === 404) {
+      return (
+        "No se encontró la API (404). En Netlify, VITE_API_URL debe ser la URL de Railway sin /api " +
+        `(ej. https://tu-app.up.railway.app). Luego redeploy con caché limpia. Base actual: ${getApiBaseUrl()}`
+      );
+    }
     return `Error del servidor (${error.response.status}).`;
   }
   return "Ocurrió un error inesperado.";
 }
-
-const baseURL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}`
-  : "/api";
 
 export const api = axios.create({ baseURL });
 
