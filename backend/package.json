@@ -13,7 +13,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "railway:build": "prisma generate && tsc -p tsconfig.json",
-    "railway:start": "prisma migrate deploy && node dist/index.js",
+    "railway:start": "node scripts/start-production.mjs",
     "seed:teacher": "tsx scripts/seed-teacher.ts"
   },
   "keywords": [],
@@ -29,6 +29,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "mysql2": "^3.22.4",
+    "prisma": "^5.22.0",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
@@ -39,7 +40,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
     "@types/node": "^25.9.1",
-    "prisma": "^5.22.0",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3"
   }
