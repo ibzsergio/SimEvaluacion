@@ -131,7 +131,11 @@ export function normalizeControlNumber(value: unknown): string {
 /** Detecta si el nombre de la hoja corresponde a un grupo (ej. "201", "Grupo 202"). */
 export function matchSheetToGroupCode(sheetName: string, groupCodes: string[]): string | null {
   const norm = normalizeHeader(sheetName);
-  const codes = [...groupCodes].sort((a, b) => b.length - a.length);
+  const codes = [...groupCodes].sort((a, b) => {
+    const len = b.length - a.length;
+    if (len !== 0) return len;
+    return b.localeCompare(a, undefined, { numeric: true });
+  });
 
   for (const code of codes) {
     if (norm === code) return code;

@@ -138,6 +138,8 @@ function parseMaxPoints(value: unknown): number | null {
   const fromLabel = raw.match(/(?:max|máx|valor|pts?)\s*[:.]?\s*(\d+)/i);
   const n = Number.parseInt(fromLabel?.[1] ?? String(value).trim(), 10);
   if (!Number.isFinite(n) || n < 1 || n > 10000) return null;
+  // Calificaciones típicas (500, 1000, 1500), no fila de valor máximo.
+  if (!fromLabel && n >= 500 && n <= 2000) return null;
   return n;
 }
 
@@ -173,11 +175,26 @@ function rowLooksLikeDates(row: unknown[], columnIndices: number[]): boolean {
 }
 
 function rowLooksLikeMaxPoints(row: unknown[], columnIndices: number[]): boolean {
-  let hits = 0;
+  let labelOrSmallHits = 0;
+  let gradeLikeHits = 0;
+
   for (const i of columnIndices) {
-    if (parseMaxPoints(row[i]) !== null) hits++;
+    const raw = String(row[i] ?? "").trim().toLowerCase();
+    if (/(?:max|máx|valor|pts?)\s*[:.]?\s*\d+/i.test(raw)) {
+      labelOrSmallHits++;
+      continue;
+    }
+    const maxPts = parseMaxPoints(row[i]);
+    if (maxPts === null) continue;
+    if (maxPts >= 500) {
+      gradeLikeHits++;
+    } else {
+      labelOrSmallHits++;
+    }
   }
-  return hits >= Math.max(1, Math.ceil(columnIndices.length * 0.5));
+
+  if (gradeLikeHits >= Math.max(1, Math.ceil(columnIndices.length * 0.25))) return false;
+  return labelOrSmallHits >= Math.max(1, Math.ceil(columnIndices.length * 0.5));
 }
 
 function inferMaxPointsFromColumn(rows: unknown[][], columnIndex: number, dataStart: number): number {
@@ -344,7 +361,7 @@ export function parseGradesWorkbook(
 
     const parsed = parseGradesSheetInternal(sheet, sheetName);
     if (!parsed || !parsed.activities.length) {
-      skippedSheets.push(sheetName);
+      skippedSheets.push(`${sheetName} (sin columnas de actividad)`);
       continue;
     }
 

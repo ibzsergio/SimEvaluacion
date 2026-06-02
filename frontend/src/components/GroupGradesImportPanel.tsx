@@ -12,7 +12,9 @@ import type { ClassGroup } from "../lib/types";
 type GradeImportSummary = {
   activitiesCreated: number;
   activitiesMatched: number;
+  activitiesRemoved: number;
   activitiesMissing: string[];
+  parsedActivityNames: string[];
   gradesUpserted: number;
   gradesSkipped: number;
   unknownControls: string[];
@@ -25,6 +27,10 @@ function formatSummary(summary: GradeImportSummary, mode: GradeImportMode) {
   if (mode === "activitiesOnly" || mode === "full") {
     parts.push(`${summary.activitiesCreated} actividades nuevas`);
     if (summary.activitiesMatched) parts.push(`${summary.activitiesMatched} ya existían`);
+    if (summary.activitiesRemoved) parts.push(`${summary.activitiesRemoved} eliminadas (no están en la hoja)`);
+    if (summary.parsedActivityNames.length) {
+      parts.push(`columnas: ${summary.parsedActivityNames.join(" → ")}`);
+    }
   }
 
   if (mode === "gradesOnly" || mode === "full") {

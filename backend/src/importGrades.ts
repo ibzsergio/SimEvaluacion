@@ -8,7 +8,9 @@ export type GradeImportMode = "full" | "activitiesOnly" | "gradesOnly";
 export type GradeImportSummary = {
   activitiesCreated: number;
   activitiesMatched: number;
+  activitiesRemoved: number;
   activitiesMissing: string[];
+  parsedActivityNames: string[];
   gradesUpserted: number;
   gradesSkipped: number;
   unknownControls: string[];
@@ -104,7 +106,9 @@ export async function importGradesForGroup(
   const summary: GradeImportSummary = {
     activitiesCreated: 0,
     activitiesMatched: 0,
+    activitiesRemoved: 0,
     activitiesMissing: [],
+    parsedActivityNames: parsed.activities.map((a) => a.name),
     gradesUpserted: 0,
     gradesSkipped: 0,
     unknownControls: [],
@@ -170,6 +174,16 @@ export async function importGradesForGroup(
     }
 
     if (activity) activityIdByColumn.set(col.columnIndex, activity.id);
+  }
+
+  if (importActivities && parsed.activities.length > 0) {
+    const importedIds = new Set(activityIdByColumn.values());
+    for (const extra of existingActivities) {
+      if (!importedIds.has(extra.id)) {
+        await prisma.activity.delete({ where: { id: extra.id } });
+        summary.activitiesRemoved++;
+      }
+    }
   }
 
   if (!importGrades) {
