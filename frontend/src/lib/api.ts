@@ -216,6 +216,57 @@ export async function resetStudentPassword(groupId: string, studentId: string, n
   return data;
 }
 
+export type GradeImportSummary = {
+  activitiesCreated: number;
+  activitiesMatched: number;
+  gradesUpserted: number;
+  gradesSkipped: number;
+  unknownControls: string[];
+  unknownStudents: string[];
+  activityDetails?: { name: string; date: string; action: "created" | "matched" }[];
+};
+
+export type GradesImportResult = {
+  group: { id: string; code: string; shift: string };
+  sheetName: string;
+  summary: GradeImportSummary;
+};
+
+export type GradesImportWorkbookResult = {
+  results: { groupCode: string; sheetName: string; summary: GradeImportSummary }[];
+  skippedSheets: string[];
+};
+
+export async function importGradesWorkbook(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<GradesImportWorkbookResult>("/teacher/grades/import-workbook", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function importGradesExcel(groupId: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<GradesImportResult>(`/teacher/groups/${groupId}/grades/import`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function downloadGradesTemplate(groupId: string) {
+  const { data } = await api.get<Blob>(`/teacher/groups/${groupId}/grades/template`, {
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "plantilla_calificaciones.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function downloadStudentsTemplate(groupId: string) {
   const { data } = await api.get<Blob>(`/teacher/groups/${groupId}/students/template`, {
     responseType: "blob",

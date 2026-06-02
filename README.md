@@ -38,9 +38,10 @@ El docente tiene dos grupos fijos. En el panel:
 3. También puedes importar un solo grupo con un archivo de una hoja.
 4. Cada alumno entra con su **número de control** y **crea su contraseña** la primera vez.
 5. Tú puedes **restablecer** contraseñas si un alumno la olvida.
-6. Pestaña **Actividades** → crea prácticas y califica por grupo.
+6. Pestaña **Actividades y calificaciones** → importa un Excel con actividades y puntos, o créalas y califícalas una por una.
+7. Importar calificaciones: hojas **201** y **202** (como alumnos), columnas = actividades, filas = alumnos. Si la actividad ya existe (mismo nombre y fecha), solo actualiza calificaciones.
 
-Puedes descargar una **plantilla CSV** desde el mismo panel.
+Puedes descargar **plantillas CSV** desde cada pestaña (alumnos y calificaciones).
 
 ---
 

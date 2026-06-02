@@ -38,7 +38,7 @@ function isListHeader(value: string) {
   return value.includes("lista") && !value.includes("control");
 }
 
-type ColumnMap = { control: number; name: number; list?: number };
+export type ColumnMap = { control: number; name: number; list?: number };
 
 function detectColumns(headerRow: unknown[]): ColumnMap | null {
   const headers = headerRow.map(normalizeHeader);
@@ -58,7 +58,16 @@ function detectColumns(headerRow: unknown[]): ColumnMap | null {
   return null;
 }
 
-function normalizeControlNumber(value: unknown): string {
+export function normalizePersonName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, " ");
+}
+
+export function normalizeControlNumber(value: unknown): string {
   if (value === null || value === undefined) return "";
 
   if (typeof value === "number" && Number.isFinite(value)) {

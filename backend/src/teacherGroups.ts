@@ -4,8 +4,10 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { prisma } from "./prisma.js";
 import { parseStudentsExcel, parseStudentsWorkbook } from "./excel.js";
+import { parseGradesExcel, parseGradesWorkbook } from "./importGradesExcel.js";
 import { ensureTeacherGroups, placeholderPasswordHash } from "./groups.js";
 import { importStudentRows } from "./importStudents.js";
+import { importGradesForGroup } from "./importGrades.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { closeWeekForGroup, ensureCurrentGroupWeek } from "./weeks.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
@@ -425,6 +427,112 @@ teacherGroupsRouter.put(
     });
   },
 );
+
+teacherGroupsRouter.post(
+  "/groups/:groupId/grades/import",
+  upload.single("file"),
+  async (req: AuthedRequest, res) => {
+    const groupId = String(req.params.groupId);
+    const group = await prisma.classGroup.findFirst({
+      where: { id: groupId, teacherId: req.auth!.userId },
+    });
+    if (!group) return res.status(404).json({ error: "group_not_found" });
+
+    if (!req.file?.buffer) {
+      return res.status(400).json({ error: "file_required" });
+    }
+
+    const ext = req.file.originalname.toLowerCase();
+    if (!ext.endsWith(".xlsx") && !ext.endsWith(".xls")) {
+      return res.status(400).json({
+        error: "invalid_file_type",
+        message: "Usa un archivo .xlsx o .xls",
+      });
+    }
+
+    const parsed = parseGradesExcel(req.file.buffer);
+    if (!parsed?.activities.length) {
+      return res.status(400).json({
+        error: "empty_file",
+        message:
+          "Formato: encabezados con NOMBRE DEL ALUMNO y columnas de actividades (CARATULA, etc.). Importa alumnos antes.",
+      });
+    }
+
+    const summary = await importGradesForGroup(group, parsed, req.auth!.userId);
+
+    return res.json({
+      group: { id: group.id, code: group.code, shift: group.shift },
+      sheetName: parsed.sheetName,
+      summary,
+    });
+  },
+);
+
+teacherGroupsRouter.post("/grades/import-workbook", upload.single("file"), async (req: AuthedRequest, res) => {
+  if (!req.file?.buffer) {
+    return res.status(400).json({ error: "file_required" });
+  }
+
+  const ext = req.file.originalname.toLowerCase();
+  if (!ext.endsWith(".xlsx") && !ext.endsWith(".xls")) {
+    return res.status(400).json({
+      error: "invalid_file_type",
+      message: "Para varias hojas (201 y 202) usa .xlsx o .xls",
+    });
+  }
+
+  const groups = await ensureTeacherGroups(req.auth!.userId);
+  const groupCodes = groups.map((g) => g.code);
+  const groupByCode = new Map(groups.map((g) => [g.code, g]));
+  const { sheets, skippedSheets } = parseGradesWorkbook(req.file.buffer, groupCodes);
+
+  if (!sheets.length) {
+    return res.status(400).json({
+      error: "no_sheets_matched",
+      message:
+        "No se encontraron hojas 201/202 con actividades y calificaciones. Revisa los nombres de las pestañas.",
+      skippedSheets,
+      expectedGroupCodes: groupCodes,
+    });
+  }
+
+  const results: {
+    groupCode: string;
+    sheetName: string;
+    summary: Awaited<ReturnType<typeof importGradesForGroup>>;
+  }[] = [];
+
+  for (const sheet of sheets) {
+    const group = groupByCode.get(sheet.groupCode);
+    if (!group) continue;
+    const summary = await importGradesForGroup(group, sheet, req.auth!.userId);
+    results.push({ groupCode: sheet.groupCode, sheetName: sheet.sheetName, summary });
+  }
+
+  return res.json({ results, skippedSheets });
+});
+
+teacherGroupsRouter.get("/groups/:groupId/grades/template", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  const csv = [
+    "No.,NOMBRE DEL ALUMNO,CARATULA,ESTACION RADIO,ACTIVIDADES SOCIOEMOCIONALES",
+    "1,Garcia Lopez Juan,1000,500,500",
+    "2,Martinez Perez Ana,1500,0,500",
+  ].join("\n");
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="calificaciones_grupo_${group.code}.csv"`,
+  );
+  return res.send(csv);
+});
 
 teacherGroupsRouter.get("/groups/:groupId/students/template", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);

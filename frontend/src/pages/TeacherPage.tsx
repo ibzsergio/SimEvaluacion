@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import GroupGradesImportPanel from "../components/GroupGradesImportPanel";
 import GroupRankingPanel from "../components/GroupRankingPanel";
 import GroupStudentsPanel from "../components/GroupStudentsPanel";
 import WeeklyWinnersPanel from "../components/WeeklyWinnersPanel";
@@ -152,6 +153,17 @@ export default function TeacherPage() {
               </button>
             ))}
           </div>
+
+          {selectedGroupId ? (
+            <GroupGradesImportPanel
+              groups={groups}
+              selectedGroupId={selectedGroupId}
+              onSelectGroup={(id) => {
+                setSelectedGroupId(id);
+                setSelectedId(null);
+              }}
+            />
+          ) : null}
 
           <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
             <section className="glass p-5">
