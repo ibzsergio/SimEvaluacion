@@ -14,8 +14,12 @@ import type {
 
 /** Normaliza VITE_API_URL (sin barra final ni sufijo /api de desarrollo). */
 export function getApiBaseUrl(): string {
-  const raw = import.meta.env.VITE_API_URL?.trim();
+  let raw = import.meta.env.VITE_API_URL?.trim();
   if (!raw) return "/api";
+  // Error frecuente en Netlify: pegar "VITE_API_URL=https://..." como valor.
+  raw = raw.replace(/^VITE_API_URL\s*=\s*/i, "").trim();
+  const httpMatch = raw.match(/https?:\/\/[^\s]+/);
+  if (httpMatch) raw = httpMatch[0];
   let url = raw.replace(/\/$/, "");
   if (url.endsWith("/api")) url = url.slice(0, -4);
   return url;
