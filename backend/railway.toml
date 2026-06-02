@@ -1,0 +1,7 @@
+[build]
+buildCommand = "npm run railway:build"
+
+[deploy]
+startCommand = "npm run railway:start"
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"

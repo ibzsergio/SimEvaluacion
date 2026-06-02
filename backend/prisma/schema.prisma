@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TEACHER
+  STUDENT
+}
+
+model ClassGroup {
+  id        String   @id @default(cuid())
+  code      String
+  shift     String   @default("matutino")
+  teacherId String
+  teacher   User     @relation("TeacherGroups", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  students   User[]     @relation("GroupStudents")
+  activities Activity[]
+  weeks      GroupWeek[]
+
+  /// Meta de actividades del periodo (para progreso). Si es null, se usa el total publicado.
+  plannedActivities Int?
+  /// Cuando el docente cierra el periodo, se muestra el porcentaje final.
+  progressClosed Boolean @default(false)
+  progressClosedAt DateTime?
+
+  /// Cuando el docente cierra el parcial, se congelan resultados semanales.
+  partialClosed Boolean @default(false)
+  partialClosedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, code, shift])
+  @@index([teacherId])
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String? @unique
+  controlNumber String? @unique
+  passwordHash String
+  passwordSet  Boolean @default(false)
+  /// Contraseña visible solo cuando el docente la restablece (para recuperación).
+  recoverablePassword String?
+
+  role         Role
+  displayName  String
+  listNumber   Int?
+
+  groupId String?
+  group   ClassGroup? @relation("GroupStudents", fields: [groupId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacherGroups     ClassGroup[] @relation("TeacherGroups")
+  teacherActivities Activity[]   @relation("TeacherActivities")
+  grades            Grade[]        @relation("StudentGrades")
+  gradedGrades      Grade[]        @relation("GradesByTeacher")
+  submissions       Submission[]
+  weeklyWins        WeeklyWinner[]
+
+  @@index([groupId])
+  @@index([role])
+}
+
+model Activity {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date
+  name         String
+  maxPoints    Int
+  signatureMax Int      @default(0)
+
+  groupId String
+  group   ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User @relation("TeacherActivities", fields: [createdById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  grades       Grade[]
+  submissions  Submission[]
+
+  @@index([createdById])
+  @@index([groupId])
+}
+
+model Submission {
+  id         String   @id @default(cuid())
+  activityId String
+  studentId  String
+  submittedAt DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  student  User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, studentId])
+  @@index([studentId])
+  @@index([activityId])
+}
+
+model GroupWeek {
+  id        String   @id @default(cuid())
+  groupId   String
+  /// Fecha del lunes (inicio de semana)
+  weekStart DateTime @db.Date
+  /// Fecha del viernes (fin de semana)
+  weekEnd   DateTime @db.Date
+  closedAt  DateTime?
+
+  group ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  winner WeeklyWinner?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([groupId, weekStart])
+  @@index([groupId])
+}
+
+model WeeklyWinner {
+  id       String @id @default(cuid())
+  weekId   String @unique
+  studentId String
+  /// Puntaje total del alumno al cerrar esa semana
+  score    Int
+
+  week    GroupWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  student User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+}
+
+model Grade {
+  id         String @id @default(cuid())
+  activityId String
+  studentId  String
+  points     Int
+  signatures Int    @default(0)
+  gradedById String
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  student  User     @relation("StudentGrades", fields: [studentId], references: [id], onDelete: Cascade)
+  gradedBy User     @relation("GradesByTeacher", fields: [gradedById], references: [id], onDelete: Restrict)
+
+  gradedAt DateTime @default(now())
+
+  @@unique([activityId, studentId])
+  @@index([studentId])
+  @@index([activityId])
+  @@index([gradedById])
+}

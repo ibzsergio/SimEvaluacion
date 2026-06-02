@@ -1,0 +1,252 @@
+import axios from "axios";
+import type {
+  Activity,
+  ClassGroup,
+  GradeRow,
+  ImportResult,
+  ImportWorkbookResult,
+  GroupRanking,
+  GroupWeeks,
+  PartialSummary,
+  StudentProgress,
+  User,
+} from "./types";
+
+export function getApiErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    if (!error.response) {
+      return "No se pudo conectar al servidor. Verifica que el backend esté en ejecución (puerto 4000).";
+    }
+    const code = error.response.data?.error;
+    if (code === "invalid_body") {
+      return "Datos inválidos. Revisa los campos.";
+    }
+    if (code === "password_mismatch") return "Las contraseñas no coinciden.";
+    if (code === "password_already_set") return "Este alumno ya tiene contraseña. Inicia sesión.";
+    if (code === "password_not_set") return "Primera vez: crea tu contraseña abajo.";
+    if (code === "group_id_required") return "Selecciona un grupo (201 o 202).";
+    if (code === "file_required") return "Selecciona un archivo Excel (.xlsx).";
+    if (code === "no_sheets_matched") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Nombra las hojas del Excel 201 y 202 (o Grupo 201, Grupo 202)."
+      );
+    }
+    if (code === "empty_file") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "El archivo no tiene alumnos válidos."
+      );
+    }
+    if (code === "invalid_token" || code === "missing_token") {
+      return "Sesión expirada. Vuelve a iniciar sesión.";
+    }
+    if (code === "invalid_credentials") return "Usuario o contraseña incorrectos.";
+    if (code === "student_not_found") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Número de control no encontrado."
+      );
+    }
+    if (code === "partial_closed") {
+      return (error.response.data as { message?: string })?.message ?? "El parcial está cerrado.";
+    }
+    return `Error del servidor (${error.response.status}).`;
+  }
+  return "Ocurrió un error inesperado.";
+}
+
+const baseURL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}`
+  : "/api";
+
+export const api = axios.create({ baseURL });
+
+export function setAuthToken(token: string | null) {
+  if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  else delete api.defaults.headers.common.Authorization;
+}
+
+export async function loginTeacher(email: string, password: string) {
+  const { data } = await api.post<{ token: string; user: User }>("/auth/login/teacher", {
+    email,
+    password,
+  });
+  return data;
+}
+
+export async function loginStudent(controlNumber: string, password?: string) {
+  const payload: { controlNumber: string; password?: string } = {
+    controlNumber: controlNumber.trim().replace(/\s/g, ""),
+  };
+  if (password && password.trim().length >= 4) {
+    payload.password = password.trim();
+  }
+  const { data } = await api.post<{ token: string; user: User }>("/auth/login/student", payload);
+  return data;
+}
+
+export type PasswordNotSetResponse = {
+  error: "password_not_set";
+  student: { controlNumber: string; displayName: string };
+};
+
+export function isPasswordNotSetError(error: unknown): error is { response: { data: PasswordNotSetResponse } } {
+  return (
+    axios.isAxiosError(error) &&
+    error.response?.status === 403 &&
+    error.response?.data?.error === "password_not_set"
+  );
+}
+
+export async function createStudentPassword(
+  controlNumber: string,
+  password: string,
+  confirmPassword: string,
+) {
+  const { data } = await api.post<{ token: string; user: User }>("/auth/student/create-password", {
+    controlNumber,
+    password,
+    confirmPassword,
+  });
+  return data;
+}
+
+export async function devSeed() {
+  const { data } = await api.post("/auth/dev-seed");
+  return data;
+}
+
+export async function fetchGroups() {
+  const { data } = await api.get<{ groups: ClassGroup[] }>("/teacher/groups");
+  return data.groups;
+}
+
+export async function updateGroupProgressSettings(
+  groupId: string,
+  payload: { plannedActivities?: number | null; progressClosed?: boolean },
+) {
+  const { data } = await api.put<{ group: ClassGroup }>(`/teacher/groups/${groupId}/progress-settings`, payload);
+  return data.group;
+}
+
+export async function updateGroupPartialSettings(groupId: string, payload: { partialClosed: boolean }) {
+  const { data } = await api.put<{ group: ClassGroup }>(`/teacher/groups/${groupId}/partial-settings`, payload);
+  return data.group;
+}
+
+export type GroupStudent = {
+  id: string;
+  controlNumber: string | null;
+  listNumber: number | null;
+  displayName: string;
+  passwordSet: boolean;
+  passwordLabel: string;
+};
+
+export async function fetchGroupRanking(groupId: string) {
+  const { data } = await api.get<GroupRanking>(`/teacher/groups/${groupId}/ranking`);
+  return data;
+}
+
+export async function fetchGroupWeeks(groupId: string) {
+  const { data } = await api.get<GroupWeeks>(`/teacher/groups/${groupId}/weeks`);
+  return data;
+}
+
+export async function closeCurrentGroupWeek(groupId: string) {
+  const { data } = await api.post(`/teacher/groups/${groupId}/weeks/close`);
+  return data;
+}
+
+export async function fetchPartialSummary(groupId: string) {
+  const { data } = await api.get<PartialSummary>(`/teacher/groups/${groupId}/partial-summary`);
+  return data;
+}
+
+export async function fetchGroupStudents(groupId: string) {
+  const { data } = await api.get<{ group: ClassGroup; students: GroupStudent[] }>(
+    `/teacher/groups/${groupId}/students`,
+  );
+  return data;
+}
+
+export async function importStudentsWorkbook(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<ImportWorkbookResult>("/teacher/students/import-workbook", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function importStudentsExcel(groupId: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<ImportResult>(`/teacher/groups/${groupId}/students/import`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function resetStudentPassword(groupId: string, studentId: string, newPassword: string) {
+  const { data } = await api.put<{
+    controlNumber: string | null;
+    displayName: string;
+    newPassword: string;
+    message: string;
+  }>(`/teacher/groups/${groupId}/students/${studentId}/reset-password`, { newPassword });
+  return data;
+}
+
+export async function downloadStudentsTemplate(groupId: string) {
+  const { data } = await api.get<Blob>(`/teacher/groups/${groupId}/students/template`, {
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "plantilla_alumnos.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function fetchActivities(groupId: string) {
+  const { data } = await api.get<{ activities: Activity[] }>("/teacher/activities", {
+    params: { groupId },
+  });
+  return data.activities;
+}
+
+export async function createActivity(payload: {
+  groupId: string;
+  date: string;
+  name: string;
+  maxPoints: number;
+}) {
+  const { data } = await api.post<{ activity: Activity }>("/teacher/activities", payload);
+  return data.activity;
+}
+
+export async function fetchActivityGrades(activityId: string) {
+  const { data } = await api.get<{ activity: Activity; rows: GradeRow[] }>(
+    `/teacher/activities/${activityId}/grades`,
+  );
+  return data;
+}
+
+export async function saveGrade(
+  activityId: string,
+  studentId: string,
+  payload: { points: number },
+) {
+  const { data } = await api.put(`/teacher/activities/${activityId}/grades/${studentId}`, payload);
+  return data.grade;
+}
+
+export async function fetchStudentProgress() {
+  const { data } = await api.get<StudentProgress>("/student/progress");
+  return data;
+}
+
+// El alumno ya no registra entregas. La actividad se considera entregada al calificar.

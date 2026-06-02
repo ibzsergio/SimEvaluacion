@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", system-ui, sans-serif;
+}
+
+body {
+  @apply min-h-screen bg-slate-950 text-slate-100 font-sans antialiased;
+}
+
+.glass {
+  @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-xl;
+}
+
+.glow-gold {
+  box-shadow: 0 0 40px rgba(250, 204, 21, 0.35);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 40px rgba(34, 211, 238, 0.25);
+}
