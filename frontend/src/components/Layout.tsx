@@ -5,15 +5,17 @@ export default function Layout({
   title,
   subtitle,
   children,
+  footer,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
+  footer?: ReactNode;
 }) {
   const { user, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/40 via-slate-950 to-slate-950">
+    <div className="flex min-h-screen flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/40 via-slate-950 to-slate-950">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300/80">
@@ -36,7 +38,12 @@ export default function Layout({
           </button>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 pb-12">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-12">{children}</main>
+      {footer ? (
+        <footer className="mx-auto w-full max-w-6xl border-t border-white/5 px-4 py-6 text-center">
+          {footer}
+        </footer>
+      ) : null}
     </div>
   );
 }

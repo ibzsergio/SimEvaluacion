@@ -4,6 +4,12 @@ import Layout from "../components/Layout";
 import { fetchStudentProgress } from "../lib/api";
 import type { ActivityStatus, StudentActivity } from "../lib/types";
 
+const studentFooter = (
+  <p className="text-sm text-slate-500">
+    Development by <span className="font-medium text-slate-400">Sergio Ibañez</span>
+  </p>
+);
+
 export default function StudentPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
@@ -13,7 +19,7 @@ export default function StudentPage() {
 
   if (isLoading || !data) {
     return (
-      <Layout title="Tu aventura académica" subtitle="Cargando tu progreso...">
+      <Layout title="Tu aventura académica" subtitle="Cargando tu progreso..." footer={studentFooter}>
         <div className="glass animate-pulse p-10 text-center text-slate-400">Preparando el tablero...</div>
       </Layout>
     );
@@ -34,6 +40,7 @@ export default function StudentPage() {
           ? `Grupo ${data.group.code} · ${data.group.shift} · Lista #${data.my.listNumber ?? "—"}`
           : "Sigue tus prácticas y entregas"
       }
+      footer={studentFooter}
     >
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Publicadas" value={summary.total} color="text-white" />
