@@ -479,7 +479,14 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
   const maxPointsTotal = activities.reduce((acc, a) => acc + (a.maxPoints ?? 0), 0);
   const pointsPercent = maxPointsTotal > 0 ? Math.round((myScore / maxPointsTotal) * 100) : 0;
-  const motivation = buildStudentMotivation(myPlace, ranking.length, myScore, ranking);
+  const motivation = buildStudentMotivation(
+    req.auth!.userId,
+    me.displayName,
+    myPlace,
+    ranking.length,
+    myScore,
+    ranking,
+  );
 
   return res.json({
     group: myGroup,

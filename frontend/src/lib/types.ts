@@ -61,6 +61,11 @@ export type StudentProgress = {
     inTop10: boolean;
   };
   motivation: {
+    displayName: string;
+    firstName: string;
+    dailyDate: string;
+    dailyEmoji: string;
+    dailyMessage: string;
     place: number;
     totalStudents: number;
     inTop10: boolean;

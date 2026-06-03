@@ -1,6 +1,12 @@
+import { firstNameFromDisplayName, getDailyMotivation } from "./dailyMotivation.js";
 import type { RankingEntry } from "./ranking.js";
 
 export type StudentMotivation = {
+  displayName: string;
+  firstName: string;
+  dailyDate: string;
+  dailyEmoji: string;
+  dailyMessage: string;
   place: number;
   totalStudents: number;
   inTop10: boolean;
@@ -12,17 +18,28 @@ export type StudentMotivation = {
 };
 
 export function buildStudentMotivation(
+  studentId: string,
+  displayName: string,
   place: number,
   totalStudents: number,
   myScore: number,
   ranking: RankingEntry[],
 ): StudentMotivation {
+  const daily = getDailyMotivation(studentId);
+  const base = {
+    displayName,
+    firstName: firstNameFromDisplayName(displayName),
+    dailyDate: daily.date,
+    dailyEmoji: daily.emoji,
+    dailyMessage: daily.message,
+  };
   const tenth = ranking[9];
   const pointsToTop10 =
     place > 10 && tenth ? Math.max(0, tenth.score - myScore) : place > 10 ? null : null;
 
   if (place === 1) {
     return {
+      ...base,
       place,
       totalStudents,
       inTop10: true,
@@ -36,6 +53,7 @@ export function buildStudentMotivation(
 
   if (place === 2) {
     return {
+      ...base,
       place,
       totalStudents,
       inTop10: true,
@@ -49,6 +67,7 @@ export function buildStudentMotivation(
 
   if (place === 3) {
     return {
+      ...base,
       place,
       totalStudents,
       inTop10: true,
@@ -62,6 +81,7 @@ export function buildStudentMotivation(
 
   if (place <= 10) {
     return {
+      ...base,
       place,
       totalStudents,
       inTop10: true,
@@ -81,6 +101,7 @@ export function buildStudentMotivation(
         : "";
 
   return {
+    ...base,
     place,
     totalStudents,
     inTop10: false,

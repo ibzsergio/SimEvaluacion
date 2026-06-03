@@ -36,9 +36,11 @@ export default function StudentPage() {
   const pendingActivities = data.activities.filter((a) => a.status === "pending");
   const gradedActivities = data.activities.filter((a) => a.status === "graded");
 
+  const greetingName = data.motivation.firstName;
+
   return (
     <Layout
-      title="Tu aventura académica"
+      title={`¡Hola, ${greetingName}!`}
       subtitle={
         data.group
           ? `Grupo ${data.group.code} · ${data.group.shift} · Lista #${data.my.listNumber ?? "—"}`
@@ -46,6 +48,8 @@ export default function StudentPage() {
       }
       footer={studentFooter}
     >
+      <StudentMotivationCard motivation={data.motivation} />
+
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Publicadas" value={summary.total} color="text-white" />
         <StatCard label="Pendientes" value={summary.pending} color="text-amber-300" />
@@ -99,8 +103,6 @@ export default function StudentPage() {
           ) : null}
         </section>
       </div>
-
-      <StudentMotivationCard motivation={data.motivation} />
 
       {pendingActivities.length > 0 ? (
         <ActivitySection
