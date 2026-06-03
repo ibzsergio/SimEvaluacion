@@ -193,11 +193,20 @@ function PartialTable({ rows }: { rows: PartialSummaryRow[] }) {
   if (!rows.length) {
     return <p className="mt-6 text-sm text-slate-500">Sin alumnos.</p>;
   }
+
+  const sorted = [...rows].sort(
+    (a, b) =>
+      b.totalPoints - a.totalPoints ||
+      (a.listNumber ?? 999) - (b.listNumber ?? 999) ||
+      a.displayName.localeCompare(b.displayName, "es"),
+  );
+
   return (
     <div className="mt-6 overflow-x-auto rounded-xl border border-white/10">
       <table className="min-w-full text-sm">
         <thead className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
           <tr>
+            <th className="px-4 py-3 w-16">Lugar</th>
             <th className="px-4 py-3">No. control</th>
             <th className="px-4 py-3">Alumno</th>
             <th className="px-4 py-3 text-right">Puntos (total)</th>
@@ -206,8 +215,17 @@ function PartialTable({ rows }: { rows: PartialSummaryRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.studentId} className="border-t border-white/5">
+          {sorted.map((r, index) => {
+            const place = index + 1;
+            const inTop10 = place <= 10;
+            return (
+            <tr
+              key={r.studentId}
+              className={`border-t border-white/5 ${inTop10 ? "bg-cyan-500/5" : ""}`}
+            >
+              <td className="px-4 py-3 font-bold text-white">
+                {place === 1 ? "🥇" : place === 2 ? "🥈" : place === 3 ? "🥉" : `#${place}`}
+              </td>
               <td className="px-4 py-3 font-mono text-cyan-300">{r.controlNumber ?? "—"}</td>
               <td className="px-4 py-3 text-white">
                 {r.listNumber != null ? `${r.listNumber}. ` : ""}
@@ -217,7 +235,8 @@ function PartialTable({ rows }: { rows: PartialSummaryRow[] }) {
               <td className="px-4 py-3 text-right font-bold text-amber-200">{r.weeksWon}</td>
               <td className="px-4 py-3 text-right font-bold text-amber-200">{r.weeklyWinnerScoreSum}</td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

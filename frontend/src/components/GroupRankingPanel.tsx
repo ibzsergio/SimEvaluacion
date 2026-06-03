@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import Top10Ranking from "./Top10Ranking";
 import { fetchGroupRanking, updateGroupProgressSettings } from "../lib/api";
 import type { ClassGroup } from "../lib/types";
 
@@ -22,6 +23,7 @@ export default function GroupRankingPanel({
   });
 
   const ranking = rankingQuery.data?.ranking ?? [];
+  const top10 = rankingQuery.data?.top10 ?? ranking.slice(0, 10);
   const [plannedText, setPlannedText] = useState(
     selectedGroup?.plannedActivities != null ? String(selectedGroup.plannedActivities) : "",
   );
@@ -126,7 +128,18 @@ export default function GroupRankingPanel({
             No hay alumnos en este grupo. Importa la lista en la pestaña Alumnos (Excel).
           </p>
         ) : (
-          <div className="mt-6 overflow-x-auto rounded-xl border border-white/10">
+          <>
+          <div className="mt-6 rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-white">
+              <span>🏁</span> Top 10 del grupo
+            </h3>
+            <Top10Ranking entries={top10} />
+          </div>
+
+          <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Ranking completo
+          </h3>
+          <div className="mt-3 overflow-x-auto rounded-xl border border-white/10">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
                 <tr>
@@ -157,6 +170,7 @@ export default function GroupRankingPanel({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
     </div>
@@ -165,10 +179,12 @@ export default function GroupRankingPanel({
 
 function PlaceBadge({ place }: { place: number }) {
   const medal =
-    place === 1 ? "🥇" : place === 2 ? "🥈" : place === 3 ? "🥉" : null;
+    place === 1 ? "🥇" : place === 2 ? "🥈" : place === 3 ? "🥉" : place <= 10 ? `${place}.` : null;
   return (
     <span className="inline-flex items-center gap-1 font-bold text-white">
-      {medal ? <span className="text-lg">{medal}</span> : null}
+      {medal ? (
+        <span className={place <= 3 ? "text-lg" : "text-sm text-slate-400"}>{medal}</span>
+      ) : null}
       <span>#{place}</span>
     </span>
   );

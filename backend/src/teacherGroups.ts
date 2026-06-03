@@ -380,10 +380,12 @@ teacherGroupsRouter.get("/groups/:groupId/ranking", async (req: AuthedRequest, r
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
   const { ranking, activityCount } = await getGroupRanking(groupId);
+  const top10 = ranking.slice(0, 10);
 
   return res.json({
     group,
     ranking,
+    top10,
     activityCount,
     rankingRule: RANKING_RULE,
   });

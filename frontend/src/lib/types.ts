@@ -109,6 +109,7 @@ export type GroupRankingRow = {
 export type GroupRanking = {
   group: ClassGroup;
   ranking: GroupRankingRow[];
+  top10: GroupRankingRow[];
   activityCount: number;
   rankingRule: string;
 };

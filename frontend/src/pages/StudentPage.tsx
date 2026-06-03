@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import BadgeDisplay from "../components/BadgeDisplay";
 import Layout from "../components/Layout";
+import Top10Ranking from "../components/Top10Ranking";
 import { fetchStudentProgress } from "../lib/api";
 import type { ActivityStatus, StudentActivity } from "../lib/types";
 
@@ -84,30 +85,7 @@ export default function StudentPage() {
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
             <span>🏁</span> Top 10 del grupo
           </h2>
-          <ol className="space-y-2">
-            {data.top10.map((entry) => {
-              const place = entry.place;
-              const medal = place === 1 ? "🥇" : place === 2 ? "🥈" : place === 3 ? "🥉" : `${place}.`;
-              return (
-                <li
-                  key={entry.studentId}
-                  className="flex items-center justify-between rounded-xl border border-white/5 bg-slate-900/40 px-4 py-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 text-center text-lg">{medal}</span>
-                    <span className="font-medium text-white">
-                      {entry.listNumber != null ? `${entry.listNumber}. ` : ""}
-                      {entry.displayName}
-                    </span>
-                  </div>
-                  <span className="font-bold text-cyan-300">{entry.score} pts</span>
-                </li>
-              );
-            })}
-            {!data.top10.length ? (
-              <p className="text-sm text-slate-500">Aún no hay puntajes en el grupo.</p>
-            ) : null}
-          </ol>
+          <Top10Ranking entries={data.top10} />
         </section>
       </div>
 
