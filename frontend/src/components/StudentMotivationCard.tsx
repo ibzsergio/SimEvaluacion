@@ -22,7 +22,6 @@ export default function StudentMotivationCard({
           <h2 className="mt-1 text-2xl font-extrabold text-white sm:text-3xl">
             ¡Hola, {motivation.firstName}!
           </h2>
-          <p className="mt-0.5 text-sm text-slate-400">{motivation.displayName}</p>
           <p className="mt-3 text-base leading-relaxed text-slate-200">{motivation.dailyMessage}</p>
         </div>
       </div>

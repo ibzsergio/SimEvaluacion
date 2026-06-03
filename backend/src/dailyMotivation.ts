@@ -77,11 +77,68 @@ export function localDateKey(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+const SURNAME_PARTICLES = new Set([
+  "de",
+  "del",
+  "la",
+  "las",
+  "los",
+  "y",
+  "e",
+  "mc",
+  "mac",
+  "von",
+  "van",
+]);
+
+function capitalizeWord(word: string): string {
+  if (!word) return word;
+  const lower = word.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+function capitalizeName(text: string): string {
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(capitalizeWord)
+    .join(" ");
+}
+
+/** Nombre(s) de pila: en listas MX suele ir al final (apellido(s) primero). */
+function extractGivenNameParts(parts: string[]): string[] {
+  if (parts.length === 1) return parts;
+  if (parts.length === 2) return [parts[1]!];
+  if (parts.length === 3) return [parts[2]!];
+  if (parts.length === 4) return parts.slice(2);
+
+  let idx = 0;
+  let surnameWords = 0;
+  while (idx < parts.length - 1 && surnameWords < 4) {
+    if (SURNAME_PARTICLES.has(parts[idx]!.toLowerCase())) {
+      idx++;
+      continue;
+    }
+    surnameWords++;
+    idx++;
+    if (surnameWords >= 2) {
+      const next = parts[idx]?.toLowerCase();
+      if (next && SURNAME_PARTICLES.has(next)) continue;
+      break;
+    }
+  }
+
+  idx = Math.max(2, Math.min(idx, parts.length - 1));
+  const given = parts.slice(idx);
+  if (given.length === 0) return [parts[parts.length - 1]!];
+  if (given.length > 2) return given.slice(-2);
+  return given;
+}
+
 export function firstNameFromDisplayName(displayName: string): string {
-  const trimmed = displayName.trim();
-  if (!trimmed) return "Alumno";
-  const part = trimmed.split(/\s+/)[0] ?? trimmed;
-  return part.charAt(0).toUpperCase() + part.slice(1);
+  const parts = displayName.trim().split(/\s+/).filter((p) => p.length > 0);
+  if (parts.length === 0) return "Alumno";
+  return capitalizeName(extractGivenNameParts(parts).join(" "));
 }
 
 export function getDailyMotivation(
