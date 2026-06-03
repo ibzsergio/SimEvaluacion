@@ -58,6 +58,16 @@ export type StudentProgress = {
     totalStudents: number;
     badge: "gold" | "silver" | "bronze" | "top10" | null;
     listNumber: number | null;
+    inTop10: boolean;
+  };
+  motivation: {
+    place: number;
+    totalStudents: number;
+    inTop10: boolean;
+    emoji: string;
+    title: string;
+    message: string;
+    pointsToTop10: number | null;
   };
   top10: {
     studentId: string;

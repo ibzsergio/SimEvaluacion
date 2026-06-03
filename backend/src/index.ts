@@ -11,6 +11,7 @@ import { ensureTeacherGroups } from "./groups.js";
 import { removeJunkStudentsForGroup } from "./dedupeStudents.js";
 import { teacherGroupsRouter } from "./teacherGroups.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
+import { buildStudentMotivation } from "./studentMotivation.js";
 
 const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:5173")
   .split(",")
@@ -478,6 +479,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
   const maxPointsTotal = activities.reduce((acc, a) => acc + (a.maxPoints ?? 0), 0);
   const pointsPercent = maxPointsTotal > 0 ? Math.round((myScore / maxPointsTotal) * 100) : 0;
+  const motivation = buildStudentMotivation(myPlace, ranking.length, myScore, ranking);
 
   return res.json({
     group: myGroup,
@@ -487,7 +489,9 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
       totalStudents: ranking.length,
       badge: badgeForPlace(myPlace),
       listNumber: me.listNumber,
+      inTop10: motivation.inTop10,
     },
+    motivation,
     summary,
     top10,
     rankingRule: RANKING_RULE,

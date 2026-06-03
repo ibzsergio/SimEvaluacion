@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import BadgeDisplay from "../components/BadgeDisplay";
 import Layout from "../components/Layout";
+import StudentMotivationCard from "../components/StudentMotivationCard";
 import Top10Ranking from "../components/Top10Ranking";
 import { fetchStudentProgress } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import type { ActivityStatus, StudentActivity } from "../lib/types";
 
 const studentFooter = (
@@ -12,6 +14,7 @@ const studentFooter = (
 );
 
 export default function StudentPage() {
+  const { user } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
     queryFn: fetchStudentProgress,
@@ -58,6 +61,9 @@ export default function StudentPage() {
             #{data.my.place}
             <span className="text-lg font-medium text-slate-400"> / {data.my.totalStudents}</span>
           </p>
+          <p className="mt-1 text-sm font-semibold text-indigo-200">
+            {data.my.inTop10 ? "Estás en el Top 10" : "Fuera del Top 10 — ¡aún puedes subir!"}
+          </p>
           <p className="mt-2 text-sm text-slate-300">
             Puntos totales: <span className="font-bold text-cyan-300">{data.my.score}</span>
           </p>
@@ -85,9 +91,16 @@ export default function StudentPage() {
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
             <span>🏁</span> Top 10 del grupo
           </h2>
-          <Top10Ranking entries={data.top10} />
+          <Top10Ranking entries={data.top10} highlightStudentId={user?.id} />
+          {!data.my.inTop10 ? (
+            <p className="mt-3 text-xs text-slate-500">
+              Si no apareces en la lista, tu lugar actual es #{data.my.place}. Sigue sumando puntos.
+            </p>
+          ) : null}
         </section>
       </div>
+
+      <StudentMotivationCard motivation={data.motivation} />
 
       {pendingActivities.length > 0 ? (
         <ActivitySection

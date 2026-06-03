@@ -104,7 +104,11 @@ function sendXlsx(res: { setHeader: (k: string, v: string) => void; send: (b: Bu
   res.send(out);
 }
 
-function sendPdf(res: { setHeader: (k: string, v: string) => void; status?: (n: number) => any }, build: (doc: PDFDocument) => void, filename: string) {
+function sendPdf(
+  res: { setHeader: (k: string, v: string) => void; status?: (n: number) => any },
+  build: (doc: InstanceType<typeof PDFDocument>) => void,
+  filename: string,
+) {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   const doc = new PDFDocument({ margin: 40, size: "A4" });
@@ -680,13 +684,10 @@ teacherGroupsRouter.get("/groups/:groupId/report.pdf", async (req: AuthedRequest
           doc.font("Helvetica").fontSize(9);
         }
 
-        doc.text(row[0], colX[0], doc.y);
-        doc.text(row[1], colX[1], doc.y, { width: 200 });
-        doc.text(row[2], colX[2], doc.y);
-        doc.text(row[3], colX[3], doc.y);
-        doc.text(row[4], colX[4], doc.y);
-        doc.text(row[5], colX[5], doc.y);
-        doc.text(row[6], colX[6], doc.y);
+        for (let i = 0; i < row.length; i++) {
+          const opts = i === 1 ? { width: 200 } : undefined;
+          doc.text(row[i] ?? "", colX[i], doc.y, opts);
+        }
         doc.moveDown(0.35);
       }
     },
