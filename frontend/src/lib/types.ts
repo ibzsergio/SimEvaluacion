@@ -119,6 +119,10 @@ export type GroupRankingRow = {
   controlNumber: string | null;
   score: number;
   place: number;
+  firstGradings: number;
+  firstGradedAt: string | null;
+  avgGradedAt: string | null;
+  gradedActivityCount: number;
 };
 
 export type GroupRanking = {

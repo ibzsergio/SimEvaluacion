@@ -494,6 +494,7 @@ function GradesTable({
   onSaved: () => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, PointsDraft>>({});
+  const [editOrder, setEditOrder] = useState<string[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savingAll, setSavingAll] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -501,6 +502,7 @@ function GradesTable({
 
   useEffect(() => {
     setDrafts({});
+    setEditOrder([]);
     setSaveError(null);
     setSaveSuccess(null);
   }, [activity.id]);
@@ -554,6 +556,14 @@ function GradesTable({
       }
       toSave.push({ studentId: row.student.id, points });
     }
+
+    const orderMap = new Map(editOrder.map((id, index) => [id, index]));
+    toSave.sort(
+      (a, b) =>
+        (orderMap.get(a.studentId) ?? Number.MAX_SAFE_INTEGER) -
+        (orderMap.get(b.studentId) ?? Number.MAX_SAFE_INTEGER),
+    );
+
     return toSave;
   }
 
@@ -639,7 +649,7 @@ function GradesTable({
               <tr>
                 <th className="px-4 py-3">Control</th>
                 <th className="px-4 py-3">Alumno</th>
-                <th className="px-4 py-3">Entrega</th>
+                <th className="px-4 py-3">1ª calificación</th>
                 <th className="px-4 py-3">Puntos obtenidos</th>
                 <th className="px-4 py-3">Acción</th>
               </tr>
@@ -656,12 +666,12 @@ function GradesTable({
                       <p className="font-medium text-white">{row.student.displayName}</p>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-400">
-                      {row.submission ? (
-                        <span className="text-cyan-300">
-                          {formatDateTime(row.submission.submittedAt)}
+                      {row.grade?.gradedAt ? (
+                        <span className="text-cyan-300" title="Fecha de la primera calificación (no cambia al recalificar)">
+                          {formatDateTime(row.grade.gradedAt)}
                         </span>
                       ) : (
-                        <span className="text-amber-400/90">Sin entregar</span>
+                        <span className="text-amber-400/90">Sin calificar</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -674,9 +684,11 @@ function GradesTable({
                           placeholder="—"
                           onChange={(e) => {
                             setSaveError(null);
+                            const studentId = row.student.id;
+                            setEditOrder((prev) => [...prev.filter((id) => id !== studentId), studentId]);
                             setDrafts((d) => ({
                               ...d,
-                              [row.student.id]: { points: e.target.value },
+                              [studentId]: { points: e.target.value },
                             }));
                           }}
                           className="w-20 rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1 text-white placeholder:text-slate-600"

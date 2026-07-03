@@ -40,8 +40,10 @@ async function upsertGradeForStudent(
   points: number,
   maxPoints: number,
   teacherId: string,
+  deliveryAt?: Date,
 ): Promise<void> {
   const clamped = Math.min(Math.max(0, points), maxPoints);
+  const at = deliveryAt ?? new Date();
 
   await prisma.grade.upsert({
     where: { activityId_studentId: { activityId, studentId } },
@@ -52,13 +54,14 @@ async function upsertGradeForStudent(
       points: clamped,
       signatures: 0,
       gradedById: teacherId,
+      gradedAt: at,
     },
   });
 
   await prisma.submission.upsert({
     where: { activityId_studentId: { activityId, studentId } },
-    update: { submittedAt: new Date() },
-    create: { activityId, studentId, submittedAt: new Date() },
+    update: {},
+    create: { activityId, studentId, submittedAt: at },
   });
 }
 
@@ -207,6 +210,8 @@ export async function importGradesForGroup(
   const unknownControlSet = new Set<string>();
   const unknownNameSet = new Set<string>();
   const unsetHash = importGrades ? await placeholderPasswordHash() : "";
+  const importBase = Date.now();
+  let importOrder = 0;
 
   for (const row of parsed.rows) {
     let studentId = resolveStudentId(row, studentList, studentByControl, studentByName);
@@ -247,7 +252,14 @@ export async function importGradesForGroup(
       const activity = existingActivities.find((a) => a.id === activityId);
       if (!activity) continue;
 
-      await upsertGradeForStudent(activityId, studentId, g.points, activity.maxPoints, teacherId);
+      await upsertGradeForStudent(
+        activityId,
+        studentId,
+        g.points,
+        activity.maxPoints,
+        teacherId,
+        new Date(importBase + importOrder++),
+      );
       summary.gradesUpserted++;
     }
   }

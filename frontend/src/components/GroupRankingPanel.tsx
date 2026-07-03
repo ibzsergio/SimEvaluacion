@@ -139,6 +139,9 @@ export default function GroupRankingPanel({
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-slate-400">
             Ranking completo
           </h3>
+          <p className="mt-1 text-xs text-slate-500">
+            La hora de 1ª calificación y las veces 1° solo aplican si hay empate en puntos totales.
+          </p>
           <div className="mt-3 overflow-x-auto rounded-xl border border-white/10">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
@@ -147,6 +150,9 @@ export default function GroupRankingPanel({
                   <th className="px-4 py-3">No. control</th>
                   <th className="px-4 py-3">Alumno</th>
                   <th className="px-4 py-3 text-right">Puntos</th>
+                  <th className="px-4 py-3">1ª calificación</th>
+                  <th className="px-4 py-3 text-center">Veces 1°</th>
+                  <th className="px-4 py-3 text-center">Calificadas</th>
                 </tr>
               </thead>
               <tbody>
@@ -165,6 +171,17 @@ export default function GroupRankingPanel({
                       </p>
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-cyan-300">{row.score}</td>
+                    <td className="px-4 py-3 text-xs text-slate-400">
+                      {row.firstGradedAt ? (
+                        <span className="text-cyan-300/90">{formatDateTime(row.firstGradedAt)}</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center text-slate-300">{row.firstGradings}</td>
+                    <td className="px-4 py-3 text-center text-slate-400">
+                      {row.gradedActivityCount}/{rankingQuery.data?.activityCount ?? 0}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -188,4 +205,15 @@ function PlaceBadge({ place }: { place: number }) {
       <span>#{place}</span>
     </span>
   );
+}
+
+function formatDateTime(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("es-MX", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

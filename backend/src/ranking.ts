@@ -7,6 +7,13 @@ export type RankingStudent = {
 
 export type RankingEntry = RankingStudent & {
   place: number;
+  /** Veces que fue el primero calificado en una actividad (desempate). */
+  firstGradings: number;
+  /** Primera calificación registrada en el grupo. */
+  firstGradedAt: string | null;
+  /** Promedio de fechas de calificación (ISO). */
+  avgGradedAt: string | null;
+  gradedActivityCount: number;
 };
 
 type SubmissionRow = {
@@ -16,9 +23,9 @@ type SubmissionRow = {
 };
 
 /**
- * Orden del grupo: puntos totales (mayor primero).
- * Empate en puntos: quien entregó antes en más actividades (menor suma de posición por actividad).
- * Luego: más veces primero en entregar, promedio de fecha de entrega más temprano, número de lista, nombre.
+ * Orden del grupo: suma de puntos de todas las actividades (mayor primero).
+ * Empate en puntos: quien fue calificado antes en más actividades (menor suma de posición por actividad).
+ * Luego: más veces primero en ser calificado, promedio de fecha más temprano, número de lista, nombre.
  * Cada alumno tiene un lugar único (1, 2, 3…).
  */
 export function buildGroupRanking(
@@ -50,6 +57,7 @@ export function buildGroupRanking(
     let deliveryRankSum = 0;
     let submissionTimeSum = 0;
     let submissionCount = 0;
+    let minGradedAt = Number.MAX_SAFE_INTEGER;
 
     for (const activityId of activityIds) {
       const rank = rankByStudentActivity.get(`${s.studentId}:${activityId}`);
@@ -58,8 +66,10 @@ export function buildGroupRanking(
 
     for (const sub of submissions) {
       if (sub.studentId !== s.studentId) continue;
-      submissionTimeSum += sub.submittedAt.getTime();
+      const t = sub.submittedAt.getTime();
+      submissionTimeSum += t;
       submissionCount += 1;
+      if (t < minGradedAt) minGradedAt = t;
     }
 
     const avgSubmissionTime =
@@ -70,6 +80,8 @@ export function buildGroupRanking(
       deliveryRankSum,
       firstSubmissions: firstCountByStudent.get(s.studentId) ?? 0,
       avgSubmissionTime,
+      minGradedAt,
+      gradedActivityCount: submissionCount,
     };
   });
 
@@ -89,5 +101,11 @@ export function buildGroupRanking(
     listNumber: entry.listNumber,
     score: entry.score,
     place: index + 1,
+    firstGradings: entry.firstSubmissions,
+    firstGradedAt:
+      entry.minGradedAt === Number.MAX_SAFE_INTEGER ? null : new Date(entry.minGradedAt).toISOString(),
+    avgGradedAt:
+      entry.gradedActivityCount > 0 ? new Date(entry.avgSubmissionTime).toISOString() : null,
+    gradedActivityCount: entry.gradedActivityCount,
   }));
 }

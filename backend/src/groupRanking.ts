@@ -2,7 +2,7 @@ import { prisma } from "./prisma.js";
 import { buildGroupRanking, type RankingEntry } from "./ranking.js";
 
 export const RANKING_RULE =
-  "Más puntos = mejor lugar. Si hay empate en puntos, gana quien entregó antes (orden de entrega por actividad).";
+  "El lugar depende de la suma de puntos de todas las actividades. Si hay empate, gana quien fue calificado antes (primera calificación por actividad).";
 
 export type GroupRankingRow = RankingEntry & {
   controlNumber: string | null;
@@ -27,9 +27,10 @@ export async function getGroupRanking(groupId: string) {
   });
   const scoreByStudent = new Map(totals.map((t) => [t.studentId, t._sum.points ?? 0]));
 
-  const allSubmissions = await prisma.submission.findMany({
+  // Usar gradedAt (primera calificación): no se actualiza al recalificar.
+  const allGrades = await prisma.grade.findMany({
     where: { activity: { groupId } },
-    select: { activityId: true, studentId: true, submittedAt: true },
+    select: { activityId: true, studentId: true, gradedAt: true },
   });
 
   const ranking = buildGroupRanking(
@@ -40,7 +41,11 @@ export async function getGroupRanking(groupId: string) {
       score: scoreByStudent.get(s.id) ?? 0,
     })),
     activities.map((a) => a.id),
-    allSubmissions,
+    allGrades.map((g) => ({
+      activityId: g.activityId,
+      studentId: g.studentId,
+      submittedAt: g.gradedAt,
+    })),
   );
 
   const controlById = new Map(students.map((s) => [s.id, s.controlNumber]));

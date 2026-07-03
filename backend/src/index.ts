@@ -371,6 +371,7 @@ app.put(
 
     const clampedPoints = Math.min(body.data.points, activity.maxPoints);
 
+    const gradedAt = new Date();
     const grade = await prisma.grade.upsert({
       where: { activityId_studentId: { activityId, studentId } },
       update: { points: clampedPoints, signatures: 0, gradedById: req.auth!.userId },
@@ -380,15 +381,16 @@ app.put(
         points: clampedPoints,
         signatures: 0,
         gradedById: req.auth!.userId,
+        gradedAt,
       },
     });
 
     // Al registrar/calificar, consideramos la actividad como entregada.
-    // Esto permite que el docente capture calificaciones aunque ya haya vencido (p. ej. con justificante).
+    // La fecha de la primera calificación no se sobrescribe al recalificar (desempate del ranking).
     await prisma.submission.upsert({
       where: { activityId_studentId: { activityId, studentId } },
-      update: { submittedAt: new Date() },
-      create: { activityId, studentId, submittedAt: new Date() },
+      update: {},
+      create: { activityId, studentId, submittedAt: gradedAt },
     });
 
     return res.json({ grade });
