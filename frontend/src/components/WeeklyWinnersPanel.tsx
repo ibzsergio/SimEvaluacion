@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { closeCurrentGroupWeek, fetchGroupWeeks, fetchPartialSummary, updateGroupPartialSettings } from "../lib/api";
+import DiplomaPreviewSection, { DiplomaRowActions } from "./DiplomaPreviewSection";
 import { ExemptionBadge } from "./ExemptionBadge";
 import type { ClassGroup, GroupWeekRow, PartialSummaryRow } from "../lib/types";
 
@@ -50,6 +51,8 @@ export default function WeeklyWinnersPanel({
 
   const partialClosed = selectedGroup?.partialClosed ?? false;
   const weeks = weeksQuery.data?.weeks ?? [];
+  const partialRows = partialQuery.data?.rows ?? [];
+  const sampleRow = partialRows[4] ?? partialRows[0];
 
   return (
     <div>
@@ -146,9 +149,18 @@ export default function WeeklyWinnersPanel({
         {partialQuery.isLoading ? (
           <p className="mt-6 text-sm text-slate-400">Cargando resumen...</p>
         ) : (
-          <PartialTable rows={partialQuery.data?.rows ?? []} />
+          <PartialTable rows={partialRows} groupId={selectedGroupId} />
         )}
       </section>
+
+      {selectedGroupId ? (
+        <DiplomaPreviewSection
+          groupId={selectedGroupId}
+          groupCode={selectedGroup?.code ?? ""}
+          partialClosed={partialClosed}
+          sampleRow={sampleRow}
+        />
+      ) : null}
     </div>
   );
 }
@@ -206,7 +218,7 @@ function WeeksTable({ weeks }: { weeks: GroupWeekRow[] }) {
   );
 }
 
-function PartialTable({ rows }: { rows: PartialSummaryRow[] }) {
+function PartialTable({ rows, groupId }: { rows: PartialSummaryRow[]; groupId: string }) {
   if (!rows.length) {
     return <p className="mt-6 text-sm text-slate-500">Sin alumnos.</p>;
   }
@@ -223,6 +235,7 @@ function PartialTable({ rows }: { rows: PartialSummaryRow[] }) {
             <th className="px-4 py-3 text-right">Puntos (total)</th>
             <th className="px-4 py-3 text-right">Semanas #1</th>
             <th className="px-4 py-3 text-right">Suma puntaje #1</th>
+            <th className="px-4 py-3">Diploma</th>
           </tr>
         </thead>
         <tbody>
@@ -248,6 +261,9 @@ function PartialTable({ rows }: { rows: PartialSummaryRow[] }) {
               <td className="px-4 py-3 text-right font-bold text-cyan-300">{r.totalPoints}</td>
               <td className="px-4 py-3 text-right font-bold text-amber-200">{r.weeksWon}</td>
               <td className="px-4 py-3 text-right font-bold text-amber-200">{r.weeklyWinnerScoreSum}</td>
+              <td className="px-4 py-3">
+                <DiplomaRowActions groupId={groupId} studentId={r.studentId} studentName={r.displayName} />
+              </td>
             </tr>
             );
           })}

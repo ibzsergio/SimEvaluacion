@@ -77,9 +77,13 @@ export function streamDiplomaPdf(
   res: { setHeader: (k: string, v: string) => void; status?: (n: number) => unknown },
   input: DiplomaInput,
   filename: string,
+  inline = false,
 ) {
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.setHeader(
+    "Content-Disposition",
+    `${inline ? "inline" : "attachment"}; filename="${filename}"`,
+  );
   const doc = buildDiplomaPdf(input);
   // @ts-expect-error express response has pipe
   doc.pipe(res);

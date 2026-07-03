@@ -13,6 +13,7 @@ import { importStudentRows } from "./importStudents.js";
 import { importGradesForGroup, type GradeImportMode } from "./importGrades.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { closeWeekForGroup, ensureCurrentGroupWeek } from "./weeks.js";
+import { streamDiplomaPdf } from "./diplomaPdf.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -1302,3 +1303,71 @@ teacherGroupsRouter.get("/reports/totals.xlsx", async (req: AuthedRequest, res) 
   const wb = buildCombinedGradesWorkbook(exports);
   return sendXlsx(res, wb, "calificaciones_201_202.xlsx");
 });
+
+teacherGroupsRouter.get("/groups/:groupId/diploma/preview.pdf", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { code: true, shift: true, partialClosedAt: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  const { ranking } = await getGroupRanking(groupId);
+  const sample = ranking[4] ?? ranking[0];
+  const inline = req.query.inline === "1" || req.query.inline === "true";
+
+  return streamDiplomaPdf(
+    res,
+    {
+      studentName: sample?.displayName ?? "Alumno de ejemplo",
+      groupCode: group.code,
+      groupShift: group.shift,
+      place: sample?.place ?? 5,
+      totalStudents: ranking.length || 30,
+      score: sample?.score ?? 8500,
+      partialClosedAt: group.partialClosedAt ?? new Date(),
+    },
+    `muestra_diploma_grupo_${group.code}.pdf`,
+    inline,
+  );
+});
+
+teacherGroupsRouter.get(
+  "/groups/:groupId/students/:studentId/diploma.pdf",
+  async (req: AuthedRequest, res) => {
+    const groupId = String(req.params.groupId);
+    const studentId = String(req.params.studentId);
+    const inline = req.query.inline === "1" || req.query.inline === "true";
+
+    const group = await prisma.classGroup.findFirst({
+      where: { id: groupId, teacherId: req.auth!.userId },
+      select: { code: true, shift: true, partialClosedAt: true },
+    });
+    if (!group) return res.status(404).json({ error: "group_not_found" });
+
+    const student = await prisma.user.findFirst({
+      where: { id: studentId, role: "STUDENT", groupId },
+      select: { displayName: true },
+    });
+    if (!student) return res.status(404).json({ error: "student_not_found" });
+
+    const { ranking } = await getGroupRanking(groupId);
+    const entry = ranking.find((r) => r.studentId === studentId);
+    const safeName = student.displayName.replace(/[^\w\sáéíóúñÁÉÍÓÚÑ.-]/g, "").trim() || "alumno";
+
+    return streamDiplomaPdf(
+      res,
+      {
+        studentName: student.displayName,
+        groupCode: group.code,
+        groupShift: group.shift,
+        place: entry?.place ?? ranking.length,
+        totalStudents: ranking.length,
+        score: entry?.score ?? 0,
+        partialClosedAt: group.partialClosedAt ?? new Date(),
+      },
+      `diploma_${safeName.replace(/\s+/g, "_")}.pdf`,
+      inline,
+    );
+  },
+);

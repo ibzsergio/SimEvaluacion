@@ -399,4 +399,50 @@ export async function downloadStudentDiploma() {
   URL.revokeObjectURL(url);
 }
 
+async function fetchTeacherDiplomaBlob(
+  path: string,
+  downloadName: string,
+  inline: boolean,
+) {
+  const { data } = await api.get<Blob>(path, {
+    responseType: "blob",
+    params: inline ? { inline: "1" } : undefined,
+  });
+  return { blob: data, downloadName };
+}
+
+export async function previewTeacherDiplomaBlobUrl(groupId: string) {
+  const { blob } = await fetchTeacherDiplomaBlob(
+    `/teacher/groups/${groupId}/diploma/preview.pdf`,
+    "muestra_diploma.pdf",
+    true,
+  );
+  return URL.createObjectURL(blob);
+}
+
+export async function openTeacherDiplomaPreview(groupId: string) {
+  const url = await previewTeacherDiplomaBlobUrl(groupId);
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function downloadTeacherStudentDiploma(
+  groupId: string,
+  studentId: string,
+  studentName: string,
+) {
+  const safe = studentName.replace(/[^\w\sáéíóúñÁÉÍÓÚÑ.-]/g, "").trim() || "alumno";
+  const { blob, downloadName } = await fetchTeacherDiplomaBlob(
+    `/teacher/groups/${groupId}/students/${studentId}/diploma.pdf`,
+    `diploma_${safe.replace(/\s+/g, "_")}.pdf`,
+    false,
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = downloadName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 // El alumno ya no registra entregas. La actividad se considera entregada al calificar.
