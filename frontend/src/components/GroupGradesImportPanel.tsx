@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import {
+  downloadBothGroupsTotalsExcel,
   downloadGradesTemplate,
   getApiErrorMessage,
   importGradesExcel,
@@ -105,6 +106,7 @@ export default function GroupGradesImportPanel({
 }) {
   const qc = useQueryClient();
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const selected = groups.find((g) => g.id === selectedGroupId);
 
@@ -203,8 +205,34 @@ export default function GroupGradesImportPanel({
       </div>
 
       <div className="mt-5 rounded-xl border border-cyan-400/25 bg-cyan-500/5 p-4">
-        <p className="text-sm font-semibold text-cyan-100">Recomendado: archivo completo (201 + 202)</p>
-        <p className="mt-1 text-xs text-slate-400">Un solo archivo con ambas hojas.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-cyan-100">Recomendado: archivo completo (201 + 202)</p>
+            <p className="mt-1 text-xs text-slate-400">Un solo archivo con ambas hojas.</p>
+          </div>
+          <button
+            type="button"
+            disabled={downloading}
+            onClick={async () => {
+              setMessage(null);
+              setDownloading(true);
+              try {
+                await downloadBothGroupsTotalsExcel();
+                setMessage({
+                  type: "ok",
+                  text: "Excel descargado con actividades, puntos y totales de los grupos 201 y 202.",
+                });
+              } catch (err) {
+                setMessage({ type: "err", text: getApiErrorMessage(err) });
+              } finally {
+                setDownloading(false);
+              }
+            }}
+            className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
+          >
+            {downloading ? "Generando..." : "Descargar Excel (201 + 202)"}
+          </button>
+        </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <FileInput
             label="Paso 1 · Solo actividades"

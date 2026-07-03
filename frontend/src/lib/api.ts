@@ -316,6 +316,18 @@ export async function downloadStudentsTemplate(groupId: string) {
   URL.revokeObjectURL(url);
 }
 
+export async function downloadBothGroupsTotalsExcel() {
+  const { data } = await api.get<Blob>("/teacher/reports/totals.xlsx", {
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "calificaciones_201_202.xlsx";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function fetchActivities(groupId: string) {
   const { data } = await api.get<{ activities: Activity[] }>("/teacher/activities", {
     params: { groupId },

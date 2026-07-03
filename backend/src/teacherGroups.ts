@@ -104,6 +104,128 @@ function sendXlsx(res: { setHeader: (k: string, v: string) => void; send: (b: Bu
   res.send(out);
 }
 
+type GradesMatrixExport = {
+  group: { code: string; shift: string };
+  activities: Array<{ id: string; name: string; date: Date; maxPoints: number; signatureMax: number }>;
+  students: Array<{
+    id: string;
+    displayName: string;
+    listNumber: number | null;
+    controlNumber: string | null;
+  }>;
+  gradeByStudentActivity: Map<string, Map<string, { points: number; signatures: number }>>;
+};
+
+async function loadGroupGradesMatrixExport(
+  groupId: string,
+  teacherId: string,
+): Promise<GradesMatrixExport | null> {
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId },
+    select: { id: true, code: true, shift: true },
+  });
+  if (!group) return null;
+
+  const activities = await prisma.activity.findMany({
+    where: { groupId },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true, name: true, date: true, maxPoints: true, signatureMax: true },
+  });
+
+  const students = await prisma.user.findMany({
+    where: { role: "STUDENT", groupId },
+    select: { id: true, displayName: true, listNumber: true, controlNumber: true },
+    orderBy: [{ listNumber: "asc" }, { displayName: "asc" }],
+  });
+
+  const activityIds = activities.map((a) => a.id);
+  const studentIds = students.map((s) => s.id);
+
+  const grades =
+    activityIds.length && studentIds.length
+      ? await prisma.grade.findMany({
+          where: { studentId: { in: studentIds }, activityId: { in: activityIds } },
+          select: { studentId: true, activityId: true, points: true, signatures: true },
+        })
+      : [];
+
+  const gradeByStudentActivity = new Map<string, Map<string, { points: number; signatures: number }>>();
+  for (const g of grades) {
+    let byActivity = gradeByStudentActivity.get(g.studentId);
+    if (!byActivity) {
+      byActivity = new Map();
+      gradeByStudentActivity.set(g.studentId, byActivity);
+    }
+    byActivity.set(g.activityId, { points: g.points, signatures: g.signatures });
+  }
+
+  return { group, activities, students, gradeByStudentActivity };
+}
+
+function buildGradesMatrixSheet(data: GradesMatrixExport): XLSX.WorkSheet {
+  const hasSignatures = data.activities.some((a) => a.signatureMax > 0);
+  const maxPointsTotal = data.activities.reduce((acc, a) => acc + (a.maxPoints ?? 0), 0);
+
+  const headerRow: unknown[] = ["No.", "No. Control", "Alumno"];
+  const dateRow: unknown[] = ["", "", ""];
+  const maxRow: unknown[] = ["", "", ""];
+
+  for (const a of data.activities) {
+    headerRow.push(a.name);
+    dateRow.push(a.date.toISOString().slice(0, 10));
+    maxRow.push(a.maxPoints);
+    if (hasSignatures) headerRow.push(`${a.name} (firmas)`);
+    if (hasSignatures) {
+      dateRow.push("");
+      maxRow.push(a.signatureMax);
+    }
+  }
+  headerRow.push("TOTAL PUNTOS");
+  if (hasSignatures) headerRow.push("TOTAL FIRMAS");
+  dateRow.push("");
+  maxRow.push(maxPointsTotal);
+  if (hasSignatures) {
+    dateRow.push("");
+    maxRow.push(data.activities.reduce((acc, a) => acc + (a.signatureMax ?? 0), 0));
+  }
+
+  const dataRows: unknown[][] = data.students.map((s, idx) => {
+    const row: unknown[] = [
+      s.listNumber ?? idx + 1,
+      s.controlNumber ?? "",
+      s.displayName,
+    ];
+    let totalPoints = 0;
+    let totalSignatures = 0;
+    const byActivity = data.gradeByStudentActivity.get(s.id);
+
+    for (const a of data.activities) {
+      const grade = byActivity?.get(a.id);
+      const points = grade?.points ?? "";
+      row.push(points);
+      if (typeof points === "number") totalPoints += points;
+      if (hasSignatures) {
+        const sigs = grade?.signatures ?? "";
+        row.push(sigs);
+        if (typeof sigs === "number") totalSignatures += sigs;
+      }
+    }
+    row.push(totalPoints);
+    if (hasSignatures) row.push(totalSignatures);
+    return row;
+  });
+
+  return XLSX.utils.aoa_to_sheet([headerRow, dateRow, maxRow, ...dataRows]);
+}
+
+function buildCombinedGradesWorkbook(exports: GradesMatrixExport[]): XLSX.WorkBook {
+  const wb = XLSX.utils.book_new();
+  for (const data of exports) {
+    XLSX.utils.book_append_sheet(wb, buildGradesMatrixSheet(data), data.group.code);
+  }
+  return wb;
+}
+
 function sendPdf(
   res: { setHeader: (k: string, v: string) => void; status?: (n: number) => any },
   build: (doc: InstanceType<typeof PDFDocument>) => void,
@@ -1173,4 +1295,19 @@ teacherGroupsRouter.get("/groups/:groupId/students/template", async (req: Authed
     `attachment; filename="lista_grupo_${group.code}_${group.shift}.csv"`,
   );
   return res.send(csv);
+});
+
+teacherGroupsRouter.get("/reports/totals.xlsx", async (req: AuthedRequest, res) => {
+  const groups = await ensureTeacherGroups(req.auth!.userId);
+  const exports: GradesMatrixExport[] = [];
+
+  for (const g of groups) {
+    const data = await loadGroupGradesMatrixExport(g.id, req.auth!.userId);
+    if (data) exports.push(data);
+  }
+
+  if (!exports.length) return res.status(404).json({ error: "group_not_found" });
+
+  const wb = buildCombinedGradesWorkbook(exports);
+  return sendXlsx(res, wb, "calificaciones_201_202.xlsx");
 });
