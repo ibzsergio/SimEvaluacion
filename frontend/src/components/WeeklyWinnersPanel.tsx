@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { closeCurrentGroupWeek, fetchGroupWeeks, fetchPartialSummary, updateGroupPartialSettings } from "../lib/api";
+import { ExemptionBadge } from "./ExemptionBadge";
 import type { ClassGroup, GroupWeekRow, PartialSummaryRow } from "../lib/types";
 
 export default function WeeklyWinnersPanel({
@@ -43,6 +44,7 @@ export default function WeeklyWinnersPanel({
       await qc.invalidateQueries({ queryKey: ["group-weeks", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["partial-summary", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["student-progress"] });
     },
   });
 
@@ -90,7 +92,15 @@ export default function WeeklyWinnersPanel({
             </button>
             <button
               type="button"
-              onClick={() => partialMutation.mutate(!partialClosed)}
+              onClick={() => {
+                if (!partialClosed) {
+                  const ok = window.confirm(
+                    "¿Cerrar el parcial?\n\nLos alumnos podrán descargar e imprimir su diploma personalizado (PDF).\nYa no podrás cerrar semanas hasta que reabras el parcial.",
+                  );
+                  if (!ok) return;
+                }
+                partialMutation.mutate(!partialClosed);
+              }}
               disabled={partialMutation.isPending || !selectedGroupId}
               className={`rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-60 ${
                 partialClosed
@@ -102,16 +112,23 @@ export default function WeeklyWinnersPanel({
                 ? "Guardando..."
                 : partialClosed
                   ? "Reabrir parcial"
-                  : "Cerrar parcial"}
+                  : "Finalizar parcial y habilitar diplomas"}
             </button>
           </div>
         </div>
 
         {partialClosed ? (
-          <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Parcial cerrado: ya no se pueden cerrar semanas (resultados congelados).
+          <p className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+            Parcial finalizado: los alumnos ya pueden descargar su diploma (PDF). Los resultados del
+            ranking quedan congelados.
           </p>
-        ) : null}
+        ) : (
+          <p className="mt-3 rounded-lg border border-indigo-400/25 bg-indigo-500/5 px-3 py-2 text-xs text-slate-400">
+            Cuando termines de calificar todas las actividades, usa{" "}
+            <strong className="text-indigo-200">Finalizar parcial y habilitar diplomas</strong> para que
+            cada alumno imprima su reconocimiento con su lugar en el ranking.
+          </p>
+        )}
 
         {weeksQuery.isLoading ? (
           <p className="mt-6 text-sm text-slate-400">Cargando semanas...</p>
@@ -123,7 +140,7 @@ export default function WeeklyWinnersPanel({
       <section className="glass mt-6 p-6">
         <h2 className="text-lg font-semibold text-white">Resumen del parcial</h2>
         <p className="mt-1 text-xs text-slate-500">
-          Puntos totales (calificaciones) + cuántas semanas fue #1 (y suma de puntajes guardados como #1).
+          Ranking final · Top 10: EXENTADO · 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS
         </p>
 
         {partialQuery.isLoading ? (
@@ -194,13 +211,6 @@ function PartialTable({ rows }: { rows: PartialSummaryRow[] }) {
     return <p className="mt-6 text-sm text-slate-500">Sin alumnos.</p>;
   }
 
-  const sorted = [...rows].sort(
-    (a, b) =>
-      b.totalPoints - a.totalPoints ||
-      (a.listNumber ?? 999) - (b.listNumber ?? 999) ||
-      a.displayName.localeCompare(b.displayName, "es"),
-  );
-
   return (
     <div className="mt-6 overflow-x-auto rounded-xl border border-white/10">
       <table className="min-w-full text-sm">
@@ -209,19 +219,20 @@ function PartialTable({ rows }: { rows: PartialSummaryRow[] }) {
             <th className="px-4 py-3 w-16">Lugar</th>
             <th className="px-4 py-3">No. control</th>
             <th className="px-4 py-3">Alumno</th>
+            <th className="px-4 py-3">Estatus</th>
             <th className="px-4 py-3 text-right">Puntos (total)</th>
             <th className="px-4 py-3 text-right">Semanas #1</th>
             <th className="px-4 py-3 text-right">Suma puntaje #1</th>
           </tr>
         </thead>
         <tbody>
-          {sorted.map((r, index) => {
-            const place = index + 1;
+          {rows.map((r) => {
+            const place = r.place;
             const inTop10 = place <= 10;
             return (
             <tr
               key={r.studentId}
-              className={`border-t border-white/5 ${inTop10 ? "bg-cyan-500/5" : ""}`}
+              className={`border-t border-white/5 ${inTop10 ? "bg-emerald-500/5" : place <= 20 ? "bg-cyan-500/5" : ""}`}
             >
               <td className="px-4 py-3 font-bold text-white">
                 {place === 1 ? "🥇" : place === 2 ? "🥈" : place === 3 ? "🥉" : `#${place}`}
@@ -230,6 +241,9 @@ function PartialTable({ rows }: { rows: PartialSummaryRow[] }) {
               <td className="px-4 py-3 text-white">
                 {r.listNumber != null ? `${r.listNumber}. ` : ""}
                 {r.displayName}
+              </td>
+              <td className="px-4 py-3">
+                <ExemptionBadge exemption={r.exemption} />
               </td>
               <td className="px-4 py-3 text-right font-bold text-cyan-300">{r.totalPoints}</td>
               <td className="px-4 py-3 text-right font-bold text-amber-200">{r.weeksWon}</td>

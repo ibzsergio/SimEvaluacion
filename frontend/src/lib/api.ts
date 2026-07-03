@@ -66,6 +66,12 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "partial_closed") {
       return (error.response.data as { message?: string })?.message ?? "El parcial está cerrado.";
     }
+    if (code === "partial_not_closed") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "El diploma estará disponible cuando el docente cierre el parcial."
+      );
+    }
     if (code === "group_not_found") {
       return "No se encontró el grupo. Cierra sesión, vuelve a entrar y selecciona el grupo 201 o 202.";
     }
@@ -379,6 +385,18 @@ export async function saveGrade(
 export async function fetchStudentProgress() {
   const { data } = await api.get<StudentProgress>("/student/progress");
   return data;
+}
+
+export async function downloadStudentDiploma() {
+  const { data } = await api.get<Blob>("/student/diploma.pdf", {
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "diploma_parcial.pdf";
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 // El alumno ya no registra entregas. La actividad se considera entregada al calificar.

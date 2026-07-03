@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import Top10Ranking from "./Top10Ranking";
+import { ExemptionBadge } from "./ExemptionBadge";
 import { fetchGroupRanking, updateGroupProgressSettings } from "../lib/api";
 import type { ClassGroup } from "../lib/types";
 
@@ -69,6 +70,9 @@ export default function GroupRankingPanel({
           {selectedGroup?.shift} · {rankingQuery.data?.activityCount ?? 0} actividad(es) publicada(s)
         </p>
         <p className="mt-2 text-xs text-slate-500">{rankingQuery.data?.rankingRule}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          Top 10: EXENTADO · Lugares 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS
+        </p>
 
         <div className="mt-4 grid gap-3 rounded-xl border border-white/10 bg-white/5 p-4 sm:grid-cols-3">
           <label className="block text-xs text-slate-400 sm:col-span-1">
@@ -133,7 +137,7 @@ export default function GroupRankingPanel({
             <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-white">
               <span>🏁</span> Top 10 del grupo
             </h3>
-            <Top10Ranking entries={top10} />
+            <Top10Ranking entries={top10} showExemption />
           </div>
 
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-slate-400">
@@ -150,6 +154,7 @@ export default function GroupRankingPanel({
                   <th className="px-4 py-3">No. control</th>
                   <th className="px-4 py-3">Alumno</th>
                   <th className="px-4 py-3 text-right">Puntos</th>
+                  <th className="px-4 py-3">Estatus exención</th>
                   <th className="px-4 py-3">1ª calificación</th>
                   <th className="px-4 py-3 text-center">Veces 1°</th>
                   <th className="px-4 py-3 text-center">Calificadas</th>
@@ -171,6 +176,9 @@ export default function GroupRankingPanel({
                       </p>
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-cyan-300">{row.score}</td>
+                    <td className="px-4 py-3">
+                      <ExemptionBadge exemption={row.exemption} />
+                    </td>
                     <td className="px-4 py-3 text-xs text-slate-400">
                       {row.firstGradedAt ? (
                         <span className="text-cyan-300/90">{formatDateTime(row.firstGradedAt)}</span>

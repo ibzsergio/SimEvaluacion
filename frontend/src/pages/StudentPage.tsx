@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import BadgeDisplay from "../components/BadgeDisplay";
 import Layout from "../components/Layout";
 import StudentMotivationCard from "../components/StudentMotivationCard";
 import Top10Ranking from "../components/Top10Ranking";
-import { fetchStudentProgress } from "../lib/api";
+import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { ActivityStatus, StudentActivity } from "../lib/types";
 
@@ -15,6 +16,7 @@ const studentFooter = (
 
 export default function StudentPage() {
   const { user } = useAuth();
+  const [downloadingDiploma, setDownloadingDiploma] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
     queryFn: fetchStudentProgress,
@@ -50,6 +52,33 @@ export default function StudentPage() {
     >
       <StudentMotivationCard motivation={data.motivation} />
 
+      {data.group?.partialClosed ? (
+        <section className="glass mb-6 border border-indigo-400/30 bg-indigo-500/10 p-6">
+          <h2 className="text-lg font-semibold text-white">Parcial finalizado — Tu diploma</h2>
+          <p className="mt-2 text-sm text-slate-300">
+            El docente cerró el parcial. Descarga e imprime tu diploma personalizado con tu nombre,
+            lugar en el ranking y reconocimiento por tu trabajo en la materia.
+          </p>
+          <button
+            type="button"
+            disabled={downloadingDiploma}
+            onClick={async () => {
+              setDownloadingDiploma(true);
+              try {
+                await downloadStudentDiploma();
+              } catch (err) {
+                window.alert(getApiErrorMessage(err));
+              } finally {
+                setDownloadingDiploma(false);
+              }
+            }}
+            className="mt-4 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-6 py-3 text-sm font-bold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-60"
+          >
+            {downloadingDiploma ? "Generando PDF..." : "Descargar / Imprimir diploma (PDF)"}
+          </button>
+        </section>
+      ) : null}
+
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Publicadas" value={summary.total} color="text-white" />
         <StatCard label="Pendientes" value={summary.pending} color="text-amber-300" />
@@ -66,7 +95,7 @@ export default function StudentPage() {
             <span className="text-lg font-medium text-slate-400"> / {data.my.totalStudents}</span>
           </p>
           <p className="mt-1 text-sm font-semibold text-indigo-200">
-            {data.my.inTop10 ? "Estás en el Top 10" : "Fuera del Top 10 — ¡aún puedes subir!"}
+            {data.motivation.exemption.label}
           </p>
           <p className="mt-2 text-sm text-slate-300">
             Puntos totales: <span className="font-bold text-cyan-300">{data.my.score}</span>
@@ -95,7 +124,7 @@ export default function StudentPage() {
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
             <span>🏁</span> Top 10 del grupo
           </h2>
-          <Top10Ranking entries={data.top10} highlightStudentId={user?.id} />
+          <Top10Ranking entries={data.top10} highlightStudentId={user?.id} showExemption />
           {!data.my.inTop10 ? (
             <p className="mt-3 text-xs text-slate-500">
               Si no apareces en la lista, tu lugar actual es #{data.my.place}. Sigue sumando puntos.

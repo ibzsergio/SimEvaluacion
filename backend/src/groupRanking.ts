@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { getExemptionStatus } from "./exemptionStatus.js";
 import { buildGroupRanking, type RankingEntry } from "./ranking.js";
 
 export const RANKING_RULE =
@@ -6,6 +7,7 @@ export const RANKING_RULE =
 
 export type GroupRankingRow = RankingEntry & {
   controlNumber: string | null;
+  exemption: ReturnType<typeof getExemptionStatus>;
 };
 
 export async function getGroupRanking(groupId: string) {
@@ -55,6 +57,7 @@ export async function getGroupRanking(groupId: string) {
     ranking: ranking.map((r) => ({
       ...r,
       controlNumber: controlById.get(r.studentId) ?? null,
+      exemption: getExemptionStatus(r.place),
     })),
   };
 }

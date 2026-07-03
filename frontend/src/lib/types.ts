@@ -37,6 +37,12 @@ export type StudentActivity = {
   submission: null;
 };
 
+export type ExemptionStatus = {
+  tier: "exempt" | "can_exempt" | "keep_going";
+  label: string;
+  shortLabel: string;
+};
+
 export type StudentProgress = {
   group: ClassGroup | null;
   summary: {
@@ -73,6 +79,7 @@ export type StudentProgress = {
     title: string;
     message: string;
     pointsToTop10: number | null;
+    exemption: ExemptionStatus;
   };
   top10: {
     studentId: string;
@@ -80,6 +87,7 @@ export type StudentProgress = {
     listNumber: number | null;
     score: number;
     place: number;
+    exemption?: ExemptionStatus;
   }[];
   rankingRule: string;
   activities: StudentActivity[];
@@ -123,6 +131,7 @@ export type GroupRankingRow = {
   firstGradedAt: string | null;
   avgGradedAt: string | null;
   gradedActivityCount: number;
+  exemption: ExemptionStatus;
 };
 
 export type GroupRanking = {
@@ -158,8 +167,10 @@ export type PartialSummaryRow = {
   listNumber: number | null;
   controlNumber: string | null;
   totalPoints: number;
+  place: number;
   weeksWon: number;
   weeklyWinnerScoreSum: number;
+  exemption: ExemptionStatus;
 };
 
 export type PartialSummary = {

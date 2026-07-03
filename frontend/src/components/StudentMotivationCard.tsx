@@ -1,17 +1,22 @@
 import type { StudentProgress } from "../lib/types";
+import { ExemptionBanner } from "./ExemptionBadge";
 
 export default function StudentMotivationCard({
   motivation,
 }: {
   motivation: StudentProgress["motivation"];
 }) {
-  const styles = motivation.inTop10
-    ? "border-cyan-400/30 bg-gradient-to-br from-cyan-500/15 via-indigo-500/10 to-slate-900/40"
-    : "border-amber-400/30 bg-gradient-to-br from-amber-500/15 via-rose-500/5 to-slate-900/40";
+  const styles = motivation.exemption.tier === "exempt"
+    ? "border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 via-cyan-500/10 to-slate-900/40"
+    : motivation.exemption.tier === "can_exempt"
+      ? "border-cyan-400/30 bg-gradient-to-br from-cyan-500/15 via-indigo-500/10 to-slate-900/40"
+      : "border-amber-400/30 bg-gradient-to-br from-amber-500/15 via-rose-500/5 to-slate-900/40";
 
   return (
     <section className={`glass mb-6 border p-6 ${styles}`}>
-      <div className="flex flex-wrap items-start gap-4">
+      <ExemptionBanner exemption={motivation.exemption} />
+
+      <div className="mt-5 flex flex-wrap items-start gap-4">
         <span className="text-5xl" aria-hidden>
           {motivation.dailyEmoji}
         </span>

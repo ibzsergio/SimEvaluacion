@@ -12,6 +12,7 @@ import { removeJunkStudentsForGroup } from "./dedupeStudents.js";
 import { teacherGroupsRouter } from "./teacherGroups.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
+import { streamDiplomaPdf } from "./diplomaPdf.js";
 
 const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:5173")
   .split(",")
@@ -411,7 +412,15 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
   const myGroup = await prisma.classGroup.findUnique({
     where: { id: me.groupId },
-    select: { id: true, code: true, shift: true, plannedActivities: true, progressClosed: true },
+    select: {
+      id: true,
+      code: true,
+      shift: true,
+      plannedActivities: true,
+      progressClosed: true,
+      partialClosed: true,
+      partialClosedAt: true,
+    },
   });
 
   const activities = await prisma.activity.findMany({
@@ -515,6 +524,52 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
         },
     activities: activityRows,
   });
+});
+
+app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => {
+  if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
+
+  const me = await prisma.user.findUnique({
+    where: { id: req.auth!.userId },
+    select: { displayName: true, groupId: true },
+  });
+  if (!me?.groupId) return res.status(400).json({ error: "student_without_group" });
+
+  const group = await prisma.classGroup.findUnique({
+    where: { id: me.groupId },
+    select: {
+      code: true,
+      shift: true,
+      partialClosed: true,
+      partialClosedAt: true,
+    },
+  });
+  if (!group?.partialClosed || !group.partialClosedAt) {
+    return res.status(403).json({
+      error: "partial_not_closed",
+      message: "El diploma estará disponible cuando el docente cierre el parcial.",
+    });
+  }
+
+  const { ranking } = await getGroupRanking(me.groupId);
+  const myEntry = ranking.find((r) => r.studentId === req.auth!.userId);
+  const place = myEntry?.place ?? ranking.length;
+  const score = myEntry?.score ?? 0;
+
+  const safeName = me.displayName.replace(/[^\w\sáéíóúñÁÉÍÓÚÑ.-]/g, "").trim() || "alumno";
+  return streamDiplomaPdf(
+    res,
+    {
+      studentName: me.displayName,
+      groupCode: group.code,
+      groupShift: group.shift,
+      place,
+      totalStudents: ranking.length,
+      score,
+      partialClosedAt: group.partialClosedAt,
+    },
+    `diploma_${safeName.replace(/\s+/g, "_")}.pdf`,
+  );
 });
 
 const port = Number(process.env.PORT ?? 4000);

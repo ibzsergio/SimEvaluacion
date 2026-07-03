@@ -597,22 +597,11 @@ teacherGroupsRouter.get("/groups/:groupId/partial-summary", async (req: AuthedRe
   const groupId = String(req.params.groupId);
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId: req.auth!.userId },
-    select: { id: true, code: true, shift: true },
+    select: { id: true, code: true, shift: true, partialClosed: true, partialClosedAt: true },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
-  const students = await prisma.user.findMany({
-    where: { role: "STUDENT", groupId },
-    select: { id: true, displayName: true, listNumber: true, controlNumber: true },
-    orderBy: { displayName: "asc" },
-  });
-
-  const totals = await prisma.grade.groupBy({
-    by: ["studentId"],
-    where: { student: { groupId } },
-    _sum: { points: true },
-  });
-  const scoreByStudent = new Map(totals.map((t) => [t.studentId, t._sum.points ?? 0]));
+  const { ranking } = await getGroupRanking(groupId);
 
   const wins = await prisma.weeklyWinner.groupBy({
     by: ["studentId"],
@@ -625,14 +614,16 @@ teacherGroupsRouter.get("/groups/:groupId/partial-summary", async (req: AuthedRe
 
   return res.json({
     group,
-    rows: students.map((s) => ({
-      studentId: s.id,
-      displayName: s.displayName,
-      listNumber: s.listNumber ?? null,
-      controlNumber: s.controlNumber ?? null,
-      totalPoints: scoreByStudent.get(s.id) ?? 0,
-      weeksWon: winCountByStudent.get(s.id) ?? 0,
-      weeklyWinnerScoreSum: winScoreSumByStudent.get(s.id) ?? 0,
+    rows: ranking.map((r) => ({
+      studentId: r.studentId,
+      displayName: r.displayName,
+      listNumber: r.listNumber ?? null,
+      controlNumber: r.controlNumber ?? null,
+      totalPoints: r.score,
+      place: r.place,
+      weeksWon: winCountByStudent.get(r.studentId) ?? 0,
+      weeklyWinnerScoreSum: winScoreSumByStudent.get(r.studentId) ?? 0,
+      exemption: r.exemption,
     })),
   });
 });
