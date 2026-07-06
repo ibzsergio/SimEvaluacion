@@ -225,6 +225,7 @@ export type OfficeExamTeacherData = {
     displayName: string;
     controlNumber: string | null;
     listNumber: number | null;
+    groupId: string;
     groupCode: string;
     place: number;
     isExempt: boolean;

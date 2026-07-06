@@ -40,12 +40,16 @@ export default function OfficeExamPanel({ groups }: { groups: ClassGroup[] }) {
     onError: (err) => window.alert(getApiErrorMessage(err)),
   });
 
-  const sortedRows = useMemo(() => {
+  const rowsByGroup = useMemo(() => {
     if (!query.data?.rows) return [];
-    return [...query.data.rows].sort((a, b) =>
-      a.displayName.localeCompare(b.displayName, "es", { sensitivity: "base" }),
-    );
-  }, [query.data?.rows]);
+    const sortedGroups = [...groups].sort((a, b) => a.code.localeCompare(b.code, "es"));
+    return sortedGroups.map((g) => ({
+      group: g,
+      rows: query.data!.rows
+        .filter((r) => r.groupId === g.id)
+        .sort((a, b) => a.displayName.localeCompare(b.displayName, "es", { sensitivity: "base" })),
+    }));
+  }, [query.data?.rows, groups]);
 
   const data = query.data;
   if (query.isLoading) return <p className="text-slate-400">Cargando examen Office...</p>;
@@ -170,38 +174,53 @@ export default function OfficeExamPanel({ groups }: { groups: ClassGroup[] }) {
           Escala (6 pts) = (puntos alumno ÷ puntos del #11) × 6 · Examen (4 pts) = aciertos/75 × 4 ·
           EXENTADOS: 10 fijo
         </p>
-        <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-900/70 text-left text-xs uppercase text-slate-400">
-              <tr>
-                <th className="px-3 py-2">Grupo</th>
-                <th className="px-3 py-2">Alumno</th>
-                <th className="px-3 py-2 text-center">#</th>
-                <th className="px-3 py-2 text-center">Escala</th>
-                <th className="px-3 py-2 text-center">Examen</th>
-                <th className="px-3 py-2 text-center">Total</th>
-                <th className="px-3 py-2">Estado examen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedRows.map((r) => (
-                <tr key={r.studentId} className="border-t border-white/5">
-                  <td className="px-3 py-2 text-cyan-300">{r.groupCode}</td>
-                  <td className="px-3 py-2 text-white">{r.displayName}</td>
-                  <td className="px-3 py-2 text-center text-slate-300">#{r.place}</td>
-                  <td className="px-3 py-2 text-center">{r.firmasScore6.toFixed(1)}</td>
-                  <td className="px-3 py-2 text-center">{r.examScore4.toFixed(1)}</td>
-                  <td className="px-3 py-2 text-center font-bold text-cyan-300">
-                    {r.isExempt ? "10 ★" : r.finalGrade.toFixed(1)}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-slate-400">
-                    {statusLabel(r.examStatus)}
-                    {r.examCorrect != null ? ` · ${r.examCorrect}/75` : ""}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-4 space-y-6">
+          {rowsByGroup.map(({ group, rows }) => (
+            <div key={group.id}>
+              <h4 className="mb-2 text-sm font-bold uppercase tracking-wide text-cyan-400">
+                Grupo {group.code}
+              </h4>
+              <div className="overflow-x-auto rounded-xl border border-white/10">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-900/70 text-left text-xs uppercase text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2">Alumno</th>
+                      <th className="px-3 py-2 text-center">#</th>
+                      <th className="px-3 py-2 text-center">Escala</th>
+                      <th className="px-3 py-2 text-center">Examen</th>
+                      <th className="px-3 py-2 text-center">Total</th>
+                      <th className="px-3 py-2">Estado examen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-4 text-center text-slate-500">
+                          Sin alumnos en este grupo.
+                        </td>
+                      </tr>
+                    ) : (
+                      rows.map((r) => (
+                        <tr key={r.studentId} className="border-t border-white/5">
+                          <td className="px-3 py-2 text-white">{r.displayName}</td>
+                          <td className="px-3 py-2 text-center text-slate-300">#{r.place}</td>
+                          <td className="px-3 py-2 text-center">{r.firmasScore6.toFixed(1)}</td>
+                          <td className="px-3 py-2 text-center">{r.examScore4.toFixed(1)}</td>
+                          <td className="px-3 py-2 text-center font-bold text-cyan-300">
+                            {r.isExempt ? "10 ★" : r.finalGrade.toFixed(1)}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-slate-400">
+                            {statusLabel(r.examStatus)}
+                            {r.examCorrect != null ? ` · ${r.examCorrect}/75` : ""}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
