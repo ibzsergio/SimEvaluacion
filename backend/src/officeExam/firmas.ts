@@ -1,17 +1,19 @@
 import { prisma } from "../prisma.js";
 
-/** Total de firmas del alumno en el grupo (suma de signatures; si no hay, entregas calificadas). */
+/**
+ * Total de firmas del alumno en el grupo.
+ * Usa la suma de `signatures` por actividad cuando existe; si no, cada actividad calificada cuenta como 1 firma.
+ */
 export async function getStudentTotalFirmas(studentId: string, groupId: string): Promise<number> {
-  const sigSum = await prisma.grade.aggregate({
+  const grades = await prisma.grade.findMany({
     where: { studentId, activity: { groupId } },
-    _sum: { signatures: true },
+    select: { signatures: true },
   });
-  const signatures = sigSum._sum.signatures ?? 0;
-  if (signatures > 0) return signatures;
 
-  return prisma.submission.count({
-    where: { studentId, activity: { groupId } },
-  });
+  const sigSum = grades.reduce((acc, g) => acc + (g.signatures ?? 0), 0);
+  if (sigSum > 0) return sigSum;
+
+  return grades.length;
 }
 
 export async function getFirmasByStudentForGroup(

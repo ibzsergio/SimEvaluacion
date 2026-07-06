@@ -181,8 +181,9 @@ export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDoc
   );
 
   const statY = topY + 118;
-  doc.roundedRect(leftX, statY, contentW, 48, 6).fill(C.paperWarm);
-  doc.roundedRect(leftX, statY, contentW, 48, 6).lineWidth(0.8).stroke("#c7d2fe");
+  const statBoxH = !input.isExempt && input.examScore4 > 0 ? 48 : 36;
+  doc.roundedRect(leftX, statY, contentW, statBoxH, 6).fill(C.paperWarm);
+  doc.roundedRect(leftX, statY, contentW, statBoxH, 6).lineWidth(0.8).stroke("#c7d2fe");
 
   const col = contentW / 3;
   doc.fillColor(C.indigo).font("Helvetica-Bold").fontSize(9);
@@ -203,15 +204,12 @@ export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDoc
       statY + 38,
       { width: contentW },
     );
-  } else if (input.isExempt) {
-    doc.fillColor(C.muted).font("Helvetica").fontSize(8);
-    doc.text("Estatus EXENTADO · Calificación final: 10", leftX, statY + 38, { width: contentW });
   }
 
   doc.fillColor(sealColors(exemption.tier).fill).font("Helvetica-Bold").fontSize(15);
-  doc.text(exemption.label, leftX, statY + 58, { width: contentW });
+  doc.text(exemption.label, leftX, statY + statBoxH + 10, { width: contentW });
 
-  const msgY = statY + 82;
+  const msgY = statY + statBoxH + 34;
   const msgH = innerH - (msgY - innerY) - 58;
   doc.roundedRect(leftX, msgY, contentW, msgH, 6).fill("#f1f5f9");
   doc.roundedRect(leftX, msgY, contentW, msgH, 6).lineWidth(0.8).stroke(C.line);

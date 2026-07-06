@@ -307,10 +307,12 @@ export async function getDiplomaGradeInfo(studentId: string, groupId: string) {
       where: { examId_studentId: { examId: exam.id, studentId } },
     }));
 
+  const { ranking } = await getGroupRanking(groupId);
+  const entry = ranking.find((r) => r.studentId === studentId);
+  const place = entry?.place ?? ranking.length;
+  const totalFirmas = entry?.gradedActivityCount ?? (await getStudentTotalFirmas(studentId, groupId));
+
   if (attempt?.status === "SUBMITTED" && attempt.finalGrade != null) {
-    const totalFirmas = await getStudentTotalFirmas(studentId, groupId);
-    const { ranking } = await getGroupRanking(groupId);
-    const place = ranking.find((r) => r.studentId === studentId)?.place ?? ranking.length;
     return {
       place,
       totalFirmas,
@@ -323,8 +325,8 @@ export async function getDiplomaGradeInfo(studentId: string, groupId: string) {
 
   const breakdown = await computeSubjectGradeWithoutExam(studentId, groupId);
   return {
-    place: breakdown.place,
-    totalFirmas: breakdown.totalFirmas,
+    place,
+    totalFirmas,
     finalGrade: breakdown.isExempt ? 10 : breakdown.finalGrade,
     firmasScore6: breakdown.firmasScore6,
     examScore4: 0,
