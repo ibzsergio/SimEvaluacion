@@ -419,6 +419,31 @@ export async function recalculateOfficeExamGrades() {
   return data;
 }
 
+async function downloadOfficeExamGradesBlob(path: string) {
+  const { data } = await api.get<Blob>(path, { responseType: "blob" });
+  return data;
+}
+
+export async function downloadOfficeExamGradesExcel(groupId: string, groupCode: string) {
+  const blob = await downloadOfficeExamGradesBlob(`/teacher/office-exam/grades/${groupId}.xlsx`);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `calificaciones_examen_office_grupo_${groupCode}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadOfficeExamGradesExcelBoth() {
+  const blob = await downloadOfficeExamGradesBlob("/teacher/office-exam/grades.xlsx");
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "calificaciones_examen_office_201_202.xlsx";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function fetchStudentOfficeExam() {
   const { data } = await api.get<OfficeExamState>("/student/office-exam");
   return data;

@@ -232,8 +232,8 @@ export type OfficeExamTeacherData = {
     firmasScore6: number;
     examStatus: string;
     examCorrect: number | null;
-    examScore4: number | null;
-    finalGrade: number | null;
+    examScore4: number;
+    finalGrade: number;
     submittedAt: string | null;
   }[];
 };

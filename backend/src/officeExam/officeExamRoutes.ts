@@ -13,6 +13,8 @@ import {
   publicQuestion,
   recalculateAllSubmittedAttempts,
 } from "./examService.js";
+import { getOfficeExamGradeRows } from "./gradeRows.js";
+import { buildOfficeGradesWorkbook, sendOfficeGradesXlsx } from "./gradesExport.js";
 
 export const officeExamTeacherRouter = Router();
 officeExamTeacherRouter.use(requireAuth, requireTeacher);
@@ -20,67 +22,12 @@ officeExamTeacherRouter.use(requireAuth, requireTeacher);
 officeExamTeacherRouter.get("/", async (req: AuthedRequest, res) => {
   await recalculateAllSubmittedAttempts(req.auth!.userId);
   const exam = await ensureOfficeExam(req.auth!.userId);
-  const groups = await ensureTeacherGroups(req.auth!.userId);
-  const groupIds = groups.map((g) => g.id);
-
-  const students = await prisma.user.findMany({
-    where: { role: "STUDENT", groupId: { in: groupIds } },
-    select: {
-      id: true,
-      displayName: true,
-      controlNumber: true,
-      listNumber: true,
-      groupId: true,
-      group: { select: { code: true } },
-    },
-    orderBy: [{ group: { code: "asc" } }, { displayName: "asc" }],
-  });
+  const rows = await getOfficeExamGradeRows(req.auth!.userId);
 
   const attempts = await prisma.officeExamAttempt.findMany({
-    where: { examId: exam.id, studentId: { in: students.map((s) => s.id) } },
+    where: { examId: exam.id },
+    select: { status: true },
   });
-  const attemptByStudent = new Map(attempts.map((a) => [a.studentId, a]));
-
-  const rows = await Promise.all(
-    students.map(async (s) => {
-      if (!s.groupId) return null;
-      const gradePreview = await computeSubjectGradeWithoutExam(s.id, s.groupId);
-      const attempt = attemptByStudent.get(s.id);
-      let finalGrade = gradePreview.finalGrade;
-      let examScore4: number | null = null;
-      let firmasScore6 = gradePreview.firmasScore6;
-
-      if (attempt?.status === "SUBMITTED") {
-        const breakdown = await computeSubjectGrade(
-          s.id,
-          s.groupId,
-          attempt.correctCount ?? 0,
-          exam.questions.length,
-        );
-        finalGrade = breakdown.finalGrade;
-        examScore4 = breakdown.examScore4;
-        firmasScore6 = breakdown.firmasScore6;
-      }
-
-      return {
-        studentId: s.id,
-        displayName: s.displayName,
-        controlNumber: s.controlNumber,
-        listNumber: s.listNumber,
-        groupCode: s.group?.code ?? "",
-        place: gradePreview.place,
-        isExempt: gradePreview.isExempt,
-        totalFirmas: gradePreview.totalFirmas,
-        firmasScore6,
-        examStatus: attempt?.status ?? "NOT_STARTED",
-        examCorrect: attempt?.correctCount ?? null,
-        examScore4,
-        finalGrade,
-        submittedAt: attempt?.submittedAt ?? null,
-      };
-    }),
-  );
-
   const submitted = attempts.filter((a) => a.status === "SUBMITTED").length;
   const inProgress = attempts.filter((a) => a.status === "IN_PROGRESS").length;
 
@@ -106,15 +53,15 @@ officeExamTeacherRouter.get("/", async (req: AuthedRequest, res) => {
       })),
     },
     summary: {
-      totalStudents: students.length,
+      totalStudents: rows.length,
       submitted,
       inProgress,
-      notStarted: students.length - submitted - inProgress,
+      notStarted: rows.length - submitted - inProgress,
       wordCount: exam.questions.filter((q) => q.program === "WORD").length,
       powerpointCount: exam.questions.filter((q) => q.program === "POWERPOINT").length,
       excelCount: exam.questions.filter((q) => q.program === "EXCEL").length,
     },
-    rows: rows.filter(Boolean),
+    rows,
   });
 });
 
@@ -129,6 +76,26 @@ officeExamTeacherRouter.get("/preview", async (req: AuthedRequest, res) => {
 officeExamTeacherRouter.post("/recalculate", async (req: AuthedRequest, res) => {
   const result = await recalculateAllSubmittedAttempts(req.auth!.userId);
   return res.json(result);
+});
+
+officeExamTeacherRouter.get("/grades.xlsx", async (req: AuthedRequest, res) => {
+  await recalculateAllSubmittedAttempts(req.auth!.userId);
+  const groups = await ensureTeacherGroups(req.auth!.userId);
+  const rows = await getOfficeExamGradeRows(req.auth!.userId);
+  const wb = buildOfficeGradesWorkbook(groups, rows);
+  return sendOfficeGradesXlsx(res, wb, "calificaciones_examen_office_201_202.xlsx");
+});
+
+officeExamTeacherRouter.get("/grades/:groupId.xlsx", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const groups = await ensureTeacherGroups(req.auth!.userId);
+  const group = groups.find((g) => g.id === groupId);
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  await recalculateAllSubmittedAttempts(req.auth!.userId);
+  const rows = await getOfficeExamGradeRows(req.auth!.userId);
+  const wb = buildOfficeGradesWorkbook([group], rows);
+  return sendOfficeGradesXlsx(res, wb, `calificaciones_examen_office_grupo_${group.code}.xlsx`);
 });
 
 officeExamTeacherRouter.put("/settings", async (req: AuthedRequest, res) => {

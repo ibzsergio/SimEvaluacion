@@ -213,7 +213,7 @@ export default function TeacherPage() {
       </div>
 
       {tab === "examen" ? (
-        <OfficeExamPanel />
+        <OfficeExamPanel groups={groups} />
       ) : tab === "semanas" ? (
         groupsQuery.isLoading ? (
           <p className="text-slate-400">Cargando grupos...</p>
