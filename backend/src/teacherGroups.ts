@@ -14,6 +14,7 @@ import { importGradesForGroup, type GradeImportMode } from "./importGrades.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { closeWeekForGroup, ensureCurrentGroupWeek } from "./weeks.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
+import { getDiplomaGradeInfo } from "./officeExam/officeExamRoutes.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -1315,6 +1316,16 @@ teacherGroupsRouter.get("/groups/:groupId/diploma/preview.pdf", async (req: Auth
   const { ranking } = await getGroupRanking(groupId);
   const sample = ranking[4] ?? ranking[0];
   const inline = req.query.inline === "1" || req.query.inline === "true";
+  const gradeInfo = sample
+    ? await getDiplomaGradeInfo(sample.studentId, groupId)
+    : {
+        place: 5,
+        totalFirmas: 20,
+        finalGrade: 8.5,
+        firmasScore6: 5,
+        examScore4: 3.5,
+        isExempt: false,
+      };
 
   return streamDiplomaPdf(
     res,
@@ -1322,10 +1333,15 @@ teacherGroupsRouter.get("/groups/:groupId/diploma/preview.pdf", async (req: Auth
       studentName: sample?.displayName ?? "Alumno de ejemplo",
       groupCode: group.code,
       groupShift: group.shift,
-      place: sample?.place ?? 5,
+      place: gradeInfo.place,
       totalStudents: ranking.length || 30,
       score: sample?.score ?? 8500,
       partialClosedAt: group.partialClosedAt ?? new Date(),
+      totalFirmas: gradeInfo.totalFirmas,
+      finalGrade: gradeInfo.finalGrade,
+      firmasScore6: gradeInfo.firmasScore6,
+      examScore4: gradeInfo.examScore4,
+      isExempt: gradeInfo.isExempt,
     },
     `muestra_diploma_grupo_${group.code}.pdf`,
     inline,
@@ -1354,6 +1370,7 @@ teacherGroupsRouter.get(
     const { ranking } = await getGroupRanking(groupId);
     const entry = ranking.find((r) => r.studentId === studentId);
     const safeName = student.displayName.replace(/[^\w\sáéíóúñÁÉÍÓÚÑ.-]/g, "").trim() || "alumno";
+    const gradeInfo = await getDiplomaGradeInfo(studentId, groupId);
 
     return streamDiplomaPdf(
       res,
@@ -1361,10 +1378,15 @@ teacherGroupsRouter.get(
         studentName: student.displayName,
         groupCode: group.code,
         groupShift: group.shift,
-        place: entry?.place ?? ranking.length,
+        place: gradeInfo.place,
         totalStudents: ranking.length,
         score: entry?.score ?? 0,
         partialClosedAt: group.partialClosedAt ?? new Date(),
+        totalFirmas: gradeInfo.totalFirmas,
+        finalGrade: gradeInfo.finalGrade,
+        firmasScore6: gradeInfo.firmasScore6,
+        examScore4: gradeInfo.examScore4,
+        isExempt: gradeInfo.isExempt,
       },
       `diploma_${safeName.replace(/\s+/g, "_")}.pdf`,
       inline,

@@ -15,14 +15,16 @@ function DiplomaMockup({
   groupCode,
   partialClosed,
   samplePlace,
-  sampleScore,
+  sampleTotalFirmas,
+  sampleFinalGrade,
   sampleExemption,
 }: {
   sampleName: string;
   groupCode: string;
   partialClosed: boolean;
   samplePlace: number;
-  sampleScore: number;
+  sampleTotalFirmas: number;
+  sampleFinalGrade: number;
   sampleExemption: PartialSummaryRow["exemption"];
 }) {
   const sealClass =
@@ -59,16 +61,18 @@ function DiplomaMockup({
             Grupo {groupCode} · {partialClosed ? "Parcial cerrado" : "Vista previa"}
           </p>
 
-          <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-2 text-xs">
+          <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-2 text-xs">
             <div>
               <p className="font-bold text-indigo-700">RANKING</p>
-              <p className="font-bold text-slate-900">
-                #{samplePlace}
-              </p>
+              <p className="font-bold text-slate-900">#{samplePlace}</p>
             </div>
             <div>
-              <p className="font-bold text-indigo-700">PUNTOS</p>
-              <p className="font-bold text-slate-900">{sampleScore}</p>
+              <p className="font-bold text-indigo-700">FIRMAS</p>
+              <p className="font-bold text-slate-900">{sampleTotalFirmas}</p>
+            </div>
+            <div>
+              <p className="font-bold text-indigo-700">CALIF.</p>
+              <p className="font-bold text-slate-900">{sampleFinalGrade.toFixed(1)} / 10</p>
             </div>
           </div>
 
@@ -126,12 +130,13 @@ export default function DiplomaPreviewSection({
 
   const sampleName = sampleRow?.displayName ?? "Alumno de ejemplo";
   const samplePlace = sampleRow?.place ?? 5;
-  const sampleScore = sampleRow?.totalPoints ?? 8500;
   const sampleExemption = sampleRow?.exemption ?? {
     tier: "exempt" as const,
     label: "¡EXENTADO!",
     shortLabel: "EXENTADO",
   };
+  const sampleTotalFirmas = 42;
+  const sampleFinalGrade = sampleExemption.tier === "exempt" ? 10 : 8.4;
 
   useEffect(() => {
     let active = true;
@@ -187,7 +192,8 @@ export default function DiplomaPreviewSection({
             groupCode={groupCode}
             partialClosed={partialClosed}
             samplePlace={samplePlace}
-            sampleScore={sampleScore}
+            sampleTotalFirmas={sampleTotalFirmas}
+            sampleFinalGrade={sampleFinalGrade}
             sampleExemption={sampleExemption}
           />
         </div>

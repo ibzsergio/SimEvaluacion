@@ -65,6 +65,8 @@ model User {
   gradedGrades      Grade[]        @relation("GradesByTeacher")
   submissions       Submission[]
   weeklyWins        WeeklyWinner[]
+  officeExam        OfficeExam?              @relation("TeacherOfficeExam")
+  officeExamAttempts OfficeExamAttempt[]     @relation("StudentOfficeExamAttempts")
 
   @@index([groupId])
   @@index([role])
@@ -161,4 +163,74 @@ model Grade {
   @@index([studentId])
   @@index([activityId])
   @@index([gradedById])
+}
+
+enum OfficeProgram {
+  WORD
+  POWERPOINT
+  EXCEL
+}
+
+enum OfficeExamAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+}
+
+/// Examen Office 2019 (un examen por docente).
+model OfficeExam {
+  id                   String   @id @default(cuid())
+  teacherId            String   @unique
+  title                String   @default("Evaluación Office 2019")
+  enabledForStudents   Boolean  @default(false)
+  enabledAt            DateTime?
+  timeLimitMinutes     Int      @default(60)
+  questionCount        Int      @default(75)
+
+  teacher   User                   @relation("TeacherOfficeExam", fields: [teacherId], references: [id], onDelete: Cascade)
+  questions OfficeExamQuestion[]
+  attempts  OfficeExamAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OfficeExamQuestion {
+  id           String        @id @default(cuid())
+  examId       String
+  program      OfficeProgram
+  sortOrder    Int
+  questionText String        @db.Text
+  optionA      String        @db.Text
+  optionB      String        @db.Text
+  optionC      String        @db.Text
+  optionD      String        @db.Text
+  correctOption String
+
+  exam OfficeExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, sortOrder])
+  @@index([examId])
+}
+
+model OfficeExamAttempt {
+  id          String                 @id @default(cuid())
+  examId      String
+  studentId   String
+  status      OfficeExamAttemptStatus @default(IN_PROGRESS)
+  answers     Json                   @default("{}")
+  correctCount Int?
+  examScore4  Float?
+  firmasScore6 Float?
+  finalGrade  Float?
+  isExempt    Boolean                @default(false)
+  startedAt   DateTime               @default(now())
+  submittedAt DateTime?
+  lastSavedAt DateTime               @default(now())
+
+  exam    OfficeExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student User       @relation("StudentOfficeExamAttempts", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+  @@index([studentId])
+  @@index([examId])
 }

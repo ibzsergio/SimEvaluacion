@@ -3,6 +3,7 @@ import { useState } from "react";
 import BadgeDisplay from "../components/BadgeDisplay";
 import Layout from "../components/Layout";
 import StudentMotivationCard from "../components/StudentMotivationCard";
+import StudentOfficeExam from "../components/StudentOfficeExam";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -51,6 +52,8 @@ export default function StudentPage() {
       footer={studentFooter}
     >
       <StudentMotivationCard motivation={data.motivation} />
+
+      <StudentOfficeExam />
 
       {data.group?.partialClosed ? (
         <section className="glass mb-6 border border-indigo-400/30 bg-indigo-500/10 p-6">

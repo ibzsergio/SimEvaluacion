@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import GroupGradesImportPanel from "../components/GroupGradesImportPanel";
 import GroupRankingPanel from "../components/GroupRankingPanel";
 import GroupStudentsPanel from "../components/GroupStudentsPanel";
+import OfficeExamPanel from "../components/OfficeExamPanel";
 import WeeklyWinnersPanel from "../components/WeeklyWinnersPanel";
 import Layout from "../components/Layout";
 import {
@@ -24,7 +25,7 @@ function todayIso() {
 
 export default function TeacherPage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"alumnos" | "actividades" | "ranking" | "semanas">("alumnos");
+  const [tab, setTab] = useState<"alumnos" | "actividades" | "ranking" | "semanas" | "examen">("alumnos");
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -188,6 +189,9 @@ export default function TeacherPage() {
         <TabButton active={tab === "semanas"} onClick={() => setTab("semanas")}>
           Semanas y parcial
         </TabButton>
+        <TabButton active={tab === "examen"} onClick={() => setTab("examen")}>
+          Examen Office
+        </TabButton>
         </div>
         <button
           type="button"
@@ -208,7 +212,9 @@ export default function TeacherPage() {
         </button>
       </div>
 
-      {tab === "semanas" ? (
+      {tab === "examen" ? (
+        <OfficeExamPanel />
+      ) : tab === "semanas" ? (
         groupsQuery.isLoading ? (
           <p className="text-slate-400">Cargando grupos...</p>
         ) : selectedGroupId ? (

@@ -10,6 +10,14 @@ import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js
 import { ensureTeacherGroups } from "./groups.js";
 import { removeJunkStudentsForGroup } from "./dedupeStudents.js";
 import { teacherGroupsRouter } from "./teacherGroups.js";
+import { officeExamTeacherRouter } from "./officeExam/officeExamRoutes.js";
+import {
+  getStudentOfficeExamState,
+  saveStudentAnswers,
+  startStudentExam,
+  submitStudentExam,
+  getDiplomaGradeInfo,
+} from "./officeExam/officeExamRoutes.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
@@ -200,6 +208,7 @@ app.post("/auth/dev-seed", async (_req, res) => {
 });
 
 app.use("/teacher", teacherGroupsRouter);
+app.use("/teacher/office-exam", officeExamTeacherRouter);
 
 // Teacher: create/list activities
 app.get("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedRequest, res) => {
@@ -555,6 +564,7 @@ app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => 
   const myEntry = ranking.find((r) => r.studentId === req.auth!.userId);
   const place = myEntry?.place ?? ranking.length;
   const score = myEntry?.score ?? 0;
+  const gradeInfo = await getDiplomaGradeInfo(req.auth!.userId, me.groupId);
 
   const safeName = me.displayName.replace(/[^\w\sáéíóúñÁÉÍÓÚÑ.-]/g, "").trim() || "alumno";
   return streamDiplomaPdf(
@@ -563,13 +573,64 @@ app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => 
       studentName: me.displayName,
       groupCode: group.code,
       groupShift: group.shift,
-      place,
+      place: gradeInfo.place,
       totalStudents: ranking.length,
       score,
       partialClosedAt: group.partialClosedAt,
+      totalFirmas: gradeInfo.totalFirmas,
+      finalGrade: gradeInfo.finalGrade,
+      firmasScore6: gradeInfo.firmasScore6,
+      examScore4: gradeInfo.examScore4,
+      isExempt: gradeInfo.isExempt,
     },
     `diploma_${safeName.replace(/\s+/g, "_")}.pdf`,
   );
+});
+
+app.get("/student/office-exam", requireAuth, async (req: AuthedRequest, res) => {
+  if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
+  const state = await getStudentOfficeExamState(req.auth!.userId);
+  return res.json(state);
+});
+
+app.post("/student/office-exam/start", requireAuth, async (req: AuthedRequest, res) => {
+  if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
+  try {
+    const state = await startStudentExam(req.auth!.userId);
+    return res.json(state);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "error";
+    if (msg === "exam_disabled") return res.status(403).json({ error: "exam_disabled" });
+    if (msg === "already_submitted") return res.status(400).json({ error: "already_submitted" });
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.put("/student/office-exam/answers", requireAuth, async (req: AuthedRequest, res) => {
+  if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
+  const body = z.object({ answers: z.record(z.string(), z.string()) }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  try {
+    const result = await saveStudentAnswers(req.auth!.userId, body.data.answers);
+    return res.json(result);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "error";
+    if (msg === "already_submitted") return res.status(400).json({ error: "already_submitted" });
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/student/office-exam/submit", requireAuth, async (req: AuthedRequest, res) => {
+  if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
+  const body = z.object({ answers: z.record(z.string(), z.string()) }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  try {
+    const state = await submitStudentExam(req.auth!.userId, body.data.answers);
+    return res.json(state);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "error";
+    return res.status(400).json({ error: msg });
+  }
 });
 
 const port = Number(process.env.PORT ?? 4000);

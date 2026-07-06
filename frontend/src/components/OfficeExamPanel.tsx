@@ -1,0 +1,156 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  fetchOfficeExamTeacher,
+  updateOfficeExamSettings,
+} from "../lib/api";
+
+function statusLabel(status: string) {
+  if (status === "SUBMITTED") return "Terminado";
+  if (status === "IN_PROGRESS") return "En progreso";
+  return "Sin iniciar";
+}
+
+export default function OfficeExamPanel() {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["office-exam-teacher"],
+    queryFn: fetchOfficeExamTeacher,
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (enabled: boolean) => updateOfficeExamSettings(enabled),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["office-exam-teacher"] }),
+  });
+
+  const data = query.data;
+  if (query.isLoading) return <p className="text-slate-400">Cargando examen Office...</p>;
+  if (!data) return <p className="text-rose-300">No se pudo cargar el examen.</p>;
+
+  const { exam, summary, rows } = data;
+
+  return (
+    <div className="space-y-6">
+      <section className="glass p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">{exam.title}</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              {exam.questionCount} preguntas · {summary.wordCount} Word · {summary.powerpointCount}{" "}
+              PowerPoint · {summary.excelCount} Excel
+            </p>
+            <p className="mt-2 text-xs text-slate-500">
+              Solo visible para ti hasta que lo habilites. Los alumnos EXENTADOS (Top 10) pueden
+              contestarlo sin que afecte su calificación de 10.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={toggleMutation.isPending}
+            onClick={() => toggleMutation.mutate(!exam.enabledForStudents)}
+            className={`rounded-xl px-5 py-2.5 text-sm font-bold disabled:opacity-60 ${
+              exam.enabledForStudents
+                ? "border border-amber-400/40 bg-amber-500/15 text-amber-100"
+                : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+            }`}
+          >
+            {toggleMutation.isPending
+              ? "Guardando..."
+              : exam.enabledForStudents
+                ? "Deshabilitar para alumnos"
+                : "Habilitar examen para alumnos"}
+          </button>
+        </div>
+
+        {exam.enabledForStudents ? (
+          <p className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+            Examen habilitado — los alumnos ya pueden verlo e iniciarlo.
+          </p>
+        ) : (
+          <p className="mt-3 rounded-lg border border-indigo-400/25 bg-indigo-500/5 px-3 py-2 text-xs text-slate-400">
+            El examen está oculto para los alumnos. Revisa las preguntas abajo antes de habilitarlo.
+          </p>
+        )}
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <Stat label="Alumnos" value={summary.totalStudents} />
+          <Stat label="Terminaron" value={summary.submitted} color="text-emerald-300" />
+          <Stat label="En progreso" value={summary.inProgress} color="text-amber-300" />
+          <Stat label="Sin iniciar" value={summary.notStarted} color="text-slate-400" />
+        </div>
+      </section>
+
+      <section className="glass p-6">
+        <h3 className="text-base font-semibold text-white">Panorama general — Calificación materia</h3>
+        <p className="mt-1 text-xs text-slate-500">
+          Firmas (6 pts) = (firmas alumno ÷ firmas del #11) × 6 · Examen (4 pts) = aciertos/75 × 4 ·
+          EXENTADOS: 10 fijo
+        </p>
+        <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-900/70 text-left text-xs uppercase text-slate-400">
+              <tr>
+                <th className="px-3 py-2">Grupo</th>
+                <th className="px-3 py-2">Alumno</th>
+                <th className="px-3 py-2 text-center">#</th>
+                <th className="px-3 py-2 text-center">Firmas</th>
+                <th className="px-3 py-2 text-center">Examen</th>
+                <th className="px-3 py-2 text-center">Calif.</th>
+                <th className="px-3 py-2">Estado examen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.studentId} className="border-t border-white/5">
+                  <td className="px-3 py-2 text-cyan-300">{r.groupCode}</td>
+                  <td className="px-3 py-2 text-white">{r.displayName}</td>
+                  <td className="px-3 py-2 text-center text-slate-300">#{r.place}</td>
+                  <td className="px-3 py-2 text-center">{r.totalFirmas}</td>
+                  <td className="px-3 py-2 text-center">
+                    {r.examScore4 != null ? r.examScore4.toFixed(1) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-center font-bold text-cyan-300">
+                    {r.isExempt ? "10 ★" : (r.finalGrade ?? 0).toFixed(1)}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-slate-400">
+                    {statusLabel(r.examStatus)}
+                    {r.examCorrect != null ? ` · ${r.examCorrect}/75` : ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="glass p-6">
+        <h3 className="text-base font-semibold text-white">Banco de preguntas (solo docente)</h3>
+        <p className="mt-1 text-xs text-slate-500">Vista previa de las 75 preguntas — no visible para alumnos hasta habilitar.</p>
+        <div className="mt-4 max-h-[480px] space-y-3 overflow-y-auto pr-2">
+          {exam.questionsPreview?.map((q, i) => (
+            <article key={q.id} className="rounded-lg border border-white/10 bg-slate-900/40 p-3 text-sm">
+              <p className="text-xs font-bold text-cyan-400">
+                {i + 1}. {q.program}
+              </p>
+              <p className="mt-1 text-white">{q.questionText}</p>
+              <ul className="mt-2 space-y-0.5 text-xs text-slate-400">
+                <li className={q.correctOption === "A" ? "text-emerald-300 font-bold" : ""}>A) {q.optionA}</li>
+                <li className={q.correctOption === "B" ? "text-emerald-300 font-bold" : ""}>B) {q.optionB}</li>
+                <li className={q.correctOption === "C" ? "text-emerald-300 font-bold" : ""}>C) {q.optionC}</li>
+                <li className={q.correctOption === "D" ? "text-emerald-300 font-bold" : ""}>D) {q.optionD}</li>
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Stat({ label, value, color = "text-white" }: { label: string; value: number; color?: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className={`text-2xl font-bold ${color}`}>{value}</p>
+    </div>
+  );
+}

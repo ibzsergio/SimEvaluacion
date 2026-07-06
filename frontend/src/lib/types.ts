@@ -187,3 +187,79 @@ export type ImportWorkbookResult = {
   skippedSheets: string[];
   message: string;
 };
+
+export type OfficeExamQuestion = {
+  id: string;
+  program: "WORD" | "POWERPOINT" | "EXCEL";
+  sortOrder: number;
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctOption?: string;
+};
+
+export type OfficeExamTeacherData = {
+  exam: {
+    id: string;
+    title: string;
+    enabledForStudents: boolean;
+    enabledAt: string | null;
+    timeLimitMinutes: number;
+    questionCount: number;
+    instructions: string;
+    questionsPreview: OfficeExamQuestion[];
+  };
+  summary: {
+    totalStudents: number;
+    submitted: number;
+    inProgress: number;
+    notStarted: number;
+    wordCount: number;
+    powerpointCount: number;
+    excelCount: number;
+  };
+  rows: {
+    studentId: string;
+    displayName: string;
+    controlNumber: string | null;
+    listNumber: number | null;
+    groupCode: string;
+    place: number;
+    isExempt: boolean;
+    totalFirmas: number;
+    firmasScore6: number;
+    examStatus: string;
+    examCorrect: number | null;
+    examScore4: number | null;
+    finalGrade: number | null;
+    submittedAt: string | null;
+  }[];
+};
+
+export type OfficeExamState = {
+  available: boolean;
+  reason?: string;
+  enabled?: boolean;
+  status?: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED";
+  instructions?: string;
+  timeLimitMinutes?: number;
+  questionCount?: number;
+  isExempt?: boolean;
+  place?: number;
+  totalFirmas?: number;
+  firmasReference?: number;
+  firmasScore6?: number;
+  projectedGradeWithoutExam?: number;
+  examAffectsGrade?: boolean;
+  attemptId?: string;
+  answers?: Record<string, string>;
+  questions?: OfficeExamQuestion[];
+  startedAt?: string;
+  lastSavedAt?: string;
+  correctCount?: number;
+  examScore4?: number;
+  finalGrade?: number;
+  submittedAt?: string;
+};

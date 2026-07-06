@@ -15,6 +15,11 @@ export type DiplomaInput = {
   totalStudents: number;
   score: number;
   partialClosedAt: Date;
+  totalFirmas: number;
+  finalGrade: number;
+  firmasScore6: number;
+  examScore4: number;
+  isExempt: boolean;
 };
 
 const C = {
@@ -176,23 +181,37 @@ export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDoc
   );
 
   const statY = topY + 118;
-  doc.roundedRect(leftX, statY, contentW, 34, 6).fill(C.paperWarm);
-  doc.roundedRect(leftX, statY, contentW, 34, 6).lineWidth(0.8).stroke("#c7d2fe");
+  doc.roundedRect(leftX, statY, contentW, 48, 6).fill(C.paperWarm);
+  doc.roundedRect(leftX, statY, contentW, 48, 6).lineWidth(0.8).stroke("#c7d2fe");
 
-  doc.fillColor(C.indigo).font("Helvetica-Bold").fontSize(10);
-  doc.text("RANKING DEL PARCIAL", leftX + 12, statY + 8);
-  doc.fillColor(C.ink).font("Helvetica-Bold").fontSize(12);
-  doc.text(`#${input.place} de ${input.totalStudents}`, leftX + 12, statY + 20);
+  const col = contentW / 3;
+  doc.fillColor(C.indigo).font("Helvetica-Bold").fontSize(9);
+  doc.text("RANKING", leftX + 12, statY + 8);
+  doc.text("TOTAL FIRMAS", leftX + 12 + col, statY + 8);
+  doc.text("CALIFICACIÓN", leftX + 12 + col * 2, statY + 8);
 
-  doc.fillColor(C.indigo).font("Helvetica-Bold").fontSize(10);
-  doc.text("PUNTOS TOTALES", leftX + contentW / 2, statY + 8);
   doc.fillColor(C.ink).font("Helvetica-Bold").fontSize(12);
-  doc.text(String(input.score), leftX + contentW / 2, statY + 20);
+  doc.text(`#${input.place} / ${input.totalStudents}`, leftX + 12, statY + 22);
+  doc.text(String(input.totalFirmas), leftX + 12 + col, statY + 22);
+  doc.text(`${input.finalGrade.toFixed(1)} de 10`, leftX + 12 + col * 2, statY + 22);
+
+  if (!input.isExempt && input.examScore4 > 0) {
+    doc.fillColor(C.muted).font("Helvetica").fontSize(8);
+    doc.text(
+      `Desglose: ${input.firmasScore6.toFixed(1)} (firmas) + ${input.examScore4.toFixed(1)} (examen Office)`,
+      leftX,
+      statY + 38,
+      { width: contentW },
+    );
+  } else if (input.isExempt) {
+    doc.fillColor(C.muted).font("Helvetica").fontSize(8);
+    doc.text("Estatus EXENTADO · Calificación final: 10", leftX, statY + 38, { width: contentW });
+  }
 
   doc.fillColor(sealColors(exemption.tier).fill).font("Helvetica-Bold").fontSize(15);
-  doc.text(exemption.label, leftX, statY + 48, { width: contentW });
+  doc.text(exemption.label, leftX, statY + 58, { width: contentW });
 
-  const msgY = statY + 72;
+  const msgY = statY + 82;
   const msgH = innerH - (msgY - innerY) - 58;
   doc.roundedRect(leftX, msgY, contentW, msgH, 6).fill("#f1f5f9");
   doc.roundedRect(leftX, msgY, contentW, msgH, 6).lineWidth(0.8).stroke(C.line);

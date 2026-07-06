@@ -8,6 +8,8 @@ import type {
   GroupRanking,
   GroupWeeks,
   PartialSummary,
+  OfficeExamTeacherData,
+  OfficeExamState,
   StudentProgress,
   User,
 } from "./types";
@@ -397,6 +399,41 @@ export async function downloadStudentDiploma() {
   link.download = "diploma_parcial.pdf";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+export async function fetchOfficeExamTeacher() {
+  const { data } = await api.get<OfficeExamTeacherData>("/teacher/office-exam");
+  return data;
+}
+
+export async function updateOfficeExamSettings(enabledForStudents: boolean) {
+  const { data } = await api.put<{ exam: { enabledForStudents: boolean } }>(
+    "/teacher/office-exam/settings",
+    { enabledForStudents },
+  );
+  return data;
+}
+
+export async function fetchStudentOfficeExam() {
+  const { data } = await api.get<OfficeExamState>("/student/office-exam");
+  return data;
+}
+
+export async function startOfficeExam() {
+  const { data } = await api.post<OfficeExamState>("/student/office-exam/start");
+  return data;
+}
+
+export async function syncOfficeExamAnswers(answers: Record<string, string>) {
+  const { data } = await api.put<{ ok: boolean; lastSavedAt: string }>("/student/office-exam/answers", {
+    answers,
+  });
+  return data;
+}
+
+export async function submitOfficeExam(answers: Record<string, string>) {
+  const { data } = await api.post<OfficeExamState>("/student/office-exam/submit", { answers });
+  return data;
 }
 
 async function fetchTeacherDiplomaBlob(
