@@ -310,7 +310,7 @@ export async function getDiplomaGradeInfo(studentId: string, groupId: string) {
   const { ranking } = await getGroupRanking(groupId);
   const entry = ranking.find((r) => r.studentId === studentId);
   const place = entry?.place ?? ranking.length;
-  const totalFirmas = entry?.gradedActivityCount ?? (await getStudentTotalFirmas(studentId, groupId));
+  const totalFirmas = entry?.score ?? (await getStudentTotalFirmas(studentId, groupId));
 
   if (attempt?.status === "SUBMITTED" && attempt.finalGrade != null) {
     return {

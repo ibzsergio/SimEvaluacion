@@ -103,7 +103,6 @@ function drawSeal(
   cy: number,
   r: number,
   tier: ExemptionTier,
-  shortLabel: string,
   place: number,
 ) {
   const colors = sealColors(tier);
@@ -112,10 +111,10 @@ function drawSeal(
   doc.circle(cx, cy, r).fillColor(colors.fill).fill();
   doc.circle(cx, cy, r - 8).lineWidth(1.5).strokeColor(colors.text).stroke();
 
-  doc.fillColor(colors.text).font("Helvetica-Bold").fontSize(11);
-  doc.text(shortLabel, cx - r + 6, cy - 16, { width: (r - 6) * 2, align: "center" });
-  doc.font("Helvetica").fontSize(9);
-  doc.text(`#${place}`, cx - r + 6, cy + 2, { width: (r - 6) * 2, align: "center" });
+  doc.fillColor(colors.text).font("Helvetica-Bold").fontSize(10);
+  doc.text("LUGAR", cx - r + 6, cy - 10, { width: (r - 6) * 2, align: "center" });
+  doc.font("Helvetica-Bold").fontSize(16);
+  doc.text(`#${place}`, cx - r + 6, cy + 4, { width: (r - 6) * 2, align: "center" });
   doc.restore();
 }
 
@@ -188,13 +187,13 @@ export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDoc
   const col = contentW / 3;
   doc.fillColor(C.indigo).font("Helvetica-Bold").fontSize(9);
   doc.text("RANKING", leftX + 12, statY + 8);
-  doc.text("TOTAL FIRMAS", leftX + 12 + col, statY + 8);
+  doc.text("PUNTOS TOTAL", leftX + 12 + col, statY + 8);
   doc.text("CALIFICACIÓN", leftX + 12 + col * 2, statY + 8);
 
   doc.fillColor(C.ink).font("Helvetica-Bold").fontSize(12);
   doc.text(`#${input.place} / ${input.totalStudents}`, leftX + 12, statY + 22);
-  doc.text(String(input.totalFirmas), leftX + 12 + col, statY + 22);
-  doc.text(`${input.finalGrade.toFixed(1)} de 10`, leftX + 12 + col * 2, statY + 22);
+  doc.text(input.score.toLocaleString("es-MX"), leftX + 12 + col, statY + 22);
+  doc.text(input.finalGrade.toFixed(1), leftX + 12 + col * 2, statY + 22);
 
   if (!input.isExempt && input.examScore4 > 0) {
     doc.fillColor(C.muted).font("Helvetica").fontSize(8);
@@ -206,10 +205,7 @@ export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDoc
     );
   }
 
-  doc.fillColor(sealColors(exemption.tier).fill).font("Helvetica-Bold").fontSize(15);
-  doc.text(exemption.label, leftX, statY + statBoxH + 10, { width: contentW });
-
-  const msgY = statY + statBoxH + 34;
+  const msgY = statY + statBoxH + 12;
   const msgH = innerH - (msgY - innerY) - 58;
   doc.roundedRect(leftX, msgY, contentW, msgH, 6).fill("#f1f5f9");
   doc.roundedRect(leftX, msgY, contentW, msgH, 6).lineWidth(0.8).stroke(C.line);
@@ -222,7 +218,7 @@ export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDoc
 
   const sealCx = innerX + innerW - 78;
   const sealCy = innerY + innerH / 2 - 10;
-  drawSeal(doc, sealCx, sealCy, 52, exemption.tier, exemption.shortLabel, input.place);
+  drawSeal(doc, sealCx, sealCy, 52, exemption.tier, input.place);
 
   const footY = innerY + innerH - 42;
   doc.moveTo(leftX, footY).lineTo(leftX + 220, footY).lineWidth(1).stroke(C.muted);

@@ -92,7 +92,7 @@ export default function OfficeExamPanel() {
                 <th className="px-3 py-2">Grupo</th>
                 <th className="px-3 py-2">Alumno</th>
                 <th className="px-3 py-2 text-center">#</th>
-                <th className="px-3 py-2 text-center">Firmas</th>
+                <th className="px-3 py-2 text-center">Puntos</th>
                 <th className="px-3 py-2 text-center">Examen</th>
                 <th className="px-3 py-2 text-center">Calif.</th>
                 <th className="px-3 py-2">Estado examen</th>
@@ -104,7 +104,7 @@ export default function OfficeExamPanel() {
                   <td className="px-3 py-2 text-cyan-300">{r.groupCode}</td>
                   <td className="px-3 py-2 text-white">{r.displayName}</td>
                   <td className="px-3 py-2 text-center text-slate-300">#{r.place}</td>
-                  <td className="px-3 py-2 text-center">{r.totalFirmas}</td>
+                  <td className="px-3 py-2 text-center">{r.totalFirmas.toLocaleString("es-MX")}</td>
                   <td className="px-3 py-2 text-center">
                     {r.examScore4 != null ? r.examScore4.toFixed(1) : "—"}
                   </td>

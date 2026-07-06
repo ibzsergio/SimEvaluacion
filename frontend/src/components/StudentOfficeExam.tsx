@@ -150,8 +150,8 @@ export default function StudentOfficeExam() {
         </pre>
         <div className="mt-4 rounded-lg border border-cyan-400/20 bg-cyan-500/5 p-3 text-sm text-slate-300">
           <p>
-            Tu lugar: <strong className="text-white">#{data.place}</strong> · Firmas:{" "}
-            <strong className="text-white">{data.totalFirmas}</strong>
+            Tu lugar: <strong className="text-white">#{data.place}</strong> · Puntos:{" "}
+            <strong className="text-white">{data.totalFirmas?.toLocaleString("es-MX")}</strong>
             {data.isExempt ? (
               <span className="ml-2 text-emerald-300">(EXENTADO — calificación 10)</span>
             ) : (

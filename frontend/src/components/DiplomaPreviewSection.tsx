@@ -67,26 +67,14 @@ function DiplomaMockup({
               <p className="font-bold text-slate-900">#{samplePlace}</p>
             </div>
             <div>
-              <p className="font-bold text-indigo-700">FIRMAS</p>
-              <p className="font-bold text-slate-900">{sampleTotalFirmas}</p>
+              <p className="font-bold text-indigo-700">PUNTOS</p>
+              <p className="font-bold text-slate-900">{sampleTotalFirmas.toLocaleString("es-MX")}</p>
             </div>
             <div>
               <p className="font-bold text-indigo-700">CALIF.</p>
-              <p className="font-bold text-slate-900">{sampleFinalGrade.toFixed(1)} / 10</p>
+              <p className="font-bold text-slate-900">{sampleFinalGrade.toFixed(1)}</p>
             </div>
           </div>
-
-          <p
-            className={`mt-3 text-sm font-extrabold ${
-              sampleExemption.tier === "exempt"
-                ? "text-emerald-700"
-                : sampleExemption.tier === "can_exempt"
-                  ? "text-sky-700"
-                  : "text-amber-700"
-            }`}
-          >
-            {sampleExemption.label}
-          </p>
 
           <p className="mt-3 rounded-lg border border-slate-200 bg-slate-100 p-2 text-[11px] leading-relaxed text-slate-600">
             Reconocimiento por el trabajo realizado en el parcial, con mensaje personalizado según
@@ -135,7 +123,7 @@ export default function DiplomaPreviewSection({
     label: "¡EXENTADO!",
     shortLabel: "EXENTADO",
   };
-  const sampleTotalFirmas = 42;
+  const sampleTotalFirmas = sampleRow?.totalPoints ?? 55362;
   const sampleFinalGrade = sampleExemption.tier === "exempt" ? 10 : 8.4;
 
   useEffect(() => {
