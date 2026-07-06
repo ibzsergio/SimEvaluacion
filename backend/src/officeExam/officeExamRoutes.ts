@@ -4,19 +4,21 @@ import { prisma } from "../prisma.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "../middleware.js";
 import { ensureTeacherGroups } from "../groups.js";
 import { getGroupRanking } from "../groupRanking.js";
-import { computeSubjectGradeWithoutExam } from "./subjectGrade.js";
+import { computeSubjectGrade, computeSubjectGradeWithoutExam } from "./subjectGrade.js";
 import { getStudentTotalFirmas } from "./firmas.js";
 import {
   ensureOfficeExam,
   EXAM_INSTRUCTIONS,
   finalizeAttempt,
   publicQuestion,
+  recalculateAllSubmittedAttempts,
 } from "./examService.js";
 
 export const officeExamTeacherRouter = Router();
 officeExamTeacherRouter.use(requireAuth, requireTeacher);
 
 officeExamTeacherRouter.get("/", async (req: AuthedRequest, res) => {
+  await recalculateAllSubmittedAttempts(req.auth!.userId);
   const exam = await ensureOfficeExam(req.auth!.userId);
   const groups = await ensureTeacherGroups(req.auth!.userId);
   const groupIds = groups.map((g) => g.id);
@@ -44,6 +46,22 @@ officeExamTeacherRouter.get("/", async (req: AuthedRequest, res) => {
       if (!s.groupId) return null;
       const gradePreview = await computeSubjectGradeWithoutExam(s.id, s.groupId);
       const attempt = attemptByStudent.get(s.id);
+      let finalGrade = gradePreview.finalGrade;
+      let examScore4: number | null = null;
+      let firmasScore6 = gradePreview.firmasScore6;
+
+      if (attempt?.status === "SUBMITTED") {
+        const breakdown = await computeSubjectGrade(
+          s.id,
+          s.groupId,
+          attempt.correctCount ?? 0,
+          exam.questions.length,
+        );
+        finalGrade = breakdown.finalGrade;
+        examScore4 = breakdown.examScore4;
+        firmasScore6 = breakdown.firmasScore6;
+      }
+
       return {
         studentId: s.id,
         displayName: s.displayName,
@@ -53,11 +71,11 @@ officeExamTeacherRouter.get("/", async (req: AuthedRequest, res) => {
         place: gradePreview.place,
         isExempt: gradePreview.isExempt,
         totalFirmas: gradePreview.totalFirmas,
-        firmasScore6: gradePreview.firmasScore6,
+        firmasScore6,
         examStatus: attempt?.status ?? "NOT_STARTED",
         examCorrect: attempt?.correctCount ?? null,
-        examScore4: attempt?.examScore4 ?? null,
-        finalGrade: attempt?.status === "SUBMITTED" ? attempt.finalGrade : gradePreview.finalGrade,
+        examScore4,
+        finalGrade,
         submittedAt: attempt?.submittedAt ?? null,
       };
     }),
@@ -106,6 +124,11 @@ officeExamTeacherRouter.get("/preview", async (req: AuthedRequest, res) => {
     instructions: EXAM_INSTRUCTIONS,
     questions: exam.questions.map(publicQuestion),
   });
+});
+
+officeExamTeacherRouter.post("/recalculate", async (req: AuthedRequest, res) => {
+  const result = await recalculateAllSubmittedAttempts(req.auth!.userId);
+  return res.json(result);
 });
 
 officeExamTeacherRouter.put("/settings", async (req: AuthedRequest, res) => {
@@ -169,22 +192,28 @@ export async function getStudentOfficeExamState(userId: string) {
   }
 
   if (attempt?.status === "SUBMITTED") {
+    const breakdown = await computeSubjectGrade(
+      student.id,
+      student.groupId,
+      attempt.correctCount ?? 0,
+      exam.questions.length,
+    );
     return {
       available: true,
       status: "SUBMITTED" as const,
       attemptId: attempt.id,
       correctCount: attempt.correctCount,
-      examScore4: attempt.examScore4,
-      firmasScore6: attempt.firmasScore6 ?? gradePreview.firmasScore6,
-      finalGrade: attempt.finalGrade,
+      examScore4: breakdown.examScore4,
+      firmasScore6: breakdown.firmasScore6,
+      finalGrade: breakdown.finalGrade,
       submittedAt: attempt.submittedAt,
-      isExempt: attempt.isExempt,
+      isExempt: breakdown.isExempt,
       place: gradePreview.place,
       totalFirmas: gradePreview.totalFirmas,
       instructions: EXAM_INSTRUCTIONS,
       timeLimitMinutes: exam.timeLimitMinutes,
       questionCount: exam.questions.length,
-      examAffectsGrade: !gradePreview.isExempt,
+      examAffectsGrade: breakdown.examAffectsGrade,
     };
   }
 
@@ -300,7 +329,10 @@ export async function getDiplomaGradeInfo(studentId: string, groupId: string) {
     };
   }
 
-  const exam = await prisma.officeExam.findUnique({ where: { teacherId: group.teacherId } });
+  const exam = await prisma.officeExam.findUnique({
+    where: { teacherId: group.teacherId },
+    select: { id: true, questionCount: true },
+  });
   const attempt =
     exam &&
     (await prisma.officeExamAttempt.findUnique({
@@ -312,14 +344,21 @@ export async function getDiplomaGradeInfo(studentId: string, groupId: string) {
   const place = entry?.place ?? ranking.length;
   const totalFirmas = entry?.score ?? (await getStudentTotalFirmas(studentId, groupId));
 
-  if (attempt?.status === "SUBMITTED" && attempt.finalGrade != null) {
+  if (attempt?.status === "SUBMITTED") {
+    const questionCount = exam?.questionCount ?? 75;
+    const breakdown = await computeSubjectGrade(
+      studentId,
+      groupId,
+      attempt.correctCount ?? 0,
+      questionCount,
+    );
     return {
       place,
       totalFirmas,
-      finalGrade: attempt.finalGrade,
-      firmasScore6: attempt.firmasScore6 ?? 0,
-      examScore4: attempt.examScore4 ?? 0,
-      isExempt: attempt.isExempt,
+      finalGrade: breakdown.finalGrade,
+      firmasScore6: breakdown.firmasScore6,
+      examScore4: breakdown.examScore4,
+      isExempt: breakdown.isExempt,
     };
   }
 

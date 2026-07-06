@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchOfficeExamTeacher,
+  getApiErrorMessage,
+  recalculateOfficeExamGrades,
   updateOfficeExamSettings,
 } from "../lib/api";
 
@@ -22,6 +24,15 @@ export default function OfficeExamPanel() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["office-exam-teacher"] }),
   });
 
+  const recalcMutation = useMutation({
+    mutationFn: recalculateOfficeExamGrades,
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["office-exam-teacher"] });
+      window.alert(`Calificaciones actualizadas: ${result.updated} de ${result.total} exámenes terminados.`);
+    },
+    onError: (err) => window.alert(getApiErrorMessage(err)),
+  });
+
   const data = query.data;
   if (query.isLoading) return <p className="text-slate-400">Cargando examen Office...</p>;
   if (!data) return <p className="text-rose-300">No se pudo cargar el examen.</p>;
@@ -39,26 +50,36 @@ export default function OfficeExamPanel() {
               PowerPoint · {summary.excelCount} Excel
             </p>
             <p className="mt-2 text-xs text-slate-500">
-              Solo visible para ti hasta que lo habilites. Los alumnos EXENTADOS (Top 10) pueden
-              contestarlo sin que afecte su calificación de 10.
+              Las calificaciones usan el ranking actual (Top 10 = exentado). Si cambian los puntos,
+              pulsa «Recalcular calificaciones».
             </p>
           </div>
-          <button
-            type="button"
-            disabled={toggleMutation.isPending}
-            onClick={() => toggleMutation.mutate(!exam.enabledForStudents)}
-            className={`rounded-xl px-5 py-2.5 text-sm font-bold disabled:opacity-60 ${
-              exam.enabledForStudents
-                ? "border border-amber-400/40 bg-amber-500/15 text-amber-100"
-                : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
-            }`}
-          >
-            {toggleMutation.isPending
-              ? "Guardando..."
-              : exam.enabledForStudents
-                ? "Deshabilitar para alumnos"
-                : "Habilitar examen para alumnos"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={recalcMutation.isPending}
+              onClick={() => recalcMutation.mutate()}
+              className="rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-5 py-2.5 text-sm font-bold text-cyan-100 hover:bg-cyan-500/25 disabled:opacity-60"
+            >
+              {recalcMutation.isPending ? "Recalculando..." : "Recalcular calificaciones"}
+            </button>
+            <button
+              type="button"
+              disabled={toggleMutation.isPending}
+              onClick={() => toggleMutation.mutate(!exam.enabledForStudents)}
+              className={`rounded-xl px-5 py-2.5 text-sm font-bold disabled:opacity-60 ${
+                exam.enabledForStudents
+                  ? "border border-amber-400/40 bg-amber-500/15 text-amber-100"
+                  : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+              }`}
+            >
+              {toggleMutation.isPending
+                ? "Guardando..."
+                : exam.enabledForStudents
+                  ? "Deshabilitar para alumnos"
+                  : "Habilitar examen para alumnos"}
+            </button>
+          </div>
         </div>
 
         {exam.enabledForStudents ? (

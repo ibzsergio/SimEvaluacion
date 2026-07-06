@@ -102,6 +102,38 @@ export async function finalizeAttempt(attemptId: string, answers: Record<string,
   });
 }
 
+/** Recalcula calificaciones de intentos enviados con el ranking y puntos actuales. */
+export async function recalculateAllSubmittedAttempts(teacherId: string) {
+  const exam = await ensureOfficeExam(teacherId);
+  const attempts = await prisma.officeExamAttempt.findMany({
+    where: { examId: exam.id, status: "SUBMITTED" },
+    include: { student: { select: { id: true, groupId: true } } },
+  });
+
+  let updated = 0;
+  for (const attempt of attempts) {
+    if (!attempt.student.groupId) continue;
+    const breakdown = await computeSubjectGrade(
+      attempt.studentId,
+      attempt.student.groupId,
+      attempt.correctCount ?? 0,
+      exam.questions.length,
+    );
+    await prisma.officeExamAttempt.update({
+      where: { id: attempt.id },
+      data: {
+        examScore4: breakdown.examScore4,
+        firmasScore6: breakdown.firmasScore6,
+        finalGrade: breakdown.finalGrade,
+        isExempt: breakdown.isExempt,
+      },
+    });
+    updated++;
+  }
+
+  return { updated, total: attempts.length };
+}
+
 export function publicQuestion(q: {
   id: string;
   program: OfficeProgram;

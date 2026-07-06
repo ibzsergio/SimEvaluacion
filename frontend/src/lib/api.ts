@@ -414,6 +414,11 @@ export async function updateOfficeExamSettings(enabledForStudents: boolean) {
   return data;
 }
 
+export async function recalculateOfficeExamGrades() {
+  const { data } = await api.post<{ updated: number; total: number }>("/teacher/office-exam/recalculate");
+  return data;
+}
+
 export async function fetchStudentOfficeExam() {
   const { data } = await api.get<OfficeExamState>("/student/office-exam");
   return data;
