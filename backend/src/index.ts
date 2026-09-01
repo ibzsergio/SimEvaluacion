@@ -19,6 +19,7 @@ import {
 import {
   getStudentAttendanceSummary,
   getStudentParticipationStars,
+  parseClassDayDate,
 } from "./classDayService.js";
 import {
   getStudentOfficeExamState,
@@ -254,6 +255,9 @@ app.post("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedR
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
+  const activityDate = parseClassDayDate(body.data.date);
+  if (!activityDate) return res.status(400).json({ error: "invalid_date" });
+
   const lastOrder = await prisma.activity.aggregate({
     where: { groupId: group.id },
     _max: { sortOrder: true },
@@ -262,7 +266,7 @@ app.post("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedR
 
   const created = await prisma.activity.create({
     data: {
-      date: new Date(body.data.date),
+      date: activityDate,
       name: body.data.name,
       maxPoints: body.data.maxPoints,
       signatureMax: 0,
@@ -291,10 +295,13 @@ app.put("/teacher/activities/:activityId", requireAuth, requireTeacher, async (r
   });
   if (!existing) return res.status(404).json({ error: "activity_not_found" });
 
+  const activityDate = parseClassDayDate(body.data.date);
+  if (!activityDate) return res.status(400).json({ error: "invalid_date" });
+
   const updated = await prisma.activity.update({
     where: { id: activityId },
     data: {
-      date: new Date(body.data.date),
+      date: activityDate,
       name: body.data.name.trim(),
       maxPoints: body.data.maxPoints,
     },
@@ -471,8 +478,8 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
   const activityRows = activities.map((a) => {
     const grade = byActivity.get(a.id) ?? null;
-    const dueEnd = new Date(a.date);
-    dueEnd.setHours(23, 59, 59, 999);
+    const dateIso = a.date.toISOString().slice(0, 10);
+    const dueEnd = new Date(`${dateIso}T23:59:59.999Z`);
     const isOverdue = !grade && Date.now() > dueEnd.getTime();
     const status: "pending" | "graded" = grade ? "graded" : "pending";
 
@@ -516,6 +523,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     ranking.length,
     myScore,
     ranking,
+    myGroup?.partialClosed ?? false,
   );
 
   const participationStars = await getStudentParticipationStars(req.auth!.userId, me.groupId);

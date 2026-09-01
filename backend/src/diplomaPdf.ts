@@ -120,7 +120,7 @@ function drawSeal(
 
 export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDocument> {
   const doc = new PDFDocument({ size: "LETTER", layout: "landscape", margin: 0 });
-  const exemption = getExemptionStatus(input.place);
+  const exemption = getExemptionStatus(input.place, true);
   const encouragement = getDiplomaEncouragement(input.place, input.totalStudents);
   const dateLabel = input.partialClosedAt.toLocaleDateString("es-MX", {
     day: "numeric",

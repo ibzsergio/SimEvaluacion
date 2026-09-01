@@ -1,4 +1,3 @@
-import { getExemptionStatus } from "../exemptionStatus.js";
 import { getGroupRanking } from "../groupRanking.js";
 import { getStudentTotalFirmas } from "./firmas.js";
 
@@ -31,7 +30,7 @@ export async function computeSubjectGrade(
   const { ranking } = await getGroupRanking(groupId);
   const entry = ranking.find((r) => r.studentId === studentId);
   const place = entry?.place ?? ranking.length;
-  const isExempt = getExemptionStatus(place).tier === "exempt";
+  const isExempt = entry?.exemption.tier === "exempt";
 
   const totalFirmas = await getStudentTotalFirmas(studentId, groupId);
   const place11 = ranking[10];

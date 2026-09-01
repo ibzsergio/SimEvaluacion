@@ -11,6 +11,12 @@ export type GroupRankingRow = RankingEntry & {
 };
 
 export async function getGroupRanking(groupId: string) {
+  const group = await prisma.classGroup.findUnique({
+    where: { id: groupId },
+    select: { partialClosed: true },
+  });
+  const partialClosed = group?.partialClosed ?? false;
+
   const activities = await prisma.activity.findMany({
     where: { groupId },
     select: { id: true },
@@ -57,7 +63,7 @@ export async function getGroupRanking(groupId: string) {
     ranking: ranking.map((r) => ({
       ...r,
       controlNumber: controlById.get(r.studentId) ?? null,
-      exemption: getExemptionStatus(r.place),
+      exemption: getExemptionStatus(r.place, partialClosed),
     })),
   };
 }

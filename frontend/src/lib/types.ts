@@ -38,7 +38,7 @@ export type StudentActivity = {
 };
 
 export type ExemptionStatus = {
-  tier: "exempt" | "can_exempt" | "keep_going";
+  tier: "exempt" | "can_exempt" | "keep_going" | "none";
   label: string;
   shortLabel: string;
 };

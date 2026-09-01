@@ -10,7 +10,9 @@ export default function StudentMotivationCard({
     ? "border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 via-cyan-500/10 to-slate-900/40"
     : motivation.exemption.tier === "can_exempt"
       ? "border-cyan-400/30 bg-gradient-to-br from-cyan-500/15 via-indigo-500/10 to-slate-900/40"
-      : "border-amber-400/30 bg-gradient-to-br from-amber-500/15 via-rose-500/5 to-slate-900/40";
+      : motivation.exemption.tier === "none"
+        ? "border-indigo-400/30 bg-gradient-to-br from-indigo-500/15 via-cyan-500/10 to-slate-900/40"
+        : "border-amber-400/30 bg-gradient-to-br from-amber-500/15 via-rose-500/5 to-slate-900/40";
 
   return (
     <section className={`glass mb-6 border p-6 ${styles}`}>

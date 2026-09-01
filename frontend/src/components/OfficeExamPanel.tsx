@@ -70,8 +70,8 @@ export default function OfficeExamPanel({ groups }: { groups: ClassGroup[] }) {
               PowerPoint · {summary.excelCount} Excel
             </p>
             <p className="mt-2 text-xs text-slate-500">
-              Las calificaciones usan el ranking actual (Top 10 = exentado). Si cambian los puntos,
-              pulsa «Recalcular calificaciones».
+              Las calificaciones usan el ranking actual. Top 10 = exentado solo cuando el parcial está
+              cerrado. Si cambian los puntos, pulsa «Recalcular calificaciones».
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -174,7 +174,7 @@ export default function OfficeExamPanel({ groups }: { groups: ClassGroup[] }) {
         <h3 className="text-base font-semibold text-white">Panorama general — Calificación materia</h3>
         <p className="mt-1 text-xs text-slate-500">
           Escala (6 pts) = (puntos alumno ÷ puntos del #11) × 6 · Examen (4 pts) = aciertos/75 × 4 ·
-          EXENTADOS: 10 fijo
+          EXENTADOS (parcial cerrado, Top 10): 10 fijo
         </p>
         <div className="mt-4 space-y-6">
           {rowsByGroup.map(({ group, rows }) => (

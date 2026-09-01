@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Top10Ranking from "./Top10Ranking";
 import { ExemptionBadge } from "./ExemptionBadge";
 import { fetchGroupRanking, updateGroupProgressSettings } from "../lib/api";
+import { getExemptionStatus } from "../lib/exemption";
 import type { ClassGroup } from "../lib/types";
 
 export default function GroupRankingPanel({
@@ -23,8 +24,12 @@ export default function GroupRankingPanel({
     enabled: !!selectedGroupId,
   });
 
-  const ranking = rankingQuery.data?.ranking ?? [];
-  const top10 = rankingQuery.data?.top10 ?? ranking.slice(0, 10);
+  const partialClosed = rankingQuery.data?.group?.partialClosed ?? selectedGroup?.partialClosed ?? false;
+  const ranking = (rankingQuery.data?.ranking ?? []).map((row) => ({
+    ...row,
+    exemption: getExemptionStatus(row.place, partialClosed),
+  }));
+  const top10 = ranking.slice(0, 10);
   const [plannedText, setPlannedText] = useState(
     selectedGroup?.plannedActivities != null ? String(selectedGroup.plannedActivities) : "",
   );
@@ -71,7 +76,9 @@ export default function GroupRankingPanel({
         </p>
         <p className="mt-2 text-xs text-slate-500">{rankingQuery.data?.rankingRule}</p>
         <p className="mt-1 text-xs text-slate-500">
-          Top 10: EXENTADO · Lugares 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS
+          {partialClosed
+            ? "Top 10: EXENTADO · Lugares 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS"
+            : "Parcial abierto: lugares 11–20 PUEDES EXENTAR · Resto NO DECAIGAS. Los EXENTADOS (Top 10) se confirman al cerrar el parcial."}
         </p>
 
         <div className="mt-4 grid gap-3 rounded-xl border border-white/10 bg-white/5 p-4 sm:grid-cols-3">
@@ -137,7 +144,7 @@ export default function GroupRankingPanel({
             <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-white">
               <span>🏁</span> Top 10 del grupo
             </h3>
-            <Top10Ranking entries={top10} showExemption />
+            <Top10Ranking entries={top10} showExemption partialClosed={partialClosed} />
           </div>
 
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-slate-400">

@@ -1,4 +1,5 @@
 import type { ExemptionStatus } from "../lib/types";
+import { getExemptionStatus } from "../lib/exemption";
 import { ExemptionBadge } from "./ExemptionBadge";
 
 export type Top10Entry = {
@@ -18,14 +19,8 @@ export function rankMedal(place: number) {
   return `${place}.`;
 }
 
-function exemptionFromPlace(place: number): ExemptionStatus {
-  if (place <= 10) {
-    return { tier: "exempt", label: "¡EXENTADO!", shortLabel: "EXENTADO" };
-  }
-  if (place <= 20) {
-    return { tier: "can_exempt", label: "¡TÚ PUEDES EXENTAR!", shortLabel: "PUEDES EXENTAR" };
-  }
-  return { tier: "keep_going", label: "¡ESTÁS CERCA, NO DECAIGAS!", shortLabel: "NO DECAIGAS" };
+function exemptionFromPlace(place: number, partialClosed = false): ExemptionStatus {
+  return getExemptionStatus(place, partialClosed);
 }
 
 export default function Top10Ranking({
@@ -33,11 +28,13 @@ export default function Top10Ranking({
   emptyMessage = "Aún no hay puntajes en el grupo.",
   highlightStudentId,
   showExemption = false,
+  partialClosed = false,
 }: {
   entries: Top10Entry[];
   emptyMessage?: string;
   highlightStudentId?: string;
   showExemption?: boolean;
+  partialClosed?: boolean;
 }) {
   const top10 = entries.slice(0, 10);
 
@@ -51,7 +48,7 @@ export default function Top10Ranking({
         const medal = rankMedal(entry.place);
         const isPodium = entry.place <= 3;
         const isMe = highlightStudentId != null && entry.studentId === highlightStudentId;
-        const exemption = entry.exemption ?? exemptionFromPlace(entry.place);
+        const exemption = entry.exemption ?? exemptionFromPlace(entry.place, partialClosed);
         return (
           <li
             key={entry.studentId}

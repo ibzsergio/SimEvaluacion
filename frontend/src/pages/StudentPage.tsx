@@ -4,9 +4,9 @@ import BadgeDisplay from "../components/BadgeDisplay";
 import Layout from "../components/Layout";
 import StudentCommunication from "../components/StudentCommunication";
 import StudentMotivationCard from "../components/StudentMotivationCard";
-import StudentOfficeExam from "../components/StudentOfficeExam";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
+import { getExemptionStatus } from "../lib/exemption";
 import { useAuth } from "../lib/auth";
 import type { ActivityStatus, StudentActivity } from "../lib/types";
 
@@ -37,6 +37,15 @@ export default function StudentPage() {
   const { summary } = data;
   const progress = data.courseProgress;
   const progressPct = progress.percent;
+  const partialClosed = data.group?.partialClosed ?? false;
+  const motivation = {
+    ...data.motivation,
+    exemption: getExemptionStatus(data.my.place, partialClosed),
+  };
+  const top10 = data.top10.map((entry) => ({
+    ...entry,
+    exemption: getExemptionStatus(entry.place, partialClosed),
+  }));
 
   const pendingActivities = data.activities.filter((a) => a.status === "pending");
   const gradedActivities = data.activities.filter((a) => a.status === "graded");
@@ -53,11 +62,9 @@ export default function StudentPage() {
       }
       footer={studentFooter}
     >
-      <StudentMotivationCard motivation={data.motivation} />
+      <StudentMotivationCard motivation={motivation} />
 
       <StudentCommunication />
-
-      <StudentOfficeExam />
 
       {data.group?.partialClosed ? (
         <section className="glass mb-6 border border-indigo-400/30 bg-indigo-500/10 p-6">
@@ -126,8 +133,8 @@ export default function StudentPage() {
             #{data.my.place}
             <span className="text-lg font-medium text-slate-400"> / {data.my.totalStudents}</span>
           </p>
-          <p className="mt-1 text-sm font-semibold text-indigo-200">
-            {data.motivation.exemption.label}
+            <p className="mt-1 text-sm font-semibold text-indigo-200">
+            {motivation.exemption.label || motivation.title}
           </p>
           <p className="mt-2 text-sm text-slate-300">
             Puntos totales: <span className="font-bold text-cyan-300">{data.my.score}</span>
@@ -156,7 +163,12 @@ export default function StudentPage() {
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
             <span>🏁</span> Top 10 del grupo
           </h2>
-          <Top10Ranking entries={data.top10} highlightStudentId={user?.id} showExemption />
+          <Top10Ranking
+            entries={top10}
+            highlightStudentId={user?.id}
+            showExemption
+            partialClosed={partialClosed}
+          />
           {!data.my.inTop10 ? (
             <p className="mt-3 text-xs text-slate-500">
               Si no apareces en la lista, tu lugar actual es #{data.my.place}. Sigue sumando puntos.

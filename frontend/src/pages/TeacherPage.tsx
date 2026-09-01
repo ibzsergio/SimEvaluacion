@@ -5,7 +5,6 @@ import ClassDayPanel from "../components/ClassDayPanel";
 import GroupGradesImportPanel from "../components/GroupGradesImportPanel";
 import GroupRankingPanel from "../components/GroupRankingPanel";
 import GroupStudentsPanel from "../components/GroupStudentsPanel";
-import OfficeExamPanel from "../components/OfficeExamPanel";
 import SemesterPanel from "../components/SemesterPanel";
 import TeacherCommsPanel from "../components/TeacherCommsPanel";
 import WeeklyWinnersPanel from "../components/WeeklyWinnersPanel";
@@ -22,16 +21,31 @@ import {
   updateActivity,
 } from "../lib/api";
 import { formatGroupCodesPlus, formatTeacherGroupsSubtitle } from "../lib/groups";
+import {
+  formatCalendarDate,
+  formatDateTime,
+  getActivityKindLabel,
+  todayLocalIso,
+  toDateInputValue,
+} from "../lib/dates";
 import type { Activity, GradeRow } from "../lib/types";
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return todayLocalIso();
 }
 
 export default function TeacherPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<
-    "alumnos" | "actividades" | "ranking" | "semanas" | "examen" | "comunicacion" | "semestre" | "asistencia" | "acceso"
+    | "alumnos"
+    | "actividades"
+    | "importar"
+    | "ranking"
+    | "semanas"
+    | "comunicacion"
+    | "semestre"
+    | "asistencia"
+    | "acceso"
   >("alumnos");
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -193,14 +207,14 @@ export default function TeacherPage() {
         <TabButton active={tab === "actividades"} onClick={() => setTab("actividades")}>
           Actividades y calificaciones
         </TabButton>
+        <TabButton active={tab === "importar"} onClick={() => setTab("importar")}>
+          Importar Excel
+        </TabButton>
         <TabButton active={tab === "ranking"} onClick={() => setTab("ranking")}>
           Ranking del grupo
         </TabButton>
         <TabButton active={tab === "semanas"} onClick={() => setTab("semanas")}>
           Semanas y parcial
-        </TabButton>
-        <TabButton active={tab === "examen"} onClick={() => setTab("examen")}>
-          Examen Office
         </TabButton>
         <TabButton active={tab === "comunicacion"} onClick={() => setTab("comunicacion")}>
           Comunicación
@@ -234,8 +248,16 @@ export default function TeacherPage() {
         </button>
       </div>
 
-      {tab === "examen" ? (
-        <OfficeExamPanel groups={groups} />
+      {tab === "importar" ? (
+        groupsQuery.isLoading ? (
+          <p className="text-slate-400">Cargando grupos...</p>
+        ) : selectedGroupId ? (
+          <GroupGradesImportPanel
+            groups={groups}
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={(id) => setSelectedGroupId(id)}
+          />
+        ) : null
       ) : tab === "comunicacion" ? (
         <TeacherCommsPanel />
       ) : tab === "semestre" ? (
@@ -307,17 +329,6 @@ export default function TeacherPage() {
             ))}
           </div>
 
-          {selectedGroupId ? (
-            <GroupGradesImportPanel
-              groups={groups}
-              selectedGroupId={selectedGroupId}
-              onSelectGroup={(id) => {
-                setSelectedGroupId(id);
-                setSelectedId(null);
-              }}
-            />
-          ) : null}
-
           <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
             <section className="glass p-5">
               <h2 className="mb-1 text-lg font-semibold text-white">
@@ -355,7 +366,7 @@ export default function TeacherPage() {
                 }}
               >
                 <label className="block text-xs text-slate-400">
-                  Fecha
+                  Fecha de la actividad
                   <input
                     type="date"
                     value={form.date}
@@ -364,6 +375,9 @@ export default function TeacherPage() {
                     required
                   />
                 </label>
+                <p className="text-xs text-slate-500">
+                  La fecha de publicación se registra al guardar la actividad.
+                </p>
                 <label className="block text-xs text-slate-400">
                   Nombre de la actividad
                   <input
@@ -425,7 +439,7 @@ export default function TeacherPage() {
               <div className="mt-6">
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Actividades del grupo</h3>
                 <ul className="max-h-64 space-y-2 overflow-auto pr-1">
-                  {activities.map((a) => (
+                  {activities.map((a, index) => (
                     <li
                       key={a.id}
                       className={`rounded-xl border text-sm transition ${
@@ -440,13 +454,22 @@ export default function TeacherPage() {
                           onClick={() => setSelectedId(a.id)}
                           className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left hover:bg-white/5"
                         >
+                          <p className="text-xs font-bold uppercase tracking-wide text-cyan-400/90">
+                            {getActivityKindLabel(index, a.name)}
+                          </p>
                           <p
                             className={`font-medium ${a.id === activeId ? "text-cyan-100" : "text-slate-200"}`}
                           >
                             {a.name}
                           </p>
                           <p className="text-xs text-slate-400">
-                            {formatDate(a.date)} · {a.maxPoints} pts
+                            {formatCalendarDate(a.date)} · {a.maxPoints} pts
+                            {a.createdAt ? (
+                              <span className="text-slate-500">
+                                {" "}
+                                · Publicada {formatDateTime(a.createdAt)}
+                              </span>
+                            ) : null}
                           </p>
                         </button>
                         <div className="flex shrink-0 flex-col gap-1 pt-1">
@@ -481,11 +504,15 @@ export default function TeacherPage() {
             <section className="glass p-5">
               {!activeId || !selectedActivity ? (
                 <p className="text-slate-400">
-                  Crea una actividad o importa alumnos en la pestaña &quot;Alumnos (Excel)&quot;.
+                  Selecciona una actividad de la lista o publica una nueva arriba.
                 </p>
               ) : (
                 <GradesTable
                   activity={selectedActivity}
+                  activityIndex={Math.max(
+                    0,
+                    activities.findIndex((a) => a.id === activeId),
+                  )}
                   rows={gradesQuery.data?.rows ?? []}
                   loading={gradesQuery.isLoading}
                   onSaved={() => {
@@ -528,11 +555,13 @@ type PointsDraft = { points: string };
 
 function GradesTable({
   activity,
+  activityIndex,
   rows,
   loading,
   onSaved,
 }: {
   activity: Activity;
+  activityIndex: number;
   rows: GradeRow[];
   loading: boolean;
   onSaved: () => void;
@@ -666,9 +695,15 @@ function GradesTable({
     <div>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-cyan-400/90">
+            {getActivityKindLabel(activityIndex, activity.name)}
+          </p>
           <h2 className="text-lg font-semibold text-white">{activity.name}</h2>
           <p className="text-sm text-slate-400">
-            {formatDate(activity.date)} · Valor máximo: {activity.maxPoints} pts
+            {formatCalendarDate(activity.date)} · Valor máximo: {activity.maxPoints} pts
+            {activity.createdAt ? (
+              <span className="text-slate-500"> · Publicada {formatDateTime(activity.createdAt)}</span>
+            ) : null}
           </p>
         </div>
         {rows.length > 0 ? (
@@ -787,27 +822,4 @@ function GradesTable({
       )}
     </div>
   );
-}
-
-function toDateInputValue(value: string) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value.slice(0, 10);
-  return d.toISOString().slice(0, 10);
-}
-
-function formatDate(value: string) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function formatDateTime(value: string) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("es-MX", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }

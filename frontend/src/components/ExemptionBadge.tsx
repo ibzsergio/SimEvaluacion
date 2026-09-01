@@ -7,10 +7,16 @@ export function exemptionBadgeClass(tier: ExemptionStatus["tier"]) {
   if (tier === "can_exempt") {
     return "border-cyan-400/40 bg-cyan-500/15 text-cyan-100";
   }
+  if (tier === "none") {
+    return "";
+  }
   return "border-amber-400/40 bg-amber-500/15 text-amber-100";
 }
 
 export function ExemptionBadge({ exemption }: { exemption: ExemptionStatus }) {
+  if (exemption.tier === "none" || !exemption.shortLabel) {
+    return <span className="text-xs text-slate-500">—</span>;
+  }
   return (
     <span
       className={`inline-block rounded-full border px-2.5 py-1 text-xs font-bold tracking-wide ${exemptionBadgeClass(exemption.tier)}`}
@@ -21,6 +27,7 @@ export function ExemptionBadge({ exemption }: { exemption: ExemptionStatus }) {
 }
 
 export function ExemptionBanner({ exemption }: { exemption: ExemptionStatus }) {
+  if (exemption.tier === "none" || !exemption.label) return null;
   return (
     <div
       className={`rounded-xl border px-4 py-3 text-center ${exemptionBadgeClass(exemption.tier)}`}

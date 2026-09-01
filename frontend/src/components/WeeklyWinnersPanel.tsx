@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { closeCurrentGroupWeek, fetchGroupWeeks, fetchPartialSummary, updateGroupPartialSettings } from "../lib/api";
+import { getExemptionStatus } from "../lib/exemption";
 import DiplomaPreviewSection, { DiplomaRowActions } from "./DiplomaPreviewSection";
 import { ExemptionBadge } from "./ExemptionBadge";
 import type { ClassGroup, GroupWeekRow, PartialSummaryRow } from "../lib/types";
@@ -143,13 +144,15 @@ export default function WeeklyWinnersPanel({
       <section className="glass mt-6 p-6">
         <h2 className="text-lg font-semibold text-white">Resumen del parcial</h2>
         <p className="mt-1 text-xs text-slate-500">
-          Ranking final · Top 10: EXENTADO · 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS
+          {partialClosed
+            ? "Ranking final · Top 10: EXENTADO · 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS"
+            : "Parcial abierto · 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS · EXENTADO al cerrar parcial (Top 10)"}
         </p>
 
         {partialQuery.isLoading ? (
           <p className="mt-6 text-sm text-slate-400">Cargando resumen...</p>
         ) : (
-          <PartialTable rows={partialRows} groupId={selectedGroupId} />
+          <PartialTable rows={partialRows} groupId={selectedGroupId} partialClosed={partialClosed} />
         )}
       </section>
 
@@ -218,7 +221,15 @@ function WeeksTable({ weeks }: { weeks: GroupWeekRow[] }) {
   );
 }
 
-function PartialTable({ rows, groupId }: { rows: PartialSummaryRow[]; groupId: string }) {
+function PartialTable({
+  rows,
+  groupId,
+  partialClosed,
+}: {
+  rows: PartialSummaryRow[];
+  groupId: string;
+  partialClosed: boolean;
+}) {
   if (!rows.length) {
     return <p className="mt-6 text-sm text-slate-500">Sin alumnos.</p>;
   }
@@ -256,7 +267,7 @@ function PartialTable({ rows, groupId }: { rows: PartialSummaryRow[]; groupId: s
                 {r.displayName}
               </td>
               <td className="px-4 py-3">
-                <ExemptionBadge exemption={r.exemption} />
+                <ExemptionBadge exemption={getExemptionStatus(place, partialClosed)} />
               </td>
               <td className="px-4 py-3 text-right font-bold text-cyan-300">{r.totalPoints}</td>
               <td className="px-4 py-3 text-right font-bold text-amber-200">{r.weeksWon}</td>

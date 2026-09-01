@@ -1,4 +1,4 @@
-export type ExemptionTier = "exempt" | "can_exempt" | "keep_going";
+export type ExemptionTier = "exempt" | "can_exempt" | "keep_going" | "none";
 
 export type ExemptionStatus = {
   tier: ExemptionTier;
@@ -9,12 +9,35 @@ export type ExemptionStatus = {
 };
 
 /** Estatus de exención según lugar en el ranking del parcial. */
-export function getExemptionStatus(place: number): ExemptionStatus {
+export function getExemptionStatus(place: number, partialClosed = false): ExemptionStatus {
+  if (partialClosed) {
+    if (place <= 10) {
+      return {
+        tier: "exempt",
+        label: "¡EXENTADO!",
+        shortLabel: "EXENTADO",
+      };
+    }
+    if (place <= 20) {
+      return {
+        tier: "can_exempt",
+        label: "¡TÚ PUEDES EXENTAR!",
+        shortLabel: "PUEDES EXENTAR",
+      };
+    }
+    return {
+      tier: "keep_going",
+      label: "¡ESTÁS CERCA, NO DECAIGAS!",
+      shortLabel: "NO DECAIGAS",
+    };
+  }
+
+  // Parcial abierto: aún no se confirma EXENTADO (solo al cerrar el parcial, Top 10).
   if (place <= 10) {
     return {
-      tier: "exempt",
-      label: "¡EXENTADO!",
-      shortLabel: "EXENTADO",
+      tier: "none",
+      label: "",
+      shortLabel: "",
     };
   }
   if (place <= 20) {
