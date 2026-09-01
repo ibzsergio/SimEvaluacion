@@ -1,5 +1,5 @@
 import { prisma } from "./prisma.js";
-import { parseClassDayDate, todayClassDayDate } from "./classDayService.js";
+import { formatClassDayIso, parseClassDayDate, todayClassDayDate } from "./classDayService.js";
 import { getGroupRanking } from "./groupRanking.js";
 
 export const SEATING_ROWS = 6;
@@ -272,74 +272,82 @@ const sessionInclude = {
   },
 } as const;
 
-async function findSeatingSession(groupId: string, date: Date) {
-  return prisma.seatingSession.findFirst({
-    where: { groupId, date },
-    orderBy: { createdAt: "asc" },
+async function findSeatingSession(groupId: string, dateIso: string) {
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT \`id\`
+    FROM \`SeatingSession\`
+    WHERE \`groupId\` = ${groupId} AND \`date\` = ${dateIso}
+    ORDER BY \`createdAt\` ASC
+    LIMIT 1
+  `;
+  const id = rows[0]?.id;
+  if (!id) return null;
+  return prisma.seatingSession.findUnique({
+    where: { id },
     include: sessionInclude,
   });
 }
 
-type SeatingTx = Pick<typeof prisma, "seatingSession" | "seatingAssignment">;
+type SeatingTx = Pick<typeof prisma, "seatingSession" | "seatingAssignment" | "$executeRaw">;
 
-async function saveSeatingSession(
+async function deleteSeatingSessionsForDay(tx: SeatingTx, groupId: string, dateIso: string) {
+  await tx.$executeRaw`
+    DELETE sa FROM \`SeatingAssignment\` sa
+    INNER JOIN \`SeatingSession\` ss ON sa.\`sessionId\` = ss.\`id\`
+    WHERE ss.\`groupId\` = ${groupId} AND ss.\`date\` = ${dateIso}
+  `;
+  await tx.$executeRaw`
+    DELETE FROM \`SeatingSession\`
+    WHERE \`groupId\` = ${groupId} AND \`date\` = ${dateIso}
+  `;
+}
+
+async function replaceSeatingSession(
   tx: SeatingTx,
   data: {
     groupId: string;
-    date: Date;
+    dateIso: string;
     mode: SeatingMode;
     theme: SeatingTheme;
     createdById: string;
   },
 ) {
-  const sessions = await tx.seatingSession.findMany({
-    where: { groupId: data.groupId, date: data.date },
-    orderBy: { createdAt: "asc" },
-    select: { id: true },
+  const date = parseClassDayDate(data.dateIso);
+  if (!date) throw new Error("invalid_date");
+
+  await deleteSeatingSessionsForDay(tx, data.groupId, data.dateIso);
+
+  return tx.seatingSession.create({
+    data: {
+      groupId: data.groupId,
+      date,
+      mode: data.mode,
+      theme: data.theme,
+      createdById: data.createdById,
+    },
   });
-
-  if (sessions.length > 1) {
-    const removeIds = sessions.slice(1).map((s) => s.id);
-    await tx.seatingAssignment.deleteMany({ where: { sessionId: { in: removeIds } } });
-    await tx.seatingSession.deleteMany({ where: { id: { in: removeIds } } });
-  }
-
-  const keep = sessions[0];
-  if (keep) {
-    return tx.seatingSession.update({
-      where: { id: keep.id },
-      data: {
-        mode: data.mode,
-        theme: data.theme,
-        createdById: data.createdById,
-      },
-    });
-  }
-
-  return tx.seatingSession.create({ data });
 }
 
 export async function dedupeSeatingSessions() {
-  const dupes = await prisma.$queryRaw<Array<{ groupId: string; date: Date; cnt: bigint }>>`
-    SELECT \`groupId\`, \`date\`, COUNT(*) AS cnt
-    FROM \`SeatingSession\`
-    GROUP BY \`groupId\`, \`date\`
-    HAVING COUNT(*) > 1
-  `;
+  const sessions = await prisma.seatingSession.findMany({
+    orderBy: { createdAt: "asc" },
+    select: { id: true, groupId: true, date: true },
+  });
 
-  for (const row of dupes) {
-    const sessions = await prisma.seatingSession.findMany({
-      where: { groupId: row.groupId, date: row.date },
-      orderBy: { createdAt: "asc" },
-      select: { id: true },
-    });
-    const removeIds = sessions.slice(1).map((s) => s.id);
+  const byKey = new Map<string, string[]>();
+  for (const session of sessions) {
+    const key = `${session.groupId}:${formatClassDayIso(session.date)}`;
+    const ids = byKey.get(key) ?? [];
+    ids.push(session.id);
+    byKey.set(key, ids);
+  }
+
+  for (const ids of byKey.values()) {
+    const removeIds = ids.slice(1);
     if (!removeIds.length) continue;
     await prisma.seatingAssignment.deleteMany({ where: { sessionId: { in: removeIds } } });
     await prisma.seatingSession.deleteMany({ where: { id: { in: removeIds } } });
-    console.log(
-      `[startup] Removed ${removeIds.length} duplicate seating session(s) for group ${row.groupId} on ${row.date.toISOString().slice(0, 10)}`,
-    );
+    console.log(`[startup] Removed ${removeIds.length} duplicate seating session(s).`);
   }
 }
 
@@ -347,7 +355,8 @@ export async function getSeatingPlan(teacherId: string, groupId: string, date: D
   const loaded = await loadGroupStudents(groupId, teacherId);
   if (!loaded) return null;
 
-  const session = await findSeatingSession(groupId, date);
+  const dateIso = formatClassDayIso(date);
+  const session = await findSeatingSession(groupId, dateIso);
 
   const studentIndex = new Map(loaded.students.map((s, i) => [s.id, i]));
   const mode = (session?.mode as SeatingMode) ?? "random";
@@ -366,7 +375,7 @@ export async function getSeatingPlan(teacherId: string, groupId: string, date: D
 
   return {
     group: loaded.group,
-    date: date.toISOString().slice(0, 10),
+    date: dateIso,
     rows: SEATING_ROWS,
     cols: SEATING_COLS,
     capacity: SEATING_CAPACITY,
@@ -394,17 +403,17 @@ export async function shuffleSeatingPlan(
   const theme = options.theme ?? "column_colors";
   const mode = options.mode ?? "random";
   const pairs = await buildAssignments(loaded.students, mode, theme, groupId);
+  const dateIso = formatClassDayIso(date);
 
   await prisma.$transaction(async (tx) => {
-    const session = await saveSeatingSession(tx, {
+    const session = await replaceSeatingSession(tx, {
       groupId,
-      date,
+      dateIso,
       mode,
       theme,
       createdById: teacherId,
     });
 
-    await tx.seatingAssignment.deleteMany({ where: { sessionId: session.id } });
     if (pairs.length) {
       await tx.seatingAssignment.createMany({
         data: pairs.map((p) => ({
@@ -422,7 +431,8 @@ export async function shuffleSeatingPlan(
 }
 
 export async function getStudentSeating(studentId: string, groupId: string, date: Date) {
-  const session = await findSeatingSession(groupId, date);
+  const dateIso = formatClassDayIso(date);
+  const session = await findSeatingSession(groupId, dateIso);
 
   if (!session) return null;
 
@@ -438,7 +448,7 @@ export async function getStudentSeating(studentId: string, groupId: string, date
   const listPosition = students.findIndex((s) => s.id === studentId) + 1;
 
   return {
-    date: session.date.toISOString().slice(0, 10),
+    date: dateIso,
     theme: session.theme as SeatingTheme,
     seatNumber: seat.seatNumber,
     row: seat.row,
