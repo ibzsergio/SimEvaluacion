@@ -5,6 +5,7 @@ import ClassDayPanel from "../components/ClassDayPanel";
 import GroupGradesImportPanel from "../components/GroupGradesImportPanel";
 import GroupRankingPanel from "../components/GroupRankingPanel";
 import GroupStudentsPanel from "../components/GroupStudentsPanel";
+import SeatingPanel from "../components/SeatingPanel";
 import SemesterPanel from "../components/SemesterPanel";
 import TeacherCommsPanel from "../components/TeacherCommsPanel";
 import WeeklyWinnersPanel from "../components/WeeklyWinnersPanel";
@@ -45,6 +46,7 @@ export default function TeacherPage() {
     | "comunicacion"
     | "semestre"
     | "asistencia"
+    | "asientos"
     | "acceso"
   >("alumnos");
   const [selectedGroupId, setSelectedGroupId] = useState("");
@@ -225,6 +227,9 @@ export default function TeacherPage() {
         <TabButton active={tab === "asistencia"} onClick={() => setTab("asistencia")}>
           Asistencia
         </TabButton>
+        <TabButton active={tab === "asientos"} onClick={() => setTab("asientos")}>
+          Butacas
+        </TabButton>
         <TabButton active={tab === "acceso"} onClick={() => setTab("acceso")}>
           QR / Acceso
         </TabButton>
@@ -267,6 +272,16 @@ export default function TeacherPage() {
           <p className="text-slate-400">Cargando grupos...</p>
         ) : selectedGroupId ? (
           <ClassDayPanel
+            groups={groups}
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={(id) => setSelectedGroupId(id)}
+          />
+        ) : null
+      ) : tab === "asientos" ? (
+        groupsQuery.isLoading ? (
+          <p className="text-slate-400">Cargando grupos...</p>
+        ) : selectedGroupId ? (
+          <SeatingPanel
             groups={groups}
             selectedGroupId={selectedGroupId}
             onSelectGroup={(id) => setSelectedGroupId(id)}

@@ -103,6 +103,53 @@ export type StudentProgress = {
   }[];
   rankingRule: string;
   activities: StudentActivity[];
+  seating?: StudentSeating | null;
+};
+
+export type StudentSeating = {
+  date: string;
+  theme: "column_colors" | "random_colors";
+  seatNumber: number;
+  row: number;
+  col: number;
+  label: string;
+  color: string;
+  colorName: string;
+  columnColorName: string;
+  listPosition: number | null;
+  listNumber: number | null;
+  displayName: string;
+};
+
+export type SeatingCell = {
+  row: number;
+  col: number;
+  seatNumber: number;
+  empty: boolean;
+  color: string | null;
+  colorName: string | null;
+  student: {
+    id: string;
+    displayName: string;
+    listNumber: number | null;
+    listPosition: number;
+    controlNumber: string | null;
+  } | null;
+};
+
+export type SeatingPlan = {
+  group: { id: string; code: string; shift: string };
+  date: string;
+  rows: number;
+  cols: number;
+  capacity: number;
+  theme: "column_colors" | "random_colors";
+  assignedCount: number;
+  studentCount: number;
+  unseatedCount: number;
+  overflow: boolean;
+  grid: SeatingCell[];
+  updatedAt: string | null;
 };
 
 export type Activity = {

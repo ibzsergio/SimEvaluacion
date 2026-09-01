@@ -1,9 +1,10 @@
 import { prisma } from "./prisma.js";
+import { getParticipationStarsByStudent } from "./classDayService.js";
 import { getExemptionStatus } from "./exemptionStatus.js";
 import { buildGroupRanking, type RankingEntry } from "./ranking.js";
 
 export const RANKING_RULE =
-  "El lugar depende de la suma de puntos de todas las actividades. Si hay empate, gana quien fue calificado antes (primera calificación por actividad).";
+  "El lugar depende de los puntos de actividades más las estrellas de participación (1 estrella = 1 punto, máx. 3 por día). Si hay empate, gana quien fue calificado antes (primera calificación por actividad).";
 
 export type GroupRankingRow = RankingEntry & {
   controlNumber: string | null;
@@ -34,6 +35,7 @@ export async function getGroupRanking(groupId: string) {
     _sum: { points: true },
   });
   const scoreByStudent = new Map(totals.map((t) => [t.studentId, t._sum.points ?? 0]));
+  const participationByStudent = await getParticipationStarsByStudent(groupId);
 
   // Usar gradedAt (primera calificación): no se actualiza al recalificar.
   const allGrades = await prisma.grade.findMany({
@@ -46,7 +48,7 @@ export async function getGroupRanking(groupId: string) {
       studentId: s.id,
       displayName: s.displayName,
       listNumber: s.listNumber,
-      score: scoreByStudent.get(s.id) ?? 0,
+      score: (scoreByStudent.get(s.id) ?? 0) + (participationByStudent.get(s.id) ?? 0),
     })),
     activities.map((a) => a.id),
     allGrades.map((g) => ({

@@ -24,6 +24,12 @@ import {
   todayClassDayDate,
 } from "./classDayService.js";
 import {
+  getSeatingPlan,
+  resolveSeatingDate,
+  shuffleSeatingPlan,
+  type SeatingTheme,
+} from "./seatingService.js";
+import {
   buildDayAttendanceWorkbook,
   buildWeekAttendanceWorkbook,
   resolveAttendanceExportDate,
@@ -1539,3 +1545,43 @@ teacherGroupsRouter.get(
     );
   },
 );
+
+teacherGroupsRouter.get("/groups/:groupId/seating", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const date = resolveSeatingDate(asTrimmedString(req.query.date));
+  if (!date) return res.status(400).json({ error: "invalid_date" });
+
+  const plan = await getSeatingPlan(req.auth!.userId, groupId, date);
+  if (!plan) return res.status(404).json({ error: "group_not_found" });
+  return res.json(plan);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/seating/shuffle", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      date: z.string().optional(),
+      theme: z.enum(["column_colors", "random_colors"]).optional(),
+    })
+    .safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const date = resolveSeatingDate(body.data.date);
+  if (!date) return res.status(400).json({ error: "invalid_date" });
+
+  try {
+    const plan = await shuffleSeatingPlan(
+      req.auth!.userId,
+      groupId,
+      date,
+      (body.data.theme ?? "column_colors") as SeatingTheme,
+    );
+    if (!plan) return res.status(404).json({ error: "group_not_found" });
+    return res.json(plan);
+  } catch (err) {
+    if (err instanceof Error && err.message === "group_not_found") {
+      return res.status(404).json({ error: "group_not_found" });
+    }
+    throw err;
+  }
+});

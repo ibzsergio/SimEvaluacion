@@ -9,6 +9,7 @@ import type {
   GroupRanking,
   GroupWeeks,
   PartialSummary,
+  SeatingPlan,
   OfficeExamTeacherData,
   OfficeExamState,
   StudentCommsData,
@@ -686,6 +687,25 @@ export async function downloadWeekAttendancePdf(
     `/teacher/groups/${groupId}/attendance/week.pdf?date=${encodeURIComponent(anchorDate)}`,
     `asistencia_semana_grupo_${groupCode}_${anchorDate}.pdf`,
   );
+}
+
+export async function fetchSeatingPlan(groupId: string, date: string) {
+  const { data } = await api.get<SeatingPlan>(`/teacher/groups/${groupId}/seating`, {
+    params: { date },
+  });
+  return data;
+}
+
+export async function shuffleSeatingPlan(
+  groupId: string,
+  date: string,
+  theme: "column_colors" | "random_colors" = "column_colors",
+) {
+  const { data } = await api.post<SeatingPlan>(`/teacher/groups/${groupId}/seating/shuffle`, {
+    date,
+    theme,
+  });
+  return data;
 }
 
 // El alumno ya no registra entregas. La actividad se considera entregada al calificar.

@@ -4,6 +4,7 @@ import BadgeDisplay from "../components/BadgeDisplay";
 import Layout from "../components/Layout";
 import StudentCommunication from "../components/StudentCommunication";
 import StudentMotivationCard from "../components/StudentMotivationCard";
+import StudentSeatingCard from "../components/StudentSeatingCard";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
 import { getExemptionStatus } from "../lib/exemption";
@@ -64,6 +65,8 @@ export default function StudentPage() {
     >
       <StudentMotivationCard motivation={motivation} />
 
+      {data.seating ? <StudentSeatingCard seating={data.seating} /> : null}
+
       <StudentCommunication />
 
       {data.group?.partialClosed ? (
@@ -109,7 +112,7 @@ export default function StudentPage() {
               {data.classEngagement.participationStars > 12 ? "…" : ""}
             </p>
             <p className="text-sm text-slate-300">
-              {data.classEngagement.participationStars} estrellas · suman en tu escala de calificación
+              {data.classEngagement.participationStars} estrellas · suman 1 pt c/u en tu ranking y escala
             </p>
           </section>
           <section className="glass rounded-xl px-4 py-3">

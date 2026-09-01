@@ -23,7 +23,7 @@ type SubmissionRow = {
 };
 
 /**
- * Orden del grupo: suma de puntos de todas las actividades (mayor primero).
+ * Orden del grupo: puntos de actividades + estrellas de participación (mayor primero).
  * Empate en puntos: quien fue calificado antes en más actividades (menor suma de posición por actividad).
  * Luego: más veces primero en ser calificado, promedio de fecha más temprano, número de lista, nombre.
  * Cada alumno tiene un lugar único (1, 2, 3…).

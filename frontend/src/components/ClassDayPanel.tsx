@@ -181,8 +181,8 @@ export default function ClassDayPanel({
           <div>
             <h2 className="text-lg font-semibold text-white">Asistencia y participación</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Las estrellas suman puntos en la escala del alumno (1 estrella = 1 punto de firmas). Toca una
-              estrella para asignar; vuelve a tocar la misma para bajar o quitar todas.
+              Las estrellas suman 1 punto c/u en el ranking (máx. 3 por día). Toca una estrella para
+              asignar; vuelve a tocar la misma para bajar o quitar todas.
             </p>
           </div>
           <label className="block text-xs text-slate-400">

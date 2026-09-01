@@ -32,6 +32,7 @@ model ClassGroup {
   announcements Announcement[]
   tasks         Task[]
   classDayRecords ClassDayRecord[]
+  seatingSessions SeatingSession[]
 
   /// Meta de actividades del periodo (para progreso). Si es null, se usa el total publicado.
   plannedActivities Int?
@@ -82,6 +83,8 @@ model User {
   schoolCalendar    SchoolCalendar?          @relation("TeacherSchoolCalendar")
   classDayMarked    ClassDayRecord[]         @relation("ClassDayMarkedBy")
   classDayRecords   ClassDayRecord[]         @relation("StudentClassDay")
+  seatingAssignments SeatingAssignment[]     @relation("StudentSeating")
+  seatingSessionsCreated SeatingSession[]     @relation("SeatingCreatedBy")
 
   @@index([groupId])
   @@index([role])
@@ -323,5 +326,42 @@ model ClassDayRecord {
 
   @@unique([groupId, studentId, date])
   @@index([groupId, date])
+  @@index([studentId])
+}
+
+/// Acomodo de butacas 6×6 por grupo y fecha de clase.
+model SeatingSession {
+  id          String   @id @default(cuid())
+  groupId     String
+  date        DateTime @db.Date
+  /// column_colors | random_colors
+  theme       String   @default("column_colors")
+  createdById String
+  createdAt   DateTime @default(now())
+
+  group       ClassGroup          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy   User                @relation("SeatingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  assignments SeatingAssignment[]
+
+  @@unique([groupId, date])
+  @@index([groupId, date])
+}
+
+model SeatingAssignment {
+  id        String @id @default(cuid())
+  sessionId String
+  studentId String
+  /// Fila 1–6 (1 = frente al docente).
+  row       Int
+  /// Columna 1–6 (izquierda a derecha).
+  col       Int
+  /// Color hex para dinámica visual (#rrggbb).
+  color     String
+
+  session SeatingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User           @relation("StudentSeating", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@unique([sessionId, row, col])
   @@index([studentId])
 }

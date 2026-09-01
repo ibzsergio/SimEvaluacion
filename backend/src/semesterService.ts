@@ -28,6 +28,7 @@ export async function resetSemesterForTeacher(
 
   if (groupIds.length > 0) {
     await prisma.classDayRecord.deleteMany({ where: { groupId: { in: groupIds } } });
+    await prisma.seatingSession.deleteMany({ where: { groupId: { in: groupIds } } });
     await prisma.groupWeek.deleteMany({ where: { groupId: { in: groupIds } } });
     await prisma.activity.deleteMany({ where: { groupId: { in: groupIds } } });
     await prisma.classGroup.updateMany({

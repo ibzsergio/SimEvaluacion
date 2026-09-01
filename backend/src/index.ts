@@ -20,6 +20,7 @@ import {
   getStudentAttendanceSummary,
   getStudentParticipationStars,
   parseClassDayDate,
+  todayClassDayDate,
 } from "./classDayService.js";
 import {
   getStudentOfficeExamState,
@@ -30,6 +31,7 @@ import {
 } from "./officeExam/officeExamRoutes.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
+import { getStudentSeating } from "./seatingService.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
 
 const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:5173")
@@ -528,6 +530,11 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
   const participationStars = await getStudentParticipationStars(req.auth!.userId, me.groupId);
   const attendance = await getStudentAttendanceSummary(req.auth!.userId, me.groupId);
+  const seating = await getStudentSeating(
+    req.auth!.userId,
+    me.groupId,
+    todayClassDayDate(),
+  );
 
   return res.json({
     group: myGroup,
@@ -544,6 +551,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
       participationStars,
       attendance,
     },
+    seating,
     motivation,
     summary,
     top10,
