@@ -1119,7 +1119,7 @@ teacherGroupsRouter.put("/groups/:groupId/class-day", async (req: AuthedRequest,
       error: "class_day_failed",
       message:
         friendly ??
-        "No se pudo guardar el pase de lista. Recarga la página e intenta de nuevo.",
+        "No se pudo guardar el pase de lista. Recarga la página, reinicia el backend si usas local, e intenta otra vez.",
       detail,
     });
   }

@@ -114,7 +114,13 @@ export function humanizeClassDaySaveError(err: unknown): string | null {
       String((err as { code: unknown }).code) === "P2002") ||
     msg.includes("ClassDayRecord_groupId_studentId_date_key")
   ) {
-    return "La asistencia de este día ya estaba registrada. Se actualizó en segundo intento; si ves el error otra vez, recarga la página.";
+    return "La asistencia de este día ya estaba registrada. Recarga la página y vuelve a guardar.";
+  }
+  if (msg.includes("Foreign key constraint") && msg.includes("markedById")) {
+    return "Sesión del docente inválida. Cierra sesión, vuelve a entrar e intenta de nuevo.";
+  }
+  if (msg.toLowerCase().includes("unknown column")) {
+    return "La base de datos de asistencia está incompleta. Reinicia el backend en Railway y espera 1 minuto.";
   }
   return null;
 }

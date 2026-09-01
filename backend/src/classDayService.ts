@@ -30,25 +30,74 @@ type ExistingClassDayRow = {
   stars: number;
 };
 
+export async function dedupeClassDayRecordsForDay(groupId: string, dateIso: string) {
+  try {
+    await prisma.$executeRaw`
+      DELETE r1 FROM \`ClassDayRecord\` r1
+      INNER JOIN \`ClassDayRecord\` r2
+      ON r1.\`groupId\` = r2.\`groupId\`
+        AND r1.\`studentId\` = r2.\`studentId\`
+        AND DATE(r1.\`date\`) = DATE(r2.\`date\`)
+        AND r1.\`id\` > r2.\`id\`
+      WHERE r1.\`groupId\` = ${groupId} AND DATE(r1.\`date\`) = DATE(${dateIso})
+    `;
+  } catch (err) {
+    console.warn("[class-day] dedupe for day skipped:", err);
+  }
+}
+
 /** Busca por fecha de calendario (evita desfases de zona horaria con Prisma Date). */
 async function loadExistingByStudent(groupId: string, dateIso: string) {
-  const rows = await prisma.$queryRaw<ExistingClassDayRow[]>`
-    SELECT \`id\`, \`studentId\`, \`attendance\`, \`stars\`
-    FROM \`ClassDayRecord\`
-    WHERE \`groupId\` = ${groupId} AND DATE(\`date\`) = DATE(${dateIso})
-  `;
-  return new Map(rows.map((r) => [r.studentId, r]));
+  try {
+    const rows = await prisma.$queryRaw<
+      Array<{ id: string; studentId: string; attendance: string; stars: number | bigint }>
+    >`
+      SELECT \`id\`, \`studentId\`, \`attendance\`, \`stars\`
+      FROM \`ClassDayRecord\`
+      WHERE \`groupId\` = ${groupId} AND DATE(\`date\`) = DATE(${dateIso})
+    `;
+    return new Map(
+      rows.map((r) => [
+        r.studentId,
+        {
+          id: r.id,
+          studentId: r.studentId,
+          attendance: r.attendance as AttendanceStatus,
+          stars: Number(r.stars),
+        },
+      ]),
+    );
+  } catch (err) {
+    console.warn("[class-day] raw load failed, fallback to prisma:", err);
+    const date = parseClassDayDate(dateIso);
+    if (!date) return new Map();
+    const rows = await prisma.classDayRecord.findMany({
+      where: { groupId, date },
+      select: { id: true, studentId: true, attendance: true, stars: true },
+    });
+    return new Map(rows.map((r) => [r.studentId, { ...r, stars: Number(r.stars) }]));
+  }
 }
 
 async function findExistingRecord(groupId: string, studentId: string, dateIso: string) {
-  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
-    SELECT \`id\`
-    FROM \`ClassDayRecord\`
-    WHERE \`groupId\` = ${groupId} AND \`studentId\` = ${studentId} AND DATE(\`date\`) = DATE(${dateIso})
-    ORDER BY \`updatedAt\` DESC
-    LIMIT 1
-  `;
-  return rows[0]?.id ?? null;
+  try {
+    const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT \`id\`
+      FROM \`ClassDayRecord\`
+      WHERE \`groupId\` = ${groupId} AND \`studentId\` = ${studentId} AND DATE(\`date\`) = DATE(${dateIso})
+      ORDER BY \`id\` ASC
+      LIMIT 1
+    `;
+    return rows[0]?.id ?? null;
+  } catch {
+    const date = parseClassDayDate(dateIso);
+    if (!date) return null;
+    const row = await prisma.classDayRecord.findFirst({
+      where: { groupId, studentId, date },
+      select: { id: true },
+    });
+    return row?.id ?? null;
+  }
 }
 
 function isPrismaUniqueViolation(err: unknown) {
@@ -207,6 +256,7 @@ export async function saveClassDayRecords(
   );
 
   const dateIso = formatClassDayIso(date);
+  await dedupeClassDayRecordsForDay(groupId, dateIso);
   const existingByStudent = await loadExistingByStudent(groupId, dateIso);
 
   let saved = 0;
