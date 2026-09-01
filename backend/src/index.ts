@@ -32,7 +32,7 @@ import {
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
 import { getStudentSeating } from "./seatingService.js";
-import { ensureSeatingSchema } from "./ensureSeatingSchema.js";
+import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSchema.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
 
@@ -57,6 +57,18 @@ app.use(
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
+
+app.get("/health/seating", async (_req, res) => {
+  try {
+    const status = await getSeatingSchemaStatus();
+    res.status(status.ready ? 200 : 503).json({ ok: status.ready, ...status });
+  } catch (err) {
+    res.status(503).json({
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
 
 function userPayload(user: {
   id: string;
@@ -725,20 +737,28 @@ app.use((req, res) => {
   res.status(404).json({ error: "not_found", method: req.method, path: req.path });
 });
 
-// Listen first so Railway healthcheck can reach /health while migrations run.
-app.listen(port, host, () => {
-  console.log(`[startup] API listening on http://${host}:${port}`);
-  void (async () => {
-    resolveDatabaseUrl();
-    try {
-      if (shouldRunMigrations() && process.env.DATABASE_URL?.trim()) {
+// Listen only after migrations + seating schema are ready.
+void (async () => {
+  resolveDatabaseUrl();
+  try {
+    if (shouldRunMigrations() && process.env.DATABASE_URL?.trim()) {
+      try {
         runMigrationsWithRecovery();
+      } catch (err) {
+        console.warn("[startup] prisma migrate deploy failed; continuing with seating repair.", err);
       }
-      await ensureSeatingSchema();
-    } catch (err) {
-      console.error("[startup] Startup schema failed:", err);
-      process.exit(1);
     }
-  })();
+    await ensureSeatingSchema();
+  } catch (err) {
+    console.error("[startup] Startup schema failed:", err);
+    process.exit(1);
+  }
+
+  app.listen(port, host, () => {
+    console.log(`[startup] API listening on http://${host}:${port}`);
+  });
+})().catch((err) => {
+  console.error("[startup] Fatal bootstrap error:", err);
+  process.exit(1);
 });
 

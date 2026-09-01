@@ -74,11 +74,8 @@ if (!dbUrl) {
 try {
   runMigrationsWithRecovery();
 } catch {
-  console.warn("[startup] prisma migrate deploy failed; trying seating schema repair...");
+  console.warn("[startup] prisma migrate deploy failed; index bootstrap will repair seating schema.");
 }
-
-const { ensureSeatingSchema } = await import("../dist/ensureSeatingSchema.js");
-await ensureSeatingSchema();
 
 console.log("[startup] Starting API...");
 await import("../dist/index.js");

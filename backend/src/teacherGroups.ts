@@ -1561,7 +1561,9 @@ function handleSeatingError(res: Response, err: unknown, action: string) {
   if (isSeatingSchemaError(err)) {
     return res.status(503).json({
       error: "seating_not_ready",
-      message: "Faltan tablas de butacas en la base de datos. Redespliega el backend en Railway.",
+      message:
+        "Butacas no está listo en la base de datos. Espera 1 minuto y recarga; si persiste, reinicia el backend en Railway.",
+      detail: err instanceof Error ? err.message : String(err),
     });
   }
   return res.status(500).json({ error: "server_error" });
