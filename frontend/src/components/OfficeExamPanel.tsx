@@ -9,6 +9,7 @@ import {
   updateOfficeExamSettings,
 } from "../lib/api";
 import type { ClassGroup } from "../lib/types";
+import { formatGroupCodesPlus } from "../lib/groups";
 
 function statusLabel(status: string) {
   if (status === "SUBMITTED") return "Terminado";
@@ -56,6 +57,7 @@ export default function OfficeExamPanel({ groups }: { groups: ClassGroup[] }) {
   if (!data) return <p className="text-rose-300">No se pudo cargar el examen.</p>;
 
   const { exam, summary } = data;
+  const groupsLabelPlus = formatGroupCodesPlus(groups);
 
   return (
     <div className="space-y-6">
@@ -153,7 +155,7 @@ export default function OfficeExamPanel({ groups }: { groups: ClassGroup[] }) {
               onClick={async () => {
                 setDownloadingBoth(true);
                 try {
-                  await downloadOfficeExamGradesExcelBoth();
+                  await downloadOfficeExamGradesExcelBoth(groups);
                 } catch (err) {
                   window.alert(getApiErrorMessage(err));
                 } finally {
@@ -162,7 +164,7 @@ export default function OfficeExamPanel({ groups }: { groups: ClassGroup[] }) {
               }}
               className="rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/25 disabled:opacity-60"
             >
-              {downloadingBoth ? "Generando..." : "Excel 201 + 202"}
+              {downloadingBoth ? "Generando..." : `Excel ${groupsLabelPlus}`}
             </button>
           </div>
         </div>

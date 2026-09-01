@@ -212,7 +212,7 @@ app.post("/auth/dev-seed", async (_req, res) => {
 
   return res.json({
     teacher: { email: teacher.email, password: teacherPass },
-    note: "Importa alumnos por Excel en grupos 201 y 202 desde el panel del docente.",
+    note: "Importa alumnos por Excel desde el panel del docente (hojas con el código de cada grupo).",
   });
 });
 

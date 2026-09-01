@@ -10,6 +10,7 @@ import {
   resetStudentPassword,
 } from "../lib/api";
 import type { ClassGroup } from "../lib/types";
+import { formatGroupCodesAnd, formatGroupCodesPlus } from "../lib/groups";
 
 export default function GroupStudentsPanel({
   groups,
@@ -97,6 +98,9 @@ export default function GroupStudentsPanel({
     onError: (err) => setMessage({ type: "err", text: getApiErrorMessage(err) }),
   });
 
+  const groupsLabelPlus = formatGroupCodesPlus(groups);
+  const groupsLabelAnd = formatGroupCodesAnd(groups);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
@@ -144,10 +148,12 @@ export default function GroupStudentsPanel({
       </section>
 
       <section className="glass border-cyan-400/20 p-5">
-        <h2 className="text-lg font-semibold text-white">Importar lista de alumnos (201 + 202)</h2>
+        <h2 className="text-lg font-semibold text-white">
+          Importar lista de alumnos ({groupsLabelPlus})
+        </h2>
         <p className="mt-1 text-sm text-slate-400">
           Excel con <strong>número de control</strong> y <strong>nombre completo</strong> en hojas{" "}
-          <strong>201</strong> y <strong>202</strong>. Si solo tienes nombres como en el Excel de calificaciones,
+          <strong>{groupsLabelAnd}</strong>. Si solo tienes nombres como en el Excel de calificaciones,
           importa primero alumnos y luego calificaciones en la otra pestaña.
         </p>
         <input
@@ -163,7 +169,7 @@ export default function GroupStudentsPanel({
           }}
         />
         {workbookMutation.isPending ? (
-          <p className="mt-2 text-sm text-cyan-300">Leyendo hojas 201 y 202...</p>
+          <p className="mt-2 text-sm text-cyan-300">Leyendo hojas {groupsLabelAnd}...</p>
         ) : null}
       </section>
 

@@ -60,6 +60,20 @@ function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
 
+function groupCodesLabel(groups: { code: string }[]) {
+  return groups
+    .map((g) => g.code)
+    .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }))
+    .join(" y ");
+}
+
+function groupCodesFileSuffix(groups: { code: string }[]) {
+  return groups
+    .map((g) => g.code)
+    .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }))
+    .join("_");
+}
+
 async function getPartialCutoffForGroup(groupId: string) {
   const group = await prisma.classGroup.findUnique({
     where: { id: groupId },
@@ -1212,7 +1226,7 @@ teacherGroupsRouter.post("/students/import-workbook", upload.single("file"), asy
   if (!ext.endsWith(".xlsx") && !ext.endsWith(".xls")) {
     return res.status(400).json({
       error: "invalid_file_type",
-      message: "Para varias hojas (201 y 202) usa un archivo .xlsx o .xls",
+      message: "Para varias hojas usa un archivo .xlsx o .xls",
     });
   }
 
@@ -1223,8 +1237,7 @@ teacherGroupsRouter.post("/students/import-workbook", upload.single("file"), asy
   if (!sheets.length) {
     return res.status(400).json({
       error: "no_sheets_matched",
-      message:
-        "No se encontraron hojas llamadas 201 y 202 (o Grupo 201, Grupo 202). Revisa los nombres de las pestañas del Excel.",
+      message: `No se encontraron hojas para los grupos ${groupCodesLabel(groups)} (ej. "${groupCodes[0]}" o "Grupo ${groupCodes[0]}"). Revisa los nombres de las pestañas del Excel.`,
       skippedSheets,
       expectedGroupCodes: groupCodes,
     });
@@ -1320,11 +1333,12 @@ teacherGroupsRouter.post(
       });
     }
 
+    const groups = await ensureTeacherGroups(req.auth!.userId);
     const parsed = parseGradesExcel(req.file.buffer, group.code);
     if (!parsed?.activities.length) {
       return res.status(400).json({
         error: "empty_file",
-        message: `No se encontró una hoja llamada "${group.code}" (o "Grupo ${group.code}") con actividades. Usa el archivo completo con hojas 201 y 202, o renombra la pestaña del Excel.`,
+        message: `No se encontró una hoja llamada "${group.code}" (o "Grupo ${group.code}") con actividades. Usa el archivo completo con hojas ${groupCodesLabel(groups)}, o renombra la pestaña del Excel.`,
       });
     }
 
@@ -1349,7 +1363,7 @@ teacherGroupsRouter.post("/grades/import-workbook", upload.single("file"), async
   if (!ext.endsWith(".xlsx") && !ext.endsWith(".xls")) {
     return res.status(400).json({
       error: "invalid_file_type",
-      message: "Para varias hojas (201 y 202) usa .xlsx o .xls",
+      message: "Para varias hojas usa .xlsx o .xls",
     });
   }
 
@@ -1361,8 +1375,7 @@ teacherGroupsRouter.post("/grades/import-workbook", upload.single("file"), async
   if (!sheets.length) {
     return res.status(400).json({
       error: "no_sheets_matched",
-      message:
-        "No se encontraron hojas 201/202 con actividades y calificaciones. Revisa los nombres de las pestañas.",
+      message: `No se encontraron hojas ${groupCodesFileSuffix(groups).replace(/_/g, "/")} con actividades y calificaciones. Revisa los nombres de las pestañas (esperadas: ${groupCodesLabel(groups)}).`,
       skippedSheets,
       expectedGroupCodes: groupCodes,
     });
@@ -1435,7 +1448,7 @@ teacherGroupsRouter.get("/reports/totals.xlsx", async (req: AuthedRequest, res) 
   if (!exports.length) return res.status(404).json({ error: "group_not_found" });
 
   const wb = buildCombinedGradesWorkbook(exports);
-  return sendXlsx(res, wb, "calificaciones_201_202.xlsx");
+  return sendXlsx(res, wb, `calificaciones_${groupCodesFileSuffix(exports.map((e) => e.group))}.xlsx`);
 });
 
 teacherGroupsRouter.get("/groups/:groupId/diploma/preview.pdf", async (req: AuthedRequest, res) => {

@@ -9,6 +9,7 @@ import {
   type GradeImportMode,
 } from "../lib/api";
 import type { ClassGroup } from "../lib/types";
+import { formatGroupCodesAnd, formatGroupCodesPlus } from "../lib/groups";
 
 type GradeImportSummary = {
   activitiesCreated: number;
@@ -129,7 +130,7 @@ export default function GroupGradesImportPanel({
       );
       const skipped =
         data.skippedSheets.length > 0
-          ? ` Hojas omitidas: ${data.skippedSheets.join(", ")} (revisa que se llamen 201 y 202).`
+          ? ` Hojas omitidas: ${data.skippedSheets.join(", ")} (revisa que se llamen ${groupsLabelAnd}).`
           : "";
       const missing =
         data.results.length < 2
@@ -155,12 +156,14 @@ export default function GroupGradesImportPanel({
   });
 
   const pending = workbookMutation.isPending || importMutation.isPending;
+  const groupsLabelPlus = formatGroupCodesPlus(groups);
+  const groupsLabelAnd = formatGroupCodesAnd(groups);
 
   return (
     <section className="glass mb-6 border-indigo-400/30 p-5">
       <h2 className="text-lg font-semibold text-white">Subir Excel de calificaciones (aquí, no en Alumnos)</h2>
       <p className="mt-1 text-sm text-slate-400">
-        Usa el mismo archivo con hojas <strong>201</strong> y <strong>202</strong>. Los alumnos deben estar ya
+        Usa el mismo archivo con hojas <strong>{groupsLabelAnd}</strong>. Los alumnos deben estar ya
         importados en la pestaña Alumnos. Las calificaciones se asignan comparando el{" "}
         <strong>nombre del alumno</strong>.
       </p>
@@ -207,7 +210,9 @@ export default function GroupGradesImportPanel({
       <div className="mt-5 rounded-xl border border-cyan-400/25 bg-cyan-500/5 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-cyan-100">Recomendado: archivo completo (201 + 202)</p>
+            <p className="text-sm font-semibold text-cyan-100">
+              Recomendado: archivo completo ({groupsLabelPlus})
+            </p>
             <p className="mt-1 text-xs text-slate-400">Un solo archivo con ambas hojas.</p>
           </div>
           <button
@@ -217,10 +222,10 @@ export default function GroupGradesImportPanel({
               setMessage(null);
               setDownloading(true);
               try {
-                await downloadBothGroupsTotalsExcel();
+                await downloadBothGroupsTotalsExcel(groups);
                 setMessage({
                   type: "ok",
-                  text: "Excel descargado con actividades, puntos y totales de los grupos 201 y 202.",
+                  text: `Excel descargado con actividades, puntos y totales de los grupos ${groupsLabelAnd}.`,
                 });
               } catch (err) {
                 setMessage({ type: "err", text: getApiErrorMessage(err) });
@@ -230,13 +235,13 @@ export default function GroupGradesImportPanel({
             }}
             className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
           >
-            {downloading ? "Generando..." : "Descargar Excel (201 + 202)"}
+            {downloading ? "Generando..." : `Descargar Excel (${groupsLabelPlus})`}
           </button>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <FileInput
             label="Paso 1 · Solo actividades"
-            hint="Hojas 201 y 202"
+            hint={`Hojas ${groupsLabelAnd}`}
             pending={workbookMutation.isPending}
             pendingText="Creando actividades..."
             onFile={(file) => {
@@ -271,7 +276,7 @@ export default function GroupGradesImportPanel({
         O un solo grupo ({selected?.code}) — usa la pestaña &quot;{selected?.code}&quot; del Excel
       </p>
       <p className="mt-1 text-xs text-amber-200/90">
-        Si el archivo tiene hojas 201 y 202, usa los botones de arriba (archivo completo), no esta sección.
+        Si el archivo tiene hojas {groupsLabelAnd}, usa los botones de arriba (archivo completo), no esta sección.
       </p>
       <div className="mt-2 grid gap-3 lg:grid-cols-3">
         <FileInput

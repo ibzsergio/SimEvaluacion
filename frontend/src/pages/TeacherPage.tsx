@@ -21,6 +21,7 @@ import {
   saveGrade,
   updateActivity,
 } from "../lib/api";
+import { formatGroupCodesPlus, formatTeacherGroupsSubtitle } from "../lib/groups";
 import type { Activity, GradeRow } from "../lib/types";
 
 function todayIso() {
@@ -176,10 +177,13 @@ export default function TeacherPage() {
     [activities, activeId, gradesQuery.data?.activity],
   );
 
+  const groupsLabelPlus = formatGroupCodesPlus(groups);
+  const groupsSubtitle = formatTeacherGroupsSubtitle(groups);
+
   return (
     <Layout
       title="Panel del docente"
-      subtitle="Grupos 201 y 202 · Turno matutino — Sergio Ibañez Montiel"
+      subtitle={groupsSubtitle}
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-2">
         <div className="flex flex-wrap gap-2">
@@ -217,7 +221,7 @@ export default function TeacherPage() {
           onClick={async () => {
             setDownloadingExcel(true);
             try {
-              await downloadBothGroupsTotalsExcel();
+              await downloadBothGroupsTotalsExcel(groups);
             } catch (err) {
               window.alert(getApiErrorMessage(err));
             } finally {
@@ -226,7 +230,7 @@ export default function TeacherPage() {
           }}
           className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
         >
-          {downloadingExcel ? "Generando Excel..." : "Descargar Excel 201 + 202"}
+          {downloadingExcel ? "Generando Excel..." : `Descargar Excel ${groupsLabelPlus}`}
         </button>
       </div>
 

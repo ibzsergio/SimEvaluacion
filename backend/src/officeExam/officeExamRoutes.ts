@@ -83,7 +83,11 @@ officeExamTeacherRouter.get("/grades.xlsx", async (req: AuthedRequest, res) => {
   const groups = await ensureTeacherGroups(req.auth!.userId);
   const rows = await getOfficeExamGradeRows(req.auth!.userId);
   const wb = buildOfficeGradesWorkbook(groups, rows);
-  return sendOfficeGradesXlsx(res, wb, "calificaciones_examen_office_201_202.xlsx");
+  const suffix = groups
+    .map((g) => g.code)
+    .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }))
+    .join("_");
+  return sendOfficeGradesXlsx(res, wb, `calificaciones_examen_office_${suffix}.xlsx`);
 });
 
 officeExamTeacherRouter.get("/grades/:groupId.xlsx", async (req: AuthedRequest, res) => {

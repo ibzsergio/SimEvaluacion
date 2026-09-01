@@ -44,12 +44,12 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "password_mismatch") return "Las contraseñas no coinciden.";
     if (code === "password_already_set") return "Este alumno ya tiene contraseña. Inicia sesión.";
     if (code === "password_not_set") return "Primera vez: crea tu contraseña abajo.";
-    if (code === "group_id_required") return "Selecciona un grupo (201 o 202).";
+    if (code === "group_id_required") return "Selecciona un grupo.";
     if (code === "file_required") return "Selecciona un archivo Excel (.xlsx).";
     if (code === "no_sheets_matched") {
       return (
         (error.response.data as { message?: string })?.message ??
-        "Nombra las hojas del Excel 201 y 202 (o Grupo 201, Grupo 202)."
+        "Nombra las hojas del Excel con el código de cada grupo (ej. 301 y 302, o Grupo 301)."
       );
     }
     if (code === "empty_file") {
@@ -78,7 +78,7 @@ export function getApiErrorMessage(error: unknown): string {
       );
     }
     if (code === "group_not_found") {
-      return "No se encontró el grupo. Cierra sesión, vuelve a entrar y selecciona el grupo 201 o 202.";
+      return "No se encontró el grupo. Cierra sesión, vuelve a entrar y selecciona tu grupo.";
     }
     if (code === "invalid_confirm_phrase") {
       return "Escribe exactamente NUEVO SEMESTRE para confirmar.";
@@ -336,14 +336,18 @@ export async function downloadStudentsTemplate(groupId: string) {
   URL.revokeObjectURL(url);
 }
 
-export async function downloadBothGroupsTotalsExcel() {
+export async function downloadBothGroupsTotalsExcel(groups?: ClassGroup[]) {
   const { data } = await api.get<Blob>("/teacher/reports/totals.xlsx", {
     responseType: "blob",
   });
+  const suffix =
+    groups && groups.length > 0
+      ? [...new Set(groups.map((g) => g.code))].sort((a, b) => a.localeCompare(b, "es")).join("_")
+      : "grupos";
   const url = URL.createObjectURL(data);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "calificaciones_201_202.xlsx";
+  link.download = `calificaciones_${suffix}.xlsx`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -446,12 +450,16 @@ export async function downloadOfficeExamGradesExcel(groupId: string, groupCode: 
   URL.revokeObjectURL(url);
 }
 
-export async function downloadOfficeExamGradesExcelBoth() {
+export async function downloadOfficeExamGradesExcelBoth(groups?: ClassGroup[]) {
   const blob = await downloadOfficeExamGradesBlob("/teacher/office-exam/grades.xlsx");
+  const suffix =
+    groups && groups.length > 0
+      ? [...new Set(groups.map((g) => g.code))].sort((a, b) => a.localeCompare(b, "es")).join("_")
+      : "grupos";
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "calificaciones_examen_office_201_202.xlsx";
+  link.download = `calificaciones_examen_office_${suffix}.xlsx`;
   link.click();
   URL.revokeObjectURL(url);
 }
