@@ -1,21 +1,75 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchSeatingPlan, getApiErrorMessage, shuffleSeatingPlan } from "../lib/api";
 import { todayLocalIso } from "../lib/dates";
-import type { ClassGroup, SeatingCell, SeatingPlan } from "../lib/types";
+import type { ClassGroup, SeatingCell, SeatingMode, SeatingPlan, SeatingTheme } from "../lib/types";
 
 const COLUMN_LABELS = ["A", "B", "C", "D", "E", "F"];
 
-const THEME_OPTIONS = [
+const MODE_OPTIONS: Array<{
+  id: SeatingMode;
+  label: string;
+  hint: string;
+  buttonLabel: string;
+}> = [
   {
-    id: "column_colors" as const,
-    label: "Color por columna",
-    hint: "Cada columna tiene un color. Los alumnos buscan su lugar por fila y color.",
+    id: "random",
+    label: "Al azar total",
+    hint: "Mezcla alumnos y butacas por completo — máxima sorpresa cada día.",
+    buttonLabel: "Asignar al azar",
   },
   {
-    id: "random_colors" as const,
+    id: "alphabetical",
+    label: "Orden de lista",
+    hint: "Lista alfabética (#1 frente-izquierda, #2 al lado, etc.).",
+    buttonLabel: "Asignar por lista",
+  },
+  {
+    id: "alphabetical_snake",
+    label: "Lista en zigzag",
+    hint: "Lista A→Z pero las filas alternan dirección (como un serpiente).",
+    buttonLabel: "Asignar en zigzag",
+  },
+  {
+    id: "by_ranking",
+    label: "Por ranking",
+    hint: "Quienes tienen más puntos van al frente; el resto sigue en orden de ranking.",
+    buttonLabel: "Asignar por ranking",
+  },
+  {
+    id: "shuffle_rows",
+    label: "Mezcla por filas",
+    hint: "Bloques de 6 alumnos (por lista) se mezclan entre sí; las filas quedan equilibradas.",
+    buttonLabel: "Mezclar por filas",
+  },
+  {
+    id: "column_teams",
+    label: "Equipos por columna",
+    hint: "Se forman 6 equipos al azar; cada columna es un equipo (mismo color).",
+    buttonLabel: "Formar equipos",
+  },
+];
+
+const THEME_OPTIONS: Array<{ id: SeatingTheme; label: string; hint: string }> = [
+  {
+    id: "column_colors",
+    label: "Color por columna",
+    hint: "Cada columna tiene un color fijo. Los alumnos buscan su lugar por fila y color.",
+  },
+  {
+    id: "random_colors",
     label: "Colores sorpresa",
     hint: "Cada alumno recibe un color al azar — ideal para dinámicas distintas cada día.",
+  },
+  {
+    id: "row_colors",
+    label: "Color por fila",
+    hint: "Toda una fila comparte el mismo color (frente, medio, atrás).",
+  },
+  {
+    id: "team_pairs",
+    label: "Parejas de columnas",
+    hint: "Columnas A+B, C+D y E+F comparten color — útil para trabajar en parejas.",
   },
 ];
 
@@ -30,7 +84,8 @@ export default function SeatingPanel({
 }) {
   const qc = useQueryClient();
   const [date, setDate] = useState(todayLocalIso());
-  const [theme, setTheme] = useState<"column_colors" | "random_colors">("column_colors");
+  const [mode, setMode] = useState<SeatingMode>("random");
+  const [theme, setTheme] = useState<SeatingTheme>("column_colors");
   const [error, setError] = useState("");
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
@@ -41,8 +96,16 @@ export default function SeatingPanel({
     enabled: !!selectedGroupId,
   });
 
+  const plan = query.data;
+
+  useEffect(() => {
+    if (!plan) return;
+    setMode(plan.mode);
+    setTheme(plan.theme);
+  }, [plan?.mode, plan?.theme, plan?.updatedAt]);
+
   const shuffleMutation = useMutation({
-    mutationFn: () => shuffleSeatingPlan(selectedGroupId, date, theme),
+    mutationFn: () => shuffleSeatingPlan(selectedGroupId, date, { mode, theme }),
     onSuccess: async () => {
       setError("");
       await qc.invalidateQueries({ queryKey: ["seating", selectedGroupId, date] });
@@ -50,7 +113,7 @@ export default function SeatingPanel({
     onError: (err) => setError(getApiErrorMessage(err)),
   });
 
-  const plan = query.data;
+  const selectedMode = MODE_OPTIONS.find((m) => m.id === mode) ?? MODE_OPTIONS[0]!;
 
   return (
     <div className="space-y-4">
@@ -76,8 +139,8 @@ export default function SeatingPanel({
           <div>
             <h2 className="text-lg font-semibold text-white">Acomodo de butacas 6×6</h2>
             <p className="mt-1 max-w-xl text-sm text-slate-400">
-              Asigna lugares al azar para que los alumnos se sienten en distinta posición cada día.
-              Ellos ven su lugar en la app con color, fila y número de lista.
+              Elige cómo colocar a los alumnos y qué colores verán en su app. Solo tú ves el aula
+              completa; ellos solo ven su lugar del día.
             </p>
           </div>
           <label className="block text-xs text-slate-400">
@@ -91,20 +154,20 @@ export default function SeatingPanel({
           </label>
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+        <div className="mt-4 space-y-4">
           <fieldset className="space-y-2">
             <legend className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Dinámica visual
+              Modo de acomodo
             </legend>
             <div className="flex flex-wrap gap-2">
-              {THEME_OPTIONS.map((opt) => (
+              {MODE_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => setTheme(opt.id)}
-                  className={`rounded-xl border px-4 py-2 text-left text-sm ${
-                    theme === opt.id
-                      ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-100"
+                  onClick={() => setMode(opt.id)}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                    mode === opt.id
+                      ? "border-indigo-400/50 bg-indigo-500/15 text-indigo-100"
                       : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
                   }`}
                 >
@@ -112,19 +175,44 @@ export default function SeatingPanel({
                 </button>
               ))}
             </div>
-            <p className="text-xs text-slate-500">
-              {THEME_OPTIONS.find((t) => t.id === theme)?.hint}
-            </p>
+            <p className="text-xs text-slate-500">{selectedMode.hint}</p>
           </fieldset>
 
-          <button
-            type="button"
-            disabled={shuffleMutation.isPending || query.isLoading}
-            onClick={() => shuffleMutation.mutate()}
-            className="h-fit rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-6 py-3 text-sm font-bold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-60"
-          >
-            {shuffleMutation.isPending ? "Mezclando..." : "🎲 Asignar lugares al azar"}
-          </button>
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Dinámica visual
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {THEME_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setTheme(opt.id)}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                      theme === opt.id
+                        ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-100"
+                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                    }`}
+                  >
+                    <span className="font-semibold">{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500">
+                {THEME_OPTIONS.find((t) => t.id === theme)?.hint}
+              </p>
+            </fieldset>
+
+            <button
+              type="button"
+              disabled={shuffleMutation.isPending || query.isLoading}
+              onClick={() => shuffleMutation.mutate()}
+              className="h-fit rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-6 py-3 text-sm font-bold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-60"
+            >
+              {shuffleMutation.isPending ? "Asignando..." : `🎲 ${selectedMode.buttonLabel}`}
+            </button>
+          </div>
         </div>
 
         {error ? (
@@ -162,7 +250,8 @@ function SeatingGrid({ plan, groupCode }: { plan: SeatingPlan; groupCode: string
     <div className="mt-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
         <span>
-          Grupo {groupCode} · {plan.assignedCount}/{plan.studentCount} con lugar
+          Grupo {groupCode} · {plan.assignedCount}/{plan.studentCount} con lugar ·{" "}
+          <span className="text-slate-300">{plan.modeLabel}</span>
           {plan.updatedAt ? (
             <span className="text-slate-500">
               {" "}

@@ -27,6 +27,7 @@ import {
   getSeatingPlan,
   resolveSeatingDate,
   shuffleSeatingPlan,
+  type SeatingMode,
   type SeatingTheme,
 } from "./seatingService.js";
 import {
@@ -1561,7 +1562,17 @@ teacherGroupsRouter.post("/groups/:groupId/seating/shuffle", async (req: AuthedR
   const body = z
     .object({
       date: z.string().optional(),
-      theme: z.enum(["column_colors", "random_colors"]).optional(),
+      mode: z
+        .enum([
+          "random",
+          "alphabetical",
+          "alphabetical_snake",
+          "by_ranking",
+          "shuffle_rows",
+          "column_teams",
+        ])
+        .optional(),
+      theme: z.enum(["column_colors", "random_colors", "row_colors", "team_pairs"]).optional(),
     })
     .safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
@@ -1570,12 +1581,10 @@ teacherGroupsRouter.post("/groups/:groupId/seating/shuffle", async (req: AuthedR
   if (!date) return res.status(400).json({ error: "invalid_date" });
 
   try {
-    const plan = await shuffleSeatingPlan(
-      req.auth!.userId,
-      groupId,
-      date,
-      (body.data.theme ?? "column_colors") as SeatingTheme,
-    );
+    const plan = await shuffleSeatingPlan(req.auth!.userId, groupId, date, {
+      mode: (body.data.mode ?? "random") as SeatingMode,
+      theme: (body.data.theme ?? "column_colors") as SeatingTheme,
+    });
     if (!plan) return res.status(404).json({ error: "group_not_found" });
     return res.json(plan);
   } catch (err) {

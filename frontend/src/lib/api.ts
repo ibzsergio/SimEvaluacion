@@ -9,7 +9,9 @@ import type {
   GroupRanking,
   GroupWeeks,
   PartialSummary,
+  SeatingMode,
   SeatingPlan,
+  SeatingTheme,
   OfficeExamTeacherData,
   OfficeExamState,
   StudentCommsData,
@@ -699,11 +701,12 @@ export async function fetchSeatingPlan(groupId: string, date: string) {
 export async function shuffleSeatingPlan(
   groupId: string,
   date: string,
-  theme: "column_colors" | "random_colors" = "column_colors",
+  options: { mode?: SeatingMode; theme?: SeatingTheme } = {},
 ) {
   const { data } = await api.post<SeatingPlan>(`/teacher/groups/${groupId}/seating/shuffle`, {
     date,
-    theme,
+    mode: options.mode ?? "random",
+    theme: options.theme ?? "column_colors",
   });
   return data;
 }

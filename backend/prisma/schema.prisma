@@ -334,7 +334,9 @@ model SeatingSession {
   id          String   @id @default(cuid())
   groupId     String
   date        DateTime @db.Date
-  /// column_colors | random_colors
+  /// random | alphabetical | alphabetical_snake | by_ranking | shuffle_rows | column_teams
+  mode        String   @default("random")
+  /// column_colors | random_colors | row_colors | team_pairs
   theme       String   @default("column_colors")
   createdById String
   createdAt   DateTime @default(now())

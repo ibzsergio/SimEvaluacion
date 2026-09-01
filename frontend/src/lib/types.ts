@@ -137,13 +137,25 @@ export type SeatingCell = {
   } | null;
 };
 
+export type SeatingMode =
+  | "random"
+  | "alphabetical"
+  | "alphabetical_snake"
+  | "by_ranking"
+  | "shuffle_rows"
+  | "column_teams";
+
+export type SeatingTheme = "column_colors" | "random_colors" | "row_colors" | "team_pairs";
+
 export type SeatingPlan = {
   group: { id: string; code: string; shift: string };
   date: string;
   rows: number;
   cols: number;
   capacity: number;
-  theme: "column_colors" | "random_colors";
+  mode: SeatingMode;
+  modeLabel: string;
+  theme: SeatingTheme;
   assignedCount: number;
   studentCount: number;
   unseatedCount: number;

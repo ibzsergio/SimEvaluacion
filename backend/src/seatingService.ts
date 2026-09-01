@@ -1,11 +1,29 @@
 import { prisma } from "./prisma.js";
 import { parseClassDayDate, todayClassDayDate } from "./classDayService.js";
+import { getGroupRanking } from "./groupRanking.js";
 
 export const SEATING_ROWS = 6;
 export const SEATING_COLS = 6;
 export const SEATING_CAPACITY = SEATING_ROWS * SEATING_COLS;
 
-export type SeatingTheme = "column_colors" | "random_colors";
+export type SeatingMode =
+  | "random"
+  | "alphabetical"
+  | "alphabetical_snake"
+  | "by_ranking"
+  | "shuffle_rows"
+  | "column_teams";
+
+export type SeatingTheme = "column_colors" | "random_colors" | "row_colors" | "team_pairs";
+
+export const SEATING_MODE_LABELS: Record<SeatingMode, string> = {
+  random: "Al azar total",
+  alphabetical: "Orden de lista (A→Z)",
+  alphabetical_snake: "Lista en zigzag",
+  by_ranking: "Por ranking (frente = más puntos)",
+  shuffle_rows: "Mezcla por filas",
+  column_teams: "Equipos por columna",
+};
 
 export const COLUMN_PALETTE = [
   { name: "Rosa", hex: "#f472b6" },
@@ -40,7 +58,7 @@ function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-function allSeats() {
+function allSeatsRowMajor() {
   const seats: { row: number; col: number; seatNumber: number }[] = [];
   for (let row = 1; row <= SEATING_ROWS; row++) {
     for (let col = 1; col <= SEATING_COLS; col++) {
@@ -50,9 +68,27 @@ function allSeats() {
   return seats;
 }
 
+function allSeatsSnake() {
+  const seats: { row: number; col: number; seatNumber: number }[] = [];
+  for (let row = 1; row <= SEATING_ROWS; row++) {
+    const cols = row % 2 === 1 ? [1, 2, 3, 4, 5, 6] : [6, 5, 4, 3, 2, 1];
+    for (const col of cols) {
+      seats.push({ row, col, seatNumber: (row - 1) * SEATING_COLS + col });
+    }
+  }
+  return seats;
+}
+
 function colorForSeat(theme: SeatingTheme, row: number, col: number, studentIndex: number): string {
   if (theme === "random_colors") {
     return RANDOM_PALETTE[studentIndex % RANDOM_PALETTE.length] ?? RANDOM_PALETTE[0];
+  }
+  if (theme === "row_colors") {
+    return COLUMN_PALETTE[row - 1]?.hex ?? COLUMN_PALETTE[0].hex;
+  }
+  if (theme === "team_pairs") {
+    const teamIndex = Math.floor((col - 1) / 2);
+    return COLUMN_PALETTE[teamIndex]?.hex ?? COLUMN_PALETTE[0].hex;
   }
   return COLUMN_PALETTE[col - 1]?.hex ?? COLUMN_PALETTE[0].hex;
 }
@@ -102,6 +138,100 @@ async function loadGroupStudents(groupId: string, teacherId: string) {
   };
 }
 
+async function orderStudentsByMode(students: StudentRow[], mode: SeatingMode, groupId: string) {
+  switch (mode) {
+    case "alphabetical":
+      return students;
+    case "alphabetical_snake":
+      return students;
+    case "by_ranking": {
+      const { ranking } = await getGroupRanking(groupId);
+      const scoreById = new Map(ranking.map((r) => [r.studentId, r.score]));
+      const placeById = new Map(ranking.map((r) => [r.studentId, r.place]));
+      return [...students].sort(
+        (a, b) =>
+          (placeById.get(a.id) ?? 999) - (placeById.get(b.id) ?? 999) ||
+          (scoreById.get(b.id) ?? 0) - (scoreById.get(a.id) ?? 0) ||
+          a.displayName.localeCompare(b.displayName, "es"),
+      );
+    }
+    case "shuffle_rows": {
+      const rows: StudentRow[][] = [];
+      for (let i = 0; i < students.length; i += SEATING_COLS) {
+        rows.push(shuffle(students.slice(i, i + SEATING_COLS)));
+      }
+      return rows.flat();
+    }
+    case "column_teams": {
+      const shuffled = shuffle(students);
+      const columns: StudentRow[][] = Array.from({ length: SEATING_COLS }, () => []);
+      shuffled.forEach((student, index) => {
+        columns[index % SEATING_COLS]!.push(student);
+      });
+      const result: StudentRow[] = [];
+      for (let col = 0; col < SEATING_COLS; col++) {
+        result.push(...shuffle(columns[col]!));
+      }
+      return result;
+    }
+    case "random":
+    default:
+      return shuffle(students);
+  }
+}
+
+function orderSeatsByMode(mode: SeatingMode) {
+  switch (mode) {
+    case "alphabetical":
+    case "by_ranking":
+    case "shuffle_rows":
+    case "column_teams":
+    case "random":
+      return allSeatsRowMajor();
+    case "alphabetical_snake":
+      return allSeatsSnake();
+    default:
+      return shuffle(allSeatsRowMajor());
+  }
+}
+
+async function buildAssignments(
+  students: StudentRow[],
+  mode: SeatingMode,
+  theme: SeatingTheme,
+  groupId: string,
+) {
+  const orderedStudents = await orderStudentsByMode(students, mode, groupId);
+  let seatOrder = orderSeatsByMode(mode);
+  if (mode === "random") {
+    seatOrder = shuffle(seatOrder);
+  }
+  if (mode === "column_teams") {
+    seatOrder = [];
+    for (let col = 1; col <= SEATING_COLS; col++) {
+      for (let row = 1; row <= SEATING_ROWS; row++) {
+        seatOrder.push({
+          row,
+          col,
+          seatNumber: (row - 1) * SEATING_COLS + col,
+        });
+      }
+    }
+  }
+
+  const count = Math.min(orderedStudents.length, SEATING_CAPACITY);
+  return orderedStudents.slice(0, count).map((student, index) => {
+    const seat = seatOrder[index]!;
+    return {
+      studentId: student.id,
+      student,
+      row: seat.row,
+      col: seat.col,
+      color: colorForSeat(theme, seat.row, seat.col, index),
+    };
+  });
+}
+
 function buildGrid(
   theme: SeatingTheme,
   assignments: Array<{
@@ -112,7 +242,7 @@ function buildGrid(
   }>,
 ) {
   const byKey = new Map(assignments.map((a) => [`${a.row}:${a.col}`, a]));
-  const cells = allSeats().map((seat) => {
+  return allSeatsRowMajor().map((seat) => {
     const assigned = byKey.get(`${seat.row}:${seat.col}`);
     return {
       ...seat,
@@ -130,7 +260,6 @@ function buildGrid(
         : null,
     };
   });
-  return cells;
 }
 
 export async function getSeatingPlan(teacherId: string, groupId: string, date: Date) {
@@ -151,6 +280,8 @@ export async function getSeatingPlan(teacherId: string, groupId: string, date: D
   });
 
   const studentIndex = new Map(loaded.students.map((s, i) => [s.id, i]));
+  const mode = (session?.mode as SeatingMode) ?? "random";
+  const theme = (session?.theme as SeatingTheme) ?? "column_colors";
   const assignments = session
     ? session.assignments.map((a) => ({
         row: a.row,
@@ -169,12 +300,14 @@ export async function getSeatingPlan(teacherId: string, groupId: string, date: D
     rows: SEATING_ROWS,
     cols: SEATING_COLS,
     capacity: SEATING_CAPACITY,
-    theme: (session?.theme as SeatingTheme) ?? "column_colors",
+    mode,
+    modeLabel: SEATING_MODE_LABELS[mode] ?? mode,
+    theme,
     assignedCount: assignments.length,
     studentCount: loaded.students.length,
     unseatedCount: Math.max(0, loaded.students.length - assignments.length),
     overflow: loaded.students.length > SEATING_CAPACITY,
-    grid: buildGrid((session?.theme as SeatingTheme) ?? "column_colors", assignments),
+    grid: buildGrid(theme, assignments),
     updatedAt: session?.createdAt?.toISOString() ?? null,
   };
 }
@@ -183,24 +316,14 @@ export async function shuffleSeatingPlan(
   teacherId: string,
   groupId: string,
   date: Date,
-  theme: SeatingTheme = "column_colors",
+  options: { theme?: SeatingTheme; mode?: SeatingMode } = {},
 ) {
   const loaded = await loadGroupStudents(groupId, teacherId);
   if (!loaded) throw new Error("group_not_found");
 
-  const shuffledStudents = shuffle(loaded.students);
-  const shuffledSeats = shuffle(allSeats());
-  const count = Math.min(shuffledStudents.length, SEATING_CAPACITY);
-
-  const pairs = shuffledStudents.slice(0, count).map((student, index) => {
-    const seat = shuffledSeats[index]!;
-    return {
-      studentId: student.id,
-      row: seat.row,
-      col: seat.col,
-      color: colorForSeat(theme, seat.row, seat.col, index),
-    };
-  });
+  const theme = options.theme ?? "column_colors";
+  const mode = options.mode ?? "random";
+  const pairs = await buildAssignments(loaded.students, mode, theme, groupId);
 
   await prisma.$transaction(async (tx) => {
     const session = await tx.seatingSession.upsert({
@@ -208,10 +331,12 @@ export async function shuffleSeatingPlan(
       create: {
         groupId,
         date,
+        mode,
         theme,
         createdById: teacherId,
       },
       update: {
+        mode,
         theme,
         createdById: teacherId,
         createdAt: new Date(),
