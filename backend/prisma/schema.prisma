@@ -12,6 +12,13 @@ enum Role {
   STUDENT
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  JUSTIFIED
+}
+
 model ClassGroup {
   id        String   @id @default(cuid())
   code      String
@@ -22,6 +29,9 @@ model ClassGroup {
   students   User[]     @relation("GroupStudents")
   activities Activity[]
   weeks      GroupWeek[]
+  announcements Announcement[]
+  tasks         Task[]
+  classDayRecords ClassDayRecord[]
 
   /// Meta de actividades del periodo (para progreso). Si es null, se usa el total publicado.
   plannedActivities Int?
@@ -67,6 +77,11 @@ model User {
   weeklyWins        WeeklyWinner[]
   officeExam        OfficeExam?              @relation("TeacherOfficeExam")
   officeExamAttempts OfficeExamAttempt[]     @relation("StudentOfficeExamAttempts")
+  announcements     Announcement[]           @relation("TeacherAnnouncements")
+  tasks             Task[]                   @relation("TeacherTasks")
+  schoolCalendar    SchoolCalendar?          @relation("TeacherSchoolCalendar")
+  classDayMarked    ClassDayRecord[]         @relation("ClassDayMarkedBy")
+  classDayRecords   ClassDayRecord[]         @relation("StudentClassDay")
 
   @@index([groupId])
   @@index([role])
@@ -233,4 +248,80 @@ model OfficeExamAttempt {
   @@unique([examId, studentId])
   @@index([studentId])
   @@index([examId])
+}
+
+/// Aviso del docente (grupo específico o todos).
+model Announcement {
+  id        String   @id @default(cuid())
+  teacherId String
+  groupId   String?
+  title     String
+  body      String   @db.Text
+
+  teacher User        @relation("TeacherAnnouncements", fields: [teacherId], references: [id], onDelete: Cascade)
+  group   ClassGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([groupId])
+}
+
+/// Tarea publicada por el docente.
+model Task {
+  id        String    @id @default(cuid())
+  teacherId String
+  groupId   String?
+  title     String
+  body      String    @db.Text
+  dueDate   DateTime? @db.Date
+
+  teacher User        @relation("TeacherTasks", fields: [teacherId], references: [id], onDelete: Cascade)
+  group   ClassGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([groupId])
+}
+
+/// Calendario escolar (un archivo activo por docente).
+model SchoolCalendar {
+  id            String   @id @default(cuid())
+  teacherId     String   @unique
+  title         String
+  semesterLabel String?
+  fileName      String
+  mimeType      String
+  fileData      Bytes
+
+  teacher User @relation("TeacherSchoolCalendar", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  publishedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Asistencia y participación diaria (estrellas) por alumno.
+model ClassDayRecord {
+  id         String           @id @default(cuid())
+  groupId    String
+  studentId  String
+  date       DateTime         @db.Date
+  attendance AttendanceStatus @default(PRESENT)
+  /// Estrellas de participación (0–3); cada estrella suma 1 punto en la escala de firmas.
+  stars      Int              @default(0)
+  markedById String
+
+  group    ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student  User       @relation("StudentClassDay", fields: [studentId], references: [id], onDelete: Cascade)
+  markedBy User       @relation("ClassDayMarkedBy", fields: [markedById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([groupId, studentId, date])
+  @@index([groupId, date])
+  @@index([studentId])
 }

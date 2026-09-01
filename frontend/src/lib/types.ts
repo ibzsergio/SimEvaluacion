@@ -65,6 +65,18 @@ export type StudentProgress = {
     badge: "gold" | "silver" | "bronze" | "top10" | null;
     listNumber: number | null;
     inTop10: boolean;
+    participationStars?: number;
+  };
+  classEngagement?: {
+    participationStars: number;
+    attendance: {
+      present: number;
+      absent: number;
+      late: number;
+      justified: number;
+      totalDays: number;
+      ratePercent: number;
+    };
   };
   motivation: {
     displayName: string;
@@ -263,4 +275,66 @@ export type OfficeExamState = {
   examScore4?: number;
   finalGrade?: number;
   submittedAt?: string;
+};
+
+export type Announcement = {
+  id: string;
+  title: string;
+  body: string;
+  groupId: string | null;
+  createdAt: string;
+  group?: { code: string } | null;
+};
+
+export type TaskItem = {
+  id: string;
+  title: string;
+  body: string;
+  groupId: string | null;
+  dueDate: string | null;
+  createdAt: string;
+  group?: { code: string } | null;
+};
+
+export type SchoolCalendarInfo = {
+  id: string;
+  title: string;
+  semesterLabel: string | null;
+  fileName: string;
+  mimeType: string;
+  publishedAt: string;
+};
+
+export type TeacherCommsData = {
+  announcements: Announcement[];
+  tasks: TaskItem[];
+  calendar: SchoolCalendarInfo | null;
+  groups: Pick<ClassGroup, "id" | "code" | "shift">[];
+};
+
+export type StudentCommsData = {
+  announcements: Pick<Announcement, "id" | "title" | "body" | "createdAt" | "groupId">[];
+  tasks: Pick<TaskItem, "id" | "title" | "body" | "dueDate" | "createdAt" | "groupId">[];
+  calendar: SchoolCalendarInfo | null;
+};
+
+export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "JUSTIFIED";
+
+export type ClassDayRow = {
+  student: {
+    id: string;
+    displayName: string;
+    listNumber: number | null;
+    controlNumber: string | null;
+  };
+  attendance: AttendanceStatus;
+  stars: number;
+  saved: boolean;
+};
+
+export type ClassDaySheet = {
+  group: Pick<ClassGroup, "id" | "code" | "shift">;
+  date: string;
+  maxStars: number;
+  rows: ClassDayRow[];
 };

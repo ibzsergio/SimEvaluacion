@@ -2,6 +2,7 @@ import axios from "axios";
 import type {
   Activity,
   ClassGroup,
+  ClassDaySheet,
   GradeRow,
   ImportResult,
   ImportWorkbookResult,
@@ -10,7 +11,9 @@ import type {
   PartialSummary,
   OfficeExamTeacherData,
   OfficeExamState,
+  StudentCommsData,
   StudentProgress,
+  TeacherCommsData,
   User,
 } from "./types";
 
@@ -76,6 +79,15 @@ export function getApiErrorMessage(error: unknown): string {
     }
     if (code === "group_not_found") {
       return "No se encontró el grupo. Cierra sesión, vuelve a entrar y selecciona el grupo 201 o 202.";
+    }
+    if (code === "invalid_confirm_phrase") {
+      return "Escribe exactamente NUEVO SEMESTRE para confirmar.";
+    }
+    if (code === "group_already_exists") {
+      return "Ya existe un grupo con ese código.";
+    }
+    if (code === "calendar_not_found") {
+      return "No hay calendario escolar publicado.";
     }
     if (code === "activity_not_found") {
       return "No se encontró la actividad. Recarga la página e inténtalo de nuevo.";
@@ -510,6 +522,116 @@ export async function downloadTeacherStudentDiploma(
   link.download = downloadName;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+export async function fetchTeacherComms() {
+  const { data } = await api.get<TeacherCommsData>("/teacher/comms");
+  return data;
+}
+
+export async function createAnnouncement(payload: {
+  title: string;
+  body: string;
+  groupId?: string | null;
+}) {
+  const { data } = await api.post<{ announcement: TeacherCommsData["announcements"][0] }>(
+    "/teacher/comms/announcements",
+    payload,
+  );
+  return data.announcement;
+}
+
+export async function deleteAnnouncement(id: string) {
+  await api.delete(`/teacher/comms/announcements/${id}`);
+}
+
+export async function createTask(payload: {
+  title: string;
+  body: string;
+  groupId?: string | null;
+  dueDate?: string | null;
+}) {
+  const { data } = await api.post<{ task: TeacherCommsData["tasks"][0] }>(
+    "/teacher/comms/tasks",
+    payload,
+  );
+  return data.task;
+}
+
+export async function deleteTask(id: string) {
+  await api.delete(`/teacher/comms/tasks/${id}`);
+}
+
+export async function uploadSchoolCalendar(file: File, title: string, semesterLabel: string) {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("title", title);
+  if (semesterLabel.trim()) fd.append("semesterLabel", semesterLabel.trim());
+  const { data } = await api.post<{ calendar: TeacherCommsData["calendar"] }>(
+    "/teacher/comms/calendar",
+    fd,
+  );
+  return data.calendar;
+}
+
+export async function deleteSchoolCalendar() {
+  await api.delete("/teacher/comms/calendar");
+}
+
+export async function openTeacherCalendarFile() {
+  const { data } = await api.get<Blob>("/teacher/comms/calendar/file", { responseType: "blob" });
+  const url = URL.createObjectURL(data);
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function resetSemester(confirmPhrase: string, clearComms = false) {
+  const { data } = await api.post<{
+    groupsReset: number;
+    studentsRemoved: number;
+    examAttemptsRemoved: number;
+  }>("/teacher/comms/semester/reset", { confirmPhrase, clearComms });
+  return data;
+}
+
+export async function createTeacherGroup(code: string, shift: string) {
+  const { data } = await api.post<{ group: ClassGroup }>("/teacher/comms/groups", { code, shift });
+  return data.group;
+}
+
+export async function deleteTeacherGroup(groupId: string) {
+  await api.delete(`/teacher/comms/groups/${groupId}`);
+}
+
+export async function fetchStudentComms() {
+  const { data } = await api.get<StudentCommsData>("/student/comms");
+  return data;
+}
+
+export async function openStudentCalendarFile() {
+  const { data } = await api.get<Blob>("/student/calendar/file", { responseType: "blob" });
+  const url = URL.createObjectURL(data);
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function fetchClassDaySheet(groupId: string, date: string) {
+  const { data } = await api.get<ClassDaySheet>(`/teacher/groups/${groupId}/class-day`, {
+    params: { date },
+  });
+  return data;
+}
+
+export async function saveClassDayRecords(
+  groupId: string,
+  date: string,
+  records: Array<{ studentId: string; attendance: string; stars: number }>,
+) {
+  const { data } = await api.put<{ saved: number }>(`/teacher/groups/${groupId}/class-day`, {
+    date,
+    records,
+  });
+  return data;
 }
 
 // El alumno ya no registra entregas. La actividad se considera entregada al calificar.

@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import AccessQrPanel from "../components/AccessQrPanel";
+import ClassDayPanel from "../components/ClassDayPanel";
 import GroupGradesImportPanel from "../components/GroupGradesImportPanel";
 import GroupRankingPanel from "../components/GroupRankingPanel";
 import GroupStudentsPanel from "../components/GroupStudentsPanel";
 import OfficeExamPanel from "../components/OfficeExamPanel";
+import SemesterPanel from "../components/SemesterPanel";
+import TeacherCommsPanel from "../components/TeacherCommsPanel";
 import WeeklyWinnersPanel from "../components/WeeklyWinnersPanel";
 import Layout from "../components/Layout";
 import {
@@ -25,7 +29,9 @@ function todayIso() {
 
 export default function TeacherPage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"alumnos" | "actividades" | "ranking" | "semanas" | "examen">("alumnos");
+  const [tab, setTab] = useState<
+    "alumnos" | "actividades" | "ranking" | "semanas" | "examen" | "comunicacion" | "semestre" | "asistencia" | "acceso"
+  >("alumnos");
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -192,6 +198,18 @@ export default function TeacherPage() {
         <TabButton active={tab === "examen"} onClick={() => setTab("examen")}>
           Examen Office
         </TabButton>
+        <TabButton active={tab === "comunicacion"} onClick={() => setTab("comunicacion")}>
+          Comunicación
+        </TabButton>
+        <TabButton active={tab === "semestre"} onClick={() => setTab("semestre")}>
+          Nuevo semestre
+        </TabButton>
+        <TabButton active={tab === "asistencia"} onClick={() => setTab("asistencia")}>
+          Asistencia
+        </TabButton>
+        <TabButton active={tab === "acceso"} onClick={() => setTab("acceso")}>
+          QR / Acceso
+        </TabButton>
         </div>
         <button
           type="button"
@@ -214,6 +232,22 @@ export default function TeacherPage() {
 
       {tab === "examen" ? (
         <OfficeExamPanel groups={groups} />
+      ) : tab === "comunicacion" ? (
+        <TeacherCommsPanel />
+      ) : tab === "semestre" ? (
+        <SemesterPanel />
+      ) : tab === "asistencia" ? (
+        groupsQuery.isLoading ? (
+          <p className="text-slate-400">Cargando grupos...</p>
+        ) : selectedGroupId ? (
+          <ClassDayPanel
+            groups={groups}
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={(id) => setSelectedGroupId(id)}
+          />
+        ) : null
+      ) : tab === "acceso" ? (
+        <AccessQrPanel />
       ) : tab === "semanas" ? (
         groupsQuery.isLoading ? (
           <p className="text-slate-400">Cargando grupos...</p>
@@ -505,13 +539,26 @@ function GradesTable({
   const [savingAll, setSavingAll] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     setDrafts({});
     setEditOrder([]);
     setSaveError(null);
     setSaveSuccess(null);
+    setSearch("");
   }, [activity.id]);
+
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        r.student.displayName.toLowerCase().includes(q) ||
+        (r.student.controlNumber ?? "").includes(q) ||
+        String(r.student.listNumber ?? "").includes(q),
+    );
+  }, [rows, search]);
 
   function getDraft(row: GradeRow): PointsDraft {
     if (drafts[row.student.id]) return drafts[row.student.id];
@@ -642,6 +689,21 @@ function GradesTable({
         </p>
       ) : null}
 
+      <div className="mb-4">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar alumno por nombre, control o lista..."
+          className="w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-sm text-white placeholder:text-slate-500"
+        />
+        {search.trim() ? (
+          <p className="mt-1 text-xs text-slate-500">
+            {filteredRows.length} de {rows.length} alumnos
+          </p>
+        ) : null}
+      </div>
+
       {loading ? (
         <p className="text-slate-400">Cargando alumnos...</p>
       ) : rows.length === 0 ? (
@@ -661,7 +723,7 @@ function GradesTable({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
+              {filteredRows.map((row) => {
                 const draft = getDraft(row);
                 return (
                   <tr key={row.student.id} className="border-t border-white/5">

@@ -12,6 +12,15 @@ import { removeJunkStudentsForGroup } from "./dedupeStudents.js";
 import { teacherGroupsRouter } from "./teacherGroups.js";
 import { officeExamTeacherRouter } from "./officeExam/officeExamRoutes.js";
 import {
+  commsTeacherRouter,
+  getStudentCalendarFile,
+  getStudentComms,
+} from "./commsRoutes.js";
+import {
+  getStudentAttendanceSummary,
+  getStudentParticipationStars,
+} from "./classDayService.js";
+import {
   getStudentOfficeExamState,
   saveStudentAnswers,
   startStudentExam,
@@ -209,6 +218,7 @@ app.post("/auth/dev-seed", async (_req, res) => {
 
 app.use("/teacher", teacherGroupsRouter);
 app.use("/teacher/office-exam", officeExamTeacherRouter);
+app.use("/teacher/comms", commsTeacherRouter);
 
 // Teacher: create/list activities
 app.get("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedRequest, res) => {
@@ -508,6 +518,9 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     ranking,
   );
 
+  const participationStars = await getStudentParticipationStars(req.auth!.userId, me.groupId);
+  const attendance = await getStudentAttendanceSummary(req.auth!.userId, me.groupId);
+
   return res.json({
     group: myGroup,
     my: {
@@ -517,6 +530,11 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
       badge: badgeForPlace(myPlace),
       listNumber: me.listNumber,
       inTop10: motivation.inTop10,
+      participationStars,
+    },
+    classEngagement: {
+      participationStars,
+      attendance,
     },
     motivation,
     summary,
@@ -585,6 +603,21 @@ app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => 
     },
     `diploma_${safeName.replace(/\s+/g, "_")}.pdf`,
   );
+});
+
+app.get("/student/comms", requireAuth, async (req: AuthedRequest, res) => {
+  if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
+  const data = await getStudentComms(req.auth!.userId);
+  return res.json(data);
+});
+
+app.get("/student/calendar/file", requireAuth, async (req: AuthedRequest, res) => {
+  if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
+  const calendar = await getStudentCalendarFile(req.auth!.userId);
+  if (!calendar) return res.status(404).json({ error: "not_found" });
+  res.setHeader("Content-Type", calendar.mimeType);
+  res.setHeader("Content-Disposition", `inline; filename="${calendar.fileName}"`);
+  return res.send(Buffer.from(calendar.fileData));
 });
 
 app.get("/student/office-exam", requireAuth, async (req: AuthedRequest, res) => {

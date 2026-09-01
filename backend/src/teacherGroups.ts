@@ -7,7 +7,7 @@ import * as XLSX from "xlsx";
 import { prisma } from "./prisma.js";
 import { parseStudentsExcel, parseStudentsWorkbook } from "./excel.js";
 import { parseGradesExcel, parseGradesWorkbook } from "./importGradesExcel.js";
-import { ensureTeacherGroups, placeholderPasswordHash } from "./groups.js";
+import { ensureTeacherGroups, listTeacherGroups, placeholderPasswordHash } from "./groups.js";
 import { dedupeStudentsForTeacher, removeJunkStudentsForGroup } from "./dedupeStudents.js";
 import { importStudentRows } from "./importStudents.js";
 import { importGradesForGroup, type GradeImportMode } from "./importGrades.js";
@@ -15,6 +15,14 @@ import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { closeWeekForGroup, ensureCurrentGroupWeek } from "./weeks.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
 import { getDiplomaGradeInfo } from "./officeExam/officeExamRoutes.js";
+import {
+  getClassDaySheet,
+  getStudentAttendanceSummary,
+  getStudentParticipationStars,
+  parseClassDayDate,
+  saveClassDayRecords,
+  todayClassDayDate,
+} from "./classDayService.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -243,7 +251,7 @@ function sendPdf(
 }
 
 teacherGroupsRouter.get("/groups", async (req: AuthedRequest, res) => {
-  const groups = await ensureTeacherGroups(req.auth!.userId);
+  const groups = await listTeacherGroups(req.auth!.userId);
   const groupIds = groups.map((g) => g.id);
   const [studentCounts, activityCounts] = await Promise.all([
     prisma.user.groupBy({
@@ -1014,6 +1022,58 @@ teacherGroupsRouter.get("/groups/:groupId/students", async (req: AuthedRequest, 
         : "Pendiente — el alumno debe crearla al entrar",
     })),
   });
+});
+
+teacherGroupsRouter.get("/groups/:groupId/class-day", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const dateRaw = asTrimmedString(req.query.date);
+  const date = dateRaw ? parseClassDayDate(dateRaw) : todayClassDayDate();
+  if (!date) return res.status(400).json({ error: "invalid_date" });
+
+  try {
+    const sheet = await getClassDaySheet(req.auth!.userId, groupId, date);
+    return res.json(sheet);
+  } catch (err) {
+    if (err instanceof Error && err.message === "group_not_found") {
+      return res.status(404).json({ error: "group_not_found" });
+    }
+    throw err;
+  }
+});
+
+teacherGroupsRouter.put("/groups/:groupId/class-day", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      date: z.string(),
+      records: z.array(
+        z.object({
+          studentId: z.string(),
+          attendance: z.enum(["PRESENT", "LATE", "ABSENT", "JUSTIFIED"]),
+          stars: z.number().int().min(0).max(3),
+        }),
+      ),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const date = parseClassDayDate(body.data.date);
+  if (!date) return res.status(400).json({ error: "invalid_date" });
+
+  try {
+    const result = await saveClassDayRecords(
+      req.auth!.userId,
+      groupId,
+      date,
+      body.data.records,
+    );
+    return res.json(result);
+  } catch (err) {
+    if (err instanceof Error && err.message === "group_not_found") {
+      return res.status(404).json({ error: "group_not_found" });
+    }
+    throw err;
+  }
 });
 
 teacherGroupsRouter.post(

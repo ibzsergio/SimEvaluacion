@@ -64,7 +64,7 @@ async function mergeStudentData(keeperId: string, removeId: string) {
   await prisma.submission.deleteMany({ where: { studentId: removeId } });
 }
 
-async function deleteStudentAndRelated(studentId: string) {
+export async function deleteStudentAndRelated(studentId: string) {
   await prisma.grade.deleteMany({ where: { studentId } });
   await prisma.submission.deleteMany({ where: { studentId } });
   await prisma.weeklyWinner.deleteMany({ where: { studentId } });

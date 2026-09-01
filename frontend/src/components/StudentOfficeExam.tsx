@@ -41,6 +41,7 @@ export default function StudentOfficeExam() {
   const query = useQuery({
     queryKey: ["office-exam-student"],
     queryFn: fetchStudentOfficeExam,
+    staleTime: 2 * 60_000,
     refetchOnWindowFocus: true,
   });
 

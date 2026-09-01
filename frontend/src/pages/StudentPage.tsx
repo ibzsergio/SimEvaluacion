@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import BadgeDisplay from "../components/BadgeDisplay";
 import Layout from "../components/Layout";
+import StudentCommunication from "../components/StudentCommunication";
 import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentOfficeExam from "../components/StudentOfficeExam";
 import Top10Ranking from "../components/Top10Ranking";
@@ -21,7 +22,8 @@ export default function StudentPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
     queryFn: fetchStudentProgress,
-    refetchInterval: 30_000,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
   });
 
   if (isLoading || !data) {
@@ -52,6 +54,8 @@ export default function StudentPage() {
       footer={studentFooter}
     >
       <StudentMotivationCard motivation={data.motivation} />
+
+      <StudentCommunication />
 
       <StudentOfficeExam />
 
@@ -88,6 +92,31 @@ export default function StudentPage() {
         <StatCard label="Vencidas" value={summary.overdue} color="text-rose-300" />
         <StatCard label="Calificadas" value={summary.graded} color="text-emerald-300" />
       </div>
+
+      {data.classEngagement ? (
+        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          <section className="glass rounded-xl px-4 py-3">
+            <p className="text-xs text-slate-400">Participación en clase</p>
+            <p className="mt-1 text-2xl font-bold text-amber-300">
+              {"⭐".repeat(Math.min(data.classEngagement.participationStars, 12))}
+              {data.classEngagement.participationStars > 12 ? "…" : ""}
+            </p>
+            <p className="text-sm text-slate-300">
+              {data.classEngagement.participationStars} estrellas · suman en tu escala de calificación
+            </p>
+          </section>
+          <section className="glass rounded-xl px-4 py-3">
+            <p className="text-xs text-slate-400">Asistencia</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-300">
+              {data.classEngagement.attendance.ratePercent}%
+            </p>
+            <p className="text-sm text-slate-300">
+              {data.classEngagement.attendance.present} presentes · {data.classEngagement.attendance.absent}{" "}
+              faltas · {data.classEngagement.attendance.late} tardes
+            </p>
+          </section>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="glass relative overflow-hidden p-6 lg:col-span-1">
