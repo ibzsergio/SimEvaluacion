@@ -33,6 +33,37 @@ function resolveDatabaseUrl() {
   return null;
 }
 
+function migrationOutput(err) {
+  if (!err || typeof err !== "object") return String(err);
+  return `${err.stdout ?? ""}${err.stderr ?? ""}${err.message ?? ""}${String(err)}`;
+}
+
+function extractFailedMigration(output) {
+  const match = output.match(/The `(\d+_[\w_]+)` migration/);
+  return match?.[1] ?? null;
+}
+
+function runMigrationsWithRecovery() {
+  console.log("[startup] Running prisma migrate deploy...");
+  try {
+    execSync("npx prisma migrate deploy", { stdio: "pipe", encoding: "utf8" });
+    console.log("[startup] Migrations complete.");
+    return;
+  } catch (err) {
+    const output = migrationOutput(err);
+    const failed = extractFailedMigration(output);
+    if (output.includes("P3009") && failed) {
+      console.log(`[startup] Recovering failed migration ${failed}...`);
+      execSync(`npx prisma migrate resolve --rolled-back ${failed}`, { stdio: "inherit" });
+      execSync("npx prisma migrate deploy", { stdio: "inherit" });
+      console.log("[startup] Migrations complete after recovery.");
+      return;
+    }
+    console.error(output);
+    throw err;
+  }
+}
+
 const dbUrl = resolveDatabaseUrl();
 if (!dbUrl) {
   console.error("[startup] Missing DATABASE_URL.");
@@ -40,14 +71,14 @@ if (!dbUrl) {
   process.exit(1);
 }
 
-console.log("[startup] Running prisma migrate deploy...");
 try {
-  execSync("npx prisma migrate deploy", { stdio: "inherit" });
+  runMigrationsWithRecovery();
 } catch {
-  console.error("[startup] prisma migrate deploy failed.");
-  console.error("[startup] Check that MySQL is in the same Railway project and DATABASE_URL is correct.");
-  process.exit(1);
+  console.warn("[startup] prisma migrate deploy failed; trying seating schema repair...");
 }
+
+const { ensureSeatingSchema } = await import("../dist/ensureSeatingSchema.js");
+await ensureSeatingSchema();
 
 console.log("[startup] Starting API...");
 await import("../dist/index.js");

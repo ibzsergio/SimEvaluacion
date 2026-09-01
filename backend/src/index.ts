@@ -1,5 +1,4 @@
 import "dotenv/config";
-import { execSync } from "node:child_process";
 import express from "express";
 import cors from "cors";
 import bcrypt from "bcrypt";
@@ -33,6 +32,8 @@ import {
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
 import { getStudentSeating } from "./seatingService.js";
+import { ensureSeatingSchema } from "./ensureSeatingSchema.js";
+import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
 
 const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:5173")
@@ -720,31 +721,6 @@ function shouldRunMigrations() {
   return false;
 }
 
-function runMigrations() {
-  if (!shouldRunMigrations()) return;
-  if (!process.env.DATABASE_URL?.trim()) {
-    console.error("[startup] Missing DATABASE_URL for migrations.");
-    process.exit(1);
-  }
-  console.log("[startup] Running prisma migrate deploy...");
-  try {
-    execSync("npx prisma migrate deploy", { stdio: "pipe", encoding: "utf8" });
-  } catch (err) {
-    const output = `${(err as { stdout?: string }).stdout ?? ""}${(err as { stderr?: string }).stderr ?? ""}${String(err)}`;
-    if (output.includes("P3009") && output.includes("20260528023800_group_progress_settings")) {
-      console.log("[startup] Recovering failed migration 20260528023800_group_progress_settings...");
-      execSync("npx prisma migrate resolve --rolled-back 20260528023800_group_progress_settings", {
-        stdio: "inherit",
-      });
-      execSync("npx prisma migrate deploy", { stdio: "inherit" });
-    } else {
-      console.error(output);
-      throw err;
-    }
-  }
-  console.log("[startup] Migrations complete.");
-}
-
 app.use((req, res) => {
   res.status(404).json({ error: "not_found", method: req.method, path: req.path });
 });
@@ -752,12 +728,17 @@ app.use((req, res) => {
 // Listen first so Railway healthcheck can reach /health while migrations run.
 app.listen(port, host, () => {
   console.log(`[startup] API listening on http://${host}:${port}`);
-  resolveDatabaseUrl();
-  try {
-    runMigrations();
-  } catch (err) {
-    console.error("[startup] Migration failed:", err);
-    process.exit(1);
-  }
+  void (async () => {
+    resolveDatabaseUrl();
+    try {
+      if (shouldRunMigrations() && process.env.DATABASE_URL?.trim()) {
+        runMigrationsWithRecovery();
+      }
+      await ensureSeatingSchema();
+    } catch (err) {
+      console.error("[startup] Startup schema failed:", err);
+      process.exit(1);
+    }
+  })();
 });
 
