@@ -1552,21 +1552,30 @@ function isSeatingSchemaError(err: unknown) {
     const code = String((err as { code: unknown }).code);
     if (code === "P2021" || code === "P2022") return true;
   }
-  const msg = err instanceof Error ? err.message : String(err);
-  return /Seating(Session|Assignment)/i.test(msg) || /doesn't exist|Unknown column/i.test(msg);
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    msg.includes("doesn't exist in the current database") ||
+    msg.includes("unknown column") ||
+    msg.includes("table") && msg.includes("seatingsession") && msg.includes("doesn't exist")
+  );
 }
 
 function handleSeatingError(res: Response, err: unknown, action: string) {
   console.error(`[seating] ${action} failed:`, err);
+  const detail = err instanceof Error ? err.message : String(err);
   if (isSeatingSchemaError(err)) {
     return res.status(503).json({
       error: "seating_not_ready",
       message:
         "Butacas no está listo en la base de datos. Espera 1 minuto y recarga; si persiste, reinicia el backend en Railway.",
-      detail: err instanceof Error ? err.message : String(err),
+      detail,
     });
   }
-  return res.status(500).json({ error: "server_error" });
+  return res.status(500).json({
+    error: "seating_failed",
+    message: "No se pudo guardar el acomodo de butacas.",
+    detail,
+  });
 }
 
 teacherGroupsRouter.get("/groups/:groupId/seating", async (req: AuthedRequest, res) => {

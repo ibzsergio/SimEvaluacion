@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { parseClassDayDate } from "./classDayService.js";
 
 async function tableExists(name: string) {
   const rows = await prisma.$queryRaw<Array<{ cnt: bigint }>>`
@@ -20,6 +21,17 @@ async function columnExists(table: string, column: string) {
   return Number(rows[0]?.cnt ?? 0) > 0;
 }
 
+async function indexExists(table: string, indexName: string) {
+  const rows = await prisma.$queryRaw<Array<{ cnt: bigint }>>`
+    SELECT COUNT(*) AS cnt
+    FROM information_schema.statistics
+    WHERE table_schema = DATABASE()
+      AND LOWER(table_name) = LOWER(${table})
+      AND LOWER(index_name) = LOWER(${indexName})
+  `;
+  return Number(rows[0]?.cnt ?? 0) > 0;
+}
+
 async function execOptional(sql: string, ignore = /Duplicate|already exists|errno: 1061|errno: 1826/i) {
   try {
     await prisma.$executeRawUnsafe(sql);
@@ -30,11 +42,52 @@ async function execOptional(sql: string, ignore = /Duplicate|already exists|errn
   }
 }
 
+async function ensureSeatingIndexes() {
+  if (!(await tableExists("SeatingSession"))) return;
+
+  if (!(await indexExists("SeatingSession", "SeatingSession_groupId_date_key"))) {
+    console.log("[startup] Adding SeatingSession groupId+date unique index...");
+    await execOptional(`
+      CREATE UNIQUE INDEX \`SeatingSession_groupId_date_key\` ON \`SeatingSession\`(\`groupId\`, \`date\`)
+    `);
+  }
+
+  if (!(await tableExists("SeatingAssignment"))) return;
+
+  if (!(await indexExists("SeatingAssignment", "SeatingAssignment_sessionId_studentId_key"))) {
+    console.log("[startup] Adding SeatingAssignment sessionId+studentId unique index...");
+    await execOptional(`
+      CREATE UNIQUE INDEX \`SeatingAssignment_sessionId_studentId_key\`
+      ON \`SeatingAssignment\`(\`sessionId\`, \`studentId\`)
+    `);
+  }
+
+  if (!(await indexExists("SeatingAssignment", "SeatingAssignment_sessionId_row_col_key"))) {
+    console.log("[startup] Adding SeatingAssignment sessionId+row+col unique index...");
+    await execOptional(`
+      CREATE UNIQUE INDEX \`SeatingAssignment_sessionId_row_col_key\`
+      ON \`SeatingAssignment\`(\`sessionId\`, \`row\`, \`col\`)
+    `);
+  }
+}
+
+async function probeSeatingQueries() {
+  const probeDate = parseClassDayDate("2099-01-01")!;
+  await prisma.seatingSession.findUnique({
+    where: { groupId_date: { groupId: "__probe__", date: probeDate } },
+    select: { id: true },
+  });
+}
+
 export async function getSeatingSchemaStatus() {
   const hasSession = await tableExists("SeatingSession");
   const hasAssignment = await tableExists("SeatingAssignment");
   const hasMode = hasSession ? await columnExists("SeatingSession", "mode") : false;
+  const hasGroupDateIndex = hasSession
+    ? await indexExists("SeatingSession", "SeatingSession_groupId_date_key")
+    : false;
   let prismaOk = false;
+  let probeOk = false;
   if (hasSession) {
     try {
       await prisma.seatingSession.count();
@@ -42,8 +95,24 @@ export async function getSeatingSchemaStatus() {
     } catch {
       prismaOk = false;
     }
+    try {
+      await probeSeatingQueries();
+      probeOk = true;
+    } catch {
+      probeOk = false;
+    }
   }
-  return { hasSession, hasAssignment, hasMode, prismaOk, ready: hasSession && hasAssignment && hasMode && prismaOk };
+  const ready =
+    hasSession && hasAssignment && hasMode && hasGroupDateIndex && prismaOk && probeOk;
+  return {
+    hasSession,
+    hasAssignment,
+    hasMode,
+    hasGroupDateIndex,
+    prismaOk,
+    probeOk,
+    ready,
+  };
 }
 
 /** Garantiza tablas de butacas aunque migrate deploy no haya corrido en Railway. */
@@ -77,6 +146,13 @@ export async function ensureSeatingSchema() {
     `);
   }
 
+  if (!(await columnExists("SeatingSession", "theme"))) {
+    console.log("[startup] Adding SeatingSession.theme...");
+    await execOptional(`
+      ALTER TABLE \`SeatingSession\` ADD COLUMN \`theme\` VARCHAR(191) NOT NULL DEFAULT 'column_colors'
+    `);
+  }
+
   await execOptional(`
     CREATE TABLE IF NOT EXISTS \`SeatingAssignment\` (
       \`id\` VARCHAR(191) NOT NULL,
@@ -91,6 +167,8 @@ export async function ensureSeatingSchema() {
       PRIMARY KEY (\`id\`)
     ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
+
+  await ensureSeatingIndexes();
 
   await execOptional(`
     ALTER TABLE \`SeatingSession\`

@@ -101,6 +101,12 @@ export function getApiErrorMessage(error: unknown): string {
         "Butacas aún no está listo en el servidor. Espera 1–2 minutos tras el despliegue en Railway."
       );
     }
+    if (code === "seating_failed") {
+      const detail = (error.response.data as { detail?: string })?.detail;
+      return detail
+        ? `Error en butacas: ${detail}`
+        : "No se pudo guardar el acomodo de butacas. Inténtalo de nuevo.";
+    }
     if (code === "not_found") {
       return (
         "Ruta no encontrada en el servidor. Verifica que Railway esté desplegado y que VITE_API_URL sea " +
