@@ -645,26 +645,15 @@ export async function fetchClassDaySheet(groupId: string, date: string) {
   return data;
 }
 
-export type AttendanceExcelSyncResult = {
-  ok: boolean;
-  column?: number;
-  date?: string;
-  updated?: number;
-  reason?: string;
-};
-
 export async function saveClassDayRecords(
   groupId: string,
   date: string,
   records: Array<{ studentId: string; attendance: string; stars: number }>,
 ) {
-  const { data } = await api.put<{ saved: number; excel: AttendanceExcelSyncResult }>(
-    `/teacher/groups/${groupId}/class-day`,
-    {
-      date,
-      records,
-    },
-  );
+  const { data } = await api.put<{ saved: number }>(`/teacher/groups/${groupId}/class-day`, {
+    date,
+    records,
+  });
   return data;
 }
 

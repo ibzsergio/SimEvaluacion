@@ -4,6 +4,7 @@ import path from "node:path";
 import type { AttendanceStatus } from "@prisma/client";
 import { findBestNameMatch, namesMatchLoose, normalizePersonName } from "./excel.js";
 import { formatClassDayIso } from "./classDayService.js";
+import { prisma } from "./prisma.js";
 
 const MASTER_FILE_NAME = "LISTAS DE ASISTENCIA 26-27.xlsx";
 
@@ -35,11 +36,14 @@ const MONTH_NAMES_ES = [
   "Diciembre",
 ];
 
-export type AttendanceExcelSyncResult =
-  | { ok: true; column: number; date: string; updated: number }
-  | { ok: false; reason: string };
-
 type StudentRef = { id: string; displayName: string };
+
+type DayRecord = {
+  dateIso: string;
+  studentId: string;
+  displayName: string;
+  attendance: AttendanceStatus;
+};
 
 function resolveMasterExcelPath(): string | null {
   const envPath = process.env.ATTENDANCE_MASTER_EXCEL?.trim();
@@ -56,27 +60,12 @@ function resolveMasterExcelPath(): string | null {
   return null;
 }
 
-function excelSerialToIso(serial: number): string | null {
-  const utc = new Date(Date.UTC(1899, 11, 30 + serial, 12, 0, 0, 0));
-  if (Number.isNaN(utc.getTime())) return null;
-  return formatClassDayIso(utc);
-}
-
-function cellValueToIso(value: ExcelJS.CellValue): string | null {
-  if (value === null || value === undefined || value === "") return null;
-  if (value instanceof Date) return formatClassDayIso(value);
-  if (typeof value === "number" && value > 30000 && value < 60000) {
-    return excelSerialToIso(value);
-  }
-  if (typeof value === "object" && "result" in value && value.result instanceof Date) {
-    return formatClassDayIso(value.result);
-  }
-  const text = String(value).trim();
-  const m = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  const d = new Date(text);
-  if (!Number.isNaN(d.getTime())) return formatClassDayIso(d);
-  return null;
+async function loadTemplateWorkbook(): Promise<ExcelJS.Workbook | null> {
+  const filePath = resolveMasterExcelPath();
+  if (!filePath) return null;
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(filePath);
+  return workbook;
 }
 
 function parseDateForExcel(dateIso: string): Date {
@@ -97,23 +86,11 @@ function weekdayHoursForDate(sheet: ExcelJS.Worksheet, dateIso: string): number 
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-function missedHours(
-  attendance: AttendanceStatus,
-  fullDayHours: number,
-): number | null {
+/** Solo faltas y tardanzas; presente y justificada quedan vacías. */
+function missedHours(attendance: AttendanceStatus, fullDayHours: number): number | null {
   if (attendance === "ABSENT") return fullDayHours > 0 ? fullDayHours : 4;
   if (attendance === "LATE") return 1;
   return null;
-}
-
-function findDateColumn(sheet: ExcelJS.Worksheet, dateIso: string): number | null {
-  let firstEmpty: number | null = null;
-  for (let col = DATE_COL_START; col <= DATE_COL_END; col++) {
-    const iso = cellValueToIso(sheet.getRow(DATE_ROW).getCell(col).value);
-    if (iso === dateIso) return col;
-    if (!iso && firstEmpty === null) firstEmpty = col;
-  }
-  return firstEmpty;
 }
 
 function buildStudentRowMap(sheet: ExcelJS.Worksheet) {
@@ -153,83 +130,115 @@ function matchStudentRow(
   return loose?.row ?? null;
 }
 
-function updateMonthLabel(sheet: ExcelJS.Worksheet, dateIso: string) {
-  const d = parseDateForExcel(dateIso);
-  const monthLabel = MONTH_NAMES_ES[d.getMonth()] ?? "";
-  if (!monthLabel) return;
-  const cell = sheet.getCell("H7");
-  const current = String(cell.value ?? "").trim();
-  if (current.toLowerCase() !== monthLabel.toLowerCase()) {
-    cell.value = monthLabel;
+function clearAttendanceGrid(sheet: ExcelJS.Worksheet, studentEndRow: number) {
+  for (let col = DATE_COL_START; col <= DATE_COL_END; col++) {
+    sheet.getRow(DATE_ROW).getCell(col).value = null;
+    for (let row = STUDENT_START_ROW; row <= studentEndRow; row++) {
+      sheet.getRow(row).getCell(col).value = null;
+    }
   }
 }
 
-/**
- * Sincroniza un día de asistencia en la plantilla oficial (fechas en gris, horas en blanco).
- */
-export async function syncAttendanceToMasterExcel(
-  groupCode: string,
-  dateIso: string,
+function updateMonthLabel(sheet: ExcelJS.Worksheet, dateIso: string) {
+  const d = parseDateForExcel(dateIso);
+  const monthLabel = MONTH_NAMES_ES[d.getMonth()] ?? "";
+  if (monthLabel) sheet.getCell("H7").value = monthLabel;
+}
+
+function fillSheetFromRecords(
+  sheet: ExcelJS.Worksheet,
   students: StudentRef[],
-  records: Array<{ studentId: string; attendance: AttendanceStatus }>,
-): Promise<AttendanceExcelSyncResult> {
-  const filePath = resolveMasterExcelPath();
-  if (!filePath) {
-    return { ok: false, reason: "master_excel_not_found" };
-  }
-
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(filePath);
-
-  const sheetName = groupCode.trim();
-  const sheet = workbook.getWorksheet(sheetName);
-  if (!sheet) {
-    return { ok: false, reason: `sheet_not_found:${sheetName}` };
-  }
-
-  const dateCol = findDateColumn(sheet, dateIso);
-  if (!dateCol) {
-    return { ok: false, reason: "no_column_available" };
-  }
-
-  updateMonthLabel(sheet, dateIso);
-
-  const dateCell = sheet.getRow(DATE_ROW).getCell(dateCol);
-  dateCell.value = parseDateForExcel(dateIso);
-  dateCell.numFmt = "dd/mm/yy";
-
+  records: DayRecord[],
+) {
   const excelRows = buildStudentRowMap(sheet);
-  const fullDayHours = weekdayHoursForDate(sheet, dateIso);
+  const studentEndRow =
+    excelRows.length > 0 ? excelRows[excelRows.length - 1]!.row : STUDENT_START_ROW + 30;
+
+  clearAttendanceGrid(sheet, studentEndRow);
+
+  if (!records.length) return;
+
+  const uniqueDates = [...new Set(records.map((r) => r.dateIso))].sort();
+  const maxCols = DATE_COL_END - DATE_COL_START + 1;
+  const dates = uniqueDates.slice(0, maxCols);
+  if (uniqueDates.length > maxCols) {
+    console.warn(
+      `[attendance-excel] Sheet ${sheet.name}: ${uniqueDates.length} fechas, solo ${maxCols} columnas en plantilla.`,
+    );
+  }
+
+  const dateToCol = new Map<string, number>();
+  dates.forEach((dateIso, index) => {
+    const col = DATE_COL_START + index;
+    dateToCol.set(dateIso, col);
+    const dateCell = sheet.getRow(DATE_ROW).getCell(col);
+    dateCell.value = parseDateForExcel(dateIso);
+    dateCell.numFmt = "dd/mm/yy";
+  });
+
+  const latestDate = dates[dates.length - 1];
+  if (latestDate) updateMonthLabel(sheet, latestDate);
+
   const studentsById = new Map(students.map((s, i) => [s.id, { ...s, listPosition: i + 1 }]));
 
-  let updated = 0;
   for (const rec of records) {
-    const student = studentsById.get(rec.studentId);
-    if (!student) continue;
+    const col = dateToCol.get(rec.dateIso);
+    if (!col) continue;
+
+    const student = studentsById.get(rec.studentId) ?? {
+      id: rec.studentId,
+      displayName: rec.displayName,
+      listPosition: 0,
+    };
 
     const row = matchStudentRow(excelRows, student, student.listPosition);
     if (!row) continue;
 
-    const hours = missedHours(rec.attendance, fullDayHours);
-    const cell = sheet.getRow(row).getCell(dateCol);
-    if (hours === null) {
-      cell.value = null;
-    } else {
-      cell.value = hours;
-      updated++;
-    }
+    const hours = missedHours(rec.attendance, weekdayHoursForDate(sheet, rec.dateIso));
+    sheet.getRow(row).getCell(col).value = hours === null ? null : hours;
+  }
+}
+
+/**
+ * Genera el Excel oficial desde la plantilla + todos los registros en la base de datos.
+ * Justificadas y presentes no llevan horas (celda vacía).
+ */
+export async function generateMasterAttendanceExcel(teacherId: string): Promise<Buffer | null> {
+  const workbook = await loadTemplateWorkbook();
+  if (!workbook) return null;
+
+  const groups = await prisma.classGroup.findMany({
+    where: { teacherId },
+    select: { id: true, code: true },
+    orderBy: { code: "asc" },
+  });
+
+  for (const group of groups) {
+    const sheet = workbook.getWorksheet(group.code.trim());
+    if (!sheet) continue;
+
+    const students = await prisma.user.findMany({
+      where: { role: "STUDENT", groupId: group.id },
+      orderBy: [{ displayName: "asc" }, { listNumber: "asc" }],
+      select: { id: true, displayName: true },
+    });
+
+    const dbRecords = await prisma.classDayRecord.findMany({
+      where: { groupId: group.id },
+      include: { student: { select: { id: true, displayName: true } } },
+      orderBy: [{ date: "asc" }],
+    });
+
+    const records: DayRecord[] = dbRecords.map((r) => ({
+      dateIso: formatClassDayIso(r.date),
+      studentId: r.studentId,
+      displayName: r.student.displayName,
+      attendance: r.attendance,
+    }));
+
+    fillSheetFromRecords(sheet, students, records);
   }
 
-  await workbook.xlsx.writeFile(filePath);
-  return { ok: true, column: dateCol, date: dateIso, updated };
-}
-
-export function getMasterExcelPath(): string | null {
-  return resolveMasterExcelPath();
-}
-
-export async function readMasterExcelBuffer(): Promise<Buffer | null> {
-  const filePath = resolveMasterExcelPath();
-  if (!filePath) return null;
-  return fs.readFileSync(filePath);
+  const out = await workbook.xlsx.writeBuffer();
+  return Buffer.from(out);
 }

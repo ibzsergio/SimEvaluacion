@@ -81,13 +81,9 @@ export default function ClassDayPanel({
         })),
       ),
     onSuccess: async (result) => {
-      let msg = `Guardado: ${result.saved} alumnos registrados para ${date}.`;
-      if (result.excel?.ok) {
-        msg += ` Lista oficial actualizada (${result.excel.updated ?? 0} horas de inasistencia).`;
-      } else if (result.excel?.reason && result.excel.reason !== "not_attempted") {
-        msg += ` Lista oficial no actualizada (${result.excel.reason}).`;
-      }
-      setSuccess(msg);
+      setSuccess(
+        `Guardado: ${result.saved} alumnos registrados para ${date}. Descarga el Excel oficial cuando lo necesites.`,
+      );
       setError("");
       await qc.invalidateQueries({ queryKey: ["class-day", selectedGroupId, date] });
     },
@@ -203,8 +199,9 @@ export default function ClassDayPanel({
         <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/40 p-4">
           <p className="text-sm font-semibold text-white">Exportar reportes</p>
             <p className="mt-1 text-xs text-slate-400">
-              Al guardar el día se actualiza automáticamente el Excel oficial (fechas en gris, horas en
-              blanco). Semana escolar: <span className="text-slate-300">{weekLabel}</span>
+              Descarga el Excel oficial con todas las fechas y horas desde la app. Si marcas
+              justificada (J), ese día queda sin horas en el Excel. Semana escolar:{" "}
+              <span className="text-slate-300">{weekLabel}</span>
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -220,7 +217,7 @@ export default function ClassDayPanel({
               }}
               className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-60"
             >
-              {downloading === "master" ? "..." : "Excel oficial (LISTAS)"}
+              {downloading === "master" ? "..." : "Descargar LISTAS (oficial)"}
             </button>
             <button
               type="button"

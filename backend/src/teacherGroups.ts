@@ -39,7 +39,7 @@ import {
   streamWeekAttendancePdf,
   writeAttendanceXlsx,
 } from "./attendanceExport.js";
-import { readMasterExcelBuffer } from "./attendanceMasterExcel.js";
+import { generateMasterAttendanceExcel } from "./attendanceMasterExcel.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -1108,11 +1108,11 @@ teacherGroupsRouter.put("/groups/:groupId/class-day", async (req: AuthedRequest,
 });
 
 teacherGroupsRouter.get("/attendance/master.xlsx", async (req: AuthedRequest, res) => {
-  const buffer = await readMasterExcelBuffer();
+  const buffer = await generateMasterAttendanceExcel(req.auth!.userId);
   if (!buffer) {
     return res.status(404).json({
       error: "master_excel_not_found",
-      message: "No se encontró el archivo LISTAS DE ASISTENCIA en el servidor.",
+      message: "No se encontró la plantilla LISTAS DE ASISTENCIA en el servidor.",
     });
   }
   res.setHeader(
