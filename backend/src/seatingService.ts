@@ -262,22 +262,92 @@ function buildGrid(
   });
 }
 
+const sessionInclude = {
+  assignments: {
+    include: {
+      student: {
+        select: { id: true, displayName: true, listNumber: true, controlNumber: true },
+      },
+    },
+  },
+} as const;
+
+async function findSeatingSession(groupId: string, date: Date) {
+  return prisma.seatingSession.findFirst({
+    where: { groupId, date },
+    orderBy: { createdAt: "asc" },
+    include: sessionInclude,
+  });
+}
+
+type SeatingTx = Pick<typeof prisma, "seatingSession" | "seatingAssignment">;
+
+async function saveSeatingSession(
+  tx: SeatingTx,
+  data: {
+    groupId: string;
+    date: Date;
+    mode: SeatingMode;
+    theme: SeatingTheme;
+    createdById: string;
+  },
+) {
+  const sessions = await tx.seatingSession.findMany({
+    where: { groupId: data.groupId, date: data.date },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  if (sessions.length > 1) {
+    const removeIds = sessions.slice(1).map((s) => s.id);
+    await tx.seatingAssignment.deleteMany({ where: { sessionId: { in: removeIds } } });
+    await tx.seatingSession.deleteMany({ where: { id: { in: removeIds } } });
+  }
+
+  const keep = sessions[0];
+  if (keep) {
+    return tx.seatingSession.update({
+      where: { id: keep.id },
+      data: {
+        mode: data.mode,
+        theme: data.theme,
+        createdById: data.createdById,
+      },
+    });
+  }
+
+  return tx.seatingSession.create({ data });
+}
+
+export async function dedupeSeatingSessions() {
+  const dupes = await prisma.$queryRaw<Array<{ groupId: string; date: Date; cnt: bigint }>>`
+    SELECT \`groupId\`, \`date\`, COUNT(*) AS cnt
+    FROM \`SeatingSession\`
+    GROUP BY \`groupId\`, \`date\`
+    HAVING COUNT(*) > 1
+  `;
+
+  for (const row of dupes) {
+    const sessions = await prisma.seatingSession.findMany({
+      where: { groupId: row.groupId, date: row.date },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+    const removeIds = sessions.slice(1).map((s) => s.id);
+    if (!removeIds.length) continue;
+    await prisma.seatingAssignment.deleteMany({ where: { sessionId: { in: removeIds } } });
+    await prisma.seatingSession.deleteMany({ where: { id: { in: removeIds } } });
+    console.log(
+      `[startup] Removed ${removeIds.length} duplicate seating session(s) for group ${row.groupId} on ${row.date.toISOString().slice(0, 10)}`,
+    );
+  }
+}
+
 export async function getSeatingPlan(teacherId: string, groupId: string, date: Date) {
   const loaded = await loadGroupStudents(groupId, teacherId);
   if (!loaded) return null;
 
-  const session = await prisma.seatingSession.findUnique({
-    where: { groupId_date: { groupId, date } },
-    include: {
-      assignments: {
-        include: {
-          student: {
-            select: { id: true, displayName: true, listNumber: true, controlNumber: true },
-          },
-        },
-      },
-    },
-  });
+  const session = await findSeatingSession(groupId, date);
 
   const studentIndex = new Map(loaded.students.map((s, i) => [s.id, i]));
   const mode = (session?.mode as SeatingMode) ?? "random";
@@ -326,20 +396,12 @@ export async function shuffleSeatingPlan(
   const pairs = await buildAssignments(loaded.students, mode, theme, groupId);
 
   await prisma.$transaction(async (tx) => {
-    const session = await tx.seatingSession.upsert({
-      where: { groupId_date: { groupId, date } },
-      create: {
-        groupId,
-        date,
-        mode,
-        theme,
-        createdById: teacherId,
-      },
-      update: {
-        mode,
-        theme,
-        createdById: teacherId,
-      },
+    const session = await saveSeatingSession(tx, {
+      groupId,
+      date,
+      mode,
+      theme,
+      createdById: teacherId,
     });
 
     await tx.seatingAssignment.deleteMany({ where: { sessionId: session.id } });
@@ -360,21 +422,13 @@ export async function shuffleSeatingPlan(
 }
 
 export async function getStudentSeating(studentId: string, groupId: string, date: Date) {
-  const session = await prisma.seatingSession.findUnique({
-    where: { groupId_date: { groupId, date } },
-    include: {
-      assignments: {
-        where: { studentId },
-        include: {
-          student: { select: { displayName: true, listNumber: true, controlNumber: true } },
-        },
-      },
-    },
-  });
+  const session = await findSeatingSession(groupId, date);
 
-  if (!session?.assignments.length) return null;
+  if (!session) return null;
 
-  const assignment = session.assignments[0]!;
+  const assignment = session.assignments.find((a) => a.studentId === studentId);
+  if (!assignment) return null;
+
   const seat = formatSeatLabel(assignment.row, assignment.col);
   const students = await prisma.user.findMany({
     where: { role: "STUDENT", groupId },

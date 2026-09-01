@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { parseClassDayDate } from "./classDayService.js";
+import { dedupeSeatingSessions } from "./seatingService.js";
 
 async function tableExists(name: string) {
   const rows = await prisma.$queryRaw<Array<{ cnt: bigint }>>`
@@ -169,6 +170,7 @@ export async function ensureSeatingSchema() {
   `);
 
   await ensureSeatingIndexes();
+  await dedupeSeatingSessions();
 
   await execOptional(`
     ALTER TABLE \`SeatingSession\`
