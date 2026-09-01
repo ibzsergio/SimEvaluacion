@@ -95,7 +95,18 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "activity_not_found") {
       return "No se encontró la actividad. Recarga la página e inténtalo de nuevo.";
     }
-    if (code === "seating_not_ready") {
+    if (code === "class_day_not_ready") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Asistencia no está lista en la base de datos. Espera 1 minuto y recarga."
+      );
+    }
+    if (code === "class_day_failed") {
+      const detail = (error.response.data as { detail?: string })?.detail;
+      return detail
+        ? `No se pudo guardar el pase de lista: ${detail}`
+        : "No se pudo guardar el pase de lista.";
+    }
       return (
         (error.response.data as { message?: string })?.message ??
         "Butacas aún no está listo en el servidor. Espera 1–2 minutos tras el despliegue en Railway."

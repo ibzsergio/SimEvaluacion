@@ -40,6 +40,7 @@ import {
   writeAttendanceXlsx,
 } from "./attendanceExport.js";
 import { generateMasterAttendanceExcel } from "./attendanceMasterExcel.js";
+import { isClassDaySchemaError } from "./ensureClassDaySchema.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -1081,7 +1082,7 @@ teacherGroupsRouter.put("/groups/:groupId/class-day", async (req: AuthedRequest,
         z.object({
           studentId: z.string(),
           attendance: z.enum(["PRESENT", "LATE", "ABSENT", "JUSTIFIED"]),
-          stars: z.number().int().min(0).max(3),
+          stars: z.coerce.number().int().min(0).max(3),
         }),
       ),
     })
@@ -1100,10 +1101,24 @@ teacherGroupsRouter.put("/groups/:groupId/class-day", async (req: AuthedRequest,
     );
     return res.json(result);
   } catch (err) {
+    console.error("[class-day] save failed:", err);
     if (err instanceof Error && err.message === "group_not_found") {
       return res.status(404).json({ error: "group_not_found" });
     }
-    throw err;
+    const detail = err instanceof Error ? err.message : String(err);
+    if (isClassDaySchemaError(err)) {
+      return res.status(503).json({
+        error: "class_day_not_ready",
+        message:
+          "Asistencia no está lista en la base de datos. Espera 1 minuto y recarga; si persiste, reinicia el backend.",
+        detail,
+      });
+    }
+    return res.status(500).json({
+      error: "class_day_failed",
+      message: "No se pudo guardar el pase de lista.",
+      detail,
+    });
   }
 });
 

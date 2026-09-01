@@ -33,6 +33,7 @@ import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
 import { getStudentSeating } from "./seatingService.js";
 import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSchema.js";
+import { ensureClassDaySchema } from "./ensureClassDaySchema.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
 
@@ -749,6 +750,7 @@ void (async () => {
       }
     }
     await ensureSeatingSchema();
+    await ensureClassDaySchema();
   } catch (err) {
     console.error("[startup] Startup schema failed:", err);
     process.exit(1);

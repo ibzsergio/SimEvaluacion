@@ -124,28 +124,35 @@ export async function saveClassDayRecords(
   );
 
   let saved = 0;
+  const ops = [];
   for (const rec of records) {
     if (!studentIds.has(rec.studentId)) continue;
-    const stars = Math.max(0, Math.min(MAX_STARS, Math.round(rec.stars)));
-    await prisma.classDayRecord.upsert({
-      where: {
-        groupId_studentId_date: { groupId, studentId: rec.studentId, date },
-      },
-      create: {
-        groupId,
-        studentId: rec.studentId,
-        date,
-        attendance: rec.attendance,
-        stars,
-        markedById: teacherId,
-      },
-      update: {
-        attendance: rec.attendance,
-        stars,
-        markedById: teacherId,
-      },
-    });
+    const stars = Math.max(0, Math.min(MAX_STARS, Math.round(Number(rec.stars) || 0)));
+    ops.push(
+      prisma.classDayRecord.upsert({
+        where: {
+          groupId_studentId_date: { groupId, studentId: rec.studentId, date },
+        },
+        create: {
+          groupId,
+          studentId: rec.studentId,
+          date,
+          attendance: rec.attendance,
+          stars,
+          markedById: teacherId,
+        },
+        update: {
+          attendance: rec.attendance,
+          stars,
+          markedById: teacherId,
+        },
+      }),
+    );
     saved++;
+  }
+
+  if (ops.length) {
+    await prisma.$transaction(ops);
   }
 
   return { saved };
