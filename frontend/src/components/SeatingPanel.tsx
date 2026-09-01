@@ -15,37 +15,37 @@ const MODE_OPTIONS: Array<{
   {
     id: "random",
     label: "Al azar total",
-    hint: "Mezcla alumnos y butacas por completo — máxima sorpresa cada día.",
+    hint: "Mezcla alumnos y lugares; columnas equilibradas sin huecos al frente.",
     buttonLabel: "Asignar al azar",
   },
   {
     id: "alphabetical",
     label: "Orden de lista",
-    hint: "Lista alfabética (#1 frente-izquierda, #2 al lado, etc.).",
+    hint: "Lista A→Z; cada columna con el mismo número de alumnos; vacíos al fondo.",
     buttonLabel: "Asignar por lista",
   },
   {
     id: "alphabetical_snake",
     label: "Lista en zigzag",
-    hint: "Lista A→Z pero las filas alternan dirección (como un serpiente).",
+    hint: "Lista en zigzag por columna; columnas equilibradas y sin huecos al frente.",
     buttonLabel: "Asignar en zigzag",
   },
   {
     id: "by_ranking",
     label: "Por ranking",
-    hint: "Quienes tienen más puntos van al frente; el resto sigue en orden de ranking.",
+    hint: "Más puntos al frente; filas compactas y vacíos solo en el fondo.",
     buttonLabel: "Asignar por ranking",
   },
   {
     id: "shuffle_rows",
     label: "Mezcla por filas",
-    hint: "Bloques de 6 alumnos (por lista) se mezclan entre sí; las filas quedan equilibradas.",
+    hint: "Mezcla alumnos dentro de cada fila; filas llenas al frente, vacíos atrás.",
     buttonLabel: "Mezclar por filas",
   },
   {
     id: "column_teams",
     label: "Equipos por columna",
-    hint: "Se forman 6 equipos al azar; cada columna es un equipo (mismo color).",
+    hint: "6 equipos por columna, tamaños equilibrados; cada columna es un equipo.",
     buttonLabel: "Formar equipos",
   },
 ];

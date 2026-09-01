@@ -68,15 +68,83 @@ function allSeatsRowMajor() {
   return seats;
 }
 
-function allSeatsSnake() {
-  const seats: { row: number; col: number; seatNumber: number }[] = [];
-  for (let row = 1; row <= SEATING_ROWS; row++) {
-    const cols = row % 2 === 1 ? [1, 2, 3, 4, 5, 6] : [6, 5, 4, 3, 2, 1];
-    for (const col of cols) {
+type SeatCell = { row: number; col: number; seatNumber: number };
+
+/** Altura de cada columna: mismos alumnos por columna; sobrantes repartidos al inicio. */
+export function columnHeightsForCount(studentCount: number): number[] {
+  const count = Math.min(Math.max(0, studentCount), SEATING_CAPACITY);
+  const base = Math.floor(count / SEATING_COLS);
+  const remainder = count % SEATING_COLS;
+  return Array.from({ length: SEATING_COLS }, (_, i) => {
+    const h = i < remainder ? base + 1 : base;
+    return Math.min(h, SEATING_ROWS);
+  });
+}
+
+/** Llena columnas de frente a atrás; vacíos solo en el fondo de cada columna. */
+function seatsColumnMajorCompact(heights: number[]): SeatCell[] {
+  const seats: SeatCell[] = [];
+  for (let col = 1; col <= SEATING_COLS; col++) {
+    const h = heights[col - 1] ?? 0;
+    for (let row = 1; row <= h; row++) {
       seats.push({ row, col, seatNumber: (row - 1) * SEATING_COLS + col });
     }
   }
   return seats;
+}
+
+/** Zigzag dentro de cada columna (frente→atrás o atrás→frente). */
+function seatsColumnSnakeCompact(heights: number[]): SeatCell[] {
+  const seats: SeatCell[] = [];
+  for (let col = 1; col <= SEATING_COLS; col++) {
+    const h = heights[col - 1] ?? 0;
+    const rows =
+      col % 2 === 1
+        ? Array.from({ length: h }, (_, i) => i + 1)
+        : Array.from({ length: h }, (_, i) => h - i);
+    for (const row of rows) {
+      seats.push({ row, col, seatNumber: (row - 1) * SEATING_COLS + col });
+    }
+  }
+  return seats;
+}
+
+/** Por filas compactas: fila 1 completa, luego fila 2, etc.; vacíos al fondo. */
+function seatsRowMajorCompact(heights: number[]): SeatCell[] {
+  const seats: SeatCell[] = [];
+  for (let row = 1; row <= SEATING_ROWS; row++) {
+    for (let col = 1; col <= SEATING_COLS; col++) {
+      if (row <= (heights[col - 1] ?? 0)) {
+        seats.push({ row, col, seatNumber: (row - 1) * SEATING_COLS + col });
+      }
+    }
+  }
+  return seats;
+}
+
+function orderStudentsShuffleRows(students: StudentRow[], heights: number[]) {
+  const result: StudentRow[] = [];
+  let idx = 0;
+  for (let row = 1; row <= SEATING_ROWS; row++) {
+    const countInRow = heights.filter((h) => h >= row).length;
+    if (countInRow === 0) break;
+    const chunk = students.slice(idx, idx + countInRow);
+    result.push(...shuffle(chunk));
+    idx += countInRow;
+  }
+  return result;
+}
+
+function orderStudentsColumnTeams(students: StudentRow[], heights: number[]) {
+  const shuffled = shuffle(students);
+  const columns: StudentRow[][] = Array.from({ length: SEATING_COLS }, () => []);
+  let idx = 0;
+  for (let col = 0; col < SEATING_COLS; col++) {
+    const take = heights[col] ?? 0;
+    columns[col] = shuffle(shuffled.slice(idx, idx + take));
+    idx += take;
+  }
+  return columns.flat();
 }
 
 function colorForSeat(theme: SeatingTheme, row: number, col: number, studentIndex: number): string {
@@ -155,43 +223,29 @@ async function orderStudentsByMode(students: StudentRow[], mode: SeatingMode, gr
           a.displayName.localeCompare(b.displayName, "es"),
       );
     }
-    case "shuffle_rows": {
-      const rows: StudentRow[][] = [];
-      for (let i = 0; i < students.length; i += SEATING_COLS) {
-        rows.push(shuffle(students.slice(i, i + SEATING_COLS)));
-      }
-      return rows.flat();
-    }
-    case "column_teams": {
-      const shuffled = shuffle(students);
-      const columns: StudentRow[][] = Array.from({ length: SEATING_COLS }, () => []);
-      shuffled.forEach((student, index) => {
-        columns[index % SEATING_COLS]!.push(student);
-      });
-      const result: StudentRow[] = [];
-      for (let col = 0; col < SEATING_COLS; col++) {
-        result.push(...shuffle(columns[col]!));
-      }
-      return result;
-    }
+    case "shuffle_rows":
+      return students;
+    case "column_teams":
+      return students;
     case "random":
     default:
       return shuffle(students);
   }
 }
 
-function orderSeatsByMode(mode: SeatingMode) {
+function orderSeatsByMode(mode: SeatingMode, heights: number[]) {
   switch (mode) {
     case "alphabetical":
-    case "by_ranking":
-    case "shuffle_rows":
     case "column_teams":
     case "random":
-      return allSeatsRowMajor();
+      return seatsColumnMajorCompact(heights);
     case "alphabetical_snake":
-      return allSeatsSnake();
+      return seatsColumnSnakeCompact(heights);
+    case "by_ranking":
+    case "shuffle_rows":
+      return seatsRowMajorCompact(heights);
     default:
-      return shuffle(allSeatsRowMajor());
+      return shuffle(seatsColumnMajorCompact(heights));
   }
 }
 
@@ -201,26 +255,24 @@ async function buildAssignments(
   theme: SeatingTheme,
   groupId: string,
 ) {
-  const orderedStudents = await orderStudentsByMode(students, mode, groupId);
-  let seatOrder = orderSeatsByMode(mode);
+  const count = Math.min(students.length, SEATING_CAPACITY);
+  const heights = columnHeightsForCount(count);
+  let orderedStudents = (await orderStudentsByMode(students, mode, groupId)).slice(0, count);
+
+  if (mode === "shuffle_rows") {
+    orderedStudents = orderStudentsShuffleRows(orderedStudents, heights);
+  } else if (mode === "column_teams") {
+    orderedStudents = orderStudentsColumnTeams(orderedStudents, heights);
+  } else if (mode === "random") {
+    orderedStudents = shuffle(orderedStudents);
+  }
+
+  let seatOrder = orderSeatsByMode(mode, heights);
   if (mode === "random") {
     seatOrder = shuffle(seatOrder);
   }
-  if (mode === "column_teams") {
-    seatOrder = [];
-    for (let col = 1; col <= SEATING_COLS; col++) {
-      for (let row = 1; row <= SEATING_ROWS; row++) {
-        seatOrder.push({
-          row,
-          col,
-          seatNumber: (row - 1) * SEATING_COLS + col,
-        });
-      }
-    }
-  }
 
-  const count = Math.min(orderedStudents.length, SEATING_CAPACITY);
-  return orderedStudents.slice(0, count).map((student, index) => {
+  return orderedStudents.map((student, index) => {
     const seat = seatOrder[index]!;
     return {
       studentId: student.id,
