@@ -146,7 +146,7 @@ export default function WeeklyWinnersPanel({
         <p className="mt-1 text-xs text-slate-500">
           {partialClosed
             ? "Ranking final · Top 10: EXENTADO · 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS"
-            : "Parcial abierto · 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS · EXENTADO al cerrar parcial (Top 10)"}
+            : "Parcial abierto · 1–20: PUEDES EXENTAR · Resto: NO DECAIGAS · EXENTADO al cerrar parcial (Top 10)"}
         </p>
 
         {partialQuery.isLoading ? (

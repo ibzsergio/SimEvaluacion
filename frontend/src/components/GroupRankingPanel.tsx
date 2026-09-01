@@ -78,7 +78,7 @@ export default function GroupRankingPanel({
         <p className="mt-1 text-xs text-slate-500">
           {partialClosed
             ? "Top 10: EXENTADO · Lugares 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS"
-            : "Parcial abierto: lugares 11–20 PUEDES EXENTAR · Resto NO DECAIGAS. Los EXENTADOS (Top 10) se confirman al cerrar el parcial."}
+            : "Parcial abierto: lugares 1–20 PUEDES EXENTAR · Resto NO DECAIGAS. EXENTADO (Top 10) se confirma al cerrar el parcial."}
         </p>
 
         <div className="mt-4 grid gap-3 rounded-xl border border-white/10 bg-white/5 p-4 sm:grid-cols-3">

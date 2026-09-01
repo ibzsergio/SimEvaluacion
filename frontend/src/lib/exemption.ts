@@ -12,9 +12,6 @@ export function getExemptionStatus(place: number, partialClosed = false): Exempt
     return { tier: "keep_going", label: "¡ESTÁS CERCA, NO DECAIGAS!", shortLabel: "NO DECAIGAS" };
   }
 
-  if (place <= 10) {
-    return { tier: "none", label: "", shortLabel: "" };
-  }
   if (place <= 20) {
     return { tier: "can_exempt", label: "¡TÚ PUEDES EXENTAR!", shortLabel: "PUEDES EXENTAR" };
   }

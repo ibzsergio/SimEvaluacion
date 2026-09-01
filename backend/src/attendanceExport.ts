@@ -101,11 +101,12 @@ export async function loadDayAttendanceExport(
   const byStudent = new Map(records.map((r) => [r.studentId, r]));
 
   const dateIso = date.toISOString().slice(0, 10);
-  const rows = loaded.students.map((s) => {
+  const rows = loaded.students.map((s, index) => {
     const rec = byStudent.get(s.id);
     const attendance = rec?.attendance ?? "PRESENT";
     return {
       student: s,
+      listPosition: index + 1,
       attendance,
       stars: rec?.stars ?? 0,
       saved: Boolean(rec),
@@ -178,7 +179,7 @@ export async function loadWeekAttendanceExport(
     };
   });
 
-  const studentRows = loaded.students.map((s) => {
+  const studentRows = loaded.students.map((s, index) => {
     const byDay = byStudentDay.get(s.id) ?? new Map();
     const days = week.dates.map((d) => {
       const iso = d.toISOString().slice(0, 10);
@@ -203,6 +204,7 @@ export async function loadWeekAttendanceExport(
 
     return {
       student: s,
+      listPosition: index + 1,
       days,
       absentCount,
       lateCount,
@@ -256,7 +258,7 @@ export function buildDayAttendanceWorkbook(data: NonNullable<Awaited<ReturnType<
   ];
 
   const detail = data.rows.map((r) => ({
-    "No. Lista": r.student.listNumber ?? "",
+    "No. Lista": r.listPosition,
     "No. Control": r.student.controlNumber ?? "",
     Alumno: r.student.displayName,
     Asistencia: r.attendanceLabel,
@@ -265,7 +267,7 @@ export function buildDayAttendanceWorkbook(data: NonNullable<Awaited<ReturnType<
   }));
 
   const faltas = data.missedStudents.map((r) => ({
-    "No. Lista": r.student.listNumber ?? "",
+    "No. Lista": r.listPosition,
     Alumno: r.student.displayName,
     Asistencia: r.attendanceLabel,
     Alerta: "⚠ REVISAR",
@@ -325,7 +327,7 @@ export function buildWeekAttendanceWorkbook(
 
   const matrix = data.studentRows.map((r) => {
     const row: Record<string, string | number> = {
-      "No. Lista": r.student.listNumber ?? "",
+      "No. Lista": r.listPosition,
       "No. Control": r.student.controlNumber ?? "",
       Alumno: r.student.displayName,
     };
@@ -339,7 +341,7 @@ export function buildWeekAttendanceWorkbook(
   });
 
   const flagged = data.flaggedStudents.map((r) => ({
-    "No. Lista": r.student.listNumber ?? "",
+    "No. Lista": r.listPosition,
     Alumno: r.student.displayName,
     Faltas: r.absentCount,
     Tardes: r.lateCount,
@@ -461,7 +463,7 @@ export function streamDayAttendancePdf(
     const isMissed = r.attendance === "ABSENT" || r.attendance === "LATE";
     if (isMissed) doc.fillColor("#b91c1c");
     doc.fontSize(8).font(isMissed ? "Helvetica-Bold" : "Helvetica");
-    doc.text(String(r.student.listNumber ?? "—"), colX[0], y);
+    doc.text(String(r.listPosition), colX[0], y);
     doc.text(r.student.controlNumber ?? "—", colX[1], y);
     doc.text(r.student.displayName, colX[2], y, { width: 130 });
     doc.text(r.attendanceLabel, colX[3], y);
@@ -540,7 +542,7 @@ export function streamWeekAttendancePdf(
     const flagged = r.absentCount > 0 || r.lateCount > 0;
     if (flagged) doc.fillColor("#b91c1c");
     doc.fontSize(7).font(flagged ? "Helvetica-Bold" : "Helvetica");
-    doc.text(String(r.student.listNumber ?? "—"), colX[0], y);
+    doc.text(String(r.listPosition), colX[0], y);
     doc.text(r.student.displayName, colX[1], y, { width: 110 });
     r.days.forEach((d, i) => {
       const short =

@@ -108,6 +108,17 @@ export default function ClassDayPanel({
     [localRows],
   );
 
+  /** Número consecutivo en lista alfabética (1, 2, 3…). */
+  const listPositionById = useMemo(() => {
+    const map = new Map<string, number>();
+    localRows.forEach((r, i) => map.set(r.student.id, i + 1));
+    return map;
+  }, [localRows]);
+
+  function toggleStars(current: number, star: number) {
+    return current === star ? star - 1 : star;
+  }
+
   function updateRow(studentId: string, patch: Partial<Pick<LocalRow, "attendance" | "stars">>) {
     setLocalRows((rows) =>
       rows.map((r) => (r.student.id === studentId ? { ...r, ...patch, saved: false } : r)),
@@ -170,7 +181,8 @@ export default function ClassDayPanel({
           <div>
             <h2 className="text-lg font-semibold text-white">Asistencia y participación</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Las estrellas suman puntos en la escala del alumno (1 estrella = 1 punto de firmas).
+              Las estrellas suman puntos en la escala del alumno (1 estrella = 1 punto de firmas). Toca una
+              estrella para asignar; vuelve a tocar la misma para bajar o quitar todas.
             </p>
           </div>
           <label className="block text-xs text-slate-400">
@@ -305,7 +317,8 @@ export default function ClassDayPanel({
                           {row.student.displayName}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {row.student.controlNumber ?? "—"} · Lista #{row.student.listNumber ?? "—"}
+                          {row.student.controlNumber ?? "—"} · Lista #
+                          {listPositionById.get(row.student.id) ?? "—"}
                         </p>
                       </td>
                       <td className="px-4 py-3">
@@ -334,14 +347,20 @@ export default function ClassDayPanel({
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1">
                           {Array.from({ length: maxStars }, (_, i) => i + 1).map((star) => (
                             <button
                               key={star}
                               type="button"
-                              onClick={() => updateRow(row.student.id, { stars: star })}
+                              onClick={() =>
+                                updateRow(row.student.id, { stars: toggleStars(row.stars, star) })
+                              }
                               className="text-xl leading-none transition hover:scale-110"
-                              aria-label={`${star} estrella(s)`}
+                              aria-label={
+                                row.stars >= star
+                                  ? `${star} estrella(s) — tocar para bajar`
+                                  : `Asignar ${star} estrella(s)`
+                              }
                             >
                               {row.stars >= star ? "⭐" : "☆"}
                             </button>
@@ -349,9 +368,14 @@ export default function ClassDayPanel({
                           <button
                             type="button"
                             onClick={() => updateRow(row.student.id, { stars: 0 })}
-                            className="ml-2 text-xs text-slate-500 hover:text-slate-300"
+                            className={`ml-2 rounded-lg border px-2 py-0.5 text-xs font-semibold ${
+                              row.stars === 0
+                                ? "border-slate-600 text-slate-500"
+                                : "border-white/15 text-slate-400 hover:border-rose-400/40 hover:text-rose-200"
+                            }`}
+                            title="Quitar todas las estrellas"
                           >
-                            0
+                            Sin estrellas
                           </button>
                         </div>
                       </td>

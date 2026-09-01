@@ -33,13 +33,6 @@ export function getExemptionStatus(place: number, partialClosed = false): Exempt
   }
 
   // Parcial abierto: aún no se confirma EXENTADO (solo al cerrar el parcial, Top 10).
-  if (place <= 10) {
-    return {
-      tier: "none",
-      label: "",
-      shortLabel: "",
-    };
-  }
   if (place <= 20) {
     return {
       tier: "can_exempt",
