@@ -2,11 +2,19 @@ import type { ClassGroup } from "@prisma/client";
 import { prisma } from "./prisma.js";
 
 const DEFAULT_GROUPS = [
-  { code: "201", shift: "matutino" },
-  { code: "202", shift: "matutino" },
+  { code: "301", shift: "matutino" },
+  { code: "302", shift: "matutino" },
 ] as const;
 
 export async function ensureTeacherGroups(teacherId: string): Promise<ClassGroup[]> {
+  const existingCount = await prisma.classGroup.count({ where: { teacherId } });
+  if (existingCount > 0) {
+    return prisma.classGroup.findMany({
+      where: { teacherId },
+      orderBy: [{ code: "asc" }, { shift: "asc" }],
+    });
+  }
+
   return Promise.all(
     DEFAULT_GROUPS.map((g) =>
       prisma.classGroup.upsert({

@@ -134,7 +134,7 @@ export default function SemesterPanel() {
       <section className="glass p-6">
         <h2 className="text-lg font-semibold text-white">Grupos</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Crea grupos para el nuevo semestre (ej. 201, 202) o elimina grupos que ya no uses.
+          Crea grupos para el nuevo semestre (ej. 301, 302) o elimina grupos que ya no uses.
         </p>
 
         <ul className="mt-4 space-y-2">
@@ -179,7 +179,7 @@ export default function SemesterPanel() {
             setError("");
             setSuccess("");
             if (!newGroupCode.trim()) {
-              setError("Indica el código del grupo (ej. 201).");
+              setError("Indica el código del grupo (ej. 301).");
               return;
             }
             createGroupMutation.mutate();
@@ -190,7 +190,7 @@ export default function SemesterPanel() {
             <input
               value={newGroupCode}
               onChange={(e) => setNewGroupCode(e.target.value)}
-              placeholder="201"
+              placeholder="301"
               className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-white"
             />
           </label>
