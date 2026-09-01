@@ -122,6 +122,7 @@ export async function ensureSeatingSchema() {
   const before = await getSeatingSchemaStatus();
   if (before.ready) {
     console.log("[startup] Seating schema already ready.");
+    await dedupeSeatingSessions();
     return;
   }
 

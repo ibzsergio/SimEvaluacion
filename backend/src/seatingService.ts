@@ -276,7 +276,7 @@ async function findSeatingSession(groupId: string, dateIso: string) {
   const rows = await prisma.$queryRaw<Array<{ id: string }>>`
     SELECT \`id\`
     FROM \`SeatingSession\`
-    WHERE \`groupId\` = ${groupId} AND \`date\` = ${dateIso}
+    WHERE \`groupId\` = ${groupId} AND DATE(\`date\`) = DATE(${dateIso})
     ORDER BY \`createdAt\` ASC
     LIMIT 1
   `;
@@ -290,16 +290,32 @@ async function findSeatingSession(groupId: string, dateIso: string) {
 
 type SeatingTx = Pick<typeof prisma, "seatingSession" | "seatingAssignment" | "$executeRaw">;
 
+function isSeatingUniqueConstraint(err: unknown) {
+  return (
+    err &&
+    typeof err === "object" &&
+    "code" in err &&
+    String((err as { code: unknown }).code) === "P2002"
+  );
+}
+
 async function deleteSeatingSessionsForDay(tx: SeatingTx, groupId: string, dateIso: string) {
+  const date = parseClassDayDate(dateIso);
+  if (!date) return;
+
   await tx.$executeRaw`
     DELETE sa FROM \`SeatingAssignment\` sa
     INNER JOIN \`SeatingSession\` ss ON sa.\`sessionId\` = ss.\`id\`
-    WHERE ss.\`groupId\` = ${groupId} AND ss.\`date\` = ${dateIso}
+    WHERE ss.\`groupId\` = ${groupId} AND DATE(ss.\`date\`) = DATE(${dateIso})
   `;
   await tx.$executeRaw`
     DELETE FROM \`SeatingSession\`
-    WHERE \`groupId\` = ${groupId} AND \`date\` = ${dateIso}
+    WHERE \`groupId\` = ${groupId} AND DATE(\`date\`) = DATE(${dateIso})
   `;
+  await tx.seatingAssignment.deleteMany({
+    where: { session: { groupId, date } },
+  });
+  await tx.seatingSession.deleteMany({ where: { groupId, date } });
 }
 
 async function replaceSeatingSession(
@@ -317,15 +333,21 @@ async function replaceSeatingSession(
 
   await deleteSeatingSessionsForDay(tx, data.groupId, data.dateIso);
 
-  return tx.seatingSession.create({
-    data: {
-      groupId: data.groupId,
-      date,
-      mode: data.mode,
-      theme: data.theme,
-      createdById: data.createdById,
-    },
-  });
+  const createData = {
+    groupId: data.groupId,
+    date,
+    mode: data.mode,
+    theme: data.theme,
+    createdById: data.createdById,
+  };
+
+  try {
+    return await tx.seatingSession.create({ data: createData });
+  } catch (err) {
+    if (!isSeatingUniqueConstraint(err)) throw err;
+    await deleteSeatingSessionsForDay(tx, data.groupId, data.dateIso);
+    return await tx.seatingSession.create({ data: createData });
+  }
 }
 
 export async function dedupeSeatingSessions() {
