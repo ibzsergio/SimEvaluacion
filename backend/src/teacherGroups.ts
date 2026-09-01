@@ -23,6 +23,15 @@ import {
   saveClassDayRecords,
   todayClassDayDate,
 } from "./classDayService.js";
+import {
+  buildDayAttendanceWorkbook,
+  buildWeekAttendanceWorkbook,
+  resolveAttendanceExportDate,
+  resolveWeekAttendanceExport,
+  streamDayAttendancePdf,
+  streamWeekAttendancePdf,
+  writeAttendanceXlsx,
+} from "./attendanceExport.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -1074,6 +1083,70 @@ teacherGroupsRouter.put("/groups/:groupId/class-day", async (req: AuthedRequest,
     }
     throw err;
   }
+});
+
+teacherGroupsRouter.get("/groups/:groupId/attendance/day.xlsx", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const result = await resolveAttendanceExportDate(
+    groupId,
+    req.auth!.userId,
+    asTrimmedString(req.query.date),
+  );
+  if (result.error === "invalid_date") return res.status(400).json({ error: "invalid_date" });
+  if (result.error === "group_not_found") return res.status(404).json({ error: "group_not_found" });
+
+  const wb = buildDayAttendanceWorkbook(result.data);
+  return sendXlsx(
+    res,
+    wb,
+    `asistencia_grupo_${result.data.group.code}_${result.data.date}.xlsx`,
+  );
+});
+
+teacherGroupsRouter.get("/groups/:groupId/attendance/day.pdf", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const result = await resolveAttendanceExportDate(
+    groupId,
+    req.auth!.userId,
+    asTrimmedString(req.query.date),
+  );
+  if (result.error === "invalid_date") return res.status(400).json({ error: "invalid_date" });
+  if (result.error === "group_not_found") return res.status(404).json({ error: "group_not_found" });
+
+  return streamDayAttendancePdf(
+    res,
+    result.data,
+    `asistencia_grupo_${result.data.group.code}_${result.data.date}.pdf`,
+  );
+});
+
+teacherGroupsRouter.get("/groups/:groupId/attendance/week.xlsx", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const dateRaw = asTrimmedString(req.query.date) || asTrimmedString(req.query.weekStart);
+  const result = await resolveWeekAttendanceExport(groupId, req.auth!.userId, dateRaw);
+  if (result.error === "invalid_date") return res.status(400).json({ error: "invalid_date" });
+  if (result.error === "group_not_found") return res.status(404).json({ error: "group_not_found" });
+
+  const wb = buildWeekAttendanceWorkbook(result.data);
+  return sendXlsx(
+    res,
+    wb,
+    `asistencia_semana_grupo_${result.data.group.code}_${result.data.weekStart}.xlsx`,
+  );
+});
+
+teacherGroupsRouter.get("/groups/:groupId/attendance/week.pdf", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const dateRaw = asTrimmedString(req.query.date) || asTrimmedString(req.query.weekStart);
+  const result = await resolveWeekAttendanceExport(groupId, req.auth!.userId, dateRaw);
+  if (result.error === "invalid_date") return res.status(400).json({ error: "invalid_date" });
+  if (result.error === "group_not_found") return res.status(404).json({ error: "group_not_found" });
+
+  return streamWeekAttendancePdf(
+    res,
+    result.data,
+    `asistencia_semana_grupo_${result.data.group.code}_${result.data.weekStart}.pdf`,
+  );
 });
 
 teacherGroupsRouter.post(

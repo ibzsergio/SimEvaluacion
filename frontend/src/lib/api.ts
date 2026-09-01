@@ -634,4 +634,50 @@ export async function saveClassDayRecords(
   return data;
 }
 
+async function downloadTeacherBlob(path: string, downloadName: string) {
+  const { data } = await api.get<Blob>(path, { responseType: "blob" });
+  const url = URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = downloadName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadDayAttendanceExcel(groupId: string, groupCode: string, date: string) {
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/attendance/day.xlsx?date=${encodeURIComponent(date)}`,
+    `asistencia_grupo_${groupCode}_${date}.xlsx`,
+  );
+}
+
+export async function downloadDayAttendancePdf(groupId: string, groupCode: string, date: string) {
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/attendance/day.pdf?date=${encodeURIComponent(date)}`,
+    `asistencia_grupo_${groupCode}_${date}.pdf`,
+  );
+}
+
+export async function downloadWeekAttendanceExcel(
+  groupId: string,
+  groupCode: string,
+  anchorDate: string,
+) {
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/attendance/week.xlsx?date=${encodeURIComponent(anchorDate)}`,
+    `asistencia_semana_grupo_${groupCode}_${anchorDate}.xlsx`,
+  );
+}
+
+export async function downloadWeekAttendancePdf(
+  groupId: string,
+  groupCode: string,
+  anchorDate: string,
+) {
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/attendance/week.pdf?date=${encodeURIComponent(anchorDate)}`,
+    `asistencia_semana_grupo_${groupCode}_${anchorDate}.pdf`,
+  );
+}
+
 // El alumno ya no registra entregas. La actividad se considera entregada al calificar.

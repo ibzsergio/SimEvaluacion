@@ -1,10 +1,31 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { fetchClassDaySheet, getApiErrorMessage, saveClassDayRecords } from "../lib/api";
+import {
+  downloadDayAttendanceExcel,
+  downloadDayAttendancePdf,
+  downloadWeekAttendanceExcel,
+  downloadWeekAttendancePdf,
+  fetchClassDaySheet,
+  getApiErrorMessage,
+  saveClassDayRecords,
+} from "../lib/api";
 import type { AttendanceStatus, ClassDayRow, ClassGroup } from "../lib/types";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getSchoolWeekLabel(anchorIso: string) {
+  const d = new Date(`${anchorIso}T12:00:00.000Z`);
+  const utcDay = d.getUTCDay();
+  const diffToMonday = utcDay === 0 ? -6 : 1 - utcDay;
+  const monday = new Date(d);
+  monday.setUTCDate(d.getUTCDate() + diffToMonday);
+  const friday = new Date(monday);
+  friday.setUTCDate(monday.getUTCDate() + 4);
+  const fmt = (x: Date) =>
+    x.toLocaleDateString("es-MX", { day: "2-digit", month: "short", timeZone: "UTC" });
+  return `${fmt(monday)} — ${fmt(friday)}`;
 }
 
 const ATTENDANCE_OPTIONS: { value: AttendanceStatus; label: string; short: string }[] = [
@@ -31,6 +52,10 @@ export default function ClassDayPanel({
   const [localRows, setLocalRows] = useState<LocalRow[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const selectedGroup = groups.find((g) => g.id === selectedGroupId);
+  const weekLabel = getSchoolWeekLabel(date);
 
   const query = useQuery({
     queryKey: ["class-day", selectedGroupId, date],
@@ -78,6 +103,11 @@ export default function ClassDayPanel({
     );
   }, [localRows, search]);
 
+  const missedToday = useMemo(
+    () => localRows.filter((r) => r.attendance === "ABSENT" || r.attendance === "LATE"),
+    [localRows],
+  );
+
   function updateRow(studentId: string, patch: Partial<Pick<LocalRow, "attendance" | "stars">>) {
     setLocalRows((rows) =>
       rows.map((r) => (r.student.id === studentId ? { ...r, ...patch, saved: false } : r)),
@@ -89,6 +119,27 @@ export default function ClassDayPanel({
     setLocalRows((rows) =>
       rows.map((r) => ({ ...r, attendance: "PRESENT" as AttendanceStatus, saved: false })),
     );
+  }
+
+  async function handleDownload(kind: "day-xlsx" | "day-pdf" | "week-xlsx" | "week-pdf") {
+    if (!selectedGroup) return;
+    setDownloading(kind);
+    setError("");
+    try {
+      if (kind === "day-xlsx") {
+        await downloadDayAttendanceExcel(selectedGroupId, selectedGroup.code, date);
+      } else if (kind === "day-pdf") {
+        await downloadDayAttendancePdf(selectedGroupId, selectedGroup.code, date);
+      } else if (kind === "week-xlsx") {
+        await downloadWeekAttendanceExcel(selectedGroupId, selectedGroup.code, date);
+      } else {
+        await downloadWeekAttendancePdf(selectedGroupId, selectedGroup.code, date);
+      }
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setDownloading(null);
+    }
   }
 
   if (!selectedGroupId) {
@@ -132,6 +183,59 @@ export default function ClassDayPanel({
             />
           </label>
         </div>
+
+        <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/40 p-4">
+          <p className="text-sm font-semibold text-white">Exportar reportes</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Semana escolar (lun–vie) según la fecha seleccionada: <span className="text-slate-300">{weekLabel}</span>
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={downloading !== null}
+              onClick={() => handleDownload("day-xlsx")}
+              className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 disabled:opacity-60"
+            >
+              {downloading === "day-xlsx" ? "..." : "Excel del día"}
+            </button>
+            <button
+              type="button"
+              disabled={downloading !== null}
+              onClick={() => handleDownload("day-pdf")}
+              className="rounded-lg border border-emerald-400/30 px-3 py-2 text-xs font-semibold text-emerald-100 disabled:opacity-60"
+            >
+              {downloading === "day-pdf" ? "..." : "PDF del día"}
+            </button>
+            <button
+              type="button"
+              disabled={downloading !== null}
+              onClick={() => handleDownload("week-xlsx")}
+              className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 disabled:opacity-60"
+            >
+              {downloading === "week-xlsx" ? "..." : "Excel semanal + gráficos"}
+            </button>
+            <button
+              type="button"
+              disabled={downloading !== null}
+              onClick={() => handleDownload("week-pdf")}
+              className="rounded-lg border border-cyan-400/30 px-3 py-2 text-xs font-semibold text-cyan-100 disabled:opacity-60"
+            >
+              {downloading === "week-pdf" ? "..." : "PDF semanal + gráficos"}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Los reportes marcan con alerta a quienes no asistieron o llegaron tarde.
+          </p>
+        </div>
+
+        {missedToday.length > 0 ? (
+          <div className="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+            <p className="font-semibold">⚠ {missedToday.length} alumno(s) sin asistir o con tardanza hoy</p>
+            <p className="mt-1 text-xs text-rose-200/90">
+              {missedToday.map((r) => r.student.displayName).join(" · ")}
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-4 flex flex-wrap gap-2">
           <input
@@ -182,63 +286,78 @@ export default function ClassDayPanel({
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((row) => (
-                  <tr key={row.student.id} className="border-t border-white/5">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-white">{row.student.displayName}</p>
-                      <p className="text-xs text-slate-500">
-                        {row.student.controlNumber ?? "—"} · Lista #{row.student.listNumber ?? "—"}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {ATTENDANCE_OPTIONS.map((opt) => (
+                {filteredRows.map((row) => {
+                  const missed = row.attendance === "ABSENT" || row.attendance === "LATE";
+                  return (
+                    <tr
+                      key={row.student.id}
+                      className={`border-t border-white/5 ${
+                        row.attendance === "ABSENT"
+                          ? "bg-rose-500/10"
+                          : row.attendance === "LATE"
+                            ? "bg-amber-500/10"
+                            : ""
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        <p className={`font-medium ${missed ? "text-rose-200" : "text-white"}`}>
+                          {missed ? "⚠ " : ""}
+                          {row.student.displayName}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {row.student.controlNumber ?? "—"} · Lista #{row.student.listNumber ?? "—"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {ATTENDANCE_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              title={opt.label}
+                              onClick={() => updateRow(row.student.id, { attendance: opt.value })}
+                              className={`rounded-lg px-2.5 py-1 text-xs font-bold ${
+                                row.attendance === opt.value
+                                  ? opt.value === "PRESENT"
+                                    ? "bg-emerald-500 text-slate-950"
+                                    : opt.value === "ABSENT"
+                                      ? "bg-rose-500 text-white"
+                                      : opt.value === "LATE"
+                                        ? "bg-amber-500 text-slate-950"
+                                        : "bg-indigo-500 text-white"
+                                  : "border border-white/10 text-slate-400 hover:bg-white/5"
+                              }`}
+                            >
+                              {opt.short}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: maxStars }, (_, i) => i + 1).map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => updateRow(row.student.id, { stars: star })}
+                              className="text-xl leading-none transition hover:scale-110"
+                              aria-label={`${star} estrella(s)`}
+                            >
+                              {row.stars >= star ? "⭐" : "☆"}
+                            </button>
+                          ))}
                           <button
-                            key={opt.value}
                             type="button"
-                            title={opt.label}
-                            onClick={() => updateRow(row.student.id, { attendance: opt.value })}
-                            className={`rounded-lg px-2.5 py-1 text-xs font-bold ${
-                              row.attendance === opt.value
-                                ? opt.value === "PRESENT"
-                                  ? "bg-emerald-500 text-slate-950"
-                                  : opt.value === "ABSENT"
-                                    ? "bg-rose-500 text-white"
-                                    : opt.value === "LATE"
-                                      ? "bg-amber-500 text-slate-950"
-                                      : "bg-indigo-500 text-white"
-                                : "border border-white/10 text-slate-400 hover:bg-white/5"
-                            }`}
+                            onClick={() => updateRow(row.student.id, { stars: 0 })}
+                            className="ml-2 text-xs text-slate-500 hover:text-slate-300"
                           >
-                            {opt.short}
+                            0
                           </button>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: maxStars }, (_, i) => i + 1).map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => updateRow(row.student.id, { stars: star })}
-                            className="text-xl leading-none transition hover:scale-110"
-                            aria-label={`${star} estrella(s)`}
-                          >
-                            {row.stars >= star ? "⭐" : "☆"}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => updateRow(row.student.id, { stars: 0 })}
-                          className="ml-2 text-xs text-slate-500 hover:text-slate-300"
-                        >
-                          0
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {!filteredRows.length ? (
