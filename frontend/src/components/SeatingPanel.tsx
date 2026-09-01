@@ -113,6 +113,9 @@ export default function SeatingPanel({
     onError: (err) => setError(getApiErrorMessage(err)),
   });
 
+  const loadError =
+    error || (query.isError ? getApiErrorMessage(query.error) : "");
+
   const selectedMode = MODE_OPTIONS.find((m) => m.id === mode) ?? MODE_OPTIONS[0]!;
 
   return (
@@ -215,9 +218,9 @@ export default function SeatingPanel({
           </div>
         </div>
 
-        {error ? (
+        {loadError ? (
           <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-            {error}
+            {loadError}
           </p>
         ) : null}
 

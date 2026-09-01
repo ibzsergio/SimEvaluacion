@@ -95,6 +95,12 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "activity_not_found") {
       return "No se encontró la actividad. Recarga la página e inténtalo de nuevo.";
     }
+    if (code === "seating_not_ready") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Butacas aún no está listo en el servidor. Espera 1–2 minutos tras el despliegue en Railway."
+      );
+    }
     if (code === "not_found") {
       return (
         "Ruta no encontrada en el servidor. Verifica que Railway esté desplegado y que VITE_API_URL sea " +

@@ -339,7 +339,6 @@ export async function shuffleSeatingPlan(
         mode,
         theme,
         createdById: teacherId,
-        createdAt: new Date(),
       },
     });
 

@@ -713,8 +713,15 @@ function resolveDatabaseUrl() {
   console.log("[startup] DATABASE_URL built from MYSQLHOST/MYSQLUSER/MYSQLDATABASE");
 }
 
+function shouldRunMigrations() {
+  if (process.env.SKIP_MIGRATIONS === "1") return false;
+  if (process.env.NODE_ENV === "production") return true;
+  if (process.env.RAILWAY_ENVIRONMENT) return true;
+  return false;
+}
+
 function runMigrations() {
-  if (process.env.NODE_ENV !== "production") return;
+  if (!shouldRunMigrations()) return;
   if (!process.env.DATABASE_URL?.trim()) {
     console.error("[startup] Missing DATABASE_URL for migrations.");
     process.exit(1);

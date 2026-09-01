@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import multer from "multer";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -1547,14 +1547,38 @@ teacherGroupsRouter.get(
   },
 );
 
+function isSeatingSchemaError(err: unknown) {
+  if (err && typeof err === "object" && "code" in err) {
+    const code = String((err as { code: unknown }).code);
+    if (code === "P2021" || code === "P2022") return true;
+  }
+  const msg = err instanceof Error ? err.message : String(err);
+  return /Seating(Session|Assignment)/i.test(msg) || /doesn't exist|Unknown column/i.test(msg);
+}
+
+function handleSeatingError(res: Response, err: unknown, action: string) {
+  console.error(`[seating] ${action} failed:`, err);
+  if (isSeatingSchemaError(err)) {
+    return res.status(503).json({
+      error: "seating_not_ready",
+      message: "Faltan tablas de butacas en la base de datos. Redespliega el backend en Railway.",
+    });
+  }
+  return res.status(500).json({ error: "server_error" });
+}
+
 teacherGroupsRouter.get("/groups/:groupId/seating", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
   const date = resolveSeatingDate(asTrimmedString(req.query.date));
   if (!date) return res.status(400).json({ error: "invalid_date" });
 
-  const plan = await getSeatingPlan(req.auth!.userId, groupId, date);
-  if (!plan) return res.status(404).json({ error: "group_not_found" });
-  return res.json(plan);
+  try {
+    const plan = await getSeatingPlan(req.auth!.userId, groupId, date);
+    if (!plan) return res.status(404).json({ error: "group_not_found" });
+    return res.json(plan);
+  } catch (err) {
+    return handleSeatingError(res, err, "GET");
+  }
 });
 
 teacherGroupsRouter.post("/groups/:groupId/seating/shuffle", async (req: AuthedRequest, res) => {
@@ -1591,6 +1615,6 @@ teacherGroupsRouter.post("/groups/:groupId/seating/shuffle", async (req: AuthedR
     if (err instanceof Error && err.message === "group_not_found") {
       return res.status(404).json({ error: "group_not_found" });
     }
-    throw err;
+    return handleSeatingError(res, err, "shuffle");
   }
 });
