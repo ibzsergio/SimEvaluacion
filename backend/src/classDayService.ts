@@ -88,7 +88,7 @@ export async function getClassDaySheet(
 
   return {
     group,
-    date: date.toISOString().slice(0, 10),
+    date: formatClassDayIso(date),
     maxStars: MAX_STARS,
     rows: students.map((s) => {
       const rec = byStudent.get(s.id);
@@ -123,37 +123,47 @@ export async function saveClassDayRecords(
     ).map((s) => s.id),
   );
 
+  const existing = await prisma.classDayRecord.findMany({
+    where: { groupId, date },
+    select: { studentId: true, attendance: true, stars: true },
+  });
+  const existingByStudent = new Map(existing.map((r) => [r.studentId, r]));
+
   let saved = 0;
-  const ops = [];
   for (const rec of records) {
     if (!studentIds.has(rec.studentId)) continue;
     const stars = Math.max(0, Math.min(MAX_STARS, Math.round(Number(rec.stars) || 0)));
-    ops.push(
-      prisma.classDayRecord.upsert({
-        where: {
-          groupId_studentId_date: { groupId, studentId: rec.studentId, date },
-        },
-        create: {
-          groupId,
-          studentId: rec.studentId,
-          date,
-          attendance: rec.attendance,
-          stars,
-          markedById: teacherId,
-        },
-        update: {
-          attendance: rec.attendance,
-          stars,
-          markedById: teacherId,
-        },
-      }),
-    );
+    const prev = existingByStudent.get(rec.studentId);
+    if (prev && prev.attendance === rec.attendance && prev.stars === stars) continue;
+
+    await prisma.classDayRecord.upsert({
+      where: {
+        groupId_studentId_date: { groupId, studentId: rec.studentId, date },
+      },
+      create: {
+        groupId,
+        studentId: rec.studentId,
+        date,
+        attendance: rec.attendance,
+        stars,
+        markedById: teacherId,
+      },
+      update: {
+        attendance: rec.attendance,
+        stars,
+        markedById: teacherId,
+      },
+    });
     saved++;
   }
 
-  if (ops.length) {
-    await prisma.$transaction(ops);
+  if (saved === 0 && existing.length > 0) {
+    return {
+      saved: 0,
+      unchanged: true,
+      message: "Inasistencias registradas. No hay cambios nuevos.",
+    };
   }
 
-  return { saved };
+  return { saved, unchanged: false };
 }

@@ -107,6 +107,7 @@ export function getApiErrorMessage(error: unknown): string {
         ? `No se pudo guardar el pase de lista: ${detail}`
         : "No se pudo guardar el pase de lista.";
     }
+    if (code === "seating_not_ready") {
       return (
         (error.response.data as { message?: string })?.message ??
         "Butacas aún no está listo en el servidor. Espera 1–2 minutos tras el despliegue en Railway."
@@ -128,6 +129,13 @@ export function getApiErrorMessage(error: unknown): string {
       const message = (error.response.data as { message?: string })?.message;
       if (message) return message;
       return `No encontrado (404). Si persiste, recarga la página o vuelve a iniciar sesión.`;
+    }
+    if (error.response.status >= 500) {
+      const message = (error.response.data as { message?: string })?.message;
+      const detail = (error.response.data as { detail?: string })?.detail;
+      if (message && detail) return `${message} (${detail})`;
+      if (message) return message;
+      if (detail) return detail;
     }
     return `Error del servidor (${error.response.status}).`;
   }
@@ -661,7 +669,11 @@ export async function saveClassDayRecords(
   date: string,
   records: Array<{ studentId: string; attendance: string; stars: number }>,
 ) {
-  const { data } = await api.put<{ saved: number }>(`/teacher/groups/${groupId}/class-day`, {
+  const { data } = await api.put<{
+    saved: number;
+    unchanged?: boolean;
+    message?: string;
+  }>(`/teacher/groups/${groupId}/class-day`, {
     date,
     records,
   });

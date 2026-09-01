@@ -81,9 +81,13 @@ export default function ClassDayPanel({
         })),
       ),
     onSuccess: async (result) => {
-      setSuccess(
-        `Guardado: ${result.saved} alumnos registrados para ${date}. Descarga el Excel oficial cuando lo necesites.`,
-      );
+      if (result.unchanged) {
+        setSuccess(result.message ?? "Inasistencias registradas. No hay cambios nuevos.");
+      } else {
+        setSuccess(
+          `Guardado: ${result.saved} registro(s) actualizado(s) para ${date}. Descarga el Excel oficial cuando lo necesites.`,
+        );
+      }
       setError("");
       await qc.invalidateQueries({ queryKey: ["class-day", selectedGroupId, date] });
     },
