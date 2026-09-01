@@ -1,8 +1,18 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "./lib/auth";
+import { syncPwaManifest } from "./lib/pwaManifest";
 import LoginPage from "./pages/LoginPage";
 import TeacherPage from "./pages/TeacherPage";
 import StudentPage from "./pages/StudentPage";
+
+function PwaManifestSync() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    syncPwaManifest(pathname);
+  }, [pathname]);
+  return null;
+}
 
 function Protected({ role, children }: { role?: "TEACHER" | "STUDENT"; children: React.ReactNode }) {
   const { user } = useAuth();
@@ -17,7 +27,9 @@ export default function App() {
   const { user } = useAuth();
 
   return (
-    <Routes>
+    <>
+      <PwaManifestSync />
+      <Routes>
       <Route
         path="/"
         element={
@@ -50,5 +62,6 @@ export default function App() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

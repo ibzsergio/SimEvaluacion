@@ -11,6 +11,14 @@
     <meta name="apple-mobile-web-app-title" content="SimEval" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons.svg" />
+    <script>
+      if (location.pathname === "/ingresar-docente") {
+        var m = document.querySelector('link[rel="manifest"]');
+        if (m) m.href = "/manifest-docente.webmanifest";
+        var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (t) t.content = "SimEval Doc";
+      }
+    </script>
     <title>SimEvaluación</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

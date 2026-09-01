@@ -9,11 +9,13 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "icons.svg", "manifest.webmanifest"],
+      includeAssets: ["favicon.svg", "icons.svg", "manifest.webmanifest", "manifest-docente.webmanifest"],
       manifest: {
         name: "SimEvaluación",
         short_name: "SimEval",
         description: "Seguimiento académico, avisos y calendario escolar",
+        start_url: "/",
+        scope: "/",
         theme_color: "#312e81",
         background_color: "#0f172a",
         display: "standalone",

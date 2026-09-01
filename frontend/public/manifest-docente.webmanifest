@@ -1,0 +1,25 @@
+{
+  "name": "SimEvaluación Docente",
+  "short_name": "SimEval Doc",
+  "description": "Acceso docente — calificaciones, asistencia y butacas",
+  "lang": "es",
+  "start_url": "/ingresar-docente",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#312e81",
+  "icons": [
+    {
+      "src": "/icons.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
