@@ -645,16 +645,34 @@ export async function fetchClassDaySheet(groupId: string, date: string) {
   return data;
 }
 
+export type AttendanceExcelSyncResult = {
+  ok: boolean;
+  column?: number;
+  date?: string;
+  updated?: number;
+  reason?: string;
+};
+
 export async function saveClassDayRecords(
   groupId: string,
   date: string,
   records: Array<{ studentId: string; attendance: string; stars: number }>,
 ) {
-  const { data } = await api.put<{ saved: number }>(`/teacher/groups/${groupId}/class-day`, {
-    date,
-    records,
-  });
+  const { data } = await api.put<{ saved: number; excel: AttendanceExcelSyncResult }>(
+    `/teacher/groups/${groupId}/class-day`,
+    {
+      date,
+      records,
+    },
+  );
   return data;
+}
+
+export async function downloadMasterAttendanceExcel() {
+  await downloadTeacherBlob(
+    "/teacher/attendance/master.xlsx",
+    "LISTAS DE ASISTENCIA 26-27.xlsx",
+  );
 }
 
 async function downloadTeacherBlob(path: string, downloadName: string) {

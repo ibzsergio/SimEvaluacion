@@ -1,4 +1,8 @@
 import type { AttendanceStatus } from "@prisma/client";
+import {
+  syncAttendanceToMasterExcel,
+  type AttendanceExcelSyncResult,
+} from "./attendanceMasterExcel.js";
 import { prisma } from "./prisma.js";
 
 const MAX_STARS = 3;
@@ -110,9 +114,15 @@ export async function saveClassDayRecords(
 ) {
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId },
-    select: { id: true },
+    select: { id: true, code: true },
   });
   if (!group) throw new Error("group_not_found");
+
+  const students = await prisma.user.findMany({
+    where: { role: "STUDENT", groupId },
+    orderBy: [{ displayName: "asc" }, { listNumber: "asc" }],
+    select: { id: true, displayName: true },
+  });
 
   const studentIds = new Set(
     (
@@ -148,5 +158,22 @@ export async function saveClassDayRecords(
     saved++;
   }
 
-  return { saved };
+  const dateIso = formatClassDayIso(date);
+  let excel: AttendanceExcelSyncResult = { ok: false, reason: "not_attempted" };
+  try {
+    excel = await syncAttendanceToMasterExcel(
+      group.code,
+      dateIso,
+      students,
+      records.filter((r) => studentIds.has(r.studentId)),
+    );
+  } catch (err) {
+    console.error("[attendance-excel] sync failed:", err);
+    excel = {
+      ok: false,
+      reason: err instanceof Error ? err.message : "sync_failed",
+    };
+  }
+
+  return { saved, excel };
 }

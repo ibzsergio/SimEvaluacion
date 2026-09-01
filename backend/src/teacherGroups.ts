@@ -39,6 +39,7 @@ import {
   streamWeekAttendancePdf,
   writeAttendanceXlsx,
 } from "./attendanceExport.js";
+import { readMasterExcelBuffer } from "./attendanceMasterExcel.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -1104,6 +1105,25 @@ teacherGroupsRouter.put("/groups/:groupId/class-day", async (req: AuthedRequest,
     }
     throw err;
   }
+});
+
+teacherGroupsRouter.get("/attendance/master.xlsx", async (req: AuthedRequest, res) => {
+  const buffer = await readMasterExcelBuffer();
+  if (!buffer) {
+    return res.status(404).json({
+      error: "master_excel_not_found",
+      message: "No se encontró el archivo LISTAS DE ASISTENCIA en el servidor.",
+    });
+  }
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+  res.setHeader(
+    "Content-Disposition",
+    "attachment; filename=\"LISTAS DE ASISTENCIA 26-27.xlsx\"",
+  );
+  return res.send(buffer);
 });
 
 teacherGroupsRouter.get("/groups/:groupId/attendance/day.xlsx", async (req: AuthedRequest, res) => {

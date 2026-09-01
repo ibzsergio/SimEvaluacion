@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   downloadDayAttendanceExcel,
   downloadDayAttendancePdf,
+  downloadMasterAttendanceExcel,
   downloadWeekAttendanceExcel,
   downloadWeekAttendancePdf,
   fetchClassDaySheet,
@@ -80,7 +81,13 @@ export default function ClassDayPanel({
         })),
       ),
     onSuccess: async (result) => {
-      setSuccess(`Guardado: ${result.saved} alumnos registrados para ${date}.`);
+      let msg = `Guardado: ${result.saved} alumnos registrados para ${date}.`;
+      if (result.excel?.ok) {
+        msg += ` Lista oficial actualizada (${result.excel.updated ?? 0} horas de inasistencia).`;
+      } else if (result.excel?.reason && result.excel.reason !== "not_attempted") {
+        msg += ` Lista oficial no actualizada (${result.excel.reason}).`;
+      }
+      setSuccess(msg);
       setError("");
       await qc.invalidateQueries({ queryKey: ["class-day", selectedGroupId, date] });
     },
@@ -195,10 +202,26 @@ export default function ClassDayPanel({
 
         <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/40 p-4">
           <p className="text-sm font-semibold text-white">Exportar reportes</p>
-          <p className="mt-1 text-xs text-slate-400">
-            Semana escolar (lun–vie) según la fecha seleccionada: <span className="text-slate-300">{weekLabel}</span>
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+            <p className="mt-1 text-xs text-slate-400">
+              Al guardar el día se actualiza automáticamente el Excel oficial (fechas en gris, horas en
+              blanco). Semana escolar: <span className="text-slate-300">{weekLabel}</span>
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={downloading !== null}
+              onClick={async () => {
+                setDownloading("master");
+                try {
+                  await downloadMasterAttendanceExcel();
+                } finally {
+                  setDownloading(null);
+                }
+              }}
+              className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-60"
+            >
+              {downloading === "master" ? "..." : "Excel oficial (LISTAS)"}
+            </button>
             <button
               type="button"
               disabled={downloading !== null}
