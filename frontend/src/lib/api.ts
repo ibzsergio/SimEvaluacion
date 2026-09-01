@@ -102,10 +102,8 @@ export function getApiErrorMessage(error: unknown): string {
       );
     }
     if (code === "class_day_failed") {
-      const detail = (error.response.data as { detail?: string })?.detail;
-      return detail
-        ? `No se pudo guardar el pase de lista: ${detail}`
-        : "No se pudo guardar el pase de lista.";
+      const message = (error.response.data as { message?: string })?.message;
+      return message ?? "No se pudo guardar el pase de lista.";
     }
     if (code === "seating_not_ready") {
       return (

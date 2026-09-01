@@ -39,6 +39,7 @@ export async function ensureClassDaySchema() {
   const before = await getClassDaySchemaStatus();
   if (before.ready) {
     console.log("[startup] Class day schema already ready.");
+    await dedupeClassDayRecords();
     return;
   }
 
@@ -81,6 +82,41 @@ export async function ensureClassDaySchema() {
     throw new Error(`Class day schema incomplete: ${JSON.stringify(after)}`);
   }
   console.log("[startup] Class day schema ready.");
+  await dedupeClassDayRecords();
+}
+
+async function dedupeClassDayRecords() {
+  try {
+    const before = await prisma.classDayRecord.count();
+    await prisma.$executeRaw`
+      DELETE r1 FROM \`ClassDayRecord\` r1
+      INNER JOIN \`ClassDayRecord\` r2
+      ON r1.\`groupId\` = r2.\`groupId\`
+        AND r1.\`studentId\` = r2.\`studentId\`
+        AND DATE(r1.\`date\`) = DATE(r2.\`date\`)
+        AND r1.\`id\` > r2.\`id\`
+    `;
+    const after = await prisma.classDayRecord.count();
+    if (after < before) {
+      console.log(`[startup] Removed ${before - after} duplicate class day record(s).`);
+    }
+  } catch (err) {
+    console.warn("[startup] Class day dedupe skipped:", err);
+  }
+}
+
+export function humanizeClassDaySaveError(err: unknown): string | null {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (
+    (err &&
+      typeof err === "object" &&
+      "code" in err &&
+      String((err as { code: unknown }).code) === "P2002") ||
+    msg.includes("ClassDayRecord_groupId_studentId_date_key")
+  ) {
+    return "La asistencia de este día ya estaba registrada. Se actualizó en segundo intento; si ves el error otra vez, recarga la página.";
+  }
+  return null;
 }
 
 export function isClassDaySchemaError(err: unknown) {

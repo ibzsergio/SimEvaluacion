@@ -40,7 +40,7 @@ import {
   writeAttendanceXlsx,
 } from "./attendanceExport.js";
 import { generateMasterAttendanceExcel } from "./attendanceMasterExcel.js";
-import { isClassDaySchemaError } from "./ensureClassDaySchema.js";
+import { isClassDaySchemaError, humanizeClassDaySaveError } from "./ensureClassDaySchema.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -1110,13 +1110,16 @@ teacherGroupsRouter.put("/groups/:groupId/class-day", async (req: AuthedRequest,
       return res.status(503).json({
         error: "class_day_not_ready",
         message:
-          "Asistencia no está lista en la base de datos. Espera 1 minuto y recarga; si persiste, reinicia el backend.",
+          "La asistencia aún no está lista en el servidor. Espera 1 minuto, recarga la página o reinicia el backend en Railway.",
         detail,
       });
     }
+    const friendly = humanizeClassDaySaveError(err);
     return res.status(500).json({
       error: "class_day_failed",
-      message: "No se pudo guardar el pase de lista.",
+      message:
+        friendly ??
+        "No se pudo guardar el pase de lista. Recarga la página e intenta de nuevo.",
       detail,
     });
   }

@@ -23,6 +23,86 @@ export function formatClassDayIso(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+type ExistingClassDayRow = {
+  id: string;
+  studentId: string;
+  attendance: AttendanceStatus;
+  stars: number;
+};
+
+/** Busca por fecha de calendario (evita desfases de zona horaria con Prisma Date). */
+async function loadExistingByStudent(groupId: string, dateIso: string) {
+  const rows = await prisma.$queryRaw<ExistingClassDayRow[]>`
+    SELECT \`id\`, \`studentId\`, \`attendance\`, \`stars\`
+    FROM \`ClassDayRecord\`
+    WHERE \`groupId\` = ${groupId} AND DATE(\`date\`) = DATE(${dateIso})
+  `;
+  return new Map(rows.map((r) => [r.studentId, r]));
+}
+
+async function findExistingRecord(groupId: string, studentId: string, dateIso: string) {
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT \`id\`
+    FROM \`ClassDayRecord\`
+    WHERE \`groupId\` = ${groupId} AND \`studentId\` = ${studentId} AND DATE(\`date\`) = DATE(${dateIso})
+    ORDER BY \`updatedAt\` DESC
+    LIMIT 1
+  `;
+  return rows[0]?.id ?? null;
+}
+
+function isPrismaUniqueViolation(err: unknown) {
+  return (
+    err &&
+    typeof err === "object" &&
+    "code" in err &&
+    String((err as { code: unknown }).code) === "P2002"
+  );
+}
+
+async function writeClassDayRecord(
+  data: {
+    groupId: string;
+    studentId: string;
+    dateIso: string;
+    attendance: AttendanceStatus;
+    stars: number;
+    markedById: string;
+  },
+  existingId?: string,
+) {
+  const date = parseClassDayDate(data.dateIso);
+  if (!date) throw new Error("invalid_date");
+
+  const payload = {
+    attendance: data.attendance,
+    stars: data.stars,
+    markedById: data.markedById,
+  };
+
+  const id = existingId ?? (await findExistingRecord(data.groupId, data.studentId, data.dateIso));
+  if (id) {
+    await prisma.classDayRecord.update({ where: { id }, data: payload });
+    return;
+  }
+
+  try {
+    await prisma.classDayRecord.create({
+      data: {
+        groupId: data.groupId,
+        studentId: data.studentId,
+        date,
+        ...payload,
+      },
+    });
+  } catch (err) {
+    if (!isPrismaUniqueViolation(err)) throw err;
+    const retryId = await findExistingRecord(data.groupId, data.studentId, data.dateIso);
+    if (!retryId) throw err;
+    await prisma.classDayRecord.update({ where: { id: retryId }, data: payload });
+  }
+}
+
 export async function getParticipationStarsByStudent(groupId: string): Promise<Map<string, number>> {
   const rows = await prisma.classDayRecord.groupBy({
     by: ["studentId"],
@@ -80,11 +160,14 @@ export async function getClassDaySheet(
     select: { id: true, displayName: true, listNumber: true, controlNumber: true },
   });
 
-  const records = await prisma.classDayRecord.findMany({
-    where: { groupId, date },
-    select: { studentId: true, attendance: true, stars: true },
-  });
-  const byStudent = new Map(records.map((r) => [r.studentId, r]));
+  const dateIso = formatClassDayIso(date);
+  const existingByStudent = await loadExistingByStudent(groupId, dateIso);
+  const byStudent = new Map(
+    [...existingByStudent.entries()].map(([studentId, r]) => [
+      studentId,
+      { attendance: r.attendance, stars: r.stars },
+    ]),
+  );
 
   return {
     group,
@@ -96,7 +179,7 @@ export async function getClassDaySheet(
         student: s,
         attendance: rec?.attendance ?? "PRESENT",
         stars: rec?.stars ?? 0,
-        saved: Boolean(rec),
+        saved: existingByStudent.has(s.id),
       };
     }),
   };
@@ -123,11 +206,8 @@ export async function saveClassDayRecords(
     ).map((s) => s.id),
   );
 
-  const existing = await prisma.classDayRecord.findMany({
-    where: { groupId, date },
-    select: { studentId: true, attendance: true, stars: true },
-  });
-  const existingByStudent = new Map(existing.map((r) => [r.studentId, r]));
+  const dateIso = formatClassDayIso(date);
+  const existingByStudent = await loadExistingByStudent(groupId, dateIso);
 
   let saved = 0;
   for (const rec of records) {
@@ -136,28 +216,21 @@ export async function saveClassDayRecords(
     const prev = existingByStudent.get(rec.studentId);
     if (prev && prev.attendance === rec.attendance && prev.stars === stars) continue;
 
-    await prisma.classDayRecord.upsert({
-      where: {
-        groupId_studentId_date: { groupId, studentId: rec.studentId, date },
-      },
-      create: {
+    await writeClassDayRecord(
+      {
         groupId,
         studentId: rec.studentId,
-        date,
+        dateIso,
         attendance: rec.attendance,
         stars,
         markedById: teacherId,
       },
-      update: {
-        attendance: rec.attendance,
-        stars,
-        markedById: teacherId,
-      },
-    });
+      prev?.id,
+    );
     saved++;
   }
 
-  if (saved === 0 && existing.length > 0) {
+  if (saved === 0 && existingByStudent.size > 0) {
     return {
       saved: 0,
       unchanged: true,
