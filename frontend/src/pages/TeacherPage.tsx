@@ -31,10 +31,6 @@ import {
 } from "../lib/dates";
 import type { Activity, GradeRow } from "../lib/types";
 
-function todayIso() {
-  return todayLocalIso();
-}
-
 export default function TeacherPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<
@@ -52,7 +48,7 @@ export default function TeacherPage() {
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    date: todayIso(),
+    date: todayLocalIso(),
     name: "",
     maxPoints: 10,
   });
@@ -156,7 +152,7 @@ export default function TeacherPage() {
   });
 
   function resetActivityForm() {
-    setForm({ date: todayIso(), name: "", maxPoints: 10 });
+    setForm({ date: todayLocalIso(), name: "", maxPoints: 10 });
   }
 
   function startEditActivity(activity: Activity) {

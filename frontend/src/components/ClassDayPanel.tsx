@@ -9,11 +9,8 @@ import {
   getApiErrorMessage,
   saveClassDayRecords,
 } from "../lib/api";
+import { todayLocalIso } from "../lib/dates";
 import type { AttendanceStatus, ClassDayRow, ClassGroup } from "../lib/types";
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function getSchoolWeekLabel(anchorIso: string) {
   const d = new Date(`${anchorIso}T12:00:00.000Z`);
@@ -47,7 +44,7 @@ export default function ClassDayPanel({
   onSelectGroup: (id: string) => void;
 }) {
   const qc = useQueryClient();
-  const [date, setDate] = useState(todayIso());
+  const [date, setDate] = useState(todayLocalIso());
   const [search, setSearch] = useState("");
   const [localRows, setLocalRows] = useState<LocalRow[]>([]);
   const [error, setError] = useState("");

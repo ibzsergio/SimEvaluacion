@@ -7,32 +7,33 @@ export function todayLocalIso() {
   return `${y}-${m}-${d}`;
 }
 
-/** Convierte fecha de API (ISO o YYYY-MM-DD) a valor para input type="date". */
-export function toDateInputValue(value: string) {
-  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+/** Extrae YYYY-MM-DD de un valor de API sin desfase por zona horaria. */
+export function calendarDateIso(value: string) {
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1]!;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value.slice(0, 10);
-  return d.toISOString().slice(0, 10);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Convierte fecha de API (ISO o YYYY-MM-DD) a valor para input type="date". */
+export function toDateInputValue(value: string) {
+  return calendarDateIso(value);
 }
 
 /** Muestra fecha de calendario sin correr un día por zona horaria. */
 export function formatCalendarDate(value: string) {
-  const iso = /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
-  if (iso) {
-    const [y, m, d] = iso.split("-").map(Number);
-    return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("es-MX", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      timeZone: "UTC",
-    });
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("es-MX", {
+  const iso = calendarDateIso(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return value;
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("es-MX", {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 

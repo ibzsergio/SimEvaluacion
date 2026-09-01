@@ -19,6 +19,7 @@ import {
 import {
   getStudentAttendanceSummary,
   getStudentParticipationStars,
+  formatClassDayIso,
   parseClassDayDate,
   todayClassDayDate,
 } from "./classDayService.js";
@@ -238,7 +239,9 @@ app.get("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedRe
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     include: { group: { select: { code: true, shift: true } } },
   });
-  return res.json({ activities });
+  return res.json({
+    activities: activities.map((a) => ({ ...a, date: formatClassDayIso(a.date) })),
+  });
 });
 
 app.post("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedRequest, res) => {
@@ -278,7 +281,9 @@ app.post("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedR
     },
     include: { group: { select: { code: true, shift: true } } },
   });
-  return res.json({ activity: created });
+  return res.json({
+    activity: { ...created, date: formatClassDayIso(created.date) },
+  });
 });
 
 app.put("/teacher/activities/:activityId", requireAuth, requireTeacher, async (req: AuthedRequest, res) => {
@@ -310,7 +315,9 @@ app.put("/teacher/activities/:activityId", requireAuth, requireTeacher, async (r
     include: { group: { select: { code: true, shift: true } } },
   });
 
-  return res.json({ activity: updated });
+  return res.json({
+    activity: { ...updated, date: formatClassDayIso(updated.date) },
+  });
 });
 
 app.delete(
@@ -363,7 +370,7 @@ app.get(
     const submissionByStudent = new Map(submissions.map((s) => [s.studentId, s]));
 
     return res.json({
-      activity,
+      activity: { ...activity, date: formatClassDayIso(activity.date) },
       rows: students.map((s) => ({
         student: s,
         grade: byStudent.get(s.id) ?? null,
@@ -480,7 +487,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
   const activityRows = activities.map((a) => {
     const grade = byActivity.get(a.id) ?? null;
-    const dateIso = a.date.toISOString().slice(0, 10);
+    const dateIso = formatClassDayIso(a.date);
     const dueEnd = new Date(`${dateIso}T23:59:59.999Z`);
     const isOverdue = !grade && Date.now() > dueEnd.getTime();
     const status: "pending" | "graded" = grade ? "graded" : "pending";
@@ -488,7 +495,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     return {
       id: a.id,
       name: a.name,
-      date: a.date,
+      date: dateIso,
       publishedAt: a.createdAt,
       maxPoints: a.maxPoints,
       status,

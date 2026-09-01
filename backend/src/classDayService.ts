@@ -15,6 +15,14 @@ export function todayClassDayDate(): Date {
   return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0));
 }
 
+/** Fecha de calendario YYYY-MM-DD desde un Date de Prisma (@db.Date). */
+export function formatClassDayIso(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export async function getParticipationStarsByStudent(groupId: string): Promise<Map<string, number>> {
   const rows = await prisma.classDayRecord.groupBy({
     by: ["studentId"],

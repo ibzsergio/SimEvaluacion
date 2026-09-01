@@ -7,6 +7,7 @@ import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
+import { formatCalendarDate, formatDateTime } from "../lib/dates";
 import { getExemptionStatus } from "../lib/exemption";
 import { useAuth } from "../lib/auth";
 import type { ActivityStatus, StudentActivity } from "../lib/types";
@@ -266,7 +267,7 @@ function ActivityCard({
             Publicada: <span className="text-slate-300">{formatDateTime(activity.publishedAt)}</span>
           </p>
           <p className="text-xs text-slate-500">
-            Fecha de la actividad: {formatDate(activity.date)} · Valor: {activity.maxPoints} pts
+            Fecha de la actividad: {formatCalendarDate(activity.date)} · Valor: {activity.maxPoints} pts
           </p>
           {!graded && activity.isOverdue ? (
             <p className="mt-1 text-xs text-rose-300">Vencida (puede requerir justificante)</p>
@@ -316,20 +317,3 @@ function StatusBadge({ status }: { status: ActivityStatus }) {
   );
 }
 
-function formatDate(value: string) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function formatDateTime(value: string) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("es-MX", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
