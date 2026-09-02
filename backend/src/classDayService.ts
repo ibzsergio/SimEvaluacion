@@ -10,9 +10,18 @@ export function parseClassDayDate(input: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Día de clase “hoy” en zona México (coincide con la fecha local del docente). */
 export function todayClassDayDate(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0));
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const y = Number(parts.find((p) => p.type === "year")?.value);
+  const m = Number(parts.find((p) => p.type === "month")?.value);
+  const d = Number(parts.find((p) => p.type === "day")?.value);
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
 }
 
 /** Fecha de calendario YYYY-MM-DD desde un Date de Prisma (@db.Date). */

@@ -108,7 +108,7 @@ export type StudentProgress = {
 
 export type StudentSeating = {
   date: string;
-  theme: "column_colors" | "random_colors";
+  theme: SeatingTheme;
   seatNumber: number;
   row: number;
   col: number;

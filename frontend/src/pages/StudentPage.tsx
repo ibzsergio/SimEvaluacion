@@ -24,8 +24,9 @@ export default function StudentPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
     queryFn: fetchStudentProgress,
-    staleTime: 5 * 60_000,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
   });
 
   if (isLoading || !data) {
@@ -66,7 +67,17 @@ export default function StudentPage() {
     >
       <StudentMotivationCard motivation={motivation} />
 
-      {data.seating ? <StudentSeatingCard seating={data.seating} /> : null}
+      {data.seating ? (
+        <StudentSeatingCard seating={data.seating} />
+      ) : (
+        <section className="glass mb-6 border border-white/10 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Tu lugar hoy</p>
+          <p className="mt-1 text-sm text-slate-300">
+            Aún no hay butacas asignadas para ti. Cuando el docente asigne lugares, aquí verás tu fila,
+            columna y color.
+          </p>
+        </section>
+      )}
 
       <StudentCommunication />
 

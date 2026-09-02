@@ -329,13 +329,22 @@ async function findSeatingSession(groupId: string, dateIso: string) {
     SELECT \`id\`
     FROM \`SeatingSession\`
     WHERE \`groupId\` = ${groupId} AND DATE(\`date\`) = DATE(${dateIso})
-    ORDER BY \`createdAt\` ASC
+    ORDER BY \`createdAt\` DESC
     LIMIT 1
   `;
   const id = rows[0]?.id;
   if (!id) return null;
   return prisma.seatingSession.findUnique({
     where: { id },
+    include: sessionInclude,
+  });
+}
+
+/** Última sesión de butacas del grupo (cualquiera fecha), para vista del alumno. */
+async function findLatestSeatingSession(groupId: string) {
+  return prisma.seatingSession.findFirst({
+    where: { groupId },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     include: sessionInclude,
   });
 }
@@ -417,7 +426,8 @@ export async function dedupeSeatingSessions() {
   }
 
   for (const ids of byKey.values()) {
-    const removeIds = ids.slice(1);
+    // Conservar la sesión más reciente (última del arreglo ordenado por createdAt ASC).
+    const removeIds = ids.slice(0, -1);
     if (!removeIds.length) continue;
     await prisma.seatingAssignment.deleteMany({ where: { sessionId: { in: removeIds } } });
     await prisma.seatingSession.deleteMany({ where: { id: { in: removeIds } } });
@@ -506,7 +516,12 @@ export async function shuffleSeatingPlan(
 
 export async function getStudentSeating(studentId: string, groupId: string, date: Date) {
   const dateIso = formatClassDayIso(date);
-  const session = await findSeatingSession(groupId, dateIso);
+  let session = await findSeatingSession(groupId, dateIso);
+
+  // Si hoy no hay (p. ej. desfase UTC vs México), usar la última asignación del grupo.
+  if (!session) {
+    session = await findLatestSeatingSession(groupId);
+  }
 
   if (!session) return null;
 
@@ -522,7 +537,7 @@ export async function getStudentSeating(studentId: string, groupId: string, date
   const listPosition = students.findIndex((s) => s.id === studentId) + 1;
 
   return {
-    date: dateIso,
+    date: formatClassDayIso(session.date),
     theme: session.theme as SeatingTheme,
     seatNumber: seat.seatNumber,
     row: seat.row,

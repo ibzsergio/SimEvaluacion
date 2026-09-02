@@ -551,11 +551,12 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
   const participationStars = await getStudentParticipationStars(req.auth!.userId, me.groupId);
   const attendance = await getStudentAttendanceSummary(req.auth!.userId, me.groupId);
-  const seating = await getStudentSeating(
-    req.auth!.userId,
-    me.groupId,
-    todayClassDayDate(),
-  );
+  let seating = null;
+  try {
+    seating = await getStudentSeating(req.auth!.userId, me.groupId, todayClassDayDate());
+  } catch (err) {
+    console.warn("[student/progress] seating lookup failed:", err);
+  }
 
   return res.json({
     group: myGroup,
