@@ -28,8 +28,8 @@ function getSchoolWeekLabel(anchorIso: string) {
 
 const ATTENDANCE_OPTIONS: { value: AttendanceStatus; label: string; short: string }[] = [
   { value: "PRESENT", label: "Presente", short: "P" },
-  { value: "LATE", label: "Tarde", short: "T" },
-  { value: "ABSENT", label: "Falta", short: "A" },
+  { value: "LATE", label: "Retardo", short: "R" },
+  { value: "ABSENT", label: "Falta", short: "F" },
   { value: "JUSTIFIED", label: "Justificada", short: "J" },
 ];
 
