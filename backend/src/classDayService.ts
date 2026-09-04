@@ -227,10 +227,20 @@ export async function getClassDaySheet(
     ]),
   );
 
+  /** Solo faltas (ABSENT). Justificada no cuenta: al marcar J baja el conteo. */
+  const absenceGroups = await prisma.classDayRecord.groupBy({
+    by: ["studentId"],
+    where: { groupId, attendance: "ABSENT" },
+    _count: { _all: true },
+  });
+  const absenceByStudent = new Map(absenceGroups.map((r) => [r.studentId, r._count._all]));
+
   return {
     group,
     date: formatClassDayIso(date),
     maxStars: MAX_STARS,
+    /** Alerta cuando el alumno supera este número de faltas (más de 3 = 4+). */
+    absenceAlertAfter: 3,
     rows: students.map((s) => {
       const rec = byStudent.get(s.id);
       return {
@@ -238,6 +248,7 @@ export async function getClassDaySheet(
         attendance: rec?.attendance ?? "PRESENT",
         stars: rec?.stars ?? 0,
         saved: existingByStudent.has(s.id),
+        absenceCount: absenceByStudent.get(s.id) ?? 0,
       };
     }),
   };

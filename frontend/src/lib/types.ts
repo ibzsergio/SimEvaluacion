@@ -389,11 +389,15 @@ export type ClassDayRow = {
   attendance: AttendanceStatus;
   stars: number;
   saved: boolean;
+  /** Faltas acumuladas (solo ABSENT; justificada no cuenta). */
+  absenceCount?: number;
 };
 
 export type ClassDaySheet = {
   group: Pick<ClassGroup, "id" | "code" | "shift">;
   date: string;
   maxStars: number;
+  /** Umbral: alerta si faltas > este valor (por defecto 3). */
+  absenceAlertAfter?: number;
   rows: ClassDayRow[];
 };

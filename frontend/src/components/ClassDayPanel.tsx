@@ -112,6 +112,35 @@ export default function ClassDayPanel({
     [localRows],
   );
 
+  const absenceAlertAfter = query.data?.absenceAlertAfter ?? 3;
+  const savedRows = query.data?.rows;
+
+  /** Conteo efectivo de faltas (ajusta si cambias hoy a/desde Falta antes de guardar). */
+  function effectiveAbsenceCount(row: LocalRow) {
+    const original = savedRows?.find((r) => r.student.id === row.student.id);
+    let n = original?.absenceCount ?? row.absenceCount ?? 0;
+    const wasAbsent = original?.attendance === "ABSENT";
+    const isAbsent = row.attendance === "ABSENT";
+    if (wasAbsent && !isAbsent) n = Math.max(0, n - 1);
+    if (!wasAbsent && isAbsent) n += 1;
+    return n;
+  }
+
+  const atRiskStudents = useMemo(() => {
+    return localRows
+      .map((row) => {
+        const original = savedRows?.find((r) => r.student.id === row.student.id);
+        let absences = original?.absenceCount ?? row.absenceCount ?? 0;
+        const wasAbsent = original?.attendance === "ABSENT";
+        const isAbsent = row.attendance === "ABSENT";
+        if (wasAbsent && !isAbsent) absences = Math.max(0, absences - 1);
+        if (!wasAbsent && isAbsent) absences += 1;
+        return { row, absences };
+      })
+      .filter(({ absences }) => absences > absenceAlertAfter)
+      .sort((a, b) => b.absences - a.absences);
+  }, [localRows, savedRows, absenceAlertAfter]);
+
   /** Número consecutivo en lista alfabética (1, 2, 3…). */
   const listPositionById = useMemo(() => {
     const map = new Map<string, number>();
@@ -261,6 +290,25 @@ export default function ClassDayPanel({
           </p>
         </div>
 
+        {atRiskStudents.length > 0 ? (
+          <div className="mt-4 rounded-xl border-2 border-rose-500/60 bg-rose-600/20 px-4 py-3 text-sm text-rose-50 shadow-[0_0_24px_rgba(244,63,94,0.15)]">
+            <p className="font-bold uppercase tracking-wide text-rose-200">
+              ⚠ Alumnos en foco — más de {absenceAlertAfter} faltas
+            </p>
+            <p className="mt-1 text-xs text-rose-100/90">
+              Solo cuentan faltas (A). Si justificas (J), deja de contar y la alerta se quita.
+            </p>
+            <ul className="mt-2 space-y-1 text-sm">
+              {atRiskStudents.map(({ row, absences }) => (
+                <li key={row.student.id} className="font-semibold text-rose-100">
+                  {row.student.displayName}{" "}
+                  <span className="font-normal text-rose-200/80">({absences} faltas)</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {missedToday.length > 0 ? (
           <div className="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
             <p className="font-semibold">⚠ {missedToday.length} alumno(s) sin asistir o con tardanza hoy</p>
@@ -321,26 +369,44 @@ export default function ClassDayPanel({
               <tbody>
                 {filteredRows.map((row) => {
                   const missed = row.attendance === "ABSENT" || row.attendance === "LATE";
+                  const absences = effectiveAbsenceCount(row);
+                  const atRisk = absences > absenceAlertAfter;
                   return (
                     <tr
                       key={row.student.id}
                       className={`border-t border-white/5 ${
-                        row.attendance === "ABSENT"
-                          ? "bg-rose-500/10"
-                          : row.attendance === "LATE"
-                            ? "bg-amber-500/10"
-                            : ""
+                        atRisk
+                          ? "bg-rose-600/25 ring-1 ring-inset ring-rose-500/50"
+                          : row.attendance === "ABSENT"
+                            ? "bg-rose-500/10"
+                            : row.attendance === "LATE"
+                              ? "bg-amber-500/10"
+                              : ""
                       }`}
                     >
                       <td className="px-4 py-3">
-                        <p className={`font-medium ${missed ? "text-rose-200" : "text-white"}`}>
-                          {missed ? "⚠ " : ""}
+                        <p
+                          className={`font-medium ${
+                            atRisk ? "text-rose-100" : missed ? "text-rose-200" : "text-white"
+                          }`}
+                        >
+                          {atRisk ? "🔴 " : missed ? "⚠ " : ""}
                           {row.student.displayName}
                         </p>
                         <p className="text-xs text-slate-500">
                           {row.student.controlNumber ?? "—"} · Lista #
                           {listPositionById.get(row.student.id) ?? "—"}
+                          {absences > 0 ? (
+                            <span className={atRisk ? " ml-1 font-semibold text-rose-300" : " ml-1"}>
+                              · {absences} falta{absences === 1 ? "" : "s"}
+                            </span>
+                          ) : null}
                         </p>
+                        {atRisk ? (
+                          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-rose-300">
+                            En foco — más de {absenceAlertAfter} faltas
+                          </p>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
