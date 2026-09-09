@@ -449,7 +449,7 @@ export default function TeacherPage() {
 
               <div className="mt-6">
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Actividades del grupo</h3>
-                <ul className="max-h-64 space-y-2 overflow-auto pr-1">
+                <ul className="max-h-[70vh] min-h-[28rem] space-y-2 overflow-auto pr-1">
                   {activities.map((a, index) => (
                     <li
                       key={a.id}
