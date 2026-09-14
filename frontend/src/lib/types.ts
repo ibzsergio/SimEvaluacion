@@ -401,3 +401,98 @@ export type ClassDaySheet = {
   absenceAlertAfter?: number;
   rows: ClassDayRow[];
 };
+
+export type SkillRole =
+  | "scrum_master"
+  | "product_owner"
+  | "developer"
+  | "ui_designer"
+  | "qa_docs";
+
+export type SkillSurveyQuestion = {
+  id: string;
+  text: string;
+  dimension: string;
+};
+
+export type SkillSurveyProfile = {
+  suggestedRole: SkillRole;
+  suggestedRoleLabel: string;
+  dimensions: Array<{
+    key: string;
+    label: string;
+    score: number;
+    max: number;
+    percent: number;
+  }>;
+  scores: Record<string, number>;
+  answers: Record<string, number>;
+};
+
+export type StudentSkillSurveyState = {
+  completed: boolean;
+  definition: {
+    scale: { min: number; max: number; labels: string[] };
+    roles: Record<string, string>;
+    questions: SkillSurveyQuestion[];
+  };
+  profile: SkillSurveyProfile | null;
+  team: { id: string; name: string; role: string; roleLabel: string } | null;
+  updatedAt?: string;
+};
+
+export type TeacherSkillSurveyBoard = {
+  group: Pick<ClassGroup, "id" | "code" | "shift">;
+  definition: StudentSkillSurveyState["definition"];
+  completedCount: number;
+  totalStudents: number;
+  rows: Array<{
+    student: {
+      id: string;
+      displayName: string;
+      listNumber: number | null;
+      controlNumber: string | null;
+      listPosition: number;
+    };
+    completed: boolean;
+    profile: SkillSurveyProfile | null;
+    team: { teamId: string; teamName: string; role: string; roleLabel: string } | null;
+    updatedAt?: string;
+  }>;
+  teams: Array<{
+    id: string;
+    name: string;
+    members: Array<{
+      studentId: string;
+      role: string;
+      roleLabel: string;
+      student: {
+        id: string;
+        displayName: string;
+        listNumber: number | null;
+        controlNumber: string | null;
+      };
+    }>;
+  }>;
+};
+
+export type TeamSuggestion = {
+  teamSizes: number[];
+  assignedCount: number;
+  suggested: Array<{
+    name: string;
+    members: Array<{
+      studentId: string;
+      displayName: string;
+      role: SkillRole;
+      roleLabel: string;
+    }>;
+  }>;
+  unassigned: Array<{
+    studentId: string;
+    displayName: string;
+    suggestedRole: SkillRole;
+    suggestedRoleLabel: string;
+  }>;
+  note: string | null;
+};

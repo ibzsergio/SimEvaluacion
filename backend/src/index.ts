@@ -5,7 +5,7 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { prisma } from "./prisma.js";
 import { signAuthToken } from "./auth.js";
-import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
+import { requireAuth, requireTeacher, requireStudent, type AuthedRequest } from "./middleware.js";
 import { ensureTeacherGroups } from "./groups.js";
 import { removeJunkStudentsForGroup } from "./dedupeStudents.js";
 import { teacherGroupsRouter } from "./teacherGroups.js";
@@ -34,8 +34,11 @@ import { buildStudentMotivation } from "./studentMotivation.js";
 import { getStudentSeating } from "./seatingService.js";
 import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSchema.js";
 import { ensureClassDaySchema } from "./ensureClassDaySchema.js";
+import { ensureSkillSurveySchema } from "./ensureSkillSurveySchema.js";
+import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
+import { SKILL_SURVEY_QUESTIONS } from "./skillSurvey.js";
 
 const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:5173")
   .split(",")
@@ -591,6 +594,43 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   });
 });
 
+app.get("/student/skill-survey", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  try {
+    const state = await getStudentSurveyState(req.auth!.userId);
+    return res.json(state);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    if (msg === "student_without_group") return res.status(400).json({ error: msg });
+    console.error("[skill-survey] student get failed:", err);
+    return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
+app.post("/student/skill-survey", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const answersSchema = z.record(z.string(), z.number().int().min(1).max(5));
+  const body = z.object({ answers: answersSchema }).safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  // Ensure all questions present
+  for (const q of SKILL_SURVEY_QUESTIONS) {
+    if (body.data.answers[q.id] == null) {
+      return res.status(400).json({ error: "incomplete_answers" });
+    }
+  }
+
+  try {
+    const result = await submitStudentSurvey(req.auth!.userId, body.data.answers);
+    return res.json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    if (msg === "student_without_group" || msg === "incomplete_answers") {
+      return res.status(400).json({ error: msg });
+    }
+    console.error("[skill-survey] student submit failed:", err);
+    return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
 app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => {
   if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
 
@@ -752,6 +792,7 @@ void (async () => {
     }
     await ensureSeatingSchema();
     await ensureClassDaySchema();
+    await ensureSkillSurveySchema();
   } catch (err) {
     console.error("[startup] Startup schema failed:", err);
     process.exit(1);

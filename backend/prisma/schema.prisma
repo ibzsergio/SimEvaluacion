@@ -33,6 +33,8 @@ model ClassGroup {
   tasks         Task[]
   classDayRecords ClassDayRecord[]
   seatingSessions SeatingSession[]
+  skillSurveyResponses SkillSurveyResponse[]
+  projectTeams ProjectTeam[]
 
   /// Meta de actividades del periodo (para progreso). Si es null, se usa el total publicado.
   plannedActivities Int?
@@ -85,6 +87,9 @@ model User {
   classDayRecords   ClassDayRecord[]         @relation("StudentClassDay")
   seatingAssignments SeatingAssignment[]     @relation("StudentSeating")
   seatingSessionsCreated SeatingSession[]     @relation("SeatingCreatedBy")
+  skillSurveyResponse    SkillSurveyResponse?
+  projectTeamMemberships ProjectTeamMember[]
+  projectTeamsCreated    ProjectTeam[]        @relation("ProjectTeamCreatedBy")
 
   @@index([groupId])
   @@index([role])
@@ -366,4 +371,50 @@ model SeatingAssignment {
   @@unique([sessionId, studentId])
   @@unique([sessionId, row, col])
   @@index([studentId])
+}
+
+/// Encuesta de habilidades para roles Scrum / proyecto (Python, UI, BD).
+model SkillSurveyResponse {
+  id            String   @id @default(cuid())
+  studentId     String   @unique
+  groupId       String
+  /// Respuestas { "q1": 1-5, ... }
+  answers       Json
+  /// Puntajes por dimensión { scrumMaster, productOwner, developer, uiDesigner, qaDocs }
+  scores        Json
+  suggestedRole String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  student User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group   ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+}
+
+model ProjectTeam {
+  id          String   @id @default(cuid())
+  groupId     String
+  name        String
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  group     ClassGroup          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy User                @relation("ProjectTeamCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  members   ProjectTeamMember[]
+
+  @@index([groupId])
+}
+
+model ProjectTeamMember {
+  id        String @id @default(cuid())
+  teamId    String
+  studentId String @unique
+  role      String
+
+  team    ProjectTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  student User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
 }

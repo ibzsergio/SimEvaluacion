@@ -105,6 +105,21 @@ export function getApiErrorMessage(error: unknown): string {
       const message = (error.response.data as { message?: string })?.message;
       return message ?? "No se pudo guardar el pase de lista.";
     }
+    if (code === "incomplete_answers") {
+      return "Contesta todas las preguntas de la encuesta (1 a 5).";
+    }
+    if (code === "not_enough_completed") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Necesitas al menos 4 alumnos con la encuesta completa."
+      );
+    }
+    if (code === "invalid_team_size") {
+      return "Cada equipo debe tener 4 o 5 integrantes.";
+    }
+    if (code === "student_already_in_team") {
+      return "Uno o más alumnos ya están en otro equipo.";
+    }
     if (code === "seating_not_ready") {
       return (
         (error.response.data as { message?: string })?.message ??
@@ -752,3 +767,58 @@ export async function shuffleSeatingPlan(
 }
 
 // El alumno ya no registra entregas. La actividad se considera entregada al calificar.
+
+export async function fetchStudentSkillSurvey() {
+  const { data } = await api.get<import("./types").StudentSkillSurveyState>("/student/skill-survey");
+  return data;
+}
+
+export async function submitStudentSkillSurvey(answers: Record<string, number>) {
+  const { data } = await api.post<{
+    completed: boolean;
+    profile: import("./types").SkillSurveyProfile;
+    updatedAt: string;
+  }>("/student/skill-survey", { answers });
+  return data;
+}
+
+export async function fetchTeacherSkillSurvey(groupId: string) {
+  const { data } = await api.get<import("./types").TeacherSkillSurveyBoard>(
+    `/teacher/groups/${groupId}/skill-survey`,
+  );
+  return data;
+}
+
+export async function suggestTeacherProjectTeams(groupId: string) {
+  const { data } = await api.post<import("./types").TeamSuggestion>(
+    `/teacher/groups/${groupId}/project-teams/suggest`,
+  );
+  return data;
+}
+
+export async function createTeacherProjectTeam(
+  groupId: string,
+  name: string,
+  members: Array<{ studentId: string; role: string }>,
+) {
+  const { data } = await api.post(`/teacher/groups/${groupId}/project-teams`, { name, members });
+  return data;
+}
+
+export async function updateTeacherProjectTeam(
+  groupId: string,
+  teamId: string,
+  name: string,
+  members: Array<{ studentId: string; role: string }>,
+) {
+  const { data } = await api.put(`/teacher/groups/${groupId}/project-teams/${teamId}`, {
+    name,
+    members,
+  });
+  return data;
+}
+
+export async function deleteTeacherProjectTeam(groupId: string, teamId: string) {
+  const { data } = await api.delete(`/teacher/groups/${groupId}/project-teams/${teamId}`);
+  return data;
+}

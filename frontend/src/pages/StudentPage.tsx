@@ -5,6 +5,7 @@ import Layout from "../components/Layout";
 import StudentCommunication from "../components/StudentCommunication";
 import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
+import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
 import { formatCalendarDate, formatDateTime } from "../lib/dates";
@@ -66,6 +67,8 @@ export default function StudentPage() {
       footer={studentFooter}
     >
       <StudentMotivationCard motivation={motivation} />
+
+      <StudentSkillSurveyPanel />
 
       {data.seating ? (
         <StudentSeatingCard seating={data.seating} />

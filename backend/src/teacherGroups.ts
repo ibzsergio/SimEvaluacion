@@ -41,6 +41,15 @@ import {
 } from "./attendanceExport.js";
 import { generateMasterAttendanceExcel } from "./attendanceMasterExcel.js";
 import { isClassDaySchemaError, humanizeClassDaySaveError } from "./ensureClassDaySchema.js";
+import {
+  createProjectTeam,
+  deleteProjectTeam,
+  getTeacherSurveyBoard,
+  suggestProjectTeams,
+  updateProjectTeam,
+} from "./skillSurveyService.js";
+import { SKILL_ROLE_LABELS, TEAM_ROLE_ORDER } from "./skillSurvey.js";
+
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -1665,5 +1674,159 @@ teacherGroupsRouter.post("/groups/:groupId/seating/shuffle", async (req: AuthedR
       return res.status(404).json({ error: "group_not_found" });
     }
     return handleSeatingError(res, err, "shuffle");
+  }
+});
+
+const teamMemberSchema = z.object({
+  studentId: z.string().min(1),
+  role: z.enum(["scrum_master", "product_owner", "developer", "ui_designer", "qa_docs"]),
+});
+
+teacherGroupsRouter.get("/groups/:groupId/skill-survey", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  try {
+    const board = await getTeacherSurveyBoard(req.auth!.userId, groupId);
+    return res.json(board);
+  } catch (err) {
+    if (err instanceof Error && err.message === "group_not_found") {
+      return res.status(404).json({ error: "group_not_found" });
+    }
+    console.error("[skill-survey] board failed:", err);
+    return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/project-teams/suggest", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  try {
+    const suggestion = await suggestProjectTeams(req.auth!.userId, groupId);
+    return res.json(suggestion);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    if (msg === "group_not_found") return res.status(404).json({ error: msg });
+    if (msg === "not_enough_completed") {
+      return res.status(400).json({
+        error: msg,
+        message: "Necesitas al menos 4 alumnos con la encuesta completa para sugerir equipos.",
+      });
+    }
+    console.error("[skill-survey] suggest failed:", err);
+    return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/project-teams", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      name: z.string().trim().min(1).max(80),
+      members: z.array(teamMemberSchema).min(4).max(5),
+    })
+    .safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  try {
+    const team = await createProjectTeam(
+      req.auth!.userId,
+      groupId,
+      body.data.name,
+      body.data.members,
+    );
+    return res.json({
+      team: {
+        id: team.id,
+        name: team.name,
+        members: team.members.map((m) => ({
+          studentId: m.studentId,
+          role: m.role,
+          roleLabel: SKILL_ROLE_LABELS[m.role as keyof typeof SKILL_ROLE_LABELS] ?? m.role,
+          student: m.student,
+        })),
+      },
+      roleOrder: TEAM_ROLE_ORDER,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    if (
+      msg === "group_not_found" ||
+      msg === "invalid_team_size" ||
+      msg === "duplicate_members" ||
+      msg === "invalid_students" ||
+      msg === "student_already_in_team"
+    ) {
+      return res.status(400).json({
+        error: msg,
+        message:
+          msg === "student_already_in_team"
+            ? "Uno o más alumnos ya están en otro equipo."
+            : msg === "invalid_team_size"
+              ? "Cada equipo debe tener 4 o 5 integrantes."
+              : undefined,
+      });
+    }
+    console.error("[skill-survey] create team failed:", err);
+    return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
+teacherGroupsRouter.put("/groups/:groupId/project-teams/:teamId", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const teamId = String(req.params.teamId);
+  const body = z
+    .object({
+      name: z.string().trim().min(1).max(80),
+      members: z.array(teamMemberSchema).min(4).max(5),
+    })
+    .safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  try {
+    const team = await updateProjectTeam(
+      req.auth!.userId,
+      groupId,
+      teamId,
+      body.data.name,
+      body.data.members,
+    );
+    if (!team) return res.status(404).json({ error: "team_not_found" });
+    return res.json({
+      team: {
+        id: team.id,
+        name: team.name,
+        members: team.members.map((m) => ({
+          studentId: m.studentId,
+          role: m.role,
+          roleLabel: SKILL_ROLE_LABELS[m.role as keyof typeof SKILL_ROLE_LABELS] ?? m.role,
+          student: m.student,
+        })),
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    if (msg === "team_not_found") return res.status(404).json({ error: msg });
+    if (
+      msg === "invalid_team_size" ||
+      msg === "duplicate_members" ||
+      msg === "invalid_students" ||
+      msg === "student_already_in_team"
+    ) {
+      return res.status(400).json({ error: msg });
+    }
+    console.error("[skill-survey] update team failed:", err);
+    return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
+teacherGroupsRouter.delete("/groups/:groupId/project-teams/:teamId", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const teamId = String(req.params.teamId);
+  try {
+    await deleteProjectTeam(req.auth!.userId, groupId, teamId);
+    return res.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    if (msg === "team_not_found") return res.status(404).json({ error: msg });
+    console.error("[skill-survey] delete team failed:", err);
+    return res.status(500).json({ error: "skill_survey_failed" });
   }
 });
