@@ -23,6 +23,7 @@ import {
   saveClassDayRecords,
   todayClassDayDate,
 } from "./classDayService.js";
+import { getGroupDeliveryStatus } from "./deliveryStatusService.js";
 import {
   getSeatingPlan,
   resolveSeatingDate,
@@ -537,6 +538,20 @@ teacherGroupsRouter.delete("/groups/:groupId/students/:studentId", async (req: A
 
   await prisma.user.delete({ where: { id: student.id } });
   return res.json({ ok: true, deletedId: student.id });
+});
+
+teacherGroupsRouter.get("/groups/:groupId/delivery-status", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  try {
+    const board = await getGroupDeliveryStatus(req.auth!.userId, groupId);
+    return res.json(board);
+  } catch (err) {
+    if (err instanceof Error && err.message === "group_not_found") {
+      return res.status(404).json({ error: "group_not_found" });
+    }
+    console.error("[delivery-status] failed:", err);
+    return res.status(500).json({ error: "delivery_status_failed" });
+  }
 });
 
 teacherGroupsRouter.get("/groups/:groupId/ranking", async (req: AuthedRequest, res) => {

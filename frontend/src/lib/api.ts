@@ -746,6 +746,52 @@ export async function downloadWeekAttendancePdf(
   );
 }
 
+export async function fetchGroupDeliveryStatus(groupId: string) {
+  const { data } = await api.get<{
+    group: { id: string; code: string; shift: string };
+    activities: Array<{
+      id: string;
+      name: string;
+      date: string;
+      maxPoints: number;
+      sortOrder: number;
+      index: number;
+      isPastDue: boolean;
+    }>;
+    rows: Array<{
+      student: {
+        id: string;
+        displayName: string;
+        listNumber: number | null;
+        controlNumber: string | null;
+        listPosition: number;
+      };
+      summary: {
+        graded: number;
+        pending: number;
+        overdue: number;
+        total: number;
+        deliveryPercent: number;
+      };
+      cells: Array<{
+        activityId: string;
+        status: "graded" | "pending" | "overdue";
+        points: number | null;
+        maxPoints: number;
+        gradedAt: string | null;
+      }>;
+    }>;
+    totals: {
+      students: number;
+      activities: number;
+      fullyComplete: number;
+      withOverdue: number;
+      withPending: number;
+    };
+  }>(`/teacher/groups/${groupId}/delivery-status`);
+  return data;
+}
+
 export async function fetchSeatingPlan(groupId: string, date: string) {
   const { data } = await api.get<SeatingPlan>(`/teacher/groups/${groupId}/seating`, {
     params: { date },

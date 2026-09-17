@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import AccessQrPanel from "../components/AccessQrPanel";
 import ClassDayPanel from "../components/ClassDayPanel";
+import GroupDeliveryStatusPanel from "../components/GroupDeliveryStatusPanel";
 import GroupGradesImportPanel from "../components/GroupGradesImportPanel";
 import GroupRankingPanel from "../components/GroupRankingPanel";
 import GroupStudentsPanel from "../components/GroupStudentsPanel";
@@ -37,6 +38,7 @@ export default function TeacherPage() {
   const [tab, setTab] = useState<
     | "alumnos"
     | "actividades"
+    | "entregas"
     | "importar"
     | "ranking"
     | "semanas"
@@ -207,6 +209,9 @@ export default function TeacherPage() {
         <TabButton active={tab === "actividades"} onClick={() => setTab("actividades")}>
           Actividades y calificaciones
         </TabButton>
+        <TabButton active={tab === "entregas"} onClick={() => setTab("entregas")}>
+          Historial entregas
+        </TabButton>
         <TabButton active={tab === "importar"} onClick={() => setTab("importar")}>
           Importar Excel
         </TabButton>
@@ -315,6 +320,16 @@ export default function TeacherPage() {
           <p className="text-slate-400">Cargando grupos...</p>
         ) : selectedGroupId ? (
           <GroupRankingPanel
+            groups={groups}
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={(id) => setSelectedGroupId(id)}
+          />
+        ) : null
+      ) : tab === "entregas" ? (
+        groupsQuery.isLoading ? (
+          <p className="text-slate-400">Cargando grupos...</p>
+        ) : selectedGroupId ? (
+          <GroupDeliveryStatusPanel
             groups={groups}
             selectedGroupId={selectedGroupId}
             onSelectGroup={(id) => setSelectedGroupId(id)}
