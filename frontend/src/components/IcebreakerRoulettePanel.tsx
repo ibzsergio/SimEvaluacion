@@ -187,29 +187,22 @@ function pickRandom<T>(items: T[], count: number, avoidIds?: Set<string>, idOf?:
   return pool.slice(0, Math.min(count, pool.length));
 }
 
-function indexUnderPointer(rotationDeg: number, n: number) {
-  if (n <= 0) return 0;
-  const slice = 360 / n;
-  const normalized = ((rotationDeg % 360) + 360) % 360;
-  const pointerAngle = (360 - normalized) % 360;
-  return Math.min(n - 1, Math.floor(pointerAngle / slice) % n);
-}
-
 function Wheel({
   activities,
   rotationDeg,
   spinning,
-  pointerTitle,
-  pointerColor,
+  resultTitle,
+  resultColor,
 }: {
   activities: IcebreakerActivity[];
   rotationDeg: number;
   spinning: boolean;
-  pointerTitle: string;
-  pointerColor: string;
+  /** Solo se muestra cuando la ruleta ya se detuvo. */
+  resultTitle: string | null;
+  resultColor: string | null;
 }) {
   const n = activities.length;
-  const slice = 360 / n;
+  const slice = 360 / Math.max(n, 1);
   const gradient = activities
     .map((act, i) => {
       const color = sliceColor(act, i);
@@ -218,6 +211,8 @@ function Wheel({
       return `${color} ${start}deg ${end}deg`;
     })
     .join(", ");
+
+  const showResult = Boolean(resultTitle) && !spinning;
 
   return (
     <div className="relative mx-auto w-full max-w-[340px]">
@@ -230,32 +225,14 @@ function Wheel({
             spinning ? "" : "ice-wheel-idle"
           }`}
           style={{
-            background: `conic-gradient(from -90deg, ${gradient})`,
+            background: n > 0 ? `conic-gradient(from -90deg, ${gradient})` : "#1e293b",
             transform: `rotate(${rotationDeg}deg)`,
             transition: spinning
               ? "transform 4.2s cubic-bezier(0.12, 0.75, 0.12, 1)"
               : "transform 0.3s ease",
           }}
         >
-          {n <= 18
-            ? activities.map((act, i) => {
-                const angle = -90 + i * slice + slice / 2;
-                return (
-                  <div
-                    key={act.id}
-                    className="pointer-events-none absolute left-1/2 top-1/2 origin-left"
-                    style={{
-                      width: "42%",
-                      transform: `rotate(${angle}deg) translate(20px, -50%)`,
-                    }}
-                  >
-                    <span className="block truncate text-[8px] font-bold uppercase tracking-wide text-slate-950/90">
-                      {wheelLabel(act)}
-                    </span>
-                  </div>
-                );
-              })
-            : null}
+          {/* Solo colores: el nombre aparece al detenerse, bajo la flecha. */}
           <div className="absolute left-1/2 top-1/2 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/30 bg-slate-950 text-center text-[10px] font-semibold leading-tight text-cyan-100">
             Gira
           </div>
@@ -263,21 +240,31 @@ function Wheel({
       </div>
 
       <div
-        className={`mt-3 rounded-2xl border px-4 py-3 text-center shadow-lg transition-colors ${
-          spinning ? "border-white/15 bg-white/5" : "border-amber-300/40 bg-amber-400/10"
+        className={`mt-3 min-h-[4.5rem] rounded-2xl border px-4 py-3 text-center shadow-lg transition-all ${
+          showResult
+            ? "border-amber-300/50 bg-amber-400/15"
+            : "border-white/10 bg-white/5"
         }`}
         style={
-          !spinning && pointerColor
-            ? { boxShadow: `0 0 24px ${pointerColor}55`, borderColor: `${pointerColor}99` }
+          showResult && resultColor
+            ? { boxShadow: `0 0 28px ${resultColor}66`, borderColor: `${resultColor}aa` }
             : undefined
         }
       >
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-200/80">
-          Bajo la flecha
-        </p>
-        <p className={`mt-1 text-lg font-bold leading-snug text-white ${spinning ? "animate-pulse" : "ice-reveal"}`}>
-          {spinning ? "…" : pointerTitle || "¿Qué saldrá?"}
-        </p>
+        {showResult ? (
+          <>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-200/80">
+              Cayó en
+            </p>
+            <p className="ice-reveal mt-1 text-xl font-bold leading-snug text-white">
+              {resultTitle}
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-slate-500">
+            {spinning ? "Girando…" : "El nombre aparece al detenerse"}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -317,10 +304,11 @@ export default function IcebreakerRoulettePanel({
     [kindFilter, energyFilter, deck],
   );
 
-  const pointerIndex = indexUnderPointer(rotationDeg, pool.length);
-  const pointerActivity = pool[pointerIndex] ?? null;
-  const pointerTitle = current && !spinning ? wheelLabel(current) : spinning ? "" : pointerActivity ? wheelLabel(pointerActivity) : "";
-  const pointerColor = pointerActivity ? sliceColor(pointerActivity, pointerIndex) : "#facc15";
+  const resultTitle = current && !spinning ? current.title : null;
+  const resultColor =
+    current && !spinning
+      ? sliceColor(current, Math.max(0, pool.findIndex((a) => a.id === current.id)))
+      : null;
 
   const spinActivity = () => {
     if (spinning || pool.length === 0) return;
@@ -479,8 +467,8 @@ export default function IcebreakerRoulettePanel({
               activities={pool}
               rotationDeg={rotationDeg}
               spinning={spinning}
-              pointerTitle={pointerTitle}
-              pointerColor={pointerColor}
+              resultTitle={resultTitle}
+              resultColor={resultColor}
             />
             <button
               type="button"
