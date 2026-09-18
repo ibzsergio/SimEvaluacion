@@ -2,13 +2,18 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchGroupStudents, getApiErrorMessage, type GroupStudent } from "../lib/api";
 import {
-  ICEBREAKER_ACTIVITIES,
-  ICEBREAKER_COLORS,
+  activityKind,
+  buildRouletteDeck,
   energyLabel,
+  filterActivities,
   formationLabel,
+  kindLabel,
+  sliceColor,
+  wheelLabel,
   type IcebreakerActivity,
   type IcebreakerEnergy,
   type IcebreakerFormation,
+  type IcebreakerKind,
 } from "../lib/icebreakers";
 import type { ClassGroup } from "../lib/types";
 
@@ -182,20 +187,32 @@ function pickRandom<T>(items: T[], count: number, avoidIds?: Set<string>, idOf?:
   return pool.slice(0, Math.min(count, pool.length));
 }
 
+function indexUnderPointer(rotationDeg: number, n: number) {
+  if (n <= 0) return 0;
+  const slice = 360 / n;
+  const normalized = ((rotationDeg % 360) + 360) % 360;
+  const pointerAngle = (360 - normalized) % 360;
+  return Math.min(n - 1, Math.floor(pointerAngle / slice) % n);
+}
+
 function Wheel({
   activities,
   rotationDeg,
   spinning,
+  pointerTitle,
+  pointerColor,
 }: {
   activities: IcebreakerActivity[];
   rotationDeg: number;
   spinning: boolean;
+  pointerTitle: string;
+  pointerColor: string;
 }) {
   const n = activities.length;
   const slice = 360 / n;
   const gradient = activities
-    .map((_, i) => {
-      const color = ICEBREAKER_COLORS[i % ICEBREAKER_COLORS.length];
+    .map((act, i) => {
+      const color = sliceColor(act, i);
       const start = (i * slice).toFixed(3);
       const end = ((i + 1) * slice).toFixed(3);
       return `${color} ${start}deg ${end}deg`;
@@ -203,53 +220,64 @@ function Wheel({
     .join(", ");
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[340px]">
-      <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-1">
-        <div className="h-0 w-0 border-l-[12px] border-r-[12px] border-t-[22px] border-l-transparent border-r-transparent border-t-amber-300 drop-shadow" />
-      </div>
-      <div
-        className={`ice-wheel relative h-full w-full rounded-full border-4 border-white/20 shadow-[0_0_40px_rgba(34,211,238,0.2)] ${
-          spinning ? "" : "ice-wheel-idle"
-        }`}
-        style={{
-          background: `conic-gradient(from -90deg, ${gradient})`,
-          transform: `rotate(${rotationDeg}deg)`,
-          transition: spinning
-            ? "transform 4.2s cubic-bezier(0.12, 0.75, 0.12, 1)"
-            : "transform 0.3s ease",
-        }}
-      >
-        {n <= 16
-          ? activities.map((act, i) => {
-              const angle = -90 + i * slice + slice / 2;
-              return (
-                <div
-                  key={act.id}
-                  className="pointer-events-none absolute left-1/2 top-1/2 origin-left"
-                  style={{
-                    width: "46%",
-                    transform: `rotate(${angle}deg) translate(18px, -50%)`,
-                  }}
-                >
-                  <span className="block truncate text-[9px] font-bold uppercase tracking-wide text-slate-950/90">
-                    {act.title}
-                  </span>
-                </div>
-              );
-            })
-          : activities.map((_, i) => {
-              const angle = -90 + i * slice + slice / 2;
-              return (
-                <div
-                  key={activities[i].id}
-                  className="pointer-events-none absolute left-1/2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-slate-950/40"
-                  style={{ transform: `rotate(${angle}deg) translate(118px, -50%)` }}
-                />
-              );
-            })}
-        <div className="absolute left-1/2 top-1/2 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/30 bg-slate-950 text-center text-[10px] font-semibold leading-tight text-cyan-100">
-          Gira
+    <div className="relative mx-auto w-full max-w-[340px]">
+      <div className="relative aspect-square w-full">
+        <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-1">
+          <div className="h-0 w-0 border-l-[12px] border-r-[12px] border-t-[22px] border-l-transparent border-r-transparent border-t-amber-300 drop-shadow" />
         </div>
+        <div
+          className={`ice-wheel relative h-full w-full rounded-full border-4 border-white/20 shadow-[0_0_40px_rgba(34,211,238,0.2)] ${
+            spinning ? "" : "ice-wheel-idle"
+          }`}
+          style={{
+            background: `conic-gradient(from -90deg, ${gradient})`,
+            transform: `rotate(${rotationDeg}deg)`,
+            transition: spinning
+              ? "transform 4.2s cubic-bezier(0.12, 0.75, 0.12, 1)"
+              : "transform 0.3s ease",
+          }}
+        >
+          {n <= 18
+            ? activities.map((act, i) => {
+                const angle = -90 + i * slice + slice / 2;
+                return (
+                  <div
+                    key={act.id}
+                    className="pointer-events-none absolute left-1/2 top-1/2 origin-left"
+                    style={{
+                      width: "42%",
+                      transform: `rotate(${angle}deg) translate(20px, -50%)`,
+                    }}
+                  >
+                    <span className="block truncate text-[8px] font-bold uppercase tracking-wide text-slate-950/90">
+                      {wheelLabel(act)}
+                    </span>
+                  </div>
+                );
+              })
+            : null}
+          <div className="absolute left-1/2 top-1/2 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/30 bg-slate-950 text-center text-[10px] font-semibold leading-tight text-cyan-100">
+            Gira
+          </div>
+        </div>
+      </div>
+
+      <div
+        className={`mt-3 rounded-2xl border px-4 py-3 text-center shadow-lg transition-colors ${
+          spinning ? "border-white/15 bg-white/5" : "border-amber-300/40 bg-amber-400/10"
+        }`}
+        style={
+          !spinning && pointerColor
+            ? { boxShadow: `0 0 24px ${pointerColor}55`, borderColor: `${pointerColor}99` }
+            : undefined
+        }
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-200/80">
+          Bajo la flecha
+        </p>
+        <p className={`mt-1 text-lg font-bold leading-snug text-white ${spinning ? "animate-pulse" : "ice-reveal"}`}>
+          {spinning ? "…" : pointerTitle || "¿Qué saldrá?"}
+        </p>
       </div>
     </div>
   );
@@ -264,7 +292,9 @@ export default function IcebreakerRoulettePanel({
   selectedGroupId: string;
   onSelectGroup: (id: string) => void;
 }) {
+  const [kindFilter, setKindFilter] = useState<IcebreakerKind | "mix" | "todas">("mix");
   const [energyFilter, setEnergyFilter] = useState<IcebreakerEnergy | "todas">("todas");
+  const [deck, setDeck] = useState(() => buildRouletteDeck());
   const [spinning, setSpinning] = useState(false);
   const [rotationDeg, setRotationDeg] = useState(0);
   const [current, setCurrent] = useState<IcebreakerActivity | null>(null);
@@ -282,10 +312,15 @@ export default function IcebreakerRoulettePanel({
   const students = studentsQuery.data?.students ?? [];
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
 
-  const pool = useMemo(() => {
-    if (energyFilter === "todas") return ICEBREAKER_ACTIVITIES;
-    return ICEBREAKER_ACTIVITIES.filter((a) => a.energy === energyFilter);
-  }, [energyFilter]);
+  const pool = useMemo(
+    () => filterActivities(kindFilter, energyFilter, deck),
+    [kindFilter, energyFilter, deck],
+  );
+
+  const pointerIndex = indexUnderPointer(rotationDeg, pool.length);
+  const pointerActivity = pool[pointerIndex] ?? null;
+  const pointerTitle = current && !spinning ? wheelLabel(current) : spinning ? "" : pointerActivity ? wheelLabel(pointerActivity) : "";
+  const pointerColor = pointerActivity ? sliceColor(pointerActivity, pointerIndex) : "#facc15";
 
   const spinActivity = () => {
     if (spinning || pool.length === 0) return;
@@ -308,7 +343,7 @@ export default function IcebreakerRoulettePanel({
     window.setTimeout(() => {
       setCurrent(chosen);
       recentIds.current = [chosen.id, ...recentIds.current].slice(0, 8);
-      setHistory((prev) => [chosen, ...prev.filter((h) => h.id !== chosen.id)].slice(0, 6));
+      setHistory((prev) => [chosen, ...prev.filter((h) => h.id !== chosen.id)].slice(0, 8));
 
       if (chosen.spotlightCount > 0 && students.length > 0) {
         setPickedStudents(pickRandom(students, chosen.spotlightCount));
@@ -328,9 +363,23 @@ export default function IcebreakerRoulettePanel({
     }, 450);
   };
 
+  const remeshDeck = () => {
+    if (spinning) return;
+    setDeck(buildRouletteDeck());
+    setCurrent(null);
+    setPickedStudents([]);
+    setRotationDeg(0);
+    recentIds.current = [];
+  };
+
   if (!selectedGroupId) {
     return <p className="text-slate-400">Selecciona un grupo.</p>;
   }
+
+  const kind = current ? activityKind(current) : null;
+  const isSpinAgain = current?.id === "especial-vuelve-girar";
+  const isParticipation = current?.id === "especial-participacion";
+  const winner = pickedStudents[0];
 
   return (
     <div className="space-y-4">
@@ -356,28 +405,68 @@ export default function IcebreakerRoulettePanel({
           <div>
             <h2 className="text-lg font-semibold text-white">Ruleta rompehielo</h2>
             <p className="mt-1 max-w-2xl text-sm text-slate-400">
-              Dinámicas variadas para ~{students.length || 32} alumnos del grupo{" "}
-              {selectedGroup?.code}. Gira la ruleta, proyecta las instrucciones y, si aplica,
-              sortea quién inicia o pasa al frente.
+              Dinámicas, castigos chuscos, respiración/movimiento y casillas especiales para ~
+              {students.length || 32} alumnos del grupo {selectedGroup?.code}.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {(["todas", "baja", "media", "alta"] as const).map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                disabled={spinning}
-                onClick={() => setEnergyFilter(opt)}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
-                  energyFilter === opt
-                    ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-100"
-                    : "border-white/10 bg-white/5 text-slate-400"
-                }`}
-              >
-                {opt === "todas" ? "Todas" : energyLabel(opt)}
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            disabled={spinning}
+            onClick={remeshDeck}
+            className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 disabled:opacity-50"
+          >
+            Remezclar bombo
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(
+            [
+              ["mix", "Bombo mixto"],
+              ["dinamica", "Dinámicas"],
+              ["castigo", "Castigos"],
+              ["respiracion", "Respiración"],
+              ["especial", "Especiales"],
+              ["todas", "Catálogo completo"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              disabled={spinning}
+              onClick={() => {
+                setKindFilter(id);
+                setCurrent(null);
+                setPickedStudents([]);
+                setRotationDeg(0);
+              }}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                kindFilter === id
+                  ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-100"
+                  : "border-white/10 bg-white/5 text-slate-400"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-2">
+          {(["todas", "baja", "media", "alta"] as const).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              disabled={spinning}
+              onClick={() => setEnergyFilter(opt)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                energyFilter === opt
+                  ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-100"
+                  : "border-white/10 bg-white/5 text-slate-500"
+              }`}
+            >
+              {opt === "todas" ? "Cualquier energía" : energyLabel(opt)}
+            </button>
+          ))}
         </div>
 
         {studentsQuery.isError ? (
@@ -386,17 +475,23 @@ export default function IcebreakerRoulettePanel({
 
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,340px)_1fr]">
           <div className="space-y-4">
-            <Wheel activities={pool} rotationDeg={rotationDeg} spinning={spinning} />
+            <Wheel
+              activities={pool}
+              rotationDeg={rotationDeg}
+              spinning={spinning}
+              pointerTitle={pointerTitle}
+              pointerColor={pointerColor}
+            />
             <button
               type="button"
               onClick={spinActivity}
               disabled={spinning || pool.length === 0}
               className="w-full rounded-2xl bg-gradient-to-r from-cyan-400 to-emerald-400 px-4 py-3 text-base font-bold text-slate-950 shadow-lg shadow-cyan-500/20 hover:from-cyan-300 hover:to-emerald-300 disabled:opacity-60"
             >
-              {spinning ? "Girando…" : "Girar ruleta"}
+              {spinning ? "Girando…" : isSpinAgain ? "Girar de nuevo" : "Girar ruleta"}
             </button>
             <p className="text-center text-xs text-slate-500">
-              {pool.length} dinámicas en el bombo · evita repetir las últimas 8
+              {pool.length} casillas · naranja = castigo · teal = respiración · dorado/rosa = especial
             </p>
           </div>
 
@@ -405,9 +500,54 @@ export default function IcebreakerRoulettePanel({
               <div className="flex h-full min-h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/5 px-6 text-center">
                 <p className="text-lg font-semibold text-white">Listos para romper el hielo</p>
                 <p className="mt-2 max-w-md text-sm text-slate-400">
-                  Gira para obtener una actividad con formación sugerida, tiempo estimado e
-                  instrucciones. Las más visuales incluyen diagrama; las simples solo pasos claros.
+                  Gira: pueden salir dinámicas, castigos suaves (sentadillas, cantar…), respiración o
+                  casillas como “vuelve a girar” y “ganaste una participación”.
                 </p>
+              </div>
+            ) : isSpinAgain ? (
+              <div className={`space-y-4 rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 p-6 text-center ${spinning ? "opacity-60" : "ice-reveal"}`}>
+                <p className="text-xs font-semibold uppercase tracking-wider text-fuchsia-200">Casilla especial</p>
+                <h3 className="text-3xl font-bold text-white">Vuelve a girar</h3>
+                <p className="text-sm text-fuchsia-100/80">
+                  La ruleta pide bis. Redoble de pupitres… y otra vez.
+                </p>
+                <button
+                  type="button"
+                  onClick={spinActivity}
+                  disabled={spinning}
+                  className="mx-auto rounded-2xl bg-fuchsia-400 px-6 py-3 text-sm font-bold text-slate-950 hover:bg-fuchsia-300 disabled:opacity-60"
+                >
+                  Girar otra vez
+                </button>
+              </div>
+            ) : isParticipation ? (
+              <div className={`space-y-4 rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/20 to-emerald-500/10 p-6 text-center ${spinning ? "opacity-60" : "ice-reveal"}`}>
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-200">Casilla especial</p>
+                <h3 className="text-2xl font-bold text-white sm:text-3xl">
+                  ¡Felicidades! Ganaste una participación
+                </h3>
+                {studentsQuery.isLoading ? (
+                  <p className="text-sm text-amber-100/70">Sorteando alumno…</p>
+                ) : winner ? (
+                  <div className="mx-auto max-w-md rounded-2xl border border-amber-300/40 bg-slate-950/50 px-5 py-4">
+                    <p className="text-xs uppercase tracking-wide text-amber-200/70">Alumno ganador</p>
+                    <p className="mt-1 text-2xl font-bold text-amber-50">
+                      {winner.listNumber != null ? `#${winner.listNumber} · ` : ""}
+                      {winner.displayName}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-100/70">No hay alumnos en el grupo para sortear.</p>
+                )}
+                <button
+                  type="button"
+                  onClick={reshuffleStudents}
+                  disabled={spinning || students.length === 0}
+                  className="rounded-lg border border-amber-300/30 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-400/20 disabled:opacity-50"
+                >
+                  {spinStudentsOnly ? "Sorteando…" : "Otro ganador"}
+                </button>
+                <p className="text-xs text-slate-400">Anótalo en tu lista de participaciones.</p>
               </div>
             ) : (
               <div
@@ -418,15 +558,17 @@ export default function IcebreakerRoulettePanel({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300/80">
-                      Actividad sorteada
+                      {kind ? kindLabel(kind) : "Actividad sorteada"}
                     </p>
                     <h3 className="mt-1 text-2xl font-bold text-white">{current.title}</h3>
                     <p className="mt-1 text-sm text-slate-400">{current.tagline}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className="rounded-lg bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200">
-                      ~{current.minutes} min
-                    </span>
+                    {current.minutes > 0 ? (
+                      <span className="rounded-lg bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200">
+                        ~{current.minutes} min
+                      </span>
+                    ) : null}
                     <span className="rounded-lg bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200">
                       {energyLabel(current.energy)}
                     </span>
@@ -446,7 +588,9 @@ export default function IcebreakerRoulettePanel({
                     </div>
                   ) : (
                     <div className="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 p-4 text-center text-xs text-slate-400">
-                      Indicaciones generales (sin diagrama)
+                      {kind === "castigo"
+                        ? "Castigo express"
+                        : "Indicaciones generales"}
                     </div>
                   )}
                   <div className="space-y-2 text-sm text-slate-300">
@@ -467,10 +611,16 @@ export default function IcebreakerRoulettePanel({
                 <ol className="space-y-2">
                   {current.steps.map((step, idx) => (
                     <li
-                      key={step.title}
+                      key={`${step.title}-${idx}`}
                       className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-3"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-400/20 text-sm font-bold text-cyan-100">
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                          kind === "castigo"
+                            ? "bg-orange-400/20 text-orange-100"
+                            : "bg-cyan-400/20 text-cyan-100"
+                        }`}
+                      >
                         {idx + 1}
                       </span>
                       <div>
@@ -485,7 +635,8 @@ export default function IcebreakerRoulettePanel({
                   <div className="rounded-xl border border-amber-400/25 bg-amber-500/10 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-amber-100">
-                        Sorteo de alumnos ({current.spotlightCount})
+                        {kind === "castigo" ? "Le toca a" : "Sorteo de alumnos"} (
+                        {current.spotlightCount})
                       </p>
                       <button
                         type="button"
@@ -532,7 +683,7 @@ export default function IcebreakerRoulettePanel({
             <div className="mt-2 flex flex-wrap gap-2">
               {history.map((h) => (
                 <button
-                  key={h.id}
+                  key={h.id + h.title}
                   type="button"
                   disabled={spinning}
                   onClick={() => {
@@ -549,7 +700,7 @@ export default function IcebreakerRoulettePanel({
                       : "border-white/10 bg-white/5 text-slate-400 hover:text-slate-200"
                   }`}
                 >
-                  {h.title}
+                  {wheelLabel(h)}
                 </button>
               ))}
             </div>

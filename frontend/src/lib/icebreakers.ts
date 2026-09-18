@@ -1,4 +1,5 @@
 export type IcebreakerEnergy = "baja" | "media" | "alta";
+export type IcebreakerKind = "dinamica" | "castigo" | "respiracion" | "especial";
 export type IcebreakerFormation =
   | "circulo"
   | "parejas"
@@ -17,9 +18,13 @@ export type IcebreakerStep = {
 export type IcebreakerActivity = {
   id: string;
   title: string;
+  /** Título corto para la ruleta / flecha. */
+  wheelTitle?: string;
   tagline: string;
   minutes: number;
   energy: IcebreakerEnergy;
+  /** Por defecto: dinamica */
+  kind?: IcebreakerKind;
   formation: IcebreakerFormation;
   /** Cuántas personas se sortean al girar (0 = no sortea alumnos). */
   spotlightCount: number;
@@ -30,6 +35,21 @@ export type IcebreakerActivity = {
   steps: IcebreakerStep[];
   tip: string;
 };
+
+export function activityKind(a: IcebreakerActivity): IcebreakerKind {
+  return a.kind ?? "dinamica";
+}
+
+export function wheelLabel(a: IcebreakerActivity) {
+  return a.wheelTitle ?? a.title;
+}
+
+export function kindLabel(kind: IcebreakerKind) {
+  if (kind === "castigo") return "Castigo chusco";
+  if (kind === "respiracion") return "Respiración / movimiento";
+  if (kind === "especial") return "Casilla especial";
+  return "Dinámica";
+}
 
 export const ICEBREAKER_ACTIVITIES: IcebreakerActivity[] = [
   {
@@ -602,7 +622,406 @@ export const ICEBREAKER_ACTIVITIES: IcebreakerActivity[] = [
     ],
     tip: "Baja la energía y deja buen sabor de boca.",
   },
+
+  // —— Castigos chuscos (suaves, con respeto) ——
+  {
+    id: "castigo-sentadillas",
+    title: "10 sentadillas",
+    wheelTitle: "Sentadillas",
+    tagline: "Castigo express con humor",
+    minutes: 1,
+    energy: "alta",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "La persona sorteada hace 10 sentadillas frente al grupo (o en su lugar).",
+    steps: [
+      { title: "Sorteo", detail: "Quien salga en la ruleta es el “afortunado”." },
+      { title: "Cuenta", detail: "El grupo cuenta a coro del 1 al 10." },
+      { title: "Aplauso", detail: "Aplauso y se sienta. Sin burla pesada." },
+    ],
+    tip: "Si no puede hacer sentadillas, cambia a 10 marcha en el lugar.",
+  },
+  {
+    id: "castigo-cantar",
+    title: "Canta 15 segundos",
+    wheelTitle: "Cantar",
+    tagline: "Microkaraoke improvisado",
+    minutes: 1,
+    energy: "media",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Ninguno (o parlante)",
+    setupFor32: "Una persona canta cualquier canción 15 s; el grupo acompaña palmadas.",
+    steps: [
+      { title: "Elegir", detail: "Puede ser himno absurdo, jingle o canción conocida." },
+      { title: "Timer", detail: "Docente cuenta 15 segundos." },
+      { title: "Cierre", detail: "Aplauso obligatorio; nadie se burla del tono." },
+    ],
+    tip: "Permite tararear si le da pena cantar con letra.",
+  },
+  {
+    id: "castigo-trabalenguas",
+    title: "Trabalenguas imposible",
+    wheelTitle: "Trabalenguas",
+    tagline: "Decirlo 3 veces rápido",
+    minutes: 1,
+    energy: "media",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Frase en pizarra",
+    setupFor32: "Ej: “Tres tristes tigres…” o inventa una con palabras del tema.",
+    steps: [
+      { title: "Leer", detail: "Lee la frase en silencio 5 s." },
+      { title: "Reto", detail: "La dice 3 veces seguidas lo más rápido posible." },
+      { title: "Fallback", detail: "Si se traba, el grupo la dice a coro una vez." },
+    ],
+    tip: "El fail es el chiste; celebra el intento.",
+  },
+  {
+    id: "castigo-animal",
+    title: "Imita un animal",
+    wheelTitle: "Animal",
+    tagline: "10 segundos de zoo",
+    minutes: 1,
+    energy: "alta",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "El grupo propone 3 animales; la persona sorteada elige uno e imita.",
+    steps: [
+      { title: "Opciones", detail: "Gallina, robot-gato, T-Rex, pingüino…" },
+      { title: "Actuar", detail: "10 s de mímica (sonido opcional)." },
+      { title: "Voto", detail: "Aplauso según creatividad." },
+    ],
+    tip: "Manténlo corto para no alargar la clase.",
+  },
+  {
+    id: "castigo-chiste",
+    title: "Chiste malo obligatorio",
+    wheelTitle: "Chiste malo",
+    tagline: "Entre peor, mejor",
+    minutes: 1,
+    energy: "baja",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "Una persona cuenta el peor chiste que se le ocurra (20 s).",
+    steps: [
+      { title: "Contar", detail: "Chiste limpio, corto y preferible malísimo." },
+      { title: "Reacción", detail: "El grupo hace “booo” amistoso o ríe igual." },
+      { title: "Premio", detail: "Si nadie ríe, gana el título “rey/reina del fail”." },
+    ],
+    tip: "Nada ofensivo: sin temas de apariencia, género o familias.",
+  },
+  {
+    id: "castigo-bailar",
+    title: "Baile de 10 segundos",
+    wheelTitle: "Bailar",
+    tagline: "Free style express",
+    minutes: 1,
+    energy: "alta",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Música opcional",
+    setupFor32: "La persona sorteada baila 10 s; el grupo marca el ritmo con palmadas.",
+    steps: [
+      { title: "Pista", detail: "Cualquier paso vale: robot, salsa inventada, moonwalk fallido." },
+      { title: "Timer", detail: "10 segundos cronometrados." },
+      { title: "Aplauso", detail: "Aplauso de pie 3 s." },
+    ],
+    tip: "Puede invitar a un amigo a bailar juntos si le da pena solo.",
+  },
+  {
+    id: "castigo-tijeras",
+    title: "15 saltos de tijera",
+    wheelTitle: "Tijeras",
+    tagline: "Activación física rápida",
+    minutes: 1,
+    energy: "alta",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "Quien salga hace 15 jumping jacks; el grupo cuenta.",
+    steps: [
+      { title: "Espacio", detail: "Da un paso atrás de la butaca." },
+      { title: "Cuenta", detail: "Grupo cuenta 1–15." },
+      { title: "Cierre", detail: "Respiración de 3 s y listo." },
+    ],
+    tip: "Alternativa: 15 marchas con rodillas altas.",
+  },
+  {
+    id: "castigo-estatua",
+    title: "Estatua congelada",
+    wheelTitle: "Estatua",
+    tagline: "No te muevas 20 segundos",
+    minutes: 1,
+    energy: "baja",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "Pose libre; si se mueve, el grupo hace efecto de “error” sonoro.",
+    steps: [
+      { title: "Pose", detail: "Elige una pose ridícula o épica." },
+      { title: "Congelar", detail: "20 s sin moverse (parpadear sí vale)." },
+      { title: "Foto mental", detail: "El grupo “toma la foto” con las manos." },
+    ],
+    tip: "Divertido y cero esfuerzo físico intenso.",
+  },
+  {
+    id: "castigo-piropo-clase",
+    title: "Elogio al azar",
+    wheelTitle: "Elogio",
+    tagline: "Cumplido sincero a un compañero",
+    minutes: 1,
+    energy: "baja",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 2,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "La ruleta elige quién habla y a quién se lo dice.",
+    steps: [
+      { title: "Sorteo", detail: "Persona A elogia a persona B (académico o de actitud)." },
+      { title: "Decir", detail: "Una frase concreta: “me gusta cómo…”." },
+      { title: "Recibir", detail: "B solo dice “gracias”." },
+    ],
+    tip: "Castigo “bueno”: baja defensas y sube el clima del grupo.",
+  },
+  {
+    id: "castigo-voz-noticia",
+    title: "Noticiero express",
+    wheelTitle: "Noticiero",
+    tagline: "Presenta la clase como titular",
+    minutes: 1,
+    energy: "media",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "Con voz de reportero, resume en 20 s qué van a aprender hoy.",
+    steps: [
+      { title: "Intro", detail: "“Buenas tardes, reportando desde el salón…”" },
+      { title: "Titular", detail: "Inventa un titular absurdo del tema del día." },
+      { title: "Cierre", detail: "“¡Volvemos tras la dinámica!”" },
+    ],
+    tip: "Ideal justo antes de explicar el contenido.",
+  },
+  {
+    id: "castigo-caminar-lento",
+    title: "Caminata en cámara lenta",
+    wheelTitle: "Cámara lenta",
+    tagline: "De tu butaca al pizarrón y de vuelta",
+    minutes: 1,
+    energy: "media",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "Ida y vuelta al frente en slow-motion total.",
+    steps: [
+      { title: "Salida", detail: "Camina ultra lento con gestos dramáticos." },
+      { title: "Meta", detail: "Toca el pizarrón (o el escritorio)." },
+      { title: "Regreso", detail: "Vuelve igual de lento; el grupo narra como documental." },
+    ],
+    tip: "Muy visual y rompe la seriedad al instante.",
+  },
+  {
+    id: "castigo-aplauso-solo",
+    title: "Apláudete 15 s",
+    wheelTitle: "Autoaplauso",
+    tagline: "Celebración personal forzada",
+    minutes: 1,
+    energy: "media",
+    kind: "castigo",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "La persona se aplaude sola diciendo “yo puedo” o su nombre.",
+    steps: [
+      { title: "Centro", detail: "De pie en su lugar o al frente." },
+      { title: "Aplauso", detail: "15 s de autoaplauso (sí, da pena: ese es el chiste)." },
+      { title: "Eco", detail: "Al final el grupo se une 3 s." },
+    ],
+    tip: "Ríe con la persona, nunca de ella.",
+  },
+
+  // —— Respiración y movimiento ——
+  {
+    id: "respira-478",
+    title: "Respiración 4-7-8",
+    wheelTitle: "Respira 4-7-8",
+    tagline: "Calmar nervios en 1 minuto",
+    minutes: 2,
+    energy: "baja",
+    kind: "respiracion",
+    formation: "libre",
+    spotlightCount: 0,
+    illustrated: true,
+    materials: "Ninguno",
+    setupFor32: "Todos en su butaca. Docente guía en voz alta.",
+    steps: [
+      { title: "Inhala", detail: "Por la nariz contando 4." },
+      { title: "Sostén", detail: "Aguantan el aire contando 7." },
+      { title: "Exhala", detail: "Por la boca contando 8 (como soplar)." },
+      { title: "Repite", detail: "3 ciclos. Silencio total." },
+    ],
+    tip: "Perfecto antes de examen o exposición.",
+  },
+  {
+    id: "respira-sacudir",
+    title: "Sacudir el estrés",
+    wheelTitle: "Sacudir",
+    tagline: "Movimiento para despertar",
+    minutes: 2,
+    energy: "alta",
+    kind: "respiracion",
+    formation: "libre",
+    spotlightCount: 0,
+    illustrated: true,
+    materials: "Ninguno",
+    setupFor32: "De pie detrás de la butaca si hay espacio.",
+    steps: [
+      { title: "Manos", detail: "Sacuden manos 10 s." },
+      { title: "Hombros", detail: "Ruedan hombros atrás 5 veces." },
+      { title: "Piernas", detail: "Marcha suave 10 s." },
+      { title: "Exhala", detail: "Soplan fuerte “haaa” juntos." },
+    ],
+    tip: "Útil a primera hora o post-receso.",
+  },
+  {
+    id: "respira-estirar",
+    title: "Estiramiento de oficina",
+    wheelTitle: "Estirar",
+    tagline: "Cuello, brazos y espalda",
+    minutes: 3,
+    energy: "baja",
+    kind: "respiracion",
+    formation: "libre",
+    spotlightCount: 0,
+    illustrated: true,
+    materials: "Ninguno",
+    setupFor32: "Sentados o de pie. Sigue al docente.",
+    steps: [
+      { title: "Cuello", detail: "Inclinan suave izquierda/derecha (sin forzar)." },
+      { title: "Brazos", detail: "Entrelazan dedos y estiran arriba 10 s." },
+      { title: "Giro", detail: "Giran torso con manos en hombros 5 c/u." },
+      { title: "Cierre", detail: "Inhala nariz / exhala boca × 2." },
+    ],
+    tip: "Recuerda: sin dolor; cada quien a su rango.",
+  },
+  {
+    id: "respira-espejo-lento",
+    title: "Movimiento consciente",
+    wheelTitle: "Mov. consciente",
+    tagline: "Brazos lentos al unísono",
+    minutes: 2,
+    energy: "baja",
+    kind: "respiracion",
+    formation: "circulo",
+    spotlightCount: 1,
+    illustrated: true,
+    materials: "Ninguno",
+    setupFor32: "De pie. La ruleta elige quién guía el primer gesto.",
+    steps: [
+      { title: "Guía", detail: "La persona sorteada mueve brazos muy lento." },
+      { title: "Eco", detail: "Todo el grupo copia en silencio 45 s." },
+      { title: "Cambio", detail: "Pasa el liderazgo a la derecha una vez." },
+      { title: "Anclar", detail: "Manos al pecho y una respiración juntos." },
+    ],
+    tip: "Baja el volumen del salón sin sermón.",
+  },
+  {
+    id: "respira-paso-energia",
+    title: "Marcha + clap",
+    wheelTitle: "Marcha+clap",
+    tagline: "Ritmo para activar",
+    minutes: 2,
+    energy: "alta",
+    kind: "respiracion",
+    formation: "libre",
+    spotlightCount: 0,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "En su lugar: marchan y aplauden en patrón.",
+    steps: [
+      { title: "Patrón", detail: "Marcha 4 tiempos + 2 palmadas. Repiten." },
+      { title: "Acelerar", detail: "Suben velocidad 3 rondas." },
+      { title: "Freeze", detail: "Al “ya”, congelan y respiran." },
+      { title: "Listos", detail: "Se sientan en 3…2…1." },
+    ],
+    tip: "Excelente puente a una dinámica más larga.",
+  },
+
+  // —— Casillas especiales ——
+  {
+    id: "especial-vuelve-girar",
+    title: "Vuelve a girar",
+    wheelTitle: "¡Otra vez!",
+    tagline: "La ruleta pide bis",
+    minutes: 0,
+    energy: "media",
+    kind: "especial",
+    formation: "libre",
+    spotlightCount: 0,
+    illustrated: false,
+    materials: "Ninguno",
+    setupFor32: "No hay actividad: gira de nuevo frente al grupo.",
+    steps: [
+      { title: "Anunciar", detail: "“¡Casilla especial! Vuelve a girar.”" },
+      { title: "Suspenso", detail: "El grupo hace redoble de pupitres 3 s." },
+      { title: "Girar", detail: "Docente (o un alumno) vuelve a pulsar Girar." },
+    ],
+    tip: "Sube la emoción; no cuenta como dinámica hecha.",
+  },
+  {
+    id: "especial-participacion",
+    title: "¡Felicidades! Ganaste una participación",
+    wheelTitle: "Participación",
+    tagline: "Premio al azar con nombre",
+    minutes: 1,
+    energy: "baja",
+    kind: "especial",
+    formation: "spotlight",
+    spotlightCount: 1,
+    illustrated: false,
+    materials: "Lista / rúbrica de participación",
+    setupFor32: "La ruleta elige al alumno ganador. Anótalo como participación positiva.",
+    steps: [
+      { title: "Revelar", detail: "Lee el nombre en voz alta con fanfarria." },
+      { title: "Registrar", detail: "Suma la participación en tu lista o en el sistema." },
+      { title: "Celebrar", detail: "Aplauso grupal 5 s." },
+      { title: "Seguir", detail: "Opcional: gira otra vez para una dinámica." },
+    ],
+    tip: "Si ya tenía muchas, puedes regalar “exento de castigo” en la próxima.",
+  },
 ];
+
+const KIND_COLORS: Record<IcebreakerKind, string[]> = {
+  dinamica: ["#34d399", "#22d3ee", "#60a5fa", "#a78bfa", "#4ade80", "#38bdf8"],
+  castigo: ["#fb923c", "#f97316", "#fbbf24", "#f87171", "#fdba74"],
+  respiracion: ["#2dd4bf", "#67e8f9", "#5eead4", "#99f6e4"],
+  especial: ["#facc15", "#f472b6", "#e879f9", "#fde047"],
+};
 
 export const ICEBREAKER_COLORS = [
   "#34d399",
@@ -618,6 +1037,11 @@ export const ICEBREAKER_COLORS = [
   "#f87171",
   "#2dd4bf",
 ];
+
+export function sliceColor(activity: IcebreakerActivity, index: number) {
+  const palette = KIND_COLORS[activityKind(activity)];
+  return palette[index % palette.length];
+}
 
 export function energyLabel(energy: IcebreakerEnergy) {
   if (energy === "alta") return "Alta energía";
@@ -637,4 +1061,44 @@ export function formationLabel(formation: IcebreakerFormation) {
     libre: "En su lugar",
   };
   return map[formation];
+}
+
+function shuffleInPlace<T>(arr: T[]) {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Bombo de ~16 casillas: especiales + castigos + respiración + dinámicas. */
+export function buildRouletteDeck(): IcebreakerActivity[] {
+  const specials = ICEBREAKER_ACTIVITIES.filter((a) => activityKind(a) === "especial");
+  const castigos = shuffleInPlace(
+    ICEBREAKER_ACTIVITIES.filter((a) => activityKind(a) === "castigo"),
+  ).slice(0, 5);
+  const respiracion = shuffleInPlace(
+    ICEBREAKER_ACTIVITIES.filter((a) => activityKind(a) === "respiracion"),
+  ).slice(0, 3);
+  const dinamicas = shuffleInPlace(
+    ICEBREAKER_ACTIVITIES.filter((a) => activityKind(a) === "dinamica"),
+  ).slice(0, 6);
+  return shuffleInPlace([...specials, ...castigos, ...respiracion, ...dinamicas]);
+}
+
+export function filterActivities(
+  kind: IcebreakerKind | "mix" | "todas",
+  energy: IcebreakerEnergy | "todas",
+  deck: IcebreakerActivity[],
+) {
+  let list =
+    kind === "mix"
+      ? deck
+      : kind === "todas"
+        ? ICEBREAKER_ACTIVITIES
+        : ICEBREAKER_ACTIVITIES.filter((a) => activityKind(a) === kind);
+  if (energy !== "todas") {
+    list = list.filter((a) => a.energy === energy || activityKind(a) === "especial");
+  }
+  return list;
 }
