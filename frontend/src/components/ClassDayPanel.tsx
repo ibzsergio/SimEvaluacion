@@ -90,6 +90,9 @@ export default function ClassDayPanel({
       }
       setError("");
       await qc.invalidateQueries({ queryKey: ["class-day", selectedGroupId, date] });
+      await qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["student-progress"] });
+      await qc.invalidateQueries({ queryKey: ["partial-summary", selectedGroupId] });
     },
     onError: (err) => setError(getApiErrorMessage(err)),
   });

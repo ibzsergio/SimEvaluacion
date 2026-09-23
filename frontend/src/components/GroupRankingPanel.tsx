@@ -76,6 +76,9 @@ export default function GroupRankingPanel({
         </p>
         <p className="mt-2 text-xs text-slate-500">{rankingQuery.data?.rankingRule}</p>
         <p className="mt-1 text-xs text-slate-500">
+          Cada falta injustificada baja 1 puesto · 3 retardos = 1 falta · las justificadas no cuentan.
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
           {partialClosed
             ? "Top 10: EXENTADO · Lugares 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS"
             : "Parcial abierto: lugares 1–20 PUEDES EXENTAR · Resto NO DECAIGAS. EXENTADO (Top 10) se confirma al cerrar el parcial."}
@@ -162,6 +165,7 @@ export default function GroupRankingPanel({
                   <th className="px-4 py-3">Alumno</th>
                   <th className="px-4 py-3 text-right">Puntos</th>
                   <th className="px-4 py-3">Estatus exención</th>
+                  <th className="px-4 py-3">Inasistencia / ranking</th>
                   <th className="px-4 py-3">1ª calificación</th>
                   <th className="px-4 py-3 text-center">Veces 1°</th>
                   <th className="px-4 py-3 text-center">Calificadas</th>
@@ -172,6 +176,12 @@ export default function GroupRankingPanel({
                   <tr key={row.studentId} className="border-t border-white/5">
                     <td className="px-4 py-3">
                       <PlaceBadge place={row.place} />
+                      {row.placeBeforeAttendance != null &&
+                      row.placeBeforeAttendance !== row.place ? (
+                        <p className="mt-0.5 text-[10px] text-slate-500">
+                          por pts #{row.placeBeforeAttendance}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 font-mono text-cyan-300">
                       {row.controlNumber ?? "—"}
@@ -185,6 +195,17 @@ export default function GroupRankingPanel({
                     <td className="px-4 py-3 text-right font-bold text-cyan-300">{row.score}</td>
                     <td className="px-4 py-3">
                       <ExemptionBadge exemption={row.exemption} />
+                    </td>
+                    <td className="px-4 py-3 max-w-[220px]">
+                      {(row.attendanceDemotionMessages?.length ?? 0) > 0 ? (
+                        <ul className="space-y-1 text-xs text-rose-200/90">
+                          {row.attendanceDemotionMessages!.map((msg) => (
+                            <li key={msg}>{toTeacherDemotionMessage(msg)}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-xs text-slate-500">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-400">
                       {row.firstGradedAt ? (
@@ -207,6 +228,10 @@ export default function GroupRankingPanel({
       </section>
     </div>
   );
+}
+
+function toTeacherDemotionMessage(msg: string) {
+  return msg.replace(/^Bajaste de posición/, "Bajó de posición");
 }
 
 function PlaceBadge({ place }: { place: number }) {

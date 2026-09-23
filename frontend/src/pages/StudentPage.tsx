@@ -157,6 +157,21 @@ export default function StudentPage() {
           <p className="mt-2 text-sm text-slate-300">
             Puntos totales: <span className="font-bold text-cyan-300">{data.my.score}</span>
           </p>
+          {(data.my.attendanceDemotionMessages?.length ?? 0) > 0 ? (
+            <div className="mt-3 space-y-1 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2">
+              {data.my.placeBeforeAttendance != null &&
+              data.my.placeBeforeAttendance !== data.my.place ? (
+                <p className="text-xs text-rose-100/80">
+                  Por puntos ibas #{data.my.placeBeforeAttendance}; ahora estás #{data.my.place}.
+                </p>
+              ) : null}
+              {data.my.attendanceDemotionMessages!.map((msg) => (
+                <p key={msg} className="text-sm font-medium text-rose-100">
+                  {msg}
+                </p>
+              ))}
+            </div>
+          ) : null}
           <p className="mt-2 text-xs text-slate-500">{data.rankingRule}</p>
           <div className="mt-4">
             <BadgeDisplay badge={data.my.badge} />

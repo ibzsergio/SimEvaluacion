@@ -1,15 +1,49 @@
 import { prisma } from "./prisma.js";
-import { getParticipationStarsByStudent } from "./classDayService.js";
+import { formatClassDayIso, getParticipationStarsByStudent } from "./classDayService.js";
 import { getExemptionStatus } from "./exemptionStatus.js";
-import { buildGroupRanking, type RankingEntry } from "./ranking.js";
+import {
+  applyAttendanceDemotions,
+  buildGroupRanking,
+  type AttendanceDemotionInput,
+  type RankingEntry,
+} from "./ranking.js";
 
 export const RANKING_RULE =
-  "El lugar depende de los puntos de actividades más las estrellas de participación (1 estrella = 1 punto, máx. 3 por día). Si hay empate, gana quien fue calificado antes (primera calificación por actividad).";
+  "El lugar sale de los puntos de actividades + estrellas de participación. Cada falta injustificada baja 1 puesto; cada 3 retardos cuentan como 1 falta. Las justificadas no afectan. Si hay empate en puntos, gana quien fue calificado antes.";
 
 export type GroupRankingRow = RankingEntry & {
   controlNumber: string | null;
   exemption: ReturnType<typeof getExemptionStatus>;
 };
+
+async function getAttendanceDemotionInputs(groupId: string): Promise<AttendanceDemotionInput[]> {
+  const rows = await prisma.classDayRecord.findMany({
+    where: {
+      groupId,
+      attendance: { in: ["ABSENT", "LATE"] },
+    },
+    select: { studentId: true, attendance: true, date: true },
+    orderBy: { date: "asc" },
+  });
+
+  const byStudent = new Map<string, { absentDates: string[]; lateDates: string[] }>();
+  for (const row of rows) {
+    let bucket = byStudent.get(row.studentId);
+    if (!bucket) {
+      bucket = { absentDates: [], lateDates: [] };
+      byStudent.set(row.studentId, bucket);
+    }
+    const iso = formatClassDayIso(row.date);
+    if (row.attendance === "ABSENT") bucket.absentDates.push(iso);
+    else if (row.attendance === "LATE") bucket.lateDates.push(iso);
+  }
+
+  return [...byStudent.entries()].map(([studentId, dates]) => ({
+    studentId,
+    absentDates: dates.absentDates,
+    lateDates: dates.lateDates,
+  }));
+}
 
 export async function getGroupRanking(groupId: string) {
   const group = await prisma.classGroup.findUnique({
@@ -43,7 +77,7 @@ export async function getGroupRanking(groupId: string) {
     select: { activityId: true, studentId: true, gradedAt: true },
   });
 
-  const ranking = buildGroupRanking(
+  const baseRanking = buildGroupRanking(
     students.map((s) => ({
       studentId: s.id,
       displayName: s.displayName,
@@ -57,6 +91,9 @@ export async function getGroupRanking(groupId: string) {
       submittedAt: g.gradedAt,
     })),
   );
+
+  const attendance = await getAttendanceDemotionInputs(groupId);
+  const ranking = applyAttendanceDemotions(baseRanking, attendance);
 
   const controlById = new Map(students.map((s) => [s.id, s.controlNumber]));
 

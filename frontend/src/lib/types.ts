@@ -66,6 +66,9 @@ export type StudentProgress = {
     listNumber: number | null;
     inTop10: boolean;
     participationStars?: number;
+    placeBeforeAttendance?: number;
+    placesDroppedByAttendance?: number;
+    attendanceDemotionMessages?: string[];
   };
   classEngagement?: {
     participationStars: number;
@@ -203,6 +206,9 @@ export type GroupRankingRow = {
   avgGradedAt: string | null;
   gradedActivityCount: number;
   exemption: ExemptionStatus;
+  placeBeforeAttendance?: number;
+  placesDroppedByAttendance?: number;
+  attendanceDemotionMessages?: string[];
 };
 
 export type GroupRanking = {

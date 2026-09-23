@@ -491,7 +491,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
   const myEntry = ranking.find((r) => r.studentId === req.auth!.userId);
   const myPlace = myEntry?.place ?? ranking.length;
-  const myScore = ranking.find((r) => r.studentId === req.auth!.userId)?.score ?? 0;
+  const myScore = myEntry?.score ?? 0;
   const top10 = ranking.slice(0, 10);
 
   function badgeForPlace(place: number): string | null {
@@ -571,6 +571,9 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
       listNumber: me.listNumber,
       inTop10: motivation.inTop10,
       participationStars,
+      placeBeforeAttendance: myEntry?.placeBeforeAttendance ?? myPlace,
+      placesDroppedByAttendance: myEntry?.placesDroppedByAttendance ?? 0,
+      attendanceDemotionMessages: myEntry?.attendanceDemotionMessages ?? [],
     },
     classEngagement: {
       participationStars,
