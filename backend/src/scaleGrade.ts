@@ -38,11 +38,12 @@ export function computeScale6(params: {
   return { scale6: round1(clamp((score / first) * SCALE_MAX, 0, SCALE_MAX)) };
 }
 
+/** % oficial: solo la falta injustificada (F) baja. Presente, retardo y justificada cuentan. */
 export function attendanceRatePercent(summary: {
-  present: number;
-  late: number;
-  totalDays: number;
+  classDays: number;
+  absent: number;
 }): number {
-  if (summary.totalDays <= 0) return 100;
-  return Math.round(((summary.present + summary.late) / summary.totalDays) * 100);
+  if (summary.classDays <= 0) return 100;
+  const missed = Math.min(Math.max(0, summary.absent), summary.classDays);
+  return Math.round(((summary.classDays - missed) / summary.classDays) * 100);
 }

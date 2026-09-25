@@ -262,9 +262,8 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
       participationStars,
       rankingScore: rankingScoreForScale(activityPoints, participationStars),
       attendancePercent: attendanceRatePercent({
-        present: att?.present ?? 0,
-        late: att?.late ?? 0,
-        totalDays: att?.totalDays ?? 0,
+        classDays,
+        absent: att?.absent ?? 0,
       }),
     };
   });

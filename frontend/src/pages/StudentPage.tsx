@@ -138,6 +138,9 @@ export default function StudentPage() {
             <p className="text-sm text-slate-300">
               {data.classEngagement.attendance.present} presentes · {data.classEngagement.attendance.absent}{" "}
               faltas · {data.classEngagement.attendance.late} tardes
+              {data.classEngagement.attendance.justified
+                ? ` · ${data.classEngagement.attendance.justified} justificadas`
+                : ""}
             </p>
           </section>
         </div>

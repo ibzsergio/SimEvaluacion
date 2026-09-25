@@ -134,6 +134,10 @@ export default function ClosePartialPanel({
             del 1° × 6.
           </li>
           <li>
+            <strong className="text-slate-200">% asistencia</strong> — solo la falta (F) baja el porcentaje.
+            Presente, retardo y justificada (J) sí cuentan.
+          </li>
+          <li>
             <strong className="text-slate-200">Examen: 4 puntos</strong> — no se llena automático. La
             calificación final del Excel suma escala + examen cuando tú captures el examen.
           </li>

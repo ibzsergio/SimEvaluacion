@@ -1,5 +1,6 @@
 import type { AttendanceStatus } from "@prisma/client";
 import { prisma } from "./prisma.js";
+import { attendanceRatePercent } from "./scaleGrade.js";
 
 const MAX_STARS = 3;
 
@@ -183,21 +184,28 @@ export async function getStudentParticipationStars(studentId: string, groupId: s
 }
 
 export async function getStudentAttendanceSummary(studentId: string, groupId: string) {
-  const rows = await prisma.classDayRecord.findMany({
-    where: { studentId, groupId },
-    select: { attendance: true },
-  });
-  const summary = { present: 0, absent: 0, late: 0, justified: 0, totalDays: rows.length };
+  const [rows, classDayDates] = await Promise.all([
+    prisma.classDayRecord.findMany({
+      where: { studentId, groupId },
+      select: { attendance: true },
+    }),
+    prisma.classDayRecord.findMany({
+      where: { groupId },
+      distinct: ["date"],
+      select: { date: true },
+    }),
+  ]);
+  const summary = { present: 0, absent: 0, late: 0, justified: 0, totalDays: classDayDates.length };
   for (const row of rows) {
     if (row.attendance === "PRESENT") summary.present++;
     else if (row.attendance === "ABSENT") summary.absent++;
     else if (row.attendance === "LATE") summary.late++;
     else if (row.attendance === "JUSTIFIED") summary.justified++;
   }
-  const ratePercent =
-    summary.totalDays > 0
-      ? Math.round(((summary.present + summary.late) / summary.totalDays) * 100)
-      : 100;
+  const ratePercent = attendanceRatePercent({
+    classDays: classDayDates.length,
+    absent: summary.absent,
+  });
   return { ...summary, ratePercent };
 }
 
