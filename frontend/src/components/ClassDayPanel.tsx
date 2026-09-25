@@ -298,9 +298,6 @@ export default function ClassDayPanel({
             <p className="font-bold uppercase tracking-wide text-rose-200">
               ⚠ Alumnos en foco — más de {absenceAlertAfter} faltas
             </p>
-            <p className="mt-1 text-xs text-rose-100/90">
-              Solo cuentan faltas (A).
-            </p>
             <ul className="mt-2 space-y-1 text-sm">
               {atRiskStudents.map(({ row, absences }) => (
                 <li key={row.student.id} className="font-semibold text-rose-100">
