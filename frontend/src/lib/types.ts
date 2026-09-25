@@ -502,3 +502,48 @@ export type TeamSuggestion = {
   }>;
   note: string | null;
 };
+
+export type ListasF1PreviewRow = {
+  studentId: string;
+  displayName: string;
+  controlNumber: string | null;
+  listNumber: number | null;
+  activityPoints: number;
+  activityMax: number;
+  activityScore: number;
+  participationStars: number;
+  participationMax: number;
+  participationScore: number;
+  scale6: number;
+  attendancePercent: number;
+};
+
+export type ListasF1Preview = {
+  group: {
+    id: string;
+    code: string;
+    shift: string;
+    partialClosed: boolean;
+    partialClosedAt: string | null;
+  };
+  rule: {
+    scaleMax: number;
+    examMax: number;
+    activityWeight: number;
+    participationWeight: number;
+    starsPerDay: number;
+    description: string;
+  };
+  activityCount: number;
+  activityMax: number;
+  classDays: number;
+  useParticipation: boolean;
+  rows: ListasF1PreviewRow[];
+  excel: {
+    templateFound: boolean;
+    expectedGroups: string[];
+    teacherGroups: string[];
+    sheets: Array<{ code: string; found: boolean; excelStudents: number }>;
+    matchedInExcel: number;
+  };
+};

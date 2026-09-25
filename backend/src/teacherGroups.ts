@@ -41,6 +41,7 @@ import {
   writeAttendanceXlsx,
 } from "./attendanceExport.js";
 import { generateMasterAttendanceExcel } from "./attendanceMasterExcel.js";
+import { generateListasF1Excel, getListasF1Preview, listasF1FileName } from "./listasF1Excel.js";
 import { isClassDaySchemaError, humanizeClassDaySaveError } from "./ensureClassDaySchema.js";
 import {
   createProjectTeam,
@@ -1147,6 +1148,32 @@ teacherGroupsRouter.put("/groups/:groupId/class-day", async (req: AuthedRequest,
       detail,
     });
   }
+});
+
+teacherGroupsRouter.get("/listas-f1/preview", async (req: AuthedRequest, res) => {
+  const groupId = String(req.query.groupId ?? "").trim();
+  if (!groupId) return res.status(400).json({ error: "group_id_required" });
+
+  const preview = await getListasF1Preview(req.auth!.userId, groupId);
+  if (!preview) return res.status(404).json({ error: "group_not_found" });
+  return res.json(preview);
+});
+
+teacherGroupsRouter.get("/listas-f1.xlsx", async (req: AuthedRequest, res) => {
+  const buffer = await generateListasF1Excel(req.auth!.userId);
+  if (!buffer) {
+    return res.status(404).json({
+      error: "listas_f1_not_found",
+      message: "No se encontró la plantilla LISTAS F1 en el servidor.",
+    });
+  }
+  const filename = listasF1FileName();
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  return res.send(buffer);
 });
 
 teacherGroupsRouter.get("/attendance/master.xlsx", async (req: AuthedRequest, res) => {

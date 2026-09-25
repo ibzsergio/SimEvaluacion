@@ -11,6 +11,7 @@ import SeatingPanel from "../components/SeatingPanel";
 import TeacherSkillSurveyPanel from "../components/TeacherSkillSurveyPanel";
 import SemesterPanel from "../components/SemesterPanel";
 import TeacherCommsPanel from "../components/TeacherCommsPanel";
+import ClosePartialPanel from "../components/ClosePartialPanel";
 import WeeklyWinnersPanel from "../components/WeeklyWinnersPanel";
 import Layout from "../components/Layout";
 import {
@@ -384,6 +385,10 @@ export default function TeacherPage() {
               </button>
             ))}
           </div>
+
+          {selectedGroupId ? (
+            <ClosePartialPanel groups={groups} selectedGroupId={selectedGroupId} />
+          ) : null}
 
           <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
             <section className="glass p-5">

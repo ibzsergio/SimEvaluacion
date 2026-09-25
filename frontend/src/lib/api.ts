@@ -18,6 +18,7 @@ import type {
   StudentProgress,
   TeacherCommsData,
   User,
+  ListasF1Preview,
 } from "./types";
 
 /** Normaliza VITE_API_URL (sin barra final ni sufijo /api de desarrollo). */
@@ -92,6 +93,12 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "calendar_not_found") {
       return "No hay calendario escolar publicado.";
     }
+    if (code === "listas_f1_not_found") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "No se encontró la plantilla LISTAS F1 en el servidor."
+      );
+    }
     if (code === "activity_not_found") {
       return "No se encontró la actividad. Recarga la página e inténtalo de nuevo.";
     }
@@ -152,6 +159,7 @@ export function getApiErrorMessage(error: unknown): string {
     }
     return `Error del servidor (${error.response.status}).`;
   }
+  if (error instanceof Error && error.message) return error.message;
   return "Ocurrió un error inesperado.";
 }
 
@@ -228,6 +236,17 @@ export async function updateGroupProgressSettings(
 export async function updateGroupPartialSettings(groupId: string, payload: { partialClosed: boolean }) {
   const { data } = await api.put<{ group: ClassGroup }>(`/teacher/groups/${groupId}/partial-settings`, payload);
   return data.group;
+}
+
+export async function fetchListasF1Preview(groupId: string) {
+  const { data } = await api.get<ListasF1Preview>("/teacher/listas-f1/preview", {
+    params: { groupId },
+  });
+  return data;
+}
+
+export async function downloadListasF1Excel() {
+  await downloadTeacherBlob("/teacher/listas-f1.xlsx", "LISTAS F1_2026-2027.xlsx");
 }
 
 export type GroupStudent = {
@@ -700,14 +719,35 @@ export async function downloadMasterAttendanceExcel() {
   );
 }
 
+async function parseBlobError(data: Blob) {
+  const text = await data.text();
+  try {
+    const parsed = JSON.parse(text) as { message?: string; error?: string };
+    return parsed.message ?? parsed.error ?? text;
+  } catch {
+    return text || "No se pudo descargar el archivo.";
+  }
+}
+
 async function downloadTeacherBlob(path: string, downloadName: string) {
-  const { data } = await api.get<Blob>(path, { responseType: "blob" });
-  const url = URL.createObjectURL(data);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = downloadName;
-  link.click();
-  URL.revokeObjectURL(url);
+  try {
+    const { data, headers } = await api.get<Blob>(path, { responseType: "blob" });
+    const contentType = String(headers["content-type"] ?? data.type ?? "");
+    if (contentType.includes("json")) {
+      throw new Error(await parseBlobError(data));
+    }
+    const url = URL.createObjectURL(data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = downloadName;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
+      throw new Error(await parseBlobError(error.response.data));
+    }
+    throw error;
+  }
 }
 
 export async function downloadDayAttendanceExcel(groupId: string, groupCode: string, date: string) {
