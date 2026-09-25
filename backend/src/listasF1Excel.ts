@@ -8,8 +8,8 @@ import {
   attendanceRatePercent,
   computeScale6,
   PARTICIPATION_WEIGHT,
+  rankingScoreForScale,
   SCALE_RULE,
-  STARS_PER_DAY,
 } from "./scaleGrade.js";
 
 const TEMPLATE_FILE_NAME = "LISTAS F1_2026-2027.xlsx";
@@ -37,6 +37,7 @@ export type ListasF1StudentRow = {
   participationStars: number;
   participationMax: number;
   participationScore: number;
+  rankingScore: number;
   scale6: number;
   attendancePercent: number;
 };
@@ -54,6 +55,7 @@ export type ListasF1GroupPreview = {
   activityMax: number;
   classDays: number;
   useParticipation: boolean;
+  firstPlaceScore: number;
   rows: ListasF1StudentRow[];
 };
 
@@ -222,8 +224,7 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
 
   const uniqueDays = new Set(dayRecords.map((r) => r.date.toISOString().slice(0, 10)));
   const classDays = uniqueDays.size;
-  const participationMax = classDays * STARS_PER_DAY;
-  const useParticipation = dayRecords.some((r) => (r.stars ?? 0) > 0) && participationMax > 0;
+  const useParticipation = dayRecords.some((r) => (r.stars ?? 0) > 0);
 
   const attendanceByStudent = new Map<
     string,
@@ -247,17 +248,10 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
     attendanceByStudent.set(rec.studentId, cur);
   }
 
-  const rows: ListasF1StudentRow[] = students.map((s) => {
+  const drafted = students.map((s) => {
     const att = attendanceByStudent.get(s.id);
     const activityPoints = pointsByStudent.get(s.id) ?? 0;
     const participationStars = att?.stars ?? 0;
-    const scale = computeScale6({
-      activityPoints,
-      activityMax,
-      participationStars,
-      participationMax,
-      useParticipation,
-    });
     return {
       studentId: s.id,
       displayName: s.displayName,
@@ -265,16 +259,32 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
       listNumber: s.listNumber,
       activityPoints,
       activityMax,
-      activityScore: scale.activityScore,
       participationStars,
-      participationMax: useParticipation ? participationMax : 0,
-      participationScore: scale.participationScore,
-      scale6: scale.scale6,
+      rankingScore: rankingScoreForScale(activityPoints, participationStars),
       attendancePercent: attendanceRatePercent({
         present: att?.present ?? 0,
         late: att?.late ?? 0,
         totalDays: att?.totalDays ?? 0,
       }),
+    };
+  });
+
+  const firstPlaceScore = drafted.reduce((max, row) => Math.max(max, row.rankingScore), 0);
+  const maxStars = drafted.reduce((max, row) => Math.max(max, row.participationStars), 0);
+
+  const rows: ListasF1StudentRow[] = drafted.map((row) => {
+    const scale = computeScale6({
+      rankingScore: row.rankingScore,
+      firstPlaceScore,
+    });
+    const activityScore = firstPlaceScore > 0 ? (row.activityPoints / firstPlaceScore) * 6 : 0;
+    const participationScore = firstPlaceScore > 0 ? (row.participationStars / firstPlaceScore) * 6 : 0;
+    return {
+      ...row,
+      activityScore: Math.round(activityScore * 10) / 10,
+      participationMax: useParticipation ? maxStars : 0,
+      participationScore: Math.round(participationScore * 10) / 10,
+      scale6: scale.scale6,
     };
   });
 
@@ -291,6 +301,7 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
     activityMax,
     classDays,
     useParticipation,
+    firstPlaceScore,
     rows,
   };
 }

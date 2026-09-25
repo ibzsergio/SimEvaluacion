@@ -12,7 +12,7 @@ export const SCALE_RULE = {
   participationWeight: PARTICIPATION_WEIGHT,
   starsPerDay: STARS_PER_DAY,
   description:
-    "Los 6 puntos de escala salen de trabajos (hasta 5) y participación (hasta 1). Si no hay estrellas registradas, los 6 salen solo de los trabajos. El examen (hasta 4) no se calcula: lo llenas tú en LISTAS F1.",
+    "La escala (máximo 6) usa los mismos puntos del ranking: trabajos + estrellas de participación. Quien va 1° obtiene 6. El resto: sus puntos ÷ puntos del 1° × 6. El examen (hasta 4) no se calcula: lo llenas tú en LISTAS F1.",
 } as const;
 
 function round1(n: number) {
@@ -23,43 +23,19 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
+export function rankingScoreForScale(activityPoints: number, participationStars: number) {
+  return Math.max(0, activityPoints) + Math.max(0, participationStars);
+}
+
+/** Escala 0–6 relativa al 1er lugar del ranking (trabajos + participación). */
 export function computeScale6(params: {
-  activityPoints: number;
-  activityMax: number;
-  participationStars: number;
-  participationMax: number;
-  useParticipation: boolean;
-}): { activityScore: number; participationScore: number; scale6: number } {
-  const activityPoints = Math.max(0, params.activityPoints);
-  const activityMax = Math.max(0, params.activityMax);
-  const participationStars = Math.max(0, params.participationStars);
-  const participationMax = Math.max(0, params.participationMax);
-
-  if (activityMax <= 0 && (!params.useParticipation || participationMax <= 0)) {
-    return { activityScore: 0, participationScore: 0, scale6: 0 };
-  }
-
-  if (!params.useParticipation || participationMax <= 0) {
-    const activityScore = activityMax > 0 ? clamp((activityPoints / activityMax) * SCALE_MAX, 0, SCALE_MAX) : 0;
-    return {
-      activityScore: round1(activityScore),
-      participationScore: 0,
-      scale6: round1(activityScore),
-    };
-  }
-
-  const activityScore =
-    activityMax > 0 ? clamp((activityPoints / activityMax) * ACTIVITY_WEIGHT, 0, ACTIVITY_WEIGHT) : 0;
-  const participationScore = clamp(
-    (participationStars / participationMax) * PARTICIPATION_WEIGHT,
-    0,
-    PARTICIPATION_WEIGHT,
-  );
-  return {
-    activityScore: round1(activityScore),
-    participationScore: round1(participationScore),
-    scale6: round1(clamp(activityScore + participationScore, 0, SCALE_MAX)),
-  };
+  rankingScore: number;
+  firstPlaceScore: number;
+}): { scale6: number } {
+  const score = Math.max(0, params.rankingScore);
+  const first = Math.max(0, params.firstPlaceScore);
+  if (first <= 0) return { scale6: 0 };
+  return { scale6: round1(clamp((score / first) * SCALE_MAX, 0, SCALE_MAX)) };
 }
 
 export function attendanceRatePercent(summary: {

@@ -514,6 +514,7 @@ export type ListasF1PreviewRow = {
   participationStars: number;
   participationMax: number;
   participationScore: number;
+  rankingScore: number;
   scale6: number;
   attendancePercent: number;
 };
@@ -538,6 +539,7 @@ export type ListasF1Preview = {
   activityMax: number;
   classDays: number;
   useParticipation: boolean;
+  firstPlaceScore: number;
   rows: ListasF1PreviewRow[];
   excel: {
     templateFound: boolean;

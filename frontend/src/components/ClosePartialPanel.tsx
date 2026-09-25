@@ -126,16 +126,12 @@ export default function ClosePartialPanel({
         <p className="font-semibold text-indigo-100">Cómo se obtienen los 6 puntos de escala</p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-400">
           <li>
-            <strong className="text-slate-200">Trabajos y actividades: hasta 5</strong> — puntos obtenidos ÷
-            puntos máximos publicados × 5.
+            Se usan los <strong className="text-slate-200">mismos puntos del ranking</strong>: trabajos +
+            estrellas de participación.
           </li>
           <li>
-            <strong className="text-slate-200">Participación: hasta 1</strong> — estrellas del pase de lista ÷
-            máximo posible (3 por cada día que pasaste lista) × 1.
-          </li>
-          <li>
-            Si todavía no hay estrellas en el grupo, los <strong className="text-slate-200">6 puntos salen
-            solo de los trabajos</strong>.
+            <strong className="text-slate-200">Quien va 1° obtiene 6</strong>. El resto: sus puntos ÷ puntos
+            del 1° × 6.
           </li>
           <li>
             <strong className="text-slate-200">Examen: 4 puntos</strong> — no se llena automático. La
@@ -179,8 +175,8 @@ export default function ClosePartialPanel({
             <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
               {preview.activityCount} actividades · {preview.activityMax} pts máx.
               {preview.useParticipation
-                ? ` · participación activa (${preview.classDays} días)`
-                : " · sin estrellas: escala solo con trabajos"}
+                ? ` · 1° del ranking: ${preview.firstPlaceScore} pts`
+                : " · 1° del ranking (solo trabajos)"}
             </span>
           </div>
           {missingSheets.length > 0 ? (
@@ -204,8 +200,8 @@ export default function ClosePartialPanel({
                 <tr>
                   <th className="px-3 py-2">Alumno</th>
                   <th className="px-3 py-2">% Asist.</th>
-                  <th className="px-3 py-2">Trabajos / 5</th>
-                  <th className="px-3 py-2">Particip. / 1</th>
+                  <th className="px-3 py-2">Trabajos</th>
+                  <th className="px-3 py-2">Particip.</th>
                   <th className="px-3 py-2">Escala / 6</th>
                 </tr>
               </thead>
@@ -215,15 +211,11 @@ export default function ClosePartialPanel({
                     <td className="px-3 py-1.5">{row.displayName}</td>
                     <td className="px-3 py-1.5">{row.attendancePercent}%</td>
                     <td className="px-3 py-1.5">
-                      {row.activityScore.toFixed(1)}
-                      <span className="ml-1 text-xs text-slate-500">
-                        ({row.activityPoints}/{row.activityMax})
-                      </span>
+                      {row.activityPoints}
+                      <span className="ml-1 text-xs text-slate-500">/{row.activityMax}</span>
                     </td>
                     <td className="px-3 py-1.5">
-                      {preview.useParticipation
-                        ? `${row.participationScore.toFixed(1)} (${row.participationStars}/${row.participationMax})`
-                        : "—"}
+                      {preview.useParticipation ? `${row.participationStars} est.` : "—"}
                     </td>
                     <td className="px-3 py-1.5 font-semibold text-cyan-100">{row.scale6.toFixed(1)}</td>
                   </tr>
