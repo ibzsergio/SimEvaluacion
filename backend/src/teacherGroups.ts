@@ -383,8 +383,45 @@ teacherGroupsRouter.put("/groups/:groupId/partial-settings", async (req: AuthedR
     data: {
       partialClosed: body.data.partialClosed,
       partialClosedAt: body.data.partialClosed ? new Date() : null,
-      currentPartial: closingNow ? group.currentPartial + 1 : undefined,
+      // Si ya comenzaron el siguiente parcial (sin examen), no saltar otro.
+      // Si aún publican el 1°, al cerrar pasan al 2°.
+      currentPartial: closingNow ? Math.max(group.currentPartial, 2) : undefined,
     },
+    select: {
+      id: true,
+      code: true,
+      shift: true,
+      plannedActivities: true,
+      progressClosed: true,
+      progressClosedAt: true,
+      partialClosed: true,
+      partialClosedAt: true,
+      currentPartial: true,
+    },
+  });
+
+  return res.json({ group: updated });
+});
+
+const MAX_PARTIAL = 4;
+
+teacherGroupsRouter.post("/groups/:groupId/start-next-partial", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true, currentPartial: true, code: true, shift: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  if (group.currentPartial >= MAX_PARTIAL) {
+    return res.status(400).json({
+      error: "partial_limit",
+      message: "Ya estás en el último parcial disponible.",
+    });
+  }
+
+  const updated = await prisma.classGroup.update({
+    where: { id: groupId },
+    data: { currentPartial: group.currentPartial + 1 },
     select: {
       id: true,
       code: true,

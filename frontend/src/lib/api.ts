@@ -75,6 +75,12 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "partial_closed") {
       return (error.response.data as { message?: string })?.message ?? "El parcial está cerrado.";
     }
+    if (code === "partial_limit") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Ya estás en el último parcial disponible."
+      );
+    }
     if (code === "partial_not_closed") {
       return (
         (error.response.data as { message?: string })?.message ??
@@ -235,6 +241,13 @@ export async function updateGroupProgressSettings(
 
 export async function updateGroupPartialSettings(groupId: string, payload: { partialClosed: boolean }) {
   const { data } = await api.put<{ group: ClassGroup }>(`/teacher/groups/${groupId}/partial-settings`, payload);
+  return data.group;
+}
+
+export async function startNextPartial(groupId: string) {
+  const { data } = await api.post<{ group: ClassGroup }>(
+    `/teacher/groups/${groupId}/start-next-partial`,
+  );
   return data.group;
 }
 

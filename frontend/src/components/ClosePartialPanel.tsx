@@ -5,9 +5,10 @@ import {
   fetchListasF1Preview,
   getApiErrorMessage,
   saveGroupExamScores,
+  startNextPartial,
   updateGroupPartialSettings,
 } from "../lib/api";
-import { formatDateTime } from "../lib/dates";
+import { formatDateTime, partialLabel } from "../lib/dates";
 import type { ClassGroup, ListasF1PreviewRow } from "../lib/types";
 
 function parseExamDraft(raw: string): number | null | "invalid" {
@@ -42,6 +43,8 @@ export default function ClosePartialPanel({
   const qc = useQueryClient();
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const partialClosed = selectedGroup?.partialClosed ?? false;
+  const currentPartial = selectedGroup?.currentPartial ?? 1;
+  const nextPartial = currentPartial + 1;
   const [downloading, setDownloading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
@@ -133,6 +136,30 @@ export default function ClosePartialPanel({
     },
   });
 
+  const startNextMutation = useMutation({
+    mutationFn: () => startNextPartial(selectedGroupId),
+    onSuccess: async (group) => {
+      await qc.invalidateQueries({ queryKey: ["groups"] });
+      await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
+      setActionError("");
+      setActionSuccess(
+        `Ya puedes publicar actividades de ${partialLabel(group.currentPartial ?? currentPartial + 1).toLowerCase()}. El examen se puede capturar después.`,
+      );
+    },
+    onError: (error) => {
+      setActionSuccess("");
+      setActionError(getApiErrorMessage(error));
+    },
+  });
+
+  function handleStartNextPartial() {
+    const ok = window.confirm(
+      `¿Comenzar ${partialLabel(nextPartial).toLowerCase()}?\n\nLas actividades actuales se compactan (no se borran). Las nuevas se publican ya como ${partialLabel(nextPartial).toLowerCase()}.\n\nNo hace falta capturar el examen ni cerrar el parcial; eso lo puedes hacer después.`,
+    );
+    if (!ok) return;
+    startNextMutation.mutate();
+  }
+
   async function handleDownload() {
     setActionError("");
     setDownloading(true);
@@ -184,9 +211,22 @@ export default function ClosePartialPanel({
           <p className="mt-1 text-sm text-slate-400">
             Grupo {selectedGroup?.code} · {selectedGroup?.shift}
             {partialClosed ? " · Parcial cerrado" : " · Parcial abierto"}
+            {currentPartial > 1 ? ` · Publicando ${partialLabel(currentPartial).toLowerCase()}` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {currentPartial < 4 ? (
+            <button
+              type="button"
+              onClick={handleStartNextPartial}
+              disabled={startNextMutation.isPending || !selectedGroupId}
+              className="rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/25 disabled:opacity-60"
+            >
+              {startNextMutation.isPending
+                ? "Cambiando..."
+                : `Comenzar ${partialLabel(nextPartial).toLowerCase()}`}
+            </button>
+          ) : null}
           {partialClosed ? (
             <button
               type="button"
@@ -216,8 +256,13 @@ export default function ClosePartialPanel({
             <strong className="text-slate-200">% asistencia</strong> — solo la falta (F) baja el porcentaje.
           </li>
           <li>
-            Al terminar la captura, <strong className="text-slate-200">cierra el parcial</strong> y se descarga
-            LISTAS F1 con asistencia, escala, examen y calificación final.
+            Puedes <strong className="text-slate-200">comenzar el siguiente parcial</strong> y publicar
+            actividades nuevas aunque el examen aún no esté capturado. El examen y LISTAS F1 se pueden
+            completar después.
+          </li>
+          <li>
+            Cuando termines la captura, <strong className="text-slate-200">cierra el parcial</strong> y se
+            descarga LISTAS F1 con asistencia, escala, examen y calificación final.
           </li>
         </ul>
       </div>
@@ -322,7 +367,8 @@ export default function ClosePartialPanel({
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-400/20 bg-rose-500/5 px-4 py-3">
         <p className="text-sm text-slate-300">
-          Cuando termines de capturar el examen, cierra el parcial para descargar LISTAS F1.
+          El examen no es requisito para publicar el siguiente parcial. Cuando lo captures, cierra y descarga
+          LISTAS F1.
         </p>
         <div className="flex flex-wrap gap-2">
           {partialClosed ? (

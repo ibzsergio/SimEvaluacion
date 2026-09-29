@@ -23,6 +23,7 @@ import {
   fetchGroups,
   getApiErrorMessage,
   saveGrade,
+  startNextPartial,
   updateActivity,
 } from "../lib/api";
 import { formatGroupCodesPlus, formatTeacherGroupsSubtitle } from "../lib/groups";
@@ -121,6 +122,22 @@ export default function TeacherPage() {
       await qc.invalidateQueries({ queryKey: ["groups"] });
       setSelectedId(activity.id);
       resetActivityForm();
+    },
+    onError: (error) => {
+      setFormSuccess("");
+      setFormError(getApiErrorMessage(error));
+    },
+  });
+
+  const startNextPartialMutation = useMutation({
+    mutationFn: () => startNextPartial(selectedGroupId),
+    onSuccess: async (group) => {
+      setFormError("");
+      setFormSuccess(
+        `Ahora publicas ${partialLabel(group.currentPartial ?? currentPartial + 1).toLowerCase()}. El examen del parcial anterior se puede capturar después.`,
+      );
+      await qc.invalidateQueries({ queryKey: ["groups"] });
+      await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
     },
     onError: (error) => {
       setFormSuccess("");
@@ -405,10 +422,29 @@ export default function TeacherPage() {
               <h2 className="mb-1 text-lg font-semibold text-white">
                 {editingActivityId ? "Editar actividad" : "Nueva actividad"}
               </h2>
-              <p className="mb-4 text-xs text-cyan-300/90">
-                Grupo {selectedGroup?.code} · {selectedGroup?.shift}
-                {currentPartial > 1 ? ` · ${partialLabel(currentPartial)}` : ""}
+              <p className="mb-3 text-xs text-cyan-300/90">
+                Grupo {selectedGroup?.code} · {selectedGroup?.shift} · {partialLabel(currentPartial)}
               </p>
+              {currentPartial < 4 && !editingActivityId ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = currentPartial + 1;
+                    const ok = window.confirm(
+                      `¿Comenzar ${partialLabel(next).toLowerCase()}?\n\nLas actividades de ${partialLabel(currentPartial).toLowerCase()} se compactan (no se borran). Las nuevas se publican ya como ${partialLabel(next).toLowerCase()}.\n\nNo hace falta capturar el examen ni cerrar el parcial.`,
+                    );
+                    if (!ok) return;
+                    setFormError("");
+                    startNextPartialMutation.mutate();
+                  }}
+                  disabled={startNextPartialMutation.isPending || !selectedGroupId}
+                  className="mb-4 w-full rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-60"
+                >
+                  {startNextPartialMutation.isPending
+                    ? "Cambiando..."
+                    : `Comenzar ${partialLabel(currentPartial + 1).toLowerCase()} sin examen`}
+                </button>
+              ) : null}
               <form
                 className="space-y-3"
                 onSubmit={(e) => {
