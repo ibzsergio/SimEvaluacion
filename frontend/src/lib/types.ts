@@ -11,6 +11,7 @@ export type ClassGroup = {
   progressClosedAt?: string | null;
   partialClosed?: boolean;
   partialClosedAt?: string | null;
+  currentPartial?: number;
 };
 
 export type User = {
@@ -176,6 +177,7 @@ export type Activity = {
   groupId?: string;
   group?: { code: string; shift: string };
   createdAt?: string;
+  partialNumber?: number;
 };
 
 export type GradeRow = {

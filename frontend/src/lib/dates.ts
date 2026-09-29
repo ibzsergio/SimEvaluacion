@@ -57,3 +57,11 @@ export function getActivityKindLabel(index: number, name: string) {
   if (actividad) return `Actividad ${actividad[1]}`;
   return `#${index + 1}`;
 }
+
+export function partialLabel(n: number) {
+  if (n === 1) return "Primer parcial";
+  if (n === 2) return "Segundo parcial";
+  if (n === 3) return "Tercer parcial";
+  if (n === 4) return "Cuarto parcial";
+  return `Parcial ${n}`;
+}

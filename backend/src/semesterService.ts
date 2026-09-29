@@ -40,6 +40,7 @@ export async function resetSemesterForTeacher(
         progressClosed: false,
         progressClosedAt: null,
         plannedActivities: null,
+        currentPartial: 1,
       },
     });
   }

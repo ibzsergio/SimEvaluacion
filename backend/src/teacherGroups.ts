@@ -369,15 +369,17 @@ teacherGroupsRouter.put("/groups/:groupId/partial-settings", async (req: AuthedR
 
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId: req.auth!.userId },
-    select: { id: true },
+    select: { id: true, currentPartial: true, partialClosed: true },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
+  const closingNow = body.data.partialClosed && !group.partialClosed;
   const updated = await prisma.classGroup.update({
     where: { id: groupId },
     data: {
       partialClosed: body.data.partialClosed,
       partialClosedAt: body.data.partialClosed ? new Date() : null,
+      currentPartial: closingNow ? group.currentPartial + 1 : undefined,
     },
     select: {
       id: true,
@@ -388,6 +390,7 @@ teacherGroupsRouter.put("/groups/:groupId/partial-settings", async (req: AuthedR
       progressClosedAt: true,
       partialClosed: true,
       partialClosedAt: true,
+      currentPartial: true,
     },
   });
 

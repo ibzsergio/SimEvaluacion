@@ -46,6 +46,8 @@ model ClassGroup {
   /// Cuando el docente cierra el parcial, se congelan resultados semanales.
   partialClosed Boolean @default(false)
   partialClosedAt DateTime?
+  /// Parcial en el que se publican las actividades nuevas (1, 2, …).
+  currentPartial Int @default(1)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -105,6 +107,8 @@ model Activity {
   signatureMax Int      @default(0)
   /// Orden de columna en el Excel (CARATULA, PROGRAMA RADIO, …).
   sortOrder    Int      @default(0)
+  /// 1 = primer parcial, 2 = segundo, …
+  partialNumber Int     @default(1)
 
   groupId String
   group   ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)

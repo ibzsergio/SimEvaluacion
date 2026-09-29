@@ -30,6 +30,7 @@ import {
   formatCalendarDate,
   formatDateTime,
   getActivityKindLabel,
+  partialLabel,
   todayLocalIso,
   toDateInputValue,
 } from "../lib/dates";
@@ -60,6 +61,7 @@ export default function TeacherPage() {
     maxPoints: 10,
   });
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  const [collapsedPartials, setCollapsedPartials] = useState<Record<number, boolean>>({});
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -80,6 +82,7 @@ export default function TeacherPage() {
   useEffect(() => {
     setSelectedId(null);
     setEditingActivityId(null);
+    setCollapsedPartials({});
     if (selectedGroupId) {
       void qc.refetchQueries({ queryKey: ["activities", selectedGroupId] });
     }
@@ -94,7 +97,14 @@ export default function TeacherPage() {
   });
 
   const activities = activitiesQuery.data ?? [];
-  const activeId = selectedId ?? activities[0]?.id ?? null;
+  const currentPartial = selectedGroup?.currentPartial ?? 1;
+  const activityPartialNumbers = useMemo(() => {
+    const nums = new Set(activities.map((a) => a.partialNumber ?? 1));
+    nums.add(currentPartial);
+    return [...nums].sort((a, b) => a - b);
+  }, [activities, currentPartial]);
+  const currentActivities = activities.filter((a) => (a.partialNumber ?? 1) === currentPartial);
+  const activeId = selectedId ?? currentActivities[0]?.id ?? null;
 
   const gradesQuery = useQuery({
     queryKey: ["grades", activeId],
@@ -395,7 +405,10 @@ export default function TeacherPage() {
               <h2 className="mb-1 text-lg font-semibold text-white">
                 {editingActivityId ? "Editar actividad" : "Nueva actividad"}
               </h2>
-              <p className="mb-4 text-xs text-cyan-300/90">Grupo {selectedGroup?.code} · {selectedGroup?.shift}</p>
+              <p className="mb-4 text-xs text-cyan-300/90">
+                Grupo {selectedGroup?.code} · {selectedGroup?.shift}
+                {currentPartial > 1 ? ` · ${partialLabel(currentPartial)}` : ""}
+              </p>
               <form
                 className="space-y-3"
                 onSubmit={(e) => {
@@ -499,66 +512,92 @@ export default function TeacherPage() {
 
               <div className="mt-6">
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Actividades del grupo</h3>
-                <ul className="max-h-[70vh] min-h-[28rem] space-y-2 overflow-auto pr-1">
-                  {activities.map((a, index) => (
-                    <li
-                      key={a.id}
-                      className={`rounded-xl border text-sm transition ${
-                        a.id === activeId
-                          ? "border-cyan-400/50 bg-cyan-500/10"
-                          : "border-white/10 bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-start gap-1 p-1">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(a.id)}
-                          className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left hover:bg-white/5"
+                <div className="max-h-[70vh] min-h-[28rem] space-y-4 overflow-auto pr-1">
+                  {activityPartialNumbers.map((partialNo, sectionIndex) => {
+                    const items = activities.filter((a) => (a.partialNumber ?? 1) === partialNo);
+                    const isCurrent = partialNo === currentPartial;
+                    const collapsed = !isCurrent && collapsedPartials[partialNo] !== false;
+                    const showCut = sectionIndex > 0;
+                    return (
+                      <div key={partialNo}>
+                        {showCut ? (
+                          <div className="mb-3 flex items-center gap-2 py-1">
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+                            <span className="shrink-0 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-200">
+                              Corte de parcial
+                            </span>
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+                          </div>
+                        ) : null}
+                        <div
+                          className={`rounded-xl border px-2 py-2 ${
+                            isCurrent
+                              ? "border-indigo-400/30 bg-indigo-500/5"
+                              : "border-white/10 bg-slate-950/40"
+                          }`}
                         >
-                          <p className="text-xs font-bold uppercase tracking-wide text-cyan-400/90">
-                            {getActivityKindLabel(index, a.name)}
-                          </p>
-                          <p
-                            className={`font-medium ${a.id === activeId ? "text-cyan-100" : "text-slate-200"}`}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isCurrent) return;
+                              setCollapsedPartials((prev) => ({
+                                ...prev,
+                                [partialNo]: prev[partialNo] === false ? true : false,
+                              }));
+                            }}
+                            className="mb-2 flex w-full items-center justify-between rounded-lg px-2 py-1 text-left"
                           >
-                            {a.name}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {formatCalendarDate(a.date)} · {a.maxPoints} pts
-                            {a.createdAt ? (
-                              <span className="text-slate-500">
-                                {" "}
-                                · Publicada {formatDateTime(a.createdAt)}
+                            <span
+                              className={`text-xs font-bold uppercase tracking-wide ${
+                                isCurrent ? "text-indigo-200" : "text-slate-400"
+                              }`}
+                            >
+                              {partialLabel(partialNo)}
+                              <span className="ml-2 font-normal opacity-80">
+                                ({items.length} {items.length === 1 ? "actividad" : "actividades"})
                               </span>
-                            ) : null}
-                          </p>
-                        </button>
-                        <div className="flex shrink-0 flex-col gap-1 pt-1">
-                          <button
-                            type="button"
-                            title="Editar"
-                            onClick={() => startEditActivity(a)}
-                            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white"
-                          >
-                            Editar
+                            </span>
+                            {!isCurrent ? (
+                              <span className="text-[11px] text-slate-500">
+                                {collapsed ? "Mostrar" : "Ocultar"}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-indigo-300/80">Actual</span>
+                            )}
                           </button>
-                          <button
-                            type="button"
-                            title="Eliminar"
-                            onClick={() => handleDeleteActivity(a)}
-                            disabled={deleteMutation.isPending}
-                            className="rounded-lg border border-rose-400/30 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/15 disabled:opacity-50"
-                          >
-                            Eliminar
-                          </button>
+                          {collapsed ? (
+                            <p className="px-2 pb-1 text-[11px] text-slate-500">
+                              Compactado para aclaraciones. No se borra.
+                            </p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {items.map((a, index) => (
+                                <ActivityListItem
+                                  key={a.id}
+                                  activity={a}
+                                  index={index}
+                                  active={a.id === activeId}
+                                  pendingDelete={deleteMutation.isPending}
+                                  onSelect={() => setSelectedId(a.id)}
+                                  onEdit={() => startEditActivity(a)}
+                                  onDelete={() => handleDeleteActivity(a)}
+                                />
+                              ))}
+                              {!items.length ? (
+                                <p className="px-2 pb-1 text-xs text-slate-500">
+                                  Aún no hay actividades en este parcial.
+                                </p>
+                              ) : null}
+                            </ul>
+                          )}
                         </div>
                       </div>
-                    </li>
-                  ))}
-                  {!activities.length && !activitiesQuery.isLoading ? (
+                    );
+                  })}
+                  {!activities.length && !activitiesQuery.isLoading && currentPartial <= 1 ? (
                     <p className="text-xs text-slate-500">Sin actividades en este grupo.</p>
                   ) : null}
-                </ul>
+                </div>
               </div>
             </section>
 
@@ -587,6 +626,70 @@ export default function TeacherPage() {
         </>
       )}
     </Layout>
+  );
+}
+
+function ActivityListItem({
+  activity,
+  index,
+  active,
+  pendingDelete,
+  onSelect,
+  onEdit,
+  onDelete,
+}: {
+  activity: Activity;
+  index: number;
+  active: boolean;
+  pendingDelete: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li
+      className={`rounded-xl border text-sm transition ${
+        active ? "border-cyan-400/50 bg-cyan-500/10" : "border-white/10 bg-white/5"
+      }`}
+    >
+      <div className="flex items-start gap-1 p-1">
+        <button
+          type="button"
+          onClick={onSelect}
+          className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left hover:bg-white/5"
+        >
+          <p className="text-xs font-bold uppercase tracking-wide text-cyan-400/90">
+            {getActivityKindLabel(index, activity.name)}
+          </p>
+          <p className={`font-medium ${active ? "text-cyan-100" : "text-slate-200"}`}>{activity.name}</p>
+          <p className="text-xs text-slate-400">
+            {formatCalendarDate(activity.date)} · {activity.maxPoints} pts
+            {activity.createdAt ? (
+              <span className="text-slate-500"> · Publicada {formatDateTime(activity.createdAt)}</span>
+            ) : null}
+          </p>
+        </button>
+        <div className="flex shrink-0 flex-col gap-1 pt-1">
+          <button
+            type="button"
+            title="Editar"
+            onClick={onEdit}
+            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white"
+          >
+            Editar
+          </button>
+          <button
+            type="button"
+            title="Eliminar"
+            onClick={onDelete}
+            disabled={pendingDelete}
+            className="rounded-lg border border-rose-400/30 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/15 disabled:opacity-50"
+          >
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </li>
   );
 }
 

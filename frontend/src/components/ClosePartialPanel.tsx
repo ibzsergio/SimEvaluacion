@@ -97,6 +97,7 @@ export default function ClosePartialPanel({
       await qc.invalidateQueries({ queryKey: ["partial-summary", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["student-progress"] });
+      await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
       setActionError("");
       setActionSuccess(closed ? "Parcial cerrado. Se descargó LISTAS F1 con asistencia, escala y examen." : "Parcial reabierto.");
     },

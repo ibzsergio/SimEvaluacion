@@ -36,6 +36,7 @@ import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSche
 import { ensureClassDaySchema } from "./ensureClassDaySchema.js";
 import { ensureSkillSurveySchema } from "./ensureSkillSurveySchema.js";
 import { ensurePartialExamSchema } from "./ensurePartialExamSchema.js";
+import { ensurePartialCutSchema } from "./ensurePartialCutSchema.js";
 import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
@@ -294,6 +295,7 @@ app.post("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedR
       maxPoints: body.data.maxPoints,
       signatureMax: 0,
       sortOrder,
+      partialNumber: group.currentPartial ?? 1,
       groupId: group.id,
       createdById: req.auth!.userId,
     },
@@ -798,6 +800,7 @@ void (async () => {
     await ensureClassDaySchema();
     await ensureSkillSurveySchema();
     await ensurePartialExamSchema();
+    await ensurePartialCutSchema();
   } catch (err) {
     console.error("[startup] Startup schema failed:", err);
     process.exit(1);
