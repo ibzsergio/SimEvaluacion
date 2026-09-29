@@ -196,9 +196,9 @@ export default function ClosePartialPanel({
             obtiene 6.
           </li>
           <li>
-            <strong className="text-slate-200">Examen (máx. 4)</strong> — lo capturas tú. La lista va ordenada
-            por quién <strong className="text-slate-200">entregó primero</strong> (más veces 1° al calificar);
-            esos alumnos tienen prioridad para el 4.
+            <strong className="text-slate-200">Examen (máx. 4)</strong> — lo capturas tú, en orden
+            alfabético como en las actividades. La columna Prioridad marca quién entregó primero (prioridad
+            para el 4).
           </li>
           <li>
             <strong className="text-slate-200">% asistencia</strong> — solo la falta (F) baja el porcentaje.
@@ -258,8 +258,7 @@ export default function ClosePartialPanel({
             <div>
               <h3 className="text-base font-semibold text-white">Captura de examen (0 a 4)</h3>
               <p className="mt-0.5 text-xs text-slate-500">
-                Prioridad: quienes entregaron primero aparecen arriba. El total se calcula en vivo (escala +
-                examen).
+                Orden alfabético, igual que en actividades. El total se calcula en vivo (escala + examen).
               </p>
             </div>
             <button

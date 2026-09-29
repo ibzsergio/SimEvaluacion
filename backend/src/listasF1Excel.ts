@@ -210,7 +210,7 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
     prisma.user.findMany({
       where: { role: "STUDENT", groupId },
       select: { id: true, displayName: true, listNumber: true, controlNumber: true },
-      orderBy: [{ listNumber: "asc" }, { displayName: "asc" }],
+            orderBy: [{ displayName: "asc" }, { listNumber: "asc" }],
     }),
     prisma.classDayRecord.findMany({
       where: { groupId },
@@ -316,15 +316,22 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
     };
   });
 
-  unsorted.sort((a, b) => {
-    if (b.firstGradings !== a.firstGradings) return b.firstGradings - a.firstGradings;
-    const aTime = a.firstGradedAt ? Date.parse(a.firstGradedAt) : Number.POSITIVE_INFINITY;
-    const bTime = b.firstGradedAt ? Date.parse(b.firstGradedAt) : Number.POSITIVE_INFINITY;
-    if (aTime !== bTime) return aTime - bTime;
-    if (a.place && b.place && a.place !== b.place) return a.place - b.place;
-    return a.displayName.localeCompare(b.displayName, "es");
-  });
-  const rows = unsorted.map((row, index) => ({ ...row, deliveryPriority: index + 1 }));
+  const withPriority = [...unsorted]
+    .sort((a, b) => {
+      if (b.firstGradings !== a.firstGradings) return b.firstGradings - a.firstGradings;
+      const aTime = a.firstGradedAt ? Date.parse(a.firstGradedAt) : Number.POSITIVE_INFINITY;
+      const bTime = b.firstGradedAt ? Date.parse(b.firstGradedAt) : Number.POSITIVE_INFINITY;
+      if (aTime !== bTime) return aTime - bTime;
+      if (a.place && b.place && a.place !== b.place) return a.place - b.place;
+      return a.displayName.localeCompare(b.displayName, "es");
+    })
+    .map((row, index) => ({ ...row, deliveryPriority: index + 1 }));
+
+  const rows = [...withPriority].sort(
+    (a, b) =>
+      a.displayName.localeCompare(b.displayName, "es") ||
+      (a.listNumber ?? 999) - (b.listNumber ?? 999),
+  );
 
   return {
     group: {
