@@ -249,6 +249,17 @@ export async function downloadListasF1Excel() {
   await downloadTeacherBlob("/teacher/listas-f1.xlsx", "LISTAS F1_2026-2027.xlsx");
 }
 
+export async function saveGroupExamScores(
+  groupId: string,
+  scores: Array<{ studentId: string; examScore4: number | null }>,
+) {
+  const { data } = await api.put<{ saved: number; cleared: number }>(
+    `/teacher/groups/${groupId}/exam-scores`,
+    { scores },
+  );
+  return data;
+}
+
 export type GroupStudent = {
   id: string;
   controlNumber: string | null;

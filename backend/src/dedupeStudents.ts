@@ -47,6 +47,16 @@ async function mergeStudentData(keeperId: string, removeId: string) {
     });
   }
 
+  const exams = await prisma.partialExamScore.findMany({ where: { studentId: removeId } });
+  for (const e of exams) {
+    await prisma.partialExamScore.upsert({
+      where: { groupId_studentId: { groupId: e.groupId, studentId: keeperId } },
+      update: { examScore4: e.examScore4 },
+      create: { groupId: e.groupId, studentId: keeperId, examScore4: e.examScore4 },
+    });
+  }
+  await prisma.partialExamScore.deleteMany({ where: { studentId: removeId } });
+
   const wins = await prisma.weeklyWinner.findMany({ where: { studentId: removeId } });
   for (const w of wins) {
     const existing = await prisma.weeklyWinner.findUnique({ where: { weekId: w.weekId } });
@@ -68,6 +78,7 @@ export async function deleteStudentAndRelated(studentId: string) {
   await prisma.grade.deleteMany({ where: { studentId } });
   await prisma.submission.deleteMany({ where: { studentId } });
   await prisma.weeklyWinner.deleteMany({ where: { studentId } });
+  await prisma.partialExamScore.deleteMany({ where: { studentId } });
   await prisma.user.delete({ where: { id: studentId } });
 }
 

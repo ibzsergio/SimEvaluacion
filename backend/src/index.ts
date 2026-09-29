@@ -35,6 +35,7 @@ import { getStudentSeating } from "./seatingService.js";
 import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSchema.js";
 import { ensureClassDaySchema } from "./ensureClassDaySchema.js";
 import { ensureSkillSurveySchema } from "./ensureSkillSurveySchema.js";
+import { ensurePartialExamSchema } from "./ensurePartialExamSchema.js";
 import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
@@ -796,6 +797,7 @@ void (async () => {
     await ensureSeatingSchema();
     await ensureClassDaySchema();
     await ensureSkillSurveySchema();
+    await ensurePartialExamSchema();
   } catch (err) {
     console.error("[startup] Startup schema failed:", err);
     process.exit(1);

@@ -41,7 +41,7 @@ import {
   writeAttendanceXlsx,
 } from "./attendanceExport.js";
 import { generateMasterAttendanceExcel } from "./attendanceMasterExcel.js";
-import { generateListasF1Excel, getListasF1Preview, listasF1FileName } from "./listasF1Excel.js";
+import { generateListasF1Excel, getListasF1Preview, listasF1FileName, saveGroupExamScores } from "./listasF1Excel.js";
 import { isClassDaySchemaError, humanizeClassDaySaveError } from "./ensureClassDaySchema.js";
 import {
   createProjectTeam,
@@ -1157,6 +1157,25 @@ teacherGroupsRouter.get("/listas-f1/preview", async (req: AuthedRequest, res) =>
   const preview = await getListasF1Preview(req.auth!.userId, groupId);
   if (!preview) return res.status(404).json({ error: "group_not_found" });
   return res.json(preview);
+});
+
+teacherGroupsRouter.put("/groups/:groupId/exam-scores", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      scores: z.array(
+        z.object({
+          studentId: z.string().min(1),
+          examScore4: z.number().min(0).max(4).nullable(),
+        }),
+      ),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const result = await saveGroupExamScores(req.auth!.userId, groupId, body.data.scores);
+  if (!result) return res.status(404).json({ error: "group_not_found" });
+  return res.json(result);
 });
 
 teacherGroupsRouter.get("/listas-f1.xlsx", async (req: AuthedRequest, res) => {

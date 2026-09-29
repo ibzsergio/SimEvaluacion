@@ -12,7 +12,7 @@ export const SCALE_RULE = {
   participationWeight: PARTICIPATION_WEIGHT,
   starsPerDay: STARS_PER_DAY,
   description:
-    "La escala (máximo 6) usa los mismos puntos del ranking: trabajos + estrellas de participación. Quien va 1° obtiene 6. El resto: sus puntos ÷ puntos del 1° × 6. El examen (hasta 4) no se calcula: lo llenas tú en LISTAS F1.",
+    "La escala (máximo 6) usa los mismos puntos del ranking: trabajos + estrellas de participación. Quien va 1° obtiene 6. El resto: sus puntos ÷ puntos del 1° × 6. El examen (hasta 4) lo captura el docente; quienes entregaron primero tienen prioridad para el 4. Total = escala + examen (máximo 10).",
 } as const;
 
 function round1(n: number) {
@@ -46,4 +46,12 @@ export function attendanceRatePercent(summary: {
   if (summary.classDays <= 0) return 100;
   const missed = Math.min(Math.max(0, summary.absent), summary.classDays);
   return Math.round(((summary.classDays - missed) / summary.classDays) * 100);
+}
+
+export function clampExamScore4(n: number) {
+  return round1(clamp(n, 0, EXAM_MAX));
+}
+
+export function finalGrade10(scale6: number, examScore4: number) {
+  return round1(clamp(scale6 + examScore4, 0, 10));
 }

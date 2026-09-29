@@ -1,12 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   downloadListasF1Excel,
   fetchListasF1Preview,
   getApiErrorMessage,
+  saveGroupExamScores,
   updateGroupPartialSettings,
 } from "../lib/api";
-import type { ClassGroup } from "../lib/types";
+import { formatDateTime } from "../lib/dates";
+import type { ClassGroup, ListasF1PreviewRow } from "../lib/types";
+
+function parseExamDraft(raw: string): number | null | "invalid" {
+  const trimmed = raw.trim().replace(",", ".");
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 0 || n > 4) return "invalid";
+  return Math.round(n * 10) / 10;
+}
+
+function liveTotal(scale6: number, draft: string) {
+  const parsed = parseExamDraft(draft);
+  if (parsed === "invalid" || parsed == null) return null;
+  return Math.round(Math.min(10, scale6 + parsed) * 10) / 10;
+}
 
 export default function ClosePartialPanel({
   groups,
@@ -21,6 +37,8 @@ export default function ClosePartialPanel({
   const [downloading, setDownloading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [dirty, setDirty] = useState(false);
 
   const previewQuery = useQuery({
     queryKey: ["listas-f1-preview", selectedGroupId],
@@ -29,6 +47,36 @@ export default function ClosePartialPanel({
   });
 
   const preview = previewQuery.data;
+
+  useEffect(() => {
+    setDrafts({});
+    setDirty(false);
+    setActionError("");
+    setActionSuccess("");
+  }, [selectedGroupId]);
+
+  useEffect(() => {
+    if (!preview || dirty) return;
+    const next: Record<string, string> = {};
+    for (const row of preview.rows) {
+      next[row.studentId] = row.examScore4 == null ? "" : String(row.examScore4);
+    }
+    setDrafts(next);
+  }, [preview, dirty]);
+
+  const capturedCount = useMemo(() => {
+    if (!preview) return 0;
+    return preview.rows.filter((row) => {
+      const parsed = parseExamDraft(drafts[row.studentId] ?? "");
+      return parsed !== "invalid" && parsed != null;
+    }).length;
+  }, [preview, drafts]);
+
+  const invalidCount = useMemo(() => {
+    if (!preview) return 0;
+    return preview.rows.filter((row) => parseExamDraft(drafts[row.studentId] ?? "") === "invalid").length;
+  }, [preview, drafts]);
+
   const closeMutation = useMutation({
     mutationFn: (closed: boolean) => updateGroupPartialSettings(selectedGroupId, { partialClosed: closed }),
     onSuccess: async (_, closed) => {
@@ -39,11 +87,33 @@ export default function ClosePartialPanel({
       await qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["student-progress"] });
       setActionError("");
+      setActionSuccess(closed ? "Parcial cerrado. Se descargó LISTAS F1 con asistencia, escala y examen." : "Parcial reabierto.");
+    },
+    onError: (error) => {
+      setActionSuccess("");
+      setActionError(getApiErrorMessage(error));
+    },
+  });
+
+  const saveExamMutation = useMutation({
+    mutationFn: () => {
+      if (!preview) return Promise.reject(new Error("Sin datos del grupo."));
+      const scores = preview.rows.map((row) => {
+        const parsed = parseExamDraft(drafts[row.studentId] ?? "");
+        if (parsed === "invalid") {
+          throw new Error(`Examen inválido para ${row.displayName}. Debe ser de 0 a 4.`);
+        }
+        return { studentId: row.studentId, examScore4: parsed };
+      });
+      return saveGroupExamScores(selectedGroupId, scores);
+    },
+    onSuccess: async (result) => {
+      setDirty(false);
+      setActionError("");
       setActionSuccess(
-        closed
-          ? "Parcial cerrado. Se descargó LISTAS F1 con % de asistencia y escala. El examen lo llenas tú."
-          : "Parcial reabierto.",
+        `Examen guardado: ${result.saved} calificación(es)${result.cleared ? `, ${result.cleared} en blanco` : ""}.`,
       );
+      await qc.invalidateQueries({ queryKey: ["listas-f1-preview", selectedGroupId] });
     },
     onError: (error) => {
       setActionSuccess("");
@@ -56,7 +126,7 @@ export default function ClosePartialPanel({
     setDownloading(true);
     try {
       await downloadListasF1Excel();
-      setActionSuccess("Se descargó LISTAS F1 con % de asistencia y escala. La columna Examen queda para ti.");
+      setActionSuccess("Se descargó LISTAS F1 con % de asistencia, escala y examen capturado.");
     } catch (error) {
       setActionSuccess("");
       setActionError(getApiErrorMessage(error));
@@ -65,12 +135,25 @@ export default function ClosePartialPanel({
     }
   }
 
+  async function persistExamIfNeeded() {
+    if (!dirty && !saveExamMutation.isPending) return;
+    await saveExamMutation.mutateAsync();
+  }
+
   async function handleCloseAndDownload() {
+    if (invalidCount > 0) {
+      setActionError("Hay calificaciones de examen inválidas. Corrige los valores (0 a 4) antes de cerrar.");
+      return;
+    }
+    const missing = (preview?.rows.length ?? 0) - capturedCount;
+    const missingNote =
+      missing > 0 ? `\n\nAún faltan ${missing} alumno(s) sin examen; su columna Examen quedará vacía.` : "";
     const ok = window.confirm(
-      "¿Finalizar y cerrar el parcial de este grupo?\n\nSe calculará la escala (máximo 6) y se descargará LISTAS F1 con % de asistencia y escala.\nTú llenas la calificación de examen.\nLos alumnos podrán descargar su diploma.",
+      `¿Cerrar el parcial de este grupo?${missingNote}\n\nSe descargará LISTAS F1 con % de asistencia, escala (máx. 6) y examen (máx. 4).\nLos alumnos podrán descargar su diploma.`,
     );
     if (!ok) return;
     try {
+      await persistExamIfNeeded();
       await closeMutation.mutateAsync(true);
       await handleDownload();
     } catch {
@@ -85,21 +168,13 @@ export default function ClosePartialPanel({
     <section className="glass mb-6 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-white">Finalizar y cerrar el parcial</h2>
+          <h2 className="text-lg font-semibold text-white">Examen, cierre de parcial y LISTAS F1</h2>
           <p className="mt-1 text-sm text-slate-400">
             Grupo {selectedGroup?.code} · {selectedGroup?.shift}
             {partialClosed ? " · Parcial cerrado" : " · Parcial abierto"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => void handleDownload()}
-            disabled={downloading || !preview?.excel.templateFound}
-            className="rounded-xl border border-cyan-400/30 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/10 disabled:opacity-60"
-          >
-            {downloading ? "Descargando..." : "Descargar LISTAS F1"}
-          </button>
           {partialClosed ? (
             <button
               type="button"
@@ -109,43 +184,34 @@ export default function ClosePartialPanel({
             >
               {closeMutation.isPending ? "Guardando..." : "Reabrir parcial"}
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleCloseAndDownload()}
-              disabled={closeMutation.isPending || downloading || !selectedGroupId}
-              className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400 disabled:opacity-60"
-            >
-              {closeMutation.isPending || downloading ? "Procesando..." : "Finalizar y cerrar el parcial"}
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
       <div className="mt-4 rounded-xl border border-indigo-400/25 bg-indigo-500/5 px-4 py-3 text-sm text-slate-300">
-        <p className="font-semibold text-indigo-100">Cómo se obtienen los 6 puntos de escala</p>
+        <p className="font-semibold text-indigo-100">Escala 6 + examen 4 = 10</p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-400">
           <li>
-            Se usan los <strong className="text-slate-200">mismos puntos del ranking</strong>: trabajos +
-            estrellas de participación.
+            <strong className="text-slate-200">Escala (máx. 6)</strong> — mismos puntos del ranking. El 1°
+            obtiene 6.
           </li>
           <li>
-            <strong className="text-slate-200">Quien va 1° obtiene 6</strong>. El resto: sus puntos ÷ puntos
-            del 1° × 6.
+            <strong className="text-slate-200">Examen (máx. 4)</strong> — lo capturas tú. La lista va ordenada
+            por quién <strong className="text-slate-200">entregó primero</strong> (más veces 1° al calificar);
+            esos alumnos tienen prioridad para el 4.
           </li>
           <li>
             <strong className="text-slate-200">% asistencia</strong> — solo la falta (F) baja el porcentaje.
-            Presente, retardo y justificada (J) sí cuentan.
           </li>
           <li>
-            <strong className="text-slate-200">Examen: 4 puntos</strong> — no se llena automático. La
-            calificación final del Excel suma escala + examen cuando tú captures el examen.
+            Al terminar la captura, <strong className="text-slate-200">cierra el parcial</strong> y se descarga
+            LISTAS F1 con asistencia, escala, examen y calificación final.
           </li>
         </ul>
       </div>
 
       {previewQuery.isLoading ? (
-        <p className="mt-4 text-sm text-slate-400">Calculando escala y asistencia...</p>
+        <p className="mt-4 text-sm text-slate-400">Calculando escala, asistencia y prioridad de entrega...</p>
       ) : previewQuery.isError ? (
         <p className="mt-4 text-sm text-rose-200">{getApiErrorMessage(previewQuery.error)}</p>
       ) : preview ? (
@@ -173,14 +239,7 @@ export default function ClosePartialPanel({
               </span>
             ))}
             <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
-              {preview.excel.matchedInExcel}/{preview.rows.length} alumnos del grupo {preview.group.code} coinciden
-              con el Excel
-            </span>
-            <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
-              {preview.activityCount} actividades · {preview.activityMax} pts máx.
-              {preview.useParticipation
-                ? ` · 1° del ranking: ${preview.firstPlaceScore} pts`
-                : " · 1° del ranking (solo trabajos)"}
+              Examen capturado: {capturedCount}/{preview.rows.length}
             </span>
           </div>
           {missingSheets.length > 0 ? (
@@ -190,43 +249,57 @@ export default function ClosePartialPanel({
             </p>
           ) : (
             <p className="mt-2 text-xs text-slate-500">
-              El Excel oficial trae los grupos {preview.excel.expectedGroups.join(" y ")}. Al descargar se
-              llenan ambas hojas cruzando nombre y número de control; el examen (columna G) se deja vacío.
-              {preview.excel.teacherGroups.some((code) => !preview.excel.expectedGroups.includes(code))
-                ? ` Tus grupos en el sistema son ${preview.excel.teacherGroups.join(" y ")}.`
-                : null}
+              El Excel oficial trae los grupos {preview.excel.expectedGroups.join(" y ")}. Se llenan ambas
+              hojas por nombre y número de control.
             </p>
           )}
 
-          <div className="mt-4 max-h-72 overflow-auto rounded-xl border border-white/10">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-white">Captura de examen (0 a 4)</h3>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Prioridad: quienes entregaron primero aparecen arriba. El total se calcula en vivo (escala +
+                examen).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => saveExamMutation.mutate()}
+              disabled={saveExamMutation.isPending || invalidCount > 0 || !preview.rows.length}
+              className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
+            >
+              {saveExamMutation.isPending ? "Guardando..." : "Guardar calificaciones de examen"}
+            </button>
+          </div>
+
+          <div className="mt-3 max-h-[28rem] overflow-auto rounded-xl border border-white/10">
             <table className="min-w-full text-sm">
               <thead className="sticky top-0 bg-slate-900/90 text-left text-xs uppercase tracking-wide text-slate-400">
                 <tr>
+                  <th className="px-3 py-2">Prioridad</th>
                   <th className="px-3 py-2">Alumno</th>
                   <th className="px-3 py-2">% Asist.</th>
-                  <th className="px-3 py-2">Trabajos</th>
-                  <th className="px-3 py-2">Particip.</th>
                   <th className="px-3 py-2">Escala / 6</th>
+                  <th className="px-3 py-2">Examen / 4</th>
+                  <th className="px-3 py-2">Total / 10</th>
                 </tr>
               </thead>
               <tbody>
                 {preview.rows.map((row) => (
-                  <tr key={row.studentId} className="border-t border-white/5 text-slate-200">
-                    <td className="px-3 py-1.5">{row.displayName}</td>
-                    <td className="px-3 py-1.5">{row.attendancePercent}%</td>
-                    <td className="px-3 py-1.5">
-                      {row.activityPoints}
-                      <span className="ml-1 text-xs text-slate-500">/{row.activityMax}</span>
-                    </td>
-                    <td className="px-3 py-1.5">
-                      {preview.useParticipation ? `${row.participationStars} est.` : "—"}
-                    </td>
-                    <td className="px-3 py-1.5 font-semibold text-cyan-100">{row.scale6.toFixed(1)}</td>
-                  </tr>
+                  <ExamCaptureRow
+                    key={row.studentId}
+                    row={row}
+                    draft={drafts[row.studentId] ?? ""}
+                    disabled={partialClosed || saveExamMutation.isPending}
+                    onChange={(value) => {
+                      setDrafts((prev) => ({ ...prev, [row.studentId]: value }));
+                      setDirty(true);
+                    }}
+                  />
                 ))}
                 {!preview.rows.length ? (
                   <tr>
-                    <td className="px-3 py-3 text-slate-500" colSpan={5}>
+                    <td className="px-3 py-3 text-slate-500" colSpan={6}>
                       Este grupo aún no tiene alumnos.
                     </td>
                   </tr>
@@ -236,6 +309,39 @@ export default function ClosePartialPanel({
           </div>
         </>
       ) : null}
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-400/20 bg-rose-500/5 px-4 py-3">
+        <p className="text-sm text-slate-300">
+          Cuando termines de capturar el examen, cierra el parcial para descargar LISTAS F1.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {partialClosed ? (
+            <button
+              type="button"
+              onClick={() => void handleDownload()}
+              disabled={downloading || !preview?.excel.templateFound}
+              className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-60"
+            >
+              {downloading ? "Descargando..." : "Descargar LISTAS F1"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleCloseAndDownload()}
+              disabled={
+                closeMutation.isPending ||
+                downloading ||
+                saveExamMutation.isPending ||
+                !selectedGroupId ||
+                invalidCount > 0
+              }
+              className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400 disabled:opacity-60"
+            >
+              {closeMutation.isPending || downloading ? "Procesando..." : "Cerrar parcial y descargar LISTAS F1"}
+            </button>
+          )}
+        </div>
+      </div>
 
       {actionError ? (
         <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
@@ -248,5 +354,63 @@ export default function ClosePartialPanel({
         </p>
       ) : null}
     </section>
+  );
+}
+
+function ExamCaptureRow({
+  row,
+  draft,
+  disabled,
+  onChange,
+}: {
+  row: ListasF1PreviewRow;
+  draft: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  const parsed = parseExamDraft(draft);
+  const invalid = parsed === "invalid";
+  const total = liveTotal(row.scale6, draft);
+  const priority = row.deliveryPriority <= 10;
+  return (
+    <tr
+      className={`border-t border-white/5 ${priority ? "bg-amber-500/5" : ""} ${
+        invalid ? "bg-rose-500/10" : ""
+      }`}
+    >
+      <td className="px-3 py-1.5 align-top">
+        <p className={`font-semibold ${priority ? "text-amber-200" : "text-slate-300"}`}>#{row.deliveryPriority}</p>
+        <p className="text-[11px] text-slate-500">
+          {row.firstGradings > 0
+            ? `${row.firstGradings} ${row.firstGradings === 1 ? "vez" : "veces"} 1°`
+            : "sin 1°"}
+          {row.place ? ` · ranking #${row.place}` : ""}
+        </p>
+        {row.firstGradedAt ? (
+          <p className="text-[11px] text-slate-600">1ª entrega {formatDateTime(row.firstGradedAt)}</p>
+        ) : null}
+      </td>
+      <td className="px-3 py-1.5 align-top text-slate-200">{row.displayName}</td>
+      <td className="px-3 py-1.5 align-top text-slate-300">{row.attendancePercent}%</td>
+      <td className="px-3 py-1.5 align-top font-semibold text-cyan-100">{row.scale6.toFixed(1)}</td>
+      <td className="px-3 py-1.5 align-top">
+        <input
+          type="number"
+          min={0}
+          max={4}
+          step={0.1}
+          value={draft}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="0–4"
+          className={`w-20 rounded-lg border bg-slate-900/60 px-2 py-1 text-sm text-white disabled:opacity-60 ${
+            invalid ? "border-rose-400/60" : "border-white/15"
+          }`}
+        />
+      </td>
+      <td className="px-3 py-1.5 align-top font-semibold text-emerald-200">
+        {total == null ? "—" : total.toFixed(1)}
+      </td>
+    </tr>
   );
 }

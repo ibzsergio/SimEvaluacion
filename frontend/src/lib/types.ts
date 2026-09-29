@@ -517,6 +517,12 @@ export type ListasF1PreviewRow = {
   rankingScore: number;
   scale6: number;
   attendancePercent: number;
+  examScore4: number | null;
+  finalGrade: number | null;
+  place: number;
+  firstGradings: number;
+  firstGradedAt: string | null;
+  deliveryPriority: number;
 };
 
 export type ListasF1Preview = {

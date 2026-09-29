@@ -35,6 +35,7 @@ model ClassGroup {
   seatingSessions SeatingSession[]
   skillSurveyResponses SkillSurveyResponse[]
   projectTeams ProjectTeam[]
+  partialExamScores PartialExamScore[]
 
   /// Meta de actividades del periodo (para progreso). Si es null, se usa el total publicado.
   plannedActivities Int?
@@ -90,6 +91,7 @@ model User {
   skillSurveyResponse    SkillSurveyResponse?
   projectTeamMemberships ProjectTeamMember[]
   projectTeamsCreated    ProjectTeam[]        @relation("ProjectTeamCreatedBy")
+  partialExamScores      PartialExamScore[]
 
   @@index([groupId])
   @@index([role])
@@ -331,6 +333,23 @@ model ClassDayRecord {
 
   @@unique([groupId, studentId, date])
   @@index([groupId, date])
+  @@index([studentId])
+}
+
+/// Calificación de examen del parcial (máximo 4). La escala vale 6; el total es 10.
+model PartialExamScore {
+  id         String   @id @default(cuid())
+  groupId    String
+  studentId  String
+  examScore4 Float
+  capturedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  group   ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, studentId])
+  @@index([groupId])
   @@index([studentId])
 }
 

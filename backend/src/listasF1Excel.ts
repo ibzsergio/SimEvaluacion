@@ -6,11 +6,14 @@ import { prisma } from "./prisma.js";
 import {
   ACTIVITY_WEIGHT,
   attendanceRatePercent,
+  clampExamScore4,
   computeScale6,
+  finalGrade10,
   PARTICIPATION_WEIGHT,
   rankingScoreForScale,
   SCALE_RULE,
 } from "./scaleGrade.js";
+import { getGroupRanking } from "./groupRanking.js";
 
 const TEMPLATE_FILE_NAME = "LISTAS F1_2026-2027.xlsx";
 export const LISTAS_F1_EXPECTED_GROUPS = ["301", "302"] as const;
@@ -40,6 +43,12 @@ export type ListasF1StudentRow = {
   rankingScore: number;
   scale6: number;
   attendancePercent: number;
+  examScore4: number | null;
+  finalGrade: number | null;
+  place: number;
+  firstGradings: number;
+  firstGradedAt: string | null;
+  deliveryPriority: number;
 };
 
 export type ListasF1GroupPreview = {
@@ -271,21 +280,51 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
   const firstPlaceScore = drafted.reduce((max, row) => Math.max(max, row.rankingScore), 0);
   const maxStars = drafted.reduce((max, row) => Math.max(max, row.participationStars), 0);
 
-  const rows: ListasF1StudentRow[] = drafted.map((row) => {
+  const [examRows, rankingData] = await Promise.all([
+    prisma.partialExamScore.findMany({
+      where: { groupId },
+      select: { studentId: true, examScore4: true },
+    }),
+    getGroupRanking(groupId),
+  ]);
+  const examByStudent = new Map(examRows.map((e) => [e.studentId, e.examScore4]));
+  const rankingByStudent = new Map(rankingData.ranking.map((r) => [r.studentId, r]));
+
+  const unsorted: ListasF1StudentRow[] = drafted.map((row) => {
     const scale = computeScale6({
       rankingScore: row.rankingScore,
       firstPlaceScore,
     });
     const activityScore = firstPlaceScore > 0 ? (row.activityPoints / firstPlaceScore) * 6 : 0;
     const participationScore = firstPlaceScore > 0 ? (row.participationStars / firstPlaceScore) * 6 : 0;
+    const rank = rankingByStudent.get(row.studentId);
+    const examRaw = examByStudent.get(row.studentId);
+    const examScore4 =
+      typeof examRaw === "number" && Number.isFinite(examRaw) ? clampExamScore4(examRaw) : null;
     return {
       ...row,
       activityScore: Math.round(activityScore * 10) / 10,
       participationMax: useParticipation ? maxStars : 0,
       participationScore: Math.round(participationScore * 10) / 10,
       scale6: scale.scale6,
+      examScore4,
+      finalGrade: examScore4 == null ? null : finalGrade10(scale.scale6, examScore4),
+      place: rank?.place ?? 0,
+      firstGradings: rank?.firstGradings ?? 0,
+      firstGradedAt: rank?.firstGradedAt ?? null,
+      deliveryPriority: 0,
     };
   });
+
+  unsorted.sort((a, b) => {
+    if (b.firstGradings !== a.firstGradings) return b.firstGradings - a.firstGradings;
+    const aTime = a.firstGradedAt ? Date.parse(a.firstGradedAt) : Number.POSITIVE_INFINITY;
+    const bTime = b.firstGradedAt ? Date.parse(b.firstGradedAt) : Number.POSITIVE_INFINITY;
+    if (aTime !== bTime) return aTime - bTime;
+    if (a.place && b.place && a.place !== b.place) return a.place - b.place;
+    return a.displayName.localeCompare(b.displayName, "es");
+  });
+  const rows = unsorted.map((row, index) => ({ ...row, deliveryPriority: index + 1 }));
 
   return {
     group: {
@@ -373,6 +412,25 @@ function matchStudentFromPool(
   return undefined;
 }
 
+function writeExamAndFinal(
+  row: ExcelJS.Row,
+  rowNum: number,
+  scale6: number,
+  examScore4: number | null,
+) {
+  const examCell = row.getCell(COL.exam);
+  const finalCell = row.getCell(COL.final);
+  if (examScore4 == null) {
+    examCell.value = null;
+    writeFinalFormula(finalCell, rowNum);
+    return;
+  }
+  examCell.value = examScore4;
+  if (!examCell.numFmt) examCell.numFmt = "0.0";
+  finalCell.value = finalGrade10(scale6, examScore4);
+  if (!finalCell.numFmt) finalCell.numFmt = "0.0";
+}
+
 function fillSheetFromPool(sheet: ExcelJS.Worksheet, rows: ListasF1StudentRow[]) {
   const excelRows = buildExcelStudentRows(sheet);
   const dateCell = sheet.getCell("F9");
@@ -387,7 +445,7 @@ function fillSheetFromPool(sheet: ExcelJS.Worksheet, rows: ListasF1StudentRow[])
     const row = sheet.getRow(excel.row);
     writeAttendanceCell(row.getCell(COL.attendance), student.attendancePercent);
     writeScaleCell(row.getCell(COL.scale), student.scale6);
-    writeFinalFormula(row.getCell(COL.final), excel.row);
+    writeExamAndFinal(row, excel.row, student.scale6, student.examScore4);
   }
 }
 
@@ -423,4 +481,44 @@ export async function generateListasF1Excel(teacherId: string): Promise<Buffer |
 
 export function listasF1FileName() {
   return TEMPLATE_FILE_NAME;
+}
+
+export async function saveGroupExamScores(
+  teacherId: string,
+  groupId: string,
+  scores: Array<{ studentId: string; examScore4: number | null }>,
+) {
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId },
+    select: { id: true },
+  });
+  if (!group) return null;
+
+  const students = await prisma.user.findMany({
+    where: { role: "STUDENT", groupId, id: { in: scores.map((s) => s.studentId) } },
+    select: { id: true },
+  });
+  const allowed = new Set(students.map((s) => s.id));
+
+  let saved = 0;
+  let cleared = 0;
+  for (const item of scores) {
+    if (!allowed.has(item.studentId)) continue;
+    if (item.examScore4 == null) {
+      const deleted = await prisma.partialExamScore.deleteMany({
+        where: { groupId, studentId: item.studentId },
+      });
+      cleared += deleted.count;
+      continue;
+    }
+    const value = clampExamScore4(item.examScore4);
+    await prisma.partialExamScore.upsert({
+      where: { groupId_studentId: { groupId, studentId: item.studentId } },
+      update: { examScore4: value },
+      create: { groupId, studentId: item.studentId, examScore4: value },
+    });
+    saved += 1;
+  }
+
+  return { saved, cleared };
 }
