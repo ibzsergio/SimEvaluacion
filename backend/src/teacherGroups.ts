@@ -8,7 +8,11 @@ import { prisma } from "./prisma.js";
 import { parseStudentsExcel, parseStudentsWorkbook } from "./excel.js";
 import { parseGradesExcel, parseGradesWorkbook } from "./importGradesExcel.js";
 import { ensureTeacherGroups, listTeacherGroups, placeholderPasswordHash } from "./groups.js";
-import { dedupeStudentsForTeacher, removeJunkStudentsForGroup } from "./dedupeStudents.js";
+import {
+  dedupeStudentsForTeacher,
+  deleteStudentAndRelated,
+  removeJunkStudentsForGroup,
+} from "./dedupeStudents.js";
 import { importStudentRows } from "./importStudents.js";
 import { importGradesForGroup, type GradeImportMode } from "./importGrades.js";
 import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
@@ -538,10 +542,20 @@ teacherGroupsRouter.delete("/groups/:groupId/students/:studentId", async (req: A
     where: { id: studentId, role: "STUDENT", groupId, group: { teacherId: req.auth!.userId } },
     select: { id: true, displayName: true, controlNumber: true },
   });
-  if (!student) return res.status(404).json({ error: "student_not_found" });
+  if (!student) {
+    return res.status(404).json({
+      error: "student_not_found",
+      message: "No se encontró al alumno en este grupo.",
+    });
+  }
 
-  await prisma.user.delete({ where: { id: student.id } });
-  return res.json({ ok: true, deletedId: student.id });
+  await deleteStudentAndRelated(student.id);
+  return res.json({
+    ok: true,
+    deletedId: student.id,
+    displayName: student.displayName,
+    controlNumber: student.controlNumber,
+  });
 });
 
 teacherGroupsRouter.get("/groups/:groupId/delivery-status", async (req: AuthedRequest, res) => {

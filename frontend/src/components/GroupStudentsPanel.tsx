@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import {
+  deleteGroupStudent,
   downloadStudentsTemplate,
   fetchGroupStudents,
   getApiErrorMessage,
@@ -97,6 +98,44 @@ export default function GroupStudentsPanel({
     },
     onError: (err) => setMessage({ type: "err", text: getApiErrorMessage(err) }),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (student: { id: string; name: string; control: string }) =>
+      deleteGroupStudent(selectedGroupId, student.id),
+    onSuccess: (data) => {
+      if (resetTarget?.id === data.deletedId) {
+        setResetTarget(null);
+        setNewPassword("");
+      }
+      setMessage({
+        type: "ok",
+        text: `Se eliminó a ${data.displayName}${data.controlNumber ? ` (${data.controlNumber})` : ""} del sistema.`,
+      });
+      qc.invalidateQueries({ queryKey: ["group-students"] });
+      qc.invalidateQueries({ queryKey: ["groups"] });
+      qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
+      qc.invalidateQueries({ queryKey: ["grades"] });
+      qc.invalidateQueries({ queryKey: ["listas-f1-preview"] });
+      qc.invalidateQueries({ queryKey: ["delivery-status", selectedGroupId] });
+      qc.invalidateQueries({ queryKey: ["class-day"] });
+      qc.invalidateQueries({ queryKey: ["seating"] });
+      qc.invalidateQueries({ queryKey: ["group-weeks", selectedGroupId] });
+      qc.invalidateQueries({ queryKey: ["partial-summary", selectedGroupId] });
+      qc.invalidateQueries({ queryKey: ["teacher-skill-survey", selectedGroupId] });
+      qc.invalidateQueries({ queryKey: ["office-exam-teacher"] });
+    },
+    onError: (err) => setMessage({ type: "err", text: getApiErrorMessage(err) }),
+  });
+
+  function handleDeleteStudent(s: { id: string; displayName: string; controlNumber: string | null }) {
+    const control = s.controlNumber ?? "sin control";
+    const ok = window.confirm(
+      `¿Eliminar a ${s.displayName} (${control}) del sistema?\n\nSe quitará del ranking, calificaciones, asistencia, LISTAS F1 y ya no podrá entrar. Esta acción no se puede deshacer.`,
+    );
+    if (!ok) return;
+    setMessage(null);
+    deleteMutation.mutate({ id: s.id, name: s.displayName, control });
+  }
 
   const groupsLabelPlus = formatGroupCodesPlus(groups);
   const groupsLabelAnd = formatGroupCodesAnd(groups);
@@ -229,6 +268,9 @@ export default function GroupStudentsPanel({
         <h3 className="mb-3 font-semibold text-white">
           Alumnos del grupo ({studentsQuery.data?.students.length ?? 0})
         </h3>
+        <p className="mb-3 text-xs text-slate-500">
+          Eliminar quita al alumno del sistema: ranking, calificaciones, asistencia y LISTAS F1. No se puede deshacer.
+        </p>
         {studentsQuery.isLoading ? (
           <p className="text-sm text-slate-400">Cargando...</p>
         ) : (
@@ -239,7 +281,7 @@ export default function GroupStudentsPanel({
                   <th className="px-4 py-2">No. control</th>
                   <th className="px-4 py-2">Nombre</th>
                   <th className="px-4 py-2">Contraseña</th>
-                  <th className="px-4 py-2">Acción</th>
+                  <th className="px-4 py-2">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,19 +291,32 @@ export default function GroupStudentsPanel({
                     <td className="px-4 py-2 text-white">{s.displayName}</td>
                     <td className="px-4 py-2 text-xs text-slate-300">{s.passwordLabel}</td>
                     <td className="px-4 py-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setResetTarget({
-                            id: s.id,
-                            name: s.displayName,
-                            control: s.controlNumber ?? "",
-                          })
-                        }
-                        className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-100 hover:bg-amber-500/20"
-                      >
-                        Restablecer
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setResetTarget({
+                              id: s.id,
+                              name: s.displayName,
+                              control: s.controlNumber ?? "",
+                            })
+                          }
+                          className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-100 hover:bg-amber-500/20"
+                        >
+                          Restablecer
+                        </button>
+                        <button
+                          type="button"
+                          title="Eliminar del sistema"
+                          onClick={() => handleDeleteStudent(s)}
+                          disabled={deleteMutation.isPending && deleteMutation.variables?.id === s.id}
+                          className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
+                        >
+                          {deleteMutation.isPending && deleteMutation.variables?.id === s.id
+                            ? "Eliminando..."
+                            : "Eliminar"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

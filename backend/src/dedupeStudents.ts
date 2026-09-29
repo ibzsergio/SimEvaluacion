@@ -75,11 +75,18 @@ async function mergeStudentData(keeperId: string, removeId: string) {
 }
 
 export async function deleteStudentAndRelated(studentId: string) {
-  await prisma.grade.deleteMany({ where: { studentId } });
-  await prisma.submission.deleteMany({ where: { studentId } });
-  await prisma.weeklyWinner.deleteMany({ where: { studentId } });
-  await prisma.partialExamScore.deleteMany({ where: { studentId } });
-  await prisma.user.delete({ where: { id: studentId } });
+  await prisma.$transaction([
+    prisma.grade.deleteMany({ where: { studentId } }),
+    prisma.submission.deleteMany({ where: { studentId } }),
+    prisma.weeklyWinner.deleteMany({ where: { studentId } }),
+    prisma.partialExamScore.deleteMany({ where: { studentId } }),
+    prisma.classDayRecord.deleteMany({ where: { studentId } }),
+    prisma.seatingAssignment.deleteMany({ where: { studentId } }),
+    prisma.skillSurveyResponse.deleteMany({ where: { studentId } }),
+    prisma.projectTeamMember.deleteMany({ where: { studentId } }),
+    prisma.officeExamAttempt.deleteMany({ where: { studentId } }),
+    prisma.user.delete({ where: { id: studentId } }),
+  ]);
 }
 
 export async function removeJunkStudentsForGroup(groupId: string): Promise<number> {

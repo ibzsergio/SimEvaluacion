@@ -323,6 +323,16 @@ export async function importStudentsExcel(groupId: string, file: File) {
   return data;
 }
 
+export async function deleteGroupStudent(groupId: string, studentId: string) {
+  const { data } = await api.delete<{
+    ok: true;
+    deletedId: string;
+    displayName: string;
+    controlNumber: string | null;
+  }>(`/teacher/groups/${groupId}/students/${studentId}`);
+  return data;
+}
+
 export async function resetStudentPassword(groupId: string, studentId: string, newPassword: string) {
   const { data } = await api.put<{
     controlNumber: string | null;
