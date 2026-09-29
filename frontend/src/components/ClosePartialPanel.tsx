@@ -24,6 +24,14 @@ function liveTotal(scale6: number, draft: string) {
   return Math.round(Math.min(10, scale6 + parsed) * 10) / 10;
 }
 
+function sortRowsByName(rows: ListasF1PreviewRow[]) {
+  return [...rows].sort(
+    (a, b) =>
+      a.displayName.localeCompare(b.displayName, "es", { sensitivity: "base" }) ||
+      (a.listNumber ?? 999) - (b.listNumber ?? 999),
+  );
+}
+
 export default function ClosePartialPanel({
   groups,
   selectedGroupId,
@@ -64,18 +72,21 @@ export default function ClosePartialPanel({
     setDrafts(next);
   }, [preview, dirty]);
 
+  const examRows = useMemo(
+    () => (preview ? sortRowsByName(preview.rows) : []),
+    [preview],
+  );
+
   const capturedCount = useMemo(() => {
-    if (!preview) return 0;
-    return preview.rows.filter((row) => {
+    return examRows.filter((row) => {
       const parsed = parseExamDraft(drafts[row.studentId] ?? "");
       return parsed !== "invalid" && parsed != null;
     }).length;
-  }, [preview, drafts]);
+  }, [examRows, drafts]);
 
   const invalidCount = useMemo(() => {
-    if (!preview) return 0;
-    return preview.rows.filter((row) => parseExamDraft(drafts[row.studentId] ?? "") === "invalid").length;
-  }, [preview, drafts]);
+    return examRows.filter((row) => parseExamDraft(drafts[row.studentId] ?? "") === "invalid").length;
+  }, [examRows, drafts]);
 
   const closeMutation = useMutation({
     mutationFn: (closed: boolean) => updateGroupPartialSettings(selectedGroupId, { partialClosed: closed }),
@@ -239,7 +250,7 @@ export default function ClosePartialPanel({
               </span>
             ))}
             <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
-              Examen capturado: {capturedCount}/{preview.rows.length}
+              Examen capturado: {capturedCount}/{examRows.length}
             </span>
           </div>
           {missingSheets.length > 0 ? (
@@ -264,7 +275,7 @@ export default function ClosePartialPanel({
             <button
               type="button"
               onClick={() => saveExamMutation.mutate()}
-              disabled={saveExamMutation.isPending || invalidCount > 0 || !preview.rows.length}
+              disabled={saveExamMutation.isPending || invalidCount > 0 || !examRows.length}
               className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
             >
               {saveExamMutation.isPending ? "Guardando..." : "Guardar calificaciones de examen"}
@@ -275,7 +286,6 @@ export default function ClosePartialPanel({
             <table className="min-w-full text-sm">
               <thead className="sticky top-0 bg-slate-900/90 text-left text-xs uppercase tracking-wide text-slate-400">
                 <tr>
-                  <th className="px-3 py-2">Prioridad</th>
                   <th className="px-3 py-2">Alumno</th>
                   <th className="px-3 py-2">% Asist.</th>
                   <th className="px-3 py-2">Escala / 6</th>
@@ -284,7 +294,7 @@ export default function ClosePartialPanel({
                 </tr>
               </thead>
               <tbody>
-                {preview.rows.map((row) => (
+                {examRows.map((row) => (
                   <ExamCaptureRow
                     key={row.studentId}
                     row={row}
@@ -296,9 +306,9 @@ export default function ClosePartialPanel({
                     }}
                   />
                 ))}
-                {!preview.rows.length ? (
+                {!examRows.length ? (
                   <tr>
-                    <td className="px-3 py-3 text-slate-500" colSpan={6}>
+                    <td className="px-3 py-3 text-slate-500" colSpan={5}>
                       Este grupo aún no tiene alumnos.
                     </td>
                   </tr>
@@ -378,18 +388,16 @@ function ExamCaptureRow({
       }`}
     >
       <td className="px-3 py-1.5 align-top">
-        <p className={`font-semibold ${priority ? "text-amber-200" : "text-slate-300"}`}>#{row.deliveryPriority}</p>
-        <p className="text-[11px] text-slate-500">
-          {row.firstGradings > 0
-            ? `${row.firstGradings} ${row.firstGradings === 1 ? "vez" : "veces"} 1°`
-            : "sin 1°"}
-          {row.place ? ` · ranking #${row.place}` : ""}
-        </p>
-        {row.firstGradedAt ? (
-          <p className="text-[11px] text-slate-600">1ª entrega {formatDateTime(row.firstGradedAt)}</p>
+        <p className="font-medium text-white">{row.displayName}</p>
+        {priority ? (
+          <p className="text-[11px] text-amber-200/90">
+            Prioridad para el 4 · entregó primero
+            {row.firstGradedAt ? ` · ${formatDateTime(row.firstGradedAt)}` : ""}
+          </p>
+        ) : row.firstGradedAt ? (
+          <p className="text-[11px] text-slate-500">1ª entrega {formatDateTime(row.firstGradedAt)}</p>
         ) : null}
       </td>
-      <td className="px-3 py-1.5 align-top text-slate-200">{row.displayName}</td>
       <td className="px-3 py-1.5 align-top text-slate-300">{row.attendancePercent}%</td>
       <td className="px-3 py-1.5 align-top font-semibold text-cyan-100">{row.scale6.toFixed(1)}</td>
       <td className="px-3 py-1.5 align-top">

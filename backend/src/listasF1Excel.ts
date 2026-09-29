@@ -329,7 +329,7 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
 
   const rows = [...withPriority].sort(
     (a, b) =>
-      a.displayName.localeCompare(b.displayName, "es") ||
+      a.displayName.localeCompare(b.displayName, "es", { sensitivity: "base" }) ||
       (a.listNumber ?? 999) - (b.listNumber ?? 999),
   );
 
