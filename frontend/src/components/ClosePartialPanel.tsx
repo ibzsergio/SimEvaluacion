@@ -6,6 +6,7 @@ import {
   getApiErrorMessage,
   saveGroupExamScores,
   startNextPartial,
+  updateGroupDiplomaSettings,
   updateGroupPartialSettings,
 } from "../lib/api";
 import { formatDateTime, partialLabel } from "../lib/dates";
@@ -43,6 +44,7 @@ export default function ClosePartialPanel({
   const qc = useQueryClient();
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const partialClosed = selectedGroup?.partialClosed ?? false;
+  const diplomaEnabled = selectedGroup?.diplomaEnabled ?? false;
   const currentPartial = selectedGroup?.currentPartial ?? 1;
   const nextPartial = currentPartial + 1;
   const [downloading, setDownloading] = useState(false);
@@ -102,7 +104,11 @@ export default function ClosePartialPanel({
       await qc.invalidateQueries({ queryKey: ["student-progress"] });
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
       setActionError("");
-      setActionSuccess(closed ? "Parcial cerrado. Se descargó LISTAS F1 con asistencia, escala y examen." : "Parcial reabierto.");
+      setActionSuccess(
+        closed
+          ? "Parcial cerrado. Valida las calificaciones y luego activa los diplomas. LISTAS F1 se descargó."
+          : "Parcial reabierto. Los diplomas quedaron desactivados.",
+      );
     },
     onError: (error) => {
       setActionSuccess("");
@@ -152,6 +158,34 @@ export default function ClosePartialPanel({
     },
   });
 
+  const diplomaMutation = useMutation({
+    mutationFn: (enabled: boolean) => updateGroupDiplomaSettings(selectedGroupId, { diplomaEnabled: enabled }),
+    onSuccess: async (_, enabled) => {
+      await qc.invalidateQueries({ queryKey: ["groups"] });
+      await qc.invalidateQueries({ queryKey: ["student-progress"] });
+      setActionError("");
+      setActionSuccess(
+        enabled
+          ? "Diplomas activados. Cada alumno ya puede descargar su reconocimiento con frase según su lugar en el ranking."
+          : "Diplomas desactivados. Los alumnos ya no pueden descargarlos.",
+      );
+    },
+    onError: (error) => {
+      setActionSuccess("");
+      setActionError(getApiErrorMessage(error));
+    },
+  });
+
+  function handleToggleDiplomas() {
+    if (!diplomaEnabled) {
+      const ok = window.confirm(
+        "¿Activar diplomas para este grupo?\n\nConfirma que ya validaste las calificaciones. Los alumnos podrán descargar su diploma con una frase motivadora según su posición en el ranking.",
+      );
+      if (!ok) return;
+    }
+    diplomaMutation.mutate(!diplomaEnabled);
+  }
+
   function handleStartNextPartial() {
     const ok = window.confirm(
       `¿Comenzar ${partialLabel(nextPartial).toLowerCase()}?\n\nLas actividades actuales se compactan (no se borran). Las nuevas se publican ya como ${partialLabel(nextPartial).toLowerCase()}.\n\nNo hace falta capturar el examen ni cerrar el parcial; eso lo puedes hacer después.`,
@@ -188,7 +222,7 @@ export default function ClosePartialPanel({
     const missingNote =
       missing > 0 ? `\n\nAún faltan ${missing} alumno(s) sin examen; su columna Examen quedará vacía.` : "";
     const ok = window.confirm(
-      `¿Cerrar el parcial de este grupo?${missingNote}\n\nSe descargará LISTAS F1 con % de asistencia, escala (máx. 6) y examen (máx. 4).\nLos alumnos podrán descargar su diploma.`,
+      `¿Cerrar el parcial de este grupo?${missingNote}\n\nSe descargará LISTAS F1 con % de asistencia, escala (máx. 6) y examen (máx. 4).\nLos alumnos NO podrán descargar diploma hasta que valides calificaciones y pulses Activar diplomas.`,
     );
     if (!ok) return;
     try {
@@ -211,6 +245,7 @@ export default function ClosePartialPanel({
           <p className="mt-1 text-sm text-slate-400">
             Grupo {selectedGroup?.code} · {selectedGroup?.shift}
             {partialClosed ? " · Parcial cerrado" : " · Parcial abierto"}
+            {diplomaEnabled ? " · Diplomas activos" : partialClosed ? " · Diplomas pendientes de validar" : ""}
             {currentPartial > 1 ? ` · Publicando ${partialLabel(currentPartial).toLowerCase()}` : ""}
           </p>
         </div>
@@ -228,14 +263,32 @@ export default function ClosePartialPanel({
             </button>
           ) : null}
           {partialClosed ? (
-            <button
-              type="button"
-              onClick={() => closeMutation.mutate(false)}
-              disabled={closeMutation.isPending || !selectedGroupId}
-              className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-200 disabled:opacity-60"
-            >
-              {closeMutation.isPending ? "Guardando..." : "Reabrir parcial"}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleToggleDiplomas}
+                disabled={diplomaMutation.isPending || !selectedGroupId}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 ${
+                  diplomaEnabled
+                    ? "border border-amber-400/30 bg-amber-500/10 text-amber-200"
+                    : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+                }`}
+              >
+                {diplomaMutation.isPending
+                  ? "Guardando..."
+                  : diplomaEnabled
+                    ? "Desactivar diplomas"
+                    : "Activar diplomas"}
+              </button>
+              <button
+                type="button"
+                onClick={() => closeMutation.mutate(false)}
+                disabled={closeMutation.isPending || !selectedGroupId}
+                className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-200 disabled:opacity-60"
+              >
+                {closeMutation.isPending ? "Guardando..." : "Reabrir parcial"}
+              </button>
+            </>
           ) : null}
         </div>
       </div>
@@ -367,8 +420,11 @@ export default function ClosePartialPanel({
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-400/20 bg-rose-500/5 px-4 py-3">
         <p className="text-sm text-slate-300">
-          El examen no es requisito para publicar el siguiente parcial. Cuando lo captures, cierra y descarga
-          LISTAS F1.
+          {partialClosed
+            ? diplomaEnabled
+              ? "Los diplomas ya están activos. Puedes desactivarlos si aún hay que corregir algo."
+              : "Parcial cerrado. Valida las calificaciones y pulsa Activar diplomas para que los alumnos descarguen su reconocimiento."
+            : "El examen no es requisito para publicar el siguiente parcial. Al cerrar, LISTAS F1 se descarga; los diplomas se activan después, cuando valides."}
         </p>
         <div className="flex flex-wrap gap-2">
           {partialClosed ? (

@@ -386,6 +386,8 @@ teacherGroupsRouter.put("/groups/:groupId/partial-settings", async (req: AuthedR
       // Si ya comenzaron el siguiente parcial (sin examen), no saltar otro.
       // Si aún publican el 1°, al cerrar pasan al 2°.
       currentPartial: closingNow ? Math.max(group.currentPartial, 2) : undefined,
+      diplomaEnabled: false,
+      diplomaEnabledAt: null,
     },
     select: {
       id: true,
@@ -397,6 +399,8 @@ teacherGroupsRouter.put("/groups/:groupId/partial-settings", async (req: AuthedR
       partialClosed: true,
       partialClosedAt: true,
       currentPartial: true,
+      diplomaEnabled: true,
+      diplomaEnabledAt: true,
     },
   });
 
@@ -432,6 +436,53 @@ teacherGroupsRouter.post("/groups/:groupId/start-next-partial", async (req: Auth
       partialClosed: true,
       partialClosedAt: true,
       currentPartial: true,
+      diplomaEnabled: true,
+      diplomaEnabledAt: true,
+    },
+  });
+
+  return res.json({ group: updated });
+});
+
+teacherGroupsRouter.put("/groups/:groupId/diploma-settings", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      diplomaEnabled: z.boolean(),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true, partialClosed: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  if (body.data.diplomaEnabled && !group.partialClosed) {
+    return res.status(400).json({
+      error: "diploma_requires_close",
+      message: "Cierra el parcial y valida las calificaciones antes de activar diplomas.",
+    });
+  }
+
+  const updated = await prisma.classGroup.update({
+    where: { id: groupId },
+    data: {
+      diplomaEnabled: body.data.diplomaEnabled,
+      diplomaEnabledAt: body.data.diplomaEnabled ? new Date() : null,
+    },
+    select: {
+      id: true,
+      code: true,
+      shift: true,
+      plannedActivities: true,
+      progressClosed: true,
+      progressClosedAt: true,
+      partialClosed: true,
+      partialClosedAt: true,
+      currentPartial: true,
+      diplomaEnabled: true,
+      diplomaEnabledAt: true,
     },
   });
 

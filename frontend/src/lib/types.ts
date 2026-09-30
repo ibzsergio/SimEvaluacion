@@ -12,6 +12,8 @@ export type ClassGroup = {
   partialClosed?: boolean;
   partialClosedAt?: string | null;
   currentPartial?: number;
+  diplomaEnabled?: boolean;
+  diplomaEnabledAt?: string | null;
 };
 
 export type User = {

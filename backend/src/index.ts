@@ -37,6 +37,7 @@ import { ensureClassDaySchema } from "./ensureClassDaySchema.js";
 import { ensureSkillSurveySchema } from "./ensureSkillSurveySchema.js";
 import { ensurePartialExamSchema } from "./ensurePartialExamSchema.js";
 import { ensurePartialCutSchema } from "./ensurePartialCutSchema.js";
+import { ensureDiplomaSchema } from "./ensureDiplomaSchema.js";
 import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
@@ -475,6 +476,8 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
       progressClosed: true,
       partialClosed: true,
       partialClosedAt: true,
+      diplomaEnabled: true,
+      diplomaEnabledAt: true,
     },
   });
 
@@ -653,12 +656,19 @@ app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => 
       shift: true,
       partialClosed: true,
       partialClosedAt: true,
+      diplomaEnabled: true,
     },
   });
   if (!group?.partialClosed || !group.partialClosedAt) {
     return res.status(403).json({
       error: "partial_not_closed",
-      message: "El diploma estará disponible cuando el docente cierre el parcial.",
+      message: "El diploma estará disponible cuando el docente cierre el parcial y active los diplomas.",
+    });
+  }
+  if (!group.diplomaEnabled) {
+    return res.status(403).json({
+      error: "diploma_not_enabled",
+      message: "El docente está validando calificaciones. El diploma se habilitará cuando lo autorice.",
     });
   }
 
@@ -801,6 +811,7 @@ void (async () => {
     await ensureSkillSurveySchema();
     await ensurePartialExamSchema();
     await ensurePartialCutSchema();
+    await ensureDiplomaSchema();
   } catch (err) {
     console.error("[startup] Startup schema failed:", err);
     process.exit(1);

@@ -9,7 +9,7 @@ import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
 import { formatCalendarDate, formatDateTime } from "../lib/dates";
-import { getExemptionStatus } from "../lib/exemption";
+import { getDiplomaEncouragement, getDiplomaHeadline, getExemptionStatus } from "../lib/exemption";
 import { useAuth } from "../lib/auth";
 import type { ActivityStatus, StudentActivity } from "../lib/types";
 
@@ -42,6 +42,13 @@ export default function StudentPage() {
   const progress = data.courseProgress;
   const progressPct = progress.percent;
   const partialClosed = data.group?.partialClosed ?? false;
+  const diplomaEnabled = data.group?.diplomaEnabled ?? false;
+  const diplomaHeadline = getDiplomaHeadline(data.my.place);
+  const diplomaPhrase = getDiplomaEncouragement(
+    data.my.place,
+    data.my.totalStudents,
+    data.motivation.firstName,
+  );
   const motivation = {
     ...data.motivation,
     exemption: getExemptionStatus(data.my.place, partialClosed),
@@ -84,13 +91,21 @@ export default function StudentPage() {
 
       <StudentCommunication />
 
-      {data.group?.partialClosed ? (
-        <section className="glass mb-6 border border-indigo-400/30 bg-indigo-500/10 p-6">
-          <h2 className="text-lg font-semibold text-white">Parcial finalizado — Tu diploma</h2>
+      {partialClosed && !diplomaEnabled ? (
+        <section className="glass mb-6 border border-amber-400/30 bg-amber-500/10 p-6">
+          <h2 className="text-lg font-semibold text-white">Parcial cerrado — Diploma en validación</h2>
           <p className="mt-2 text-sm text-slate-300">
-            El docente cerró el parcial. Descarga e imprime tu diploma personalizado con tu nombre,
-            lugar en el ranking y reconocimiento por tu trabajo en la materia.
+            El docente está revisando las calificaciones. Tu diploma se habilitará cuando lo autorice;
+            incluirá una frase según tu lugar #{data.my.place} en el ranking.
           </p>
+        </section>
+      ) : null}
+
+      {diplomaEnabled ? (
+        <section className="glass mb-6 border border-indigo-400/30 bg-indigo-500/10 p-6">
+          <h2 className="text-lg font-semibold text-white">Tu diploma está listo</h2>
+          <p className="mt-2 text-sm font-semibold text-cyan-200">{diplomaHeadline}</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-300">{diplomaPhrase}</p>
           <button
             type="button"
             disabled={downloadingDiploma}

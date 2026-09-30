@@ -77,7 +77,8 @@ function DiplomaMockup({
           </div>
 
           <p className="mt-3 rounded-lg border border-slate-200 bg-slate-100 p-2 text-[11px] leading-relaxed text-slate-600">
-            Reconocimiento por el trabajo realizado en el parcial, con mensaje personalizado según
+            Frase motivadora según el lugar en el ranking: #1 referente excepcional, podio, Top 10,
+            zona 11–20 o constancia para el resto.
             ranking y desempeño en la materia.
           </p>
 

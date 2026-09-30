@@ -47,14 +47,40 @@ export function getExemptionStatus(place: number, partialClosed = false): Exempt
   };
 }
 
-export function getDiplomaEncouragement(place: number, totalStudents: number): string {
+export function getDiplomaHeadline(place: number): string {
+  if (place === 1) return "Referente excepcional del parcial";
+  if (place === 2) return "Excelencia que inspira al grupo";
+  if (place === 3) return "Talento de podio, carácter de líder";
+  if (place <= 10) return "Élite del desempeño: Top 10";
+  if (place <= 20) return "Cerca de la cima, con rumbo claro";
+  return "Constancia que construye un gran futuro";
+}
+
+export function getDiplomaEncouragement(
+  place: number,
+  totalStudents: number,
+  firstName?: string,
+): string {
+  const name = firstName?.trim() || "";
+  const vocative = name ? `${name}, ` : "";
+  const total = Math.max(1, totalStudents);
+
+  if (place === 1) {
+    return `${vocative}ocupaste el lugar #1 de ${total}. No fue casualidad: tu constancia, la calidad de tus entregas y tu presencia en clase te convierten en el referente excepcional de este parcial. Este diploma reconoce una trayectoria que ya marca la diferencia. ¡Felicitaciones por un desempeño extraordinario!`;
+  }
+  if (place === 2) {
+    return `${vocative}llegaste al lugar #2 de ${total}. Estuviste a un paso de la cima y tu trabajo se siente en cada actividad. Eres ejemplo de excelencia y de cómo el esfuerzo constante inspira a todo el grupo. ¡Sigue brillando con esa misma fuerza!`;
+  }
+  if (place === 3) {
+    return `${vocative}cerraste el parcial en el lugar #3 de ${total}. Subiste al podio con mérito propio: disciplina, entrega y carácter. Este reconocimiento celebra a alguien que ya lidera con resultados. ¡El siguiente salto está a tu alcance!`;
+  }
   if (place <= 10) {
-    return `Obtuviste el lugar #${place} de ${totalStudents} en el ranking del parcial. Tu constancia, puntualidad y calidad en las actividades te hacen merecedor(a) de este reconocimiento. ¡Felicitaciones por tu excelente desempeño!`;
+    return `${vocative}formaste parte de la élite: lugar #${place} de ${total}. Tu lugar en el Top 10 no es un premio menor; es la prueba de un semestre trabajado con seriedad. Quedas EXENTADO del examen final por un desempeño digno de este diploma. ¡Orgullo merecido!`;
   }
   if (place <= 20) {
-    return `Concluiste el parcial en el lugar #${place} de ${totalStudents}. Has demostrado compromiso y avance sólido en la materia. Sigue con esa actitud: estás muy cerca de alcanzar la exención del examen final.`;
+    return `${vocative}concluiste en el lugar #${place} de ${total}. Estás en la zona alta del grupo y muy cerca de la exención. Tu avance es visible y sólido: una racha más de entregas impecables te puede llevar al Top 10. ¡No aflojes ahora!`;
   }
-  return `Finalizaste el parcial en el lugar #${place} de ${totalStudents}. Tu esfuerzo en la materia es valioso y visible. No te detengas: cada actividad te acerca más a tus metas académicas.`;
+  return `${vocative}finalizaste en el lugar #${place} de ${total}. Tu esfuerzo cuenta y se nota. Este diploma no cierra tu historia: afirma que ya empezaste el camino. Cada actividad bien hecha te acerca a un lugar más alto. ¡Sigue, porque tu mejor parcial todavía puede escribirse!`;
 }
 
 export const DIPLOMA_TEACHER_NAME = "Ing. Sergio Ibañez Montiel";

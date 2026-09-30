@@ -84,7 +84,19 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "partial_not_closed") {
       return (
         (error.response.data as { message?: string })?.message ??
-        "El diploma estará disponible cuando el docente cierre el parcial."
+        "El diploma estará disponible cuando el docente cierre el parcial y active los diplomas."
+      );
+    }
+    if (code === "diploma_not_enabled") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "El docente está validando calificaciones. El diploma se habilitará cuando lo autorice."
+      );
+    }
+    if (code === "diploma_requires_close") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Cierra el parcial y valida las calificaciones antes de activar diplomas."
       );
     }
     if (code === "group_not_found") {
@@ -247,6 +259,14 @@ export async function updateGroupPartialSettings(groupId: string, payload: { par
 export async function startNextPartial(groupId: string) {
   const { data } = await api.post<{ group: ClassGroup }>(
     `/teacher/groups/${groupId}/start-next-partial`,
+  );
+  return data.group;
+}
+
+export async function updateGroupDiplomaSettings(groupId: string, payload: { diplomaEnabled: boolean }) {
+  const { data } = await api.put<{ group: ClassGroup }>(
+    `/teacher/groups/${groupId}/diploma-settings`,
+    payload,
   );
   return data.group;
 }

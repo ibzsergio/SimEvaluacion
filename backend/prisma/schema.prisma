@@ -48,6 +48,9 @@ model ClassGroup {
   partialClosedAt DateTime?
   /// Parcial en el que se publican las actividades nuevas (1, 2, …).
   currentPartial Int @default(1)
+  /// El docente activa diplomas después de validar calificaciones (no al cerrar).
+  diplomaEnabled Boolean @default(false)
+  diplomaEnabledAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

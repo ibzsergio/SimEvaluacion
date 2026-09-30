@@ -99,7 +99,7 @@ export default function WeeklyWinnersPanel({
               onClick={() => {
                 if (!partialClosed) {
                   const ok = window.confirm(
-                    "¿Cerrar el parcial?\n\nLos alumnos podrán descargar e imprimir su diploma personalizado (PDF).\nYa no podrás cerrar semanas hasta que reabras el parcial.",
+                    "¿Cerrar el parcial?\n\nYa no podrás cerrar semanas hasta que reabras.\nLos alumnos NO podrán descargar diploma hasta que valides calificaciones y pulses Activar diplomas en Actividades.",
                   );
                   if (!ok) return;
                 }
@@ -116,21 +116,20 @@ export default function WeeklyWinnersPanel({
                 ? "Guardando..."
                 : partialClosed
                   ? "Reabrir parcial"
-                  : "Finalizar parcial y habilitar diplomas"}
+                  : "Finalizar parcial"}
             </button>
           </div>
         </div>
 
         {partialClosed ? (
           <p className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-            Parcial finalizado: los alumnos ya pueden descargar su diploma (PDF). Los resultados del
-            ranking quedan congelados.
+            Parcial finalizado: el ranking queda congelado. Los diplomas se activan en Actividades
+            cuando termines de validar calificaciones.
           </p>
         ) : (
           <p className="mt-3 rounded-lg border border-indigo-400/25 bg-indigo-500/5 px-3 py-2 text-xs text-slate-400">
-            Cuando termines de calificar todas las actividades, usa{" "}
-            <strong className="text-indigo-200">Finalizar parcial y habilitar diplomas</strong> para que
-            cada alumno imprima su reconocimiento con su lugar en el ranking.
+            Cuando termines de calificar, usa <strong className="text-indigo-200">Finalizar parcial</strong>.
+            Después valida las notas y activa diplomas desde Actividades.
           </p>
         )}
 

@@ -1,8 +1,10 @@
 import PDFDocument from "pdfkit";
+import { firstNameFromDisplayName } from "./dailyMotivation.js";
 import {
   DIPLOMA_SUBJECT_NAME,
   DIPLOMA_TEACHER_NAME,
   getDiplomaEncouragement,
+  getDiplomaHeadline,
   getExemptionStatus,
   type ExemptionTier,
 } from "./exemptionStatus.js";
@@ -121,7 +123,9 @@ function drawSeal(
 export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDocument> {
   const doc = new PDFDocument({ size: "LETTER", layout: "landscape", margin: 0 });
   const exemption = getExemptionStatus(input.place, true);
-  const encouragement = getDiplomaEncouragement(input.place, input.totalStudents);
+  const firstName = firstNameFromDisplayName(input.studentName);
+  const headline = getDiplomaHeadline(input.place);
+  const encouragement = getDiplomaEncouragement(input.place, input.totalStudents, firstName);
   const dateLabel = input.partialClosedAt.toLocaleDateString("es-MX", {
     day: "numeric",
     month: "long",
@@ -209,8 +213,10 @@ export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDoc
   const msgH = innerH - (msgY - innerY) - 58;
   doc.roundedRect(leftX, msgY, contentW, msgH, 6).fill("#f1f5f9");
   doc.roundedRect(leftX, msgY, contentW, msgH, 6).lineWidth(0.8).stroke(C.line);
+  doc.fillColor(C.indigoDark).font("Helvetica-Bold").fontSize(12);
+  doc.text(headline, leftX + 14, msgY + 10, { width: contentW - 28 });
   doc.fillColor(C.slate).font("Helvetica").fontSize(10.5);
-  doc.text(encouragement, leftX + 14, msgY + 12, {
+  doc.text(encouragement, leftX + 14, msgY + 30, {
     width: contentW - 28,
     align: "justify",
     lineGap: 3,

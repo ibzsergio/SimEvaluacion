@@ -41,6 +41,8 @@ export async function resetSemesterForTeacher(
         progressClosedAt: null,
         plannedActivities: null,
         currentPartial: 1,
+        diplomaEnabled: false,
+        diplomaEnabledAt: null,
       },
     });
   }
