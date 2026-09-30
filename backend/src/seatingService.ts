@@ -435,14 +435,37 @@ export async function dedupeSeatingSessions() {
   }
 }
 
+/** Fechas con acomodo guardado, más reciente primero. */
+async function listSeatingDates(groupId: string) {
+  const rows = await prisma.seatingSession.findMany({
+    where: { groupId },
+    select: { date: true },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+  });
+  const dates: string[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const iso = formatClassDayIso(row.date);
+    if (seen.has(iso)) continue;
+    seen.add(iso);
+    dates.push(iso);
+  }
+  return dates;
+}
+
 export async function getSeatingPlan(teacherId: string, groupId: string, date: Date) {
   const loaded = await loadGroupStudents(groupId, teacherId);
   if (!loaded) return null;
 
   const dateIso = formatClassDayIso(date);
-  const session = await findSeatingSession(groupId, dateIso);
+  let session = await findSeatingSession(groupId, dateIso);
+  if (!session) {
+    session = await findLatestSeatingSession(groupId);
+  }
 
   const studentIndex = new Map(loaded.students.map((s, i) => [s.id, i]));
+  const assignedDate = session ? formatClassDayIso(session.date) : null;
+  const isCarriedOver = Boolean(session && assignedDate && assignedDate !== dateIso);
   const mode = (session?.mode as SeatingMode) ?? "random";
   const theme = (session?.theme as SeatingTheme) ?? "column_colors";
   const assignments = session
@@ -456,10 +479,17 @@ export async function getSeatingPlan(teacherId: string, groupId: string, date: D
         },
       }))
     : [];
+  const seatedIds = new Set(assignments.map((a) => a.student.id));
+  const unseatedStudents = loaded.students
+    .map((s, i) => ({ id: s.id, displayName: s.displayName, listPosition: i + 1 }))
+    .filter((s) => !seatedIds.has(s.id));
 
   return {
     group: loaded.group,
     date: dateIso,
+    assignedDate,
+    isCarriedOver,
+    history: await listSeatingDates(groupId),
     rows: SEATING_ROWS,
     cols: SEATING_COLS,
     capacity: SEATING_CAPACITY,
@@ -468,7 +498,8 @@ export async function getSeatingPlan(teacherId: string, groupId: string, date: D
     theme,
     assignedCount: assignments.length,
     studentCount: loaded.students.length,
-    unseatedCount: Math.max(0, loaded.students.length - assignments.length),
+    unseatedCount: unseatedStudents.length,
+    unseatedStudents,
     overflow: loaded.students.length > SEATING_CAPACITY,
     grid: buildGrid(theme, assignments),
     updatedAt: session?.createdAt?.toISOString() ?? null,

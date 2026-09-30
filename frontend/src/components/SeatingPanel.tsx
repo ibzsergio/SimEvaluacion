@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { fetchSeatingPlan, getApiErrorMessage, shuffleSeatingPlan } from "../lib/api";
-import { todayLocalIso } from "../lib/dates";
+import { todayLocalIso, formatCalendarDate } from "../lib/dates";
 import type { ClassGroup, SeatingCell, SeatingMode, SeatingPlan, SeatingTheme } from "../lib/types";
 
 const COLUMN_LABELS = ["A", "B", "C", "D", "E", "F"];
@@ -142,8 +142,9 @@ export default function SeatingPanel({
           <div>
             <h2 className="text-lg font-semibold text-white">Acomodo de butacas 6×6</h2>
             <p className="mt-1 max-w-xl text-sm text-slate-400">
-              Elige cómo colocar a los alumnos y qué colores verán en su app. Solo tú ves el aula
-              completa; ellos solo ven su lugar del día.
+              El aula completa queda guardada. Al día siguiente sigues viendo el acomodo vigente
+              (el mismo que ven los alumnos) para pasar lista de lugares. Solo se cambia si vuelves
+              a asignar.
             </p>
           </div>
           <label className="block text-xs text-slate-400">
@@ -224,6 +225,37 @@ export default function SeatingPanel({
           </p>
         ) : null}
 
+        {plan?.isCarriedOver && plan.assignedDate ? (
+          <div className="mt-4 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+            Acomodo vigente del {formatCalendarDate(plan.assignedDate)}. Los alumnos siguen viendo
+            estos lugares. Genera uno nuevo solo si quieres cambiarlos.
+          </div>
+        ) : null}
+
+        {(plan?.history?.length ?? 0) > 0 ? (
+          <div className="mt-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+              Acomodos guardados
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {plan!.history!.map((iso) => (
+                <button
+                  key={iso}
+                  type="button"
+                  onClick={() => setDate(iso)}
+                  className={`rounded-lg border px-2 py-1 text-[11px] ${
+                    date === iso || plan?.assignedDate === iso
+                      ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-100"
+                      : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                  }`}
+                >
+                  {formatCalendarDate(iso)}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {plan?.overflow ? (
           <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
             Hay {plan.studentCount} alumnos pero solo {plan.capacity} butacas. Los últimos en el
@@ -233,15 +265,40 @@ export default function SeatingPanel({
 
         {query.isLoading ? (
           <p className="mt-6 text-slate-400">Cargando aula...</p>
-        ) : plan ? (
-          <SeatingGrid plan={plan} groupCode={selectedGroup?.code ?? ""} />
-        ) : null}
+        ) : plan && plan.assignedCount > 0 ? (
+          <>
+            <SeatingGrid
+              plan={plan}
+              groupCode={selectedGroup?.code ?? ""}
+              assignedDate={plan.assignedDate ?? plan.date}
+            />
+            {(plan.unseatedStudents?.length ?? 0) > 0 ? (
+              <p className="mt-3 text-xs text-amber-200/90">
+                Sin butaca ({plan.unseatedStudents!.length}):{" "}
+                {plan.unseatedStudents!.map((s) => s.displayName).join(" · ")}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="mt-6 rounded-xl border border-white/10 bg-slate-900/40 px-4 py-6 text-sm text-slate-400">
+            Aún no hay un acomodo guardado para este grupo. Elige un modo y pulsa asignar para
+            ver el panorama de las 36 butacas.
+          </p>
+        )}
       </section>
     </div>
   );
 }
 
-function SeatingGrid({ plan, groupCode }: { plan: SeatingPlan; groupCode: string }) {
+function SeatingGrid({
+  plan,
+  groupCode,
+  assignedDate,
+}: {
+  plan: SeatingPlan;
+  groupCode: string;
+  assignedDate: string;
+}) {
   const byRow = new Map<number, SeatingCell[]>();
   for (const cell of plan.grid) {
     const row = byRow.get(cell.row) ?? [];
@@ -255,10 +312,11 @@ function SeatingGrid({ plan, groupCode }: { plan: SeatingPlan; groupCode: string
         <span>
           Grupo {groupCode} · {plan.assignedCount}/{plan.studentCount} con lugar ·{" "}
           <span className="text-slate-300">{plan.modeLabel}</span>
+          <span className="text-slate-500"> · {formatCalendarDate(assignedDate)}</span>
           {plan.updatedAt ? (
             <span className="text-slate-500">
               {" "}
-              · Actualizado{" "}
+              · Guardado{" "}
               {new Date(plan.updatedAt).toLocaleString("es-MX", {
                 day: "2-digit",
                 month: "short",

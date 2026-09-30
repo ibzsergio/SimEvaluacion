@@ -168,6 +168,16 @@ export type SeatingPlan = {
   overflow: boolean;
   grid: SeatingCell[];
   updatedAt: string | null;
+  /** Fecha en la que se guardó el acomodo que se está mostrando. */
+  assignedDate?: string | null;
+  /** True si no hay acomodo en la fecha pedida y se muestra el último vigente. */
+  isCarriedOver?: boolean;
+  history?: string[];
+  unseatedStudents?: Array<{
+    id: string;
+    displayName: string;
+    listPosition: number;
+  }>;
 };
 
 export type Activity = {
