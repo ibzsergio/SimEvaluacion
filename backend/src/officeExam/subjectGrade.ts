@@ -1,4 +1,4 @@
-import { getGroupRanking } from "../groupRanking.js";
+import { getOfficialGroupRanking } from "../groupRanking.js";
 import { getStudentTotalFirmas } from "./firmas.js";
 
 export type SubjectGradeBreakdown = {
@@ -27,7 +27,7 @@ export async function computeSubjectGrade(
   examCorrectCount: number,
   totalQuestions: number,
 ): Promise<SubjectGradeBreakdown> {
-  const { ranking } = await getGroupRanking(groupId);
+  const { ranking } = await getOfficialGroupRanking(groupId);
   const entry = ranking.find((r) => r.studentId === studentId);
   const place = entry?.place ?? ranking.length;
   const isExempt = entry?.exemption.tier === "exempt";

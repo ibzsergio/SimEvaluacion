@@ -4,6 +4,7 @@ import Top10Ranking from "./Top10Ranking";
 import { ExemptionBadge } from "./ExemptionBadge";
 import { fetchGroupRanking, updateGroupProgressSettings } from "../lib/api";
 import { getExemptionStatus } from "../lib/exemption";
+import { partialLabel } from "../lib/dates";
 import type { ClassGroup } from "../lib/types";
 
 export default function GroupRankingPanel({
@@ -27,6 +28,7 @@ export default function GroupRankingPanel({
   const partialClosed = rankingQuery.data?.group?.partialClosed ?? selectedGroup?.partialClosed ?? false;
   const currentPartial =
     rankingQuery.data?.group?.currentPartial ?? selectedGroup?.currentPartial ?? 1;
+  const rankingPartial = rankingQuery.data?.rankingPartial ?? currentPartial;
   const ranking = (rankingQuery.data?.ranking ?? []).map((row) => ({
     ...row,
     exemption: getExemptionStatus(row.place, partialClosed, currentPartial),
@@ -71,10 +73,11 @@ export default function GroupRankingPanel({
 
       <section className="glass p-6">
         <h2 className="text-lg font-semibold text-white">
-          Ranking del grupo {selectedGroup?.code}
+          Ranking · {partialLabel(rankingPartial)}
         </h2>
         <p className="mt-1 text-sm text-slate-400">
-          {selectedGroup?.shift} · {rankingQuery.data?.activityCount ?? 0} actividad(es) publicada(s)
+          Grupo {selectedGroup?.code} · {selectedGroup?.shift} · {rankingQuery.data?.activityCount ?? 0}{" "}
+          actividad(es) de este parcial
         </p>
         <p className="mt-2 text-xs text-slate-500">{rankingQuery.data?.rankingRule}</p>
         <p className="mt-1 text-xs text-slate-500">
@@ -149,7 +152,7 @@ export default function GroupRankingPanel({
           <>
           <div className="mt-6 rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-4">
             <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-white">
-              <span>🏁</span> Top 10 del grupo
+              <span>🏁</span> Top 10 · {partialLabel(rankingPartial)}
             </h3>
             <Top10Ranking
               entries={top10}

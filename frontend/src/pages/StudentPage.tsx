@@ -8,7 +8,7 @@ import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
-import { formatCalendarDate, formatDateTime } from "../lib/dates";
+import { formatCalendarDate, formatDateTime, partialLabel } from "../lib/dates";
 import { getDiplomaEncouragement, getDiplomaHeadline, getExemptionStatus } from "../lib/exemption";
 import { useAuth } from "../lib/auth";
 import type { ActivityStatus, StudentActivity } from "../lib/types";
@@ -43,6 +43,7 @@ export default function StudentPage() {
   const progressPct = progress.percent;
   const partialClosed = data.group?.partialClosed ?? false;
   const currentPartial = data.group?.currentPartial ?? 1;
+  const rankingPartial = data.rankingPartial ?? currentPartial;
   const diplomaEnabled = data.group?.diplomaEnabled ?? false;
   const diplomaHeadline = getDiplomaHeadline(data.my.place);
   const diplomaPhrase = getDiplomaEncouragement(
@@ -70,7 +71,7 @@ export default function StudentPage() {
       title={`¡Hola, ${greetingName}!`}
       subtitle={
         data.group
-          ? `Grupo ${data.group.code} · ${data.group.shift} · Lista #${data.my.listNumber ?? "—"}`
+          ? `Grupo ${data.group.code} · ${data.group.shift} · Lista #${data.my.listNumber ?? "—"} · ${partialLabel(rankingPartial)}`
           : "Sigue tus prácticas y entregas"
       }
       footer={studentFooter}
@@ -166,7 +167,9 @@ export default function StudentPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="glass relative overflow-hidden p-6 lg:col-span-1">
           <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-400/20 blur-2xl" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">Tu posición</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">
+            Tu posición · {partialLabel(rankingPartial)}
+          </p>
           <p className="mt-2 text-6xl font-extrabold text-white">
             #{data.my.place}
             <span className="text-lg font-medium text-slate-400"> / {data.my.totalStudents}</span>
@@ -214,7 +217,7 @@ export default function StudentPage() {
 
         <section className="glass p-6 lg:col-span-2">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
-            <span>🏁</span> Top 10 del grupo
+            <span>🏁</span> Top 10 · {partialLabel(rankingPartial)}
           </h2>
           <Top10Ranking
             entries={top10}

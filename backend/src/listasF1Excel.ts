@@ -200,11 +200,9 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
   });
   if (!group) return null;
 
-  const cutoff = group.partialClosed && group.partialClosedAt ? group.partialClosedAt : new Date();
-
   const [activities, students, dayRecords] = await Promise.all([
     prisma.activity.findMany({
-      where: { groupId, createdAt: { lte: cutoff } },
+      where: { groupId, partialNumber: 1 },
       select: { id: true, maxPoints: true },
     }),
     prisma.user.findMany({
@@ -285,7 +283,7 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
       where: { groupId },
       select: { studentId: true, examScore4: true },
     }),
-    getGroupRanking(groupId),
+    getGroupRanking(groupId, 1),
   ]);
   const examByStudent = new Map(examRows.map((e) => [e.studentId, e.examScore4]));
   const rankingByStudent = new Map(rankingData.ranking.map((r) => [r.studentId, r]));

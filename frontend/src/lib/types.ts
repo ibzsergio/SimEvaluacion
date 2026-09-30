@@ -107,6 +107,7 @@ export type StudentProgress = {
     place: number;
     exemption?: ExemptionStatus;
   }[];
+  rankingPartial?: number;
   rankingRule: string;
   activities: StudentActivity[];
   seating?: StudentSeating | null;
@@ -243,6 +244,7 @@ export type GroupRanking = {
   ranking: GroupRankingRow[];
   top10: GroupRankingRow[];
   activityCount: number;
+  rankingPartial?: number;
   rankingRule: string;
 };
 

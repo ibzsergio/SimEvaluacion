@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "../middleware.js";
 import { ensureTeacherGroups } from "../groups.js";
-import { getGroupRanking } from "../groupRanking.js";
+import { getOfficialGroupRanking } from "../groupRanking.js";
 import { computeSubjectGrade, computeSubjectGradeWithoutExam } from "./subjectGrade.js";
 import { getStudentTotalFirmas } from "./firmas.js";
 import {
@@ -310,7 +310,7 @@ export async function getDiplomaGradeInfo(studentId: string, groupId: string) {
       where: { examId_studentId: { examId: exam.id, studentId } },
     }));
 
-  const { ranking } = await getGroupRanking(groupId);
+  const { ranking } = await getOfficialGroupRanking(groupId);
   const entry = ranking.find((r) => r.studentId === studentId);
   const place = entry?.place ?? ranking.length;
   const totalFirmas = entry?.score ?? (await getStudentTotalFirmas(studentId, groupId));

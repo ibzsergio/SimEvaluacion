@@ -15,7 +15,7 @@ import {
 } from "./dedupeStudents.js";
 import { importStudentRows } from "./importStudents.js";
 import { importGradesForGroup, type GradeImportMode } from "./importGrades.js";
-import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
+import { getGroupRanking, getOfficialGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { closeWeekForGroup, ensureCurrentGroupWeek } from "./weeks.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
 import { getDiplomaGradeInfo } from "./officeExam/officeExamRoutes.js";
@@ -723,7 +723,7 @@ teacherGroupsRouter.get("/groups/:groupId/ranking", async (req: AuthedRequest, r
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
-  const { ranking, activityCount } = await getGroupRanking(groupId);
+  const { ranking, activityCount, rankingPartial } = await getGroupRanking(groupId);
   const top10 = ranking.slice(0, 10);
 
   return res.json({
@@ -731,6 +731,7 @@ teacherGroupsRouter.get("/groups/:groupId/ranking", async (req: AuthedRequest, r
     ranking,
     top10,
     activityCount,
+    rankingPartial,
     rankingRule: RANKING_RULE,
   });
 });
@@ -1842,7 +1843,7 @@ teacherGroupsRouter.get("/groups/:groupId/diploma/preview.pdf", async (req: Auth
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
-  const { ranking } = await getGroupRanking(groupId);
+  const { ranking } = await getOfficialGroupRanking(groupId);
   const sample = ranking[4] ?? ranking[0];
   const inline = req.query.inline === "1" || req.query.inline === "true";
   const gradeInfo = sample
@@ -1897,7 +1898,7 @@ teacherGroupsRouter.get(
     });
     if (!student) return res.status(404).json({ error: "student_not_found" });
 
-    const { ranking } = await getGroupRanking(groupId);
+    const { ranking } = await getOfficialGroupRanking(groupId);
     const entry = ranking.find((r) => r.studentId === studentId);
     const safeName = student.displayName.replace(/[^\w\sáéíóúñÁÉÍÓÚÑ.-]/g, "").trim() || "alumno";
     const gradeInfo = await getDiplomaGradeInfo(studentId, groupId);

@@ -29,7 +29,7 @@ import {
   submitStudentExam,
   getDiplomaGradeInfo,
 } from "./officeExam/officeExamRoutes.js";
-import { getGroupRanking, RANKING_RULE } from "./groupRanking.js";
+import { getGroupRanking, getOfficialGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
 import { getStudentSeating } from "./seatingService.js";
 import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSchema.js";
@@ -472,7 +472,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   });
   const byActivity = new Map(grades.map((g) => [g.activityId, g]));
 
-  const { ranking } = await getGroupRanking(me.groupId);
+  const { ranking, rankingPartial } = await getGroupRanking(me.groupId);
 
   const myEntry = ranking.find((r) => r.studentId === req.auth!.userId);
   const myPlace = myEntry?.place ?? ranking.length;
@@ -577,6 +577,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     motivation,
     summary,
     top10,
+    rankingPartial,
     rankingRule: RANKING_RULE,
     courseProgress: progressClosed
       ? { mode: "points", closed: true, current: myScore, total: maxPointsTotal, percent: pointsPercent }
@@ -661,7 +662,7 @@ app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => 
     });
   }
 
-  const { ranking } = await getGroupRanking(me.groupId);
+  const { ranking } = await getOfficialGroupRanking(me.groupId);
   const myEntry = ranking.find((r) => r.studentId === req.auth!.userId);
   const place = myEntry?.place ?? ranking.length;
   const score = myEntry?.score ?? 0;

@@ -16,12 +16,10 @@ export type GroupRankingRow = RankingEntry & {
   exemption: ReturnType<typeof getExemptionStatus>;
 };
 
-async function getAttendanceDemotionInputs(groupId: string): Promise<AttendanceDemotionInput[]> {
-  const group = await prisma.classGroup.findUnique({
-    where: { id: groupId },
-    select: { currentPartial: true },
-  });
-  const partialNumber = group?.currentPartial ?? 1;
+async function getAttendanceDemotionInputs(
+  groupId: string,
+  partialNumber: number,
+): Promise<AttendanceDemotionInput[]> {
   const rows = await prisma.classDayRecord.findMany({
     where: {
       groupId,
@@ -51,16 +49,30 @@ async function getAttendanceDemotionInputs(groupId: string): Promise<AttendanceD
   }));
 }
 
-export async function getGroupRanking(groupId: string) {
+/** Ranking oficial del parcial ya cerrado (F1, diplomas, examen). */
+export function closedRankingPartial(currentPartial: number) {
+  return Math.max(1, (Number(currentPartial) || 1) - 1);
+}
+
+export async function getOfficialGroupRanking(groupId: string) {
+  const group = await prisma.classGroup.findUnique({
+    where: { id: groupId },
+    select: { currentPartial: true },
+  });
+  return getGroupRanking(groupId, closedRankingPartial(group?.currentPartial ?? 1));
+}
+
+export async function getGroupRanking(groupId: string, rankingPartial?: number) {
   const group = await prisma.classGroup.findUnique({
     where: { id: groupId },
     select: { partialClosed: true, currentPartial: true },
   });
   const partialClosed = group?.partialClosed ?? false;
   const currentPartial = group?.currentPartial ?? 1;
+  const partialNumber = rankingPartial ?? currentPartial;
 
   const activities = await prisma.activity.findMany({
-    where: { groupId },
+    where: { groupId, partialNumber },
     select: { id: true },
   });
 
@@ -72,15 +84,15 @@ export async function getGroupRanking(groupId: string) {
 
   const totals = await prisma.grade.groupBy({
     by: ["studentId"],
-    where: { student: { groupId } },
+    where: { student: { groupId }, activity: { groupId, partialNumber } },
     _sum: { points: true },
   });
   const scoreByStudent = new Map(totals.map((t) => [t.studentId, t._sum.points ?? 0]));
-  const participationByStudent = await getParticipationStarsByStudent(groupId, currentPartial);
+  const participationByStudent = await getParticipationStarsByStudent(groupId, partialNumber);
 
   // Usar gradedAt (primera calificación): no se actualiza al recalificar.
   const allGrades = await prisma.grade.findMany({
-    where: { activity: { groupId } },
+    where: { activity: { groupId, partialNumber } },
     select: { activityId: true, studentId: true, gradedAt: true },
   });
 
@@ -99,13 +111,14 @@ export async function getGroupRanking(groupId: string) {
     })),
   );
 
-  const attendance = await getAttendanceDemotionInputs(groupId);
+  const attendance = await getAttendanceDemotionInputs(groupId, partialNumber);
   const ranking = applyAttendanceDemotions(baseRanking, attendance);
 
   const controlById = new Map(students.map((s) => [s.id, s.controlNumber]));
 
   return {
     activityCount: activities.length,
+    rankingPartial: partialNumber,
     ranking: ranking.map((r) => ({
       ...r,
       controlNumber: controlById.get(r.studentId) ?? null,
