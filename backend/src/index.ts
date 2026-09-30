@@ -8,7 +8,7 @@ import { signAuthToken } from "./auth.js";
 import { requireAuth, requireTeacher, requireStudent, type AuthedRequest } from "./middleware.js";
 import { ensureTeacherGroups } from "./groups.js";
 import { removeJunkStudentsForGroup } from "./dedupeStudents.js";
-import { teacherGroupsRouter } from "./teacherGroups.js";
+import { teacherGroupsRouter, upsertStudentActivityGrade } from "./teacherGroups.js";
 import { officeExamTeacherRouter } from "./officeExam/officeExamRoutes.js";
 import {
   commsTeacherRouter,
@@ -415,42 +415,20 @@ app.put(
       .safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "invalid_body" });
 
-    const activity = await prisma.activity.findFirst({
-      where: { id: activityId, createdById: req.auth!.userId },
-      select: { id: true, maxPoints: true, groupId: true },
-    });
-    if (!activity) return res.status(404).json({ error: "activity_not_found" });
-
-    const student = await prisma.user.findFirst({
-      where: { id: studentId, role: "STUDENT", groupId: activity.groupId },
-    });
-    if (!student) return res.status(404).json({ error: "student_not_found" });
-
-    const clampedPoints = Math.min(body.data.points, activity.maxPoints);
-
-    const gradedAt = new Date();
-    const grade = await prisma.grade.upsert({
-      where: { activityId_studentId: { activityId, studentId } },
-      update: { points: clampedPoints, signatures: 0, gradedById: req.auth!.userId },
-      create: {
+    try {
+      const grade = await upsertStudentActivityGrade({
+        teacherId: req.auth!.userId,
         activityId,
         studentId,
-        points: clampedPoints,
-        signatures: 0,
-        gradedById: req.auth!.userId,
-        gradedAt,
-      },
-    });
-
-    // Al registrar/calificar, consideramos la actividad como entregada.
-    // La fecha de la primera calificación no se sobrescribe al recalificar (desempate del ranking).
-    await prisma.submission.upsert({
-      where: { activityId_studentId: { activityId, studentId } },
-      update: {},
-      create: { activityId, studentId, submittedAt: gradedAt },
-    });
-
-    return res.json({ grade });
+        points: body.data.points,
+      });
+      return res.json({ grade });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "activity_not_found") return res.status(404).json({ error: "activity_not_found" });
+      if (msg === "student_not_found") return res.status(404).json({ error: "student_not_found" });
+      throw err;
+    }
   },
 );
 

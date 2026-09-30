@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import AccessQrPanel from "../components/AccessQrPanel";
 import ClassDayPanel from "../components/ClassDayPanel";
+import GradesMatrixPanel from "../components/GradesMatrixPanel";
 import GroupDeliveryStatusPanel from "../components/GroupDeliveryStatusPanel";
 import GroupGradesImportPanel from "../components/GroupGradesImportPanel";
 import GroupRankingPanel from "../components/GroupRankingPanel";
@@ -19,10 +20,8 @@ import {
   deleteActivity,
   downloadBothGroupsTotalsExcel,
   fetchActivities,
-  fetchActivityGrades,
   fetchGroups,
   getApiErrorMessage,
-  saveGrade,
   startNextPartial,
   updateActivity,
 } from "../lib/api";
@@ -35,7 +34,7 @@ import {
   todayLocalIso,
   toDateInputValue,
 } from "../lib/dates";
-import type { Activity, GradeRow } from "../lib/types";
+import type { Activity } from "../lib/types";
 
 export default function TeacherPage() {
   const qc = useQueryClient();
@@ -107,12 +106,6 @@ export default function TeacherPage() {
   const currentActivities = activities.filter((a) => (a.partialNumber ?? 1) === currentPartial);
   const activeId = selectedId ?? currentActivities[0]?.id ?? null;
 
-  const gradesQuery = useQuery({
-    queryKey: ["grades", activeId],
-    queryFn: () => fetchActivityGrades(activeId!),
-    enabled: !!activeId,
-  });
-
   const createMutation = useMutation({
     mutationFn: createActivity,
     onSuccess: async (activity) => {
@@ -120,6 +113,7 @@ export default function TeacherPage() {
       setFormSuccess(`Actividad "${activity.name}" publicada en grupo ${selectedGroup?.code}.`);
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["groups"] });
+      await qc.invalidateQueries({ queryKey: ["grades-matrix", selectedGroupId] });
       setSelectedId(activity.id);
       resetActivityForm();
     },
@@ -134,7 +128,7 @@ export default function TeacherPage() {
     onSuccess: async (group) => {
       setFormError("");
       setFormSuccess(
-        `Ahora publicas ${partialLabel(group.currentPartial ?? currentPartial + 1).toLowerCase()}. El examen del parcial anterior se puede capturar después.`,
+        `Ahora publicas ${partialLabel(group.currentPartial ?? currentPartial + 1).toLowerCase()}. El examen del parcial anterior se puede capturar despuÃ©s.`,
       );
       await qc.invalidateQueries({ queryKey: ["groups"] });
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
@@ -158,7 +152,7 @@ export default function TeacherPage() {
       setEditingActivityId(null);
       resetActivityForm();
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
-      await qc.invalidateQueries({ queryKey: ["grades", activity.id] });
+      await qc.invalidateQueries({ queryKey: ["grades-matrix", selectedGroupId] });
       setSelectedId(activity.id);
     },
     onError: (error) => {
@@ -179,6 +173,7 @@ export default function TeacherPage() {
       if (selectedId === deletedId) setSelectedId(null);
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["grades-matrix", selectedGroupId] });
     },
     onError: (error) => {
       setFormError(getApiErrorMessage(error));
@@ -209,7 +204,7 @@ export default function TeacherPage() {
 
   function handleDeleteActivity(activity: Activity) {
     const ok = window.confirm(
-      `¿Eliminar la actividad "${activity.name}"?\n\nSe borrarán también las calificaciones de todos los alumnos.`,
+      `Â¿Eliminar la actividad "${activity.name}"?\n\nSe borrarÃ¡n tambiÃ©n las calificaciones de todos los alumnos.`,
     );
     if (!ok) return;
     setFormSuccess("");
@@ -219,9 +214,10 @@ export default function TeacherPage() {
   const activityFormPending = createMutation.isPending || updateMutation.isPending;
 
   const selectedActivity = useMemo(
-    () => activities.find((a) => a.id === activeId) ?? gradesQuery.data?.activity,
-    [activities, activeId, gradesQuery.data?.activity],
+    () => activities.find((a) => a.id === activeId) ?? null,
+    [activities, activeId],
   );
+  const matrixPartial = selectedActivity?.partialNumber ?? currentPartial;
 
   const groupsLabelPlus = formatGroupCodesPlus(groups);
   const groupsSubtitle = formatTeacherGroupsSubtitle(groups);
@@ -252,7 +248,7 @@ export default function TeacherPage() {
           Semanas y parcial
         </TabButton>
         <TabButton active={tab === "comunicacion"} onClick={() => setTab("comunicacion")}>
-          Comunicación
+          ComunicaciÃ³n
         </TabButton>
         <TabButton active={tab === "semestre"} onClick={() => setTab("semestre")}>
           Nuevo semestre
@@ -421,13 +417,13 @@ export default function TeacherPage() {
             <ClosePartialPanel groups={groups} selectedGroupId={selectedGroupId} />
           ) : null}
 
-          <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+          <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
             <section className="glass p-5">
               <h2 className="mb-1 text-lg font-semibold text-white">
                 {editingActivityId ? "Editar actividad" : "Nueva actividad"}
               </h2>
               <p className="mb-3 text-xs text-cyan-300/90">
-                Grupo {selectedGroup?.code} · {selectedGroup?.shift} · {partialLabel(currentPartial)}
+                Grupo {selectedGroup?.code} Â· {selectedGroup?.shift} Â· {partialLabel(currentPartial)}
               </p>
               {currentPartial < 4 && !editingActivityId ? (
                 <button
@@ -435,7 +431,7 @@ export default function TeacherPage() {
                   onClick={() => {
                     const next = currentPartial + 1;
                     const ok = window.confirm(
-                      `¿Comenzar ${partialLabel(next).toLowerCase()}?\n\nLas actividades de ${partialLabel(currentPartial).toLowerCase()} se compactan (no se borran). Las nuevas se publican ya como ${partialLabel(next).toLowerCase()}.\n\nNo hace falta capturar el examen ni cerrar el parcial.`,
+                      `Â¿Comenzar ${partialLabel(next).toLowerCase()}?\n\nLas actividades de ${partialLabel(currentPartial).toLowerCase()} se compactan (no se borran). Las nuevas se publican ya como ${partialLabel(next).toLowerCase()}.\n\nNo hace falta capturar el examen ni cerrar el parcial.`,
                     );
                     if (!ok) return;
                     setFormError("");
@@ -464,7 +460,7 @@ export default function TeacherPage() {
                     return;
                   }
                   if (form.maxPoints < 1) {
-                    setFormError("El valor máximo debe ser al menos 1 punto.");
+                    setFormError("El valor mÃ¡ximo debe ser al menos 1 punto.");
                     return;
                   }
                   const payload = {
@@ -490,7 +486,7 @@ export default function TeacherPage() {
                   />
                 </label>
                 <p className="text-xs text-slate-500">
-                  La fecha de publicación se registra al guardar la actividad.
+                  La fecha de publicaciÃ³n se registra al guardar la actividad.
                 </p>
                 <label className="block text-xs text-slate-400">
                   Nombre de la actividad
@@ -498,12 +494,12 @@ export default function TeacherPage() {
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-white"
-                    placeholder="Práctica 1 — Variables"
+                    placeholder="PrÃ¡ctica 1 â€” Variables"
                     required
                   />
                 </label>
                 <label className="block text-xs text-slate-400">
-                  Valor máximo (puntos)
+                  Valor mÃ¡ximo (puntos)
                   <input
                     type="number"
                     min={1}
@@ -513,7 +509,7 @@ export default function TeacherPage() {
                   />
                 </label>
                 <p className="text-xs text-slate-500">
-                  Al calificar, indicas cuántos puntos obtuvo cada alumno (de 0 a este valor).
+                  Al calificar, indicas cuÃ¡ntos puntos obtuvo cada alumno (de 0 a este valor).
                 </p>
                 {formError ? (
                   <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
@@ -625,7 +621,7 @@ export default function TeacherPage() {
                               ))}
                               {!items.length ? (
                                 <p className="px-2 pb-1 text-xs text-slate-500">
-                                  Aún no hay actividades en este parcial.
+                                  AÃºn no hay actividades en este parcial.
                                 </p>
                               ) : null}
                             </ul>
@@ -641,25 +637,15 @@ export default function TeacherPage() {
               </div>
             </section>
 
-            <section className="glass p-5">
-              {!activeId || !selectedActivity ? (
-                <p className="text-slate-400">
-                  Selecciona una actividad de la lista o publica una nueva arriba.
-                </p>
-              ) : (
-                <GradesTable
-                  activity={selectedActivity}
-                  activityIndex={Math.max(
-                    0,
-                    activities.findIndex((a) => a.id === activeId),
-                  )}
-                  rows={gradesQuery.data?.rows ?? []}
-                  loading={gradesQuery.isLoading}
-                  onSaved={() => {
-                    qc.invalidateQueries({ queryKey: ["grades", activeId] });
-                    qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
-                  }}
+            <section className="glass min-w-0 p-5">
+              {selectedGroupId ? (
+                <GradesMatrixPanel
+                  groupId={selectedGroupId}
+                  partialNumber={matrixPartial}
+                  highlightActivityId={activeId}
                 />
+              ) : (
+                <p className="text-slate-400">Selecciona un grupo.</p>
               )}
             </section>
           </div>
@@ -703,9 +689,9 @@ function ActivityListItem({
           </p>
           <p className={`font-medium ${active ? "text-cyan-100" : "text-slate-200"}`}>{activity.name}</p>
           <p className="text-xs text-slate-400">
-            {formatCalendarDate(activity.date)} · {activity.maxPoints} pts
+            {formatCalendarDate(activity.date)} Â· {activity.maxPoints} pts
             {activity.createdAt ? (
-              <span className="text-slate-500"> · Publicada {formatDateTime(activity.createdAt)}</span>
+              <span className="text-slate-500"> Â· Publicada {formatDateTime(activity.createdAt)}</span>
             ) : null}
           </p>
         </button>
@@ -753,277 +739,3 @@ function TabButton({
       {children}
     </button>
   );
-}
-
-type PointsDraft = { points: string };
-
-function GradesTable({
-  activity,
-  activityIndex,
-  rows,
-  loading,
-  onSaved,
-}: {
-  activity: Activity;
-  activityIndex: number;
-  rows: GradeRow[];
-  loading: boolean;
-  onSaved: () => void;
-}) {
-  const [drafts, setDrafts] = useState<Record<string, PointsDraft>>({});
-  const [editOrder, setEditOrder] = useState<string[]>([]);
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [savingAll, setSavingAll] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    setDrafts({});
-    setEditOrder([]);
-    setSaveError(null);
-    setSaveSuccess(null);
-    setSearch("");
-  }, [activity.id]);
-
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
-        r.student.displayName.toLowerCase().includes(q) ||
-        (r.student.controlNumber ?? "").includes(q) ||
-        String(r.student.listNumber ?? "").includes(q),
-    );
-  }, [rows, search]);
-
-  function getDraft(row: GradeRow): PointsDraft {
-    if (drafts[row.student.id]) return drafts[row.student.id];
-    if (row.grade != null) return { points: String(row.grade.points) };
-    return { points: "" };
-  }
-
-  async function handleSave(studentId: string) {
-    const row = rows.find((r) => r.student.id === studentId);
-    if (!row) return;
-    const draft = getDraft(row);
-    const trimmed = draft.points.trim();
-    if (trimmed === "") {
-      setSaveError("Escribe los puntos antes de guardar.");
-      return;
-    }
-    const points = Number(trimmed);
-    if (!Number.isFinite(points) || points < 0 || points > activity.maxPoints) {
-      setSaveError(`Los puntos deben estar entre 0 y ${activity.maxPoints}.`);
-      return;
-    }
-    setSaveError(null);
-    setSaveSuccess(null);
-    setSavingId(studentId);
-    try {
-      await saveGrade(activity.id, studentId, { points });
-      setSaveSuccess("Calificación guardada.");
-      onSaved();
-    } catch (err) {
-      setSaveError(getApiErrorMessage(err));
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  function collectRowsToSave(): { studentId: string; points: number }[] | null {
-    const toSave: { studentId: string; points: number }[] = [];
-    for (const row of rows) {
-      const draft = getDraft(row);
-      const trimmed = draft.points.trim();
-      if (trimmed === "") continue;
-      const points = Number(trimmed);
-      if (!Number.isFinite(points) || points < 0 || points > activity.maxPoints) {
-        setSaveError(
-          `Puntos inválidos para ${row.student.displayName}: deben estar entre 0 y ${activity.maxPoints}.`,
-        );
-        return null;
-      }
-      toSave.push({ studentId: row.student.id, points });
-    }
-
-    const orderMap = new Map(editOrder.map((id, index) => [id, index]));
-    toSave.sort(
-      (a, b) =>
-        (orderMap.get(a.studentId) ?? Number.MAX_SAFE_INTEGER) -
-        (orderMap.get(b.studentId) ?? Number.MAX_SAFE_INTEGER),
-    );
-
-    return toSave;
-  }
-
-  async function handleSaveAll() {
-    const toSave = collectRowsToSave();
-    if (toSave === null) return;
-    if (toSave.length === 0) {
-      setSaveError("Escribe al menos un puntaje antes de guardar todo.");
-      return;
-    }
-
-    setSaveError(null);
-    setSaveSuccess(null);
-    setSavingAll(true);
-    let saved = 0;
-    try {
-      for (const item of toSave) {
-        await saveGrade(activity.id, item.studentId, { points: item.points });
-        saved++;
-      }
-      setSaveSuccess(
-        saved === toSave.length
-          ? `Guardadas ${saved} calificaciones.`
-          : `Guardadas ${saved} de ${toSave.length} calificaciones.`,
-      );
-      onSaved();
-    } catch (err) {
-      setSaveError(
-        saved > 0
-          ? `Se guardaron ${saved} calificaciones y luego falló: ${getApiErrorMessage(err)}`
-          : getApiErrorMessage(err),
-      );
-      if (saved > 0) onSaved();
-    } finally {
-      setSavingAll(false);
-    }
-  }
-
-  const pendingCount = rows.filter((row) => getDraft(row).points.trim() !== "").length;
-  const isBusy = savingAll || savingId !== null;
-
-  return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-cyan-400/90">
-            {getActivityKindLabel(activityIndex, activity.name)}
-          </p>
-          <h2 className="text-lg font-semibold text-white">{activity.name}</h2>
-          <p className="text-sm text-slate-400">
-            {formatCalendarDate(activity.date)} · Valor máximo: {activity.maxPoints} pts
-            {activity.createdAt ? (
-              <span className="text-slate-500"> · Publicada {formatDateTime(activity.createdAt)}</span>
-            ) : null}
-          </p>
-        </div>
-        {rows.length > 0 ? (
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            disabled={isBusy || pendingCount === 0}
-            className="rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-50"
-          >
-            {savingAll ? "Guardando todo..." : `Guardar todo (${pendingCount})`}
-          </button>
-        ) : null}
-      </div>
-      {saveError ? (
-        <p className="mb-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-          {saveError}
-        </p>
-      ) : null}
-      {saveSuccess ? (
-        <p className="mb-3 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          {saveSuccess}
-        </p>
-      ) : null}
-
-      <div className="mb-4">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar alumno por nombre, control o lista..."
-          className="w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-sm text-white placeholder:text-slate-500"
-        />
-        {search.trim() ? (
-          <p className="mt-1 text-xs text-slate-500">
-            {filteredRows.length} de {rows.length} alumnos
-          </p>
-        ) : null}
-      </div>
-
-      {loading ? (
-        <p className="text-slate-400">Cargando alumnos...</p>
-      ) : rows.length === 0 ? (
-        <p className="text-amber-200/90 text-sm">
-          No hay alumnos en este grupo. Importa la lista en la pestaña Alumnos (Excel).
-        </p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/10">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-4 py-3">Control</th>
-                <th className="px-4 py-3">Alumno</th>
-                <th className="px-4 py-3">1ª calificación</th>
-                <th className="px-4 py-3">Puntos obtenidos</th>
-                <th className="px-4 py-3">Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((row) => {
-                const draft = getDraft(row);
-                return (
-                  <tr key={row.student.id} className="border-t border-white/5">
-                    <td className="px-4 py-3 font-mono text-cyan-300">
-                      {row.student.controlNumber ?? row.student.listNumber ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-white">{row.student.displayName}</p>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-400">
-                      {row.grade?.gradedAt ? (
-                        <span className="text-cyan-300" title="Fecha de la primera calificación (no cambia al recalificar)">
-                          {formatDateTime(row.grade.gradedAt)}
-                        </span>
-                      ) : (
-                        <span className="text-amber-400/90">Sin calificar</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={0}
-                          max={activity.maxPoints}
-                          value={draft.points}
-                          placeholder="—"
-                          onChange={(e) => {
-                            setSaveError(null);
-                            const studentId = row.student.id;
-                            setEditOrder((prev) => [...prev.filter((id) => id !== studentId), studentId]);
-                            setDrafts((d) => ({
-                              ...d,
-                              [studentId]: { points: e.target.value },
-                            }));
-                          }}
-                          className="w-20 rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1 text-white placeholder:text-slate-600"
-                        />
-                        <span className="text-xs text-slate-500">/ {activity.maxPoints}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => handleSave(row.student.id)}
-                        disabled={isBusy || draft.points.trim() === ""}
-                        className="rounded-lg bg-cyan-500/90 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-60"
-                      >
-                        {savingId === row.student.id ? "..." : savingAll ? "—" : "Guardar"}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}

@@ -4,6 +4,7 @@ import type {
   ClassGroup,
   ClassDaySheet,
   GradeRow,
+  GradesMatrix,
   ImportResult,
   ImportWorkbookResult,
   GroupRanking,
@@ -508,6 +509,24 @@ export async function fetchActivityGrades(activityId: string) {
   const { data } = await api.get<{ activity: Activity; rows: GradeRow[] }>(
     `/teacher/activities/${activityId}/grades`,
   );
+  return data;
+}
+
+export async function fetchGradesMatrix(groupId: string, partialNumber: number) {
+  const { data } = await api.get<GradesMatrix>(
+    `/teacher/groups/${groupId}/grades-matrix`,
+    { params: { partialNumber } },
+  );
+  return data;
+}
+
+export async function saveGradesBatch(
+  groupId: string,
+  grades: Array<{ activityId: string; studentId: string; points: number }>,
+) {
+  const { data } = await api.put<{ saved: number }>(`/teacher/groups/${groupId}/grades-batch`, {
+    grades,
+  });
   return data;
 }
 

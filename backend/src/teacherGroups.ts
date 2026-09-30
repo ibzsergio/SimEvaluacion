@@ -23,6 +23,7 @@ import {
   getClassDaySheet,
   getStudentAttendanceSummary,
   getStudentParticipationStars,
+  formatClassDayIso,
   parseClassDayDate,
   saveClassDayRecords,
   todayClassDayDate,
@@ -82,6 +83,47 @@ function clamp01(n: number) {
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
+}
+
+export async function upsertStudentActivityGrade(params: {
+  teacherId: string;
+  activityId: string;
+  studentId: string;
+  points: number;
+}) {
+  const activity = await prisma.activity.findFirst({
+    where: { id: params.activityId, createdById: params.teacherId },
+    select: { id: true, maxPoints: true, groupId: true },
+  });
+  if (!activity) throw new Error("activity_not_found");
+
+  const student = await prisma.user.findFirst({
+    where: { id: params.studentId, role: "STUDENT", groupId: activity.groupId },
+  });
+  if (!student) throw new Error("student_not_found");
+
+  const clampedPoints = Math.min(Math.max(0, Math.round(params.points)), activity.maxPoints);
+  const gradedAt = new Date();
+  const grade = await prisma.grade.upsert({
+    where: { activityId_studentId: { activityId: params.activityId, studentId: params.studentId } },
+    update: { points: clampedPoints, signatures: 0, gradedById: params.teacherId },
+    create: {
+      activityId: params.activityId,
+      studentId: params.studentId,
+      points: clampedPoints,
+      signatures: 0,
+      gradedById: params.teacherId,
+      gradedAt,
+    },
+  });
+
+  await prisma.submission.upsert({
+    where: { activityId_studentId: { activityId: params.activityId, studentId: params.studentId } },
+    update: {},
+    create: { activityId: params.activityId, studentId: params.studentId, submittedAt: gradedAt },
+  });
+
+  return grade;
 }
 
 function groupCodesLabel(groups: { code: string }[]) {
@@ -691,6 +733,116 @@ teacherGroupsRouter.get("/groups/:groupId/ranking", async (req: AuthedRequest, r
     activityCount,
     rankingRule: RANKING_RULE,
   });
+});
+
+teacherGroupsRouter.get("/groups/:groupId/grades-matrix", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true, code: true, shift: true, currentPartial: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  const requested = Number(req.query.partialNumber);
+  const partialNumber =
+    Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : (group.currentPartial ?? 1);
+
+  await removeJunkStudentsForGroup(groupId);
+
+  const [activities, students] = await Promise.all([
+    prisma.activity.findMany({
+      where: { groupId, partialNumber, createdById: req.auth!.userId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        date: true,
+        maxPoints: true,
+        createdAt: true,
+        partialNumber: true,
+      },
+    }),
+    prisma.user.findMany({
+      where: { role: "STUDENT", groupId },
+      orderBy: [{ displayName: "asc" }, { listNumber: "asc" }],
+      select: { id: true, displayName: true, listNumber: true, controlNumber: true },
+    }),
+  ]);
+
+  const grades =
+    activities.length === 0
+      ? []
+      : await prisma.grade.findMany({
+          where: { activityId: { in: activities.map((a) => a.id) } },
+          select: { activityId: true, studentId: true, points: true, gradedAt: true },
+        });
+
+  const cells: Record<string, Record<string, { points: number; gradedAt: string }>> = {};
+  for (const g of grades) {
+    const byActivity = cells[g.studentId] ?? {};
+    byActivity[g.activityId] = { points: g.points, gradedAt: g.gradedAt.toISOString() };
+    cells[g.studentId] = byActivity;
+  }
+
+  return res.json({
+    group,
+    partialNumber,
+    activities: activities.map((a) => ({ ...a, date: formatClassDayIso(a.date) })),
+    students,
+    cells,
+  });
+});
+
+teacherGroupsRouter.put("/groups/:groupId/grades-batch", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  const body = z
+    .object({
+      grades: z
+        .array(
+          z.object({
+            activityId: z.string().min(1),
+            studentId: z.string().min(1),
+            points: z.number().int().min(0),
+          }),
+        )
+        .min(1)
+        .max(800),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const activityIds = [...new Set(body.data.grades.map((g) => g.activityId))];
+  const owned = await prisma.activity.findMany({
+    where: { id: { in: activityIds }, groupId, createdById: req.auth!.userId },
+    select: { id: true },
+  });
+  if (owned.length !== activityIds.length) return res.status(404).json({ error: "activity_not_found" });
+
+  let saved = 0;
+  try {
+    for (const item of body.data.grades) {
+      await upsertStudentActivityGrade({
+        teacherId: req.auth!.userId,
+        activityId: item.activityId,
+        studentId: item.studentId,
+        points: item.points,
+      });
+      saved++;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "grade_failed";
+    if (msg === "activity_not_found") return res.status(404).json({ error: msg, saved });
+    if (msg === "student_not_found") return res.status(404).json({ error: msg, saved });
+    throw err;
+  }
+
+  return res.json({ saved });
 });
 
 teacherGroupsRouter.get("/groups/:groupId/weeks", async (req: AuthedRequest, res) => {

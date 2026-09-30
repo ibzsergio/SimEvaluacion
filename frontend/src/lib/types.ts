@@ -203,6 +203,19 @@ export type GradeRow = {
   submission: { submittedAt: string } | null;
 };
 
+export type GradesMatrix = {
+  group: Pick<ClassGroup, "id" | "code" | "shift">;
+  partialNumber: number;
+  activities: Activity[];
+  students: Array<{
+    id: string;
+    displayName: string;
+    listNumber: number | null;
+    controlNumber: string | null;
+  }>;
+  cells: Record<string, Record<string, { points: number; gradedAt: string }>>;
+};
+
 export type ImportResult = {
   summary: { total: number; created: number; updated: number; skipped: number };
   loginHint?: { usuario: string; primeraVez: string; ejemplo?: string };
