@@ -132,7 +132,9 @@ export default function ClosePartialPanel({
       setDirty(false);
       setActionError("");
       setActionSuccess(
-        `Examen guardado: ${result.saved} calificación(es)${result.cleared ? `, ${result.cleared} en blanco` : ""}.`,
+        `Examen guardado: ${result.saved} calificación(es)${result.cleared ? `, ${result.cleared} en blanco` : ""}.${
+          partialClosed ? " Puedes volver a descargar LISTAS F1 para ver el cambio." : ""
+        }`,
       );
       await qc.invalidateQueries({ queryKey: ["listas-f1-preview", selectedGroupId] });
     },
@@ -369,6 +371,9 @@ export default function ClosePartialPanel({
               <h3 className="text-base font-semibold text-white">Captura de examen (0 a 4)</h3>
               <p className="mt-0.5 text-xs text-slate-500">
                 Orden alfabético, igual que en actividades. El total se calcula en vivo (escala + examen).
+                {partialClosed
+                  ? " El parcial ya está cerrado: puedes seguir capturando o corrigiendo el examen; asistencia y actividades no se mueven."
+                  : ""}
               </p>
             </div>
             <button
@@ -398,7 +403,7 @@ export default function ClosePartialPanel({
                     key={row.studentId}
                     row={row}
                     draft={drafts[row.studentId] ?? ""}
-                    disabled={partialClosed || saveExamMutation.isPending}
+                    disabled={saveExamMutation.isPending}
                     onChange={(value) => {
                       setDrafts((prev) => ({ ...prev, [row.studentId]: value }));
                       setDirty(true);
@@ -422,8 +427,8 @@ export default function ClosePartialPanel({
         <p className="text-sm text-slate-300">
           {partialClosed
             ? diplomaEnabled
-              ? "Los diplomas ya están activos. Puedes desactivarlos si aún hay que corregir algo."
-              : "Parcial cerrado. Valida las calificaciones y pulsa Activar diplomas para que los alumnos descarguen su reconocimiento."
+              ? "Los diplomas ya están activos. El examen se puede seguir capturando o corrigiendo; luego vuelve a descargar LISTAS F1 si hace falta."
+              : "Parcial cerrado. Sigue capturando el examen si falta alguien. Cuando valides, pulsa Activar diplomas."
             : "El examen no es requisito para publicar el siguiente parcial. Al cerrar, LISTAS F1 se descarga; los diplomas se activan después, cuando valides."}
         </p>
         <div className="flex flex-wrap gap-2">
