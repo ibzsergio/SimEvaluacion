@@ -9,6 +9,11 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+      },
       includeAssets: ["favicon.svg", "icons.svg", "manifest.webmanifest", "manifest-docente.webmanifest"],
       manifest: {
         name: "SimEvaluación",

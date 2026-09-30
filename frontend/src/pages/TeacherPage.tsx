@@ -128,7 +128,7 @@ export default function TeacherPage() {
     onSuccess: async (group) => {
       setFormError("");
       setFormSuccess(
-        `Ahora publicas ${partialLabel(group.currentPartial ?? currentPartial + 1).toLowerCase()}. El examen del parcial anterior se puede capturar despuÃ©s.`,
+        `Ahora publicas ${partialLabel(group.currentPartial ?? currentPartial + 1).toLowerCase()}. El examen del parcial anterior se puede capturar después.`,
       );
       await qc.invalidateQueries({ queryKey: ["groups"] });
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
@@ -204,7 +204,7 @@ export default function TeacherPage() {
 
   function handleDeleteActivity(activity: Activity) {
     const ok = window.confirm(
-      `Â¿Eliminar la actividad "${activity.name}"?\n\nSe borrarÃ¡n tambiÃ©n las calificaciones de todos los alumnos.`,
+      `¿Eliminar la actividad "${activity.name}"?\n\nSe borrarán también las calificaciones de todos los alumnos.`,
     );
     if (!ok) return;
     setFormSuccess("");
@@ -248,7 +248,7 @@ export default function TeacherPage() {
           Semanas y parcial
         </TabButton>
         <TabButton active={tab === "comunicacion"} onClick={() => setTab("comunicacion")}>
-          ComunicaciÃ³n
+          Comunicación
         </TabButton>
         <TabButton active={tab === "semestre"} onClick={() => setTab("semestre")}>
           Nuevo semestre
@@ -423,7 +423,7 @@ export default function TeacherPage() {
                 {editingActivityId ? "Editar actividad" : "Nueva actividad"}
               </h2>
               <p className="mb-3 text-xs text-cyan-300/90">
-                Grupo {selectedGroup?.code} Â· {selectedGroup?.shift} Â· {partialLabel(currentPartial)}
+                Grupo {selectedGroup?.code} · {selectedGroup?.shift} · {partialLabel(currentPartial)}
               </p>
               {currentPartial < 4 && !editingActivityId ? (
                 <button
@@ -431,7 +431,7 @@ export default function TeacherPage() {
                   onClick={() => {
                     const next = currentPartial + 1;
                     const ok = window.confirm(
-                      `Â¿Comenzar ${partialLabel(next).toLowerCase()}?\n\nLas actividades de ${partialLabel(currentPartial).toLowerCase()} se compactan (no se borran). Las nuevas se publican ya como ${partialLabel(next).toLowerCase()}.\n\nNo hace falta capturar el examen ni cerrar el parcial.`,
+                      `¿Comenzar ${partialLabel(next).toLowerCase()}?\n\nLas actividades de ${partialLabel(currentPartial).toLowerCase()} se compactan (no se borran). Las nuevas se publican ya como ${partialLabel(next).toLowerCase()}.\n\nNo hace falta capturar el examen ni cerrar el parcial.`,
                     );
                     if (!ok) return;
                     setFormError("");
@@ -460,7 +460,7 @@ export default function TeacherPage() {
                     return;
                   }
                   if (form.maxPoints < 1) {
-                    setFormError("El valor mÃ¡ximo debe ser al menos 1 punto.");
+                    setFormError("El valor máximo debe ser al menos 1 punto.");
                     return;
                   }
                   const payload = {
@@ -486,7 +486,7 @@ export default function TeacherPage() {
                   />
                 </label>
                 <p className="text-xs text-slate-500">
-                  La fecha de publicaciÃ³n se registra al guardar la actividad.
+                  La fecha de publicación se registra al guardar la actividad.
                 </p>
                 <label className="block text-xs text-slate-400">
                   Nombre de la actividad
@@ -494,12 +494,12 @@ export default function TeacherPage() {
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-white"
-                    placeholder="PrÃ¡ctica 1 â€” Variables"
+                    placeholder="Práctica 1 — Variables"
                     required
                   />
                 </label>
                 <label className="block text-xs text-slate-400">
-                  Valor mÃ¡ximo (puntos)
+                  Valor máximo (puntos)
                   <input
                     type="number"
                     min={1}
@@ -509,7 +509,7 @@ export default function TeacherPage() {
                   />
                 </label>
                 <p className="text-xs text-slate-500">
-                  Al calificar, indicas cuÃ¡ntos puntos obtuvo cada alumno (de 0 a este valor).
+                  Al calificar, indicas cuántos puntos obtuvo cada alumno (de 0 a este valor).
                 </p>
                 {formError ? (
                   <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
@@ -621,7 +621,7 @@ export default function TeacherPage() {
                               ))}
                               {!items.length ? (
                                 <p className="px-2 pb-1 text-xs text-slate-500">
-                                  AÃºn no hay actividades en este parcial.
+                                  Aún no hay actividades en este parcial.
                                 </p>
                               ) : null}
                             </ul>
@@ -689,9 +689,9 @@ function ActivityListItem({
           </p>
           <p className={`font-medium ${active ? "text-cyan-100" : "text-slate-200"}`}>{activity.name}</p>
           <p className="text-xs text-slate-400">
-            {formatCalendarDate(activity.date)} Â· {activity.maxPoints} pts
+            {formatCalendarDate(activity.date)} · {activity.maxPoints} pts
             {activity.createdAt ? (
-              <span className="text-slate-500"> Â· Publicada {formatDateTime(activity.createdAt)}</span>
+              <span className="text-slate-500"> · Publicada {formatDateTime(activity.createdAt)}</span>
             ) : null}
           </p>
         </button>
