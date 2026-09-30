@@ -6,7 +6,7 @@ export type DeliveryCellStatus = "graded" | "pending" | "overdue";
 export async function getGroupDeliveryStatus(teacherId: string, groupId: string) {
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId },
-    select: { id: true, code: true, shift: true },
+    select: { id: true, code: true, shift: true, currentPartial: true },
   });
   if (!group) throw new Error("group_not_found");
 
@@ -17,7 +17,7 @@ export async function getGroupDeliveryStatus(teacherId: string, groupId: string)
       select: { id: true, displayName: true, listNumber: true, controlNumber: true },
     }),
     prisma.activity.findMany({
-      where: { groupId },
+      where: { groupId, partialNumber: group.currentPartial ?? 1 },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,

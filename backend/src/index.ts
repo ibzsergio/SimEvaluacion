@@ -483,7 +483,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   });
 
   const activities = await prisma.activity.findMany({
-    where: { groupId: me.groupId },
+    where: { groupId: me.groupId, partialNumber: myGroup?.currentPartial ?? 1 },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: { id: true, date: true, name: true, maxPoints: true, createdAt: true },
   });

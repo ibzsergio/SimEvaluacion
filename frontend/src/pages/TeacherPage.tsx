@@ -406,9 +406,13 @@ export default function TeacherPage() {
                 }`}
               >
                 Grupo {g.code}
-                {typeof g.activityCount === "number" ? (
-                  <span className="ml-1 font-normal opacity-80">({g.activityCount} act.)</span>
-                ) : null}
+                <span className="ml-1 font-normal opacity-80">
+                  (
+                  {g.id === selectedGroupId
+                    ? currentActivities.length
+                    : (g.activityCount ?? 0)}{" "}
+                  act.)
+                </span>
               </button>
             ))}
           </div>

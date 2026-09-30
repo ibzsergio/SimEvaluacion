@@ -179,12 +179,12 @@ async function loadGroupGradesMatrixExport(
 ): Promise<GradesMatrixExport | null> {
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId },
-    select: { id: true, code: true, shift: true },
+    select: { id: true, code: true, shift: true, currentPartial: true },
   });
   if (!group) return null;
 
   const activities = await prisma.activity.findMany({
-    where: { groupId },
+    where: { groupId, partialNumber: group.currentPartial ?? 1 },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: { id: true, name: true, date: true, maxPoints: true, signatureMax: true },
   });
@@ -307,19 +307,22 @@ teacherGroupsRouter.get("/groups", async (req: AuthedRequest, res) => {
       _count: { _all: true },
     }),
     prisma.activity.groupBy({
-      by: ["groupId"],
+      by: ["groupId", "partialNumber"],
       where: { groupId: { in: groupIds }, createdById: req.auth!.userId },
       _count: { _all: true },
     }),
   ]);
   const studentsByGroup = new Map(studentCounts.map((c) => [c.groupId, c._count._all]));
-  const activitiesByGroup = new Map(activityCounts.map((c) => [c.groupId, c._count._all]));
+  const activitiesByGroupPartial = new Map(
+    activityCounts.map((c) => [`${c.groupId}:${c.partialNumber ?? 1}`, c._count._all]),
+  );
 
   return res.json({
     groups: groups.map((g) => ({
       ...g,
       studentCount: studentsByGroup.get(g.id) ?? 0,
-      activityCount: activitiesByGroup.get(g.id) ?? 0,
+      activityCount:
+        activitiesByGroupPartial.get(`${g.id}:${g.currentPartial ?? 1}`) ?? 0,
     })),
   });
 });
