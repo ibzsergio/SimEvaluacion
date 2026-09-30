@@ -51,9 +51,10 @@ export function formatDateTime(value: string) {
 
 /** Etiqueta corta: Práctica 3, Actividad 2, o #4 según el nombre o el orden. */
 export function getActivityKindLabel(index: number, name: string) {
-  const practica = name.match(/pr[aá]cti[cç]a\s*[#]?\s*(\d+)/i);
+  const text = name ?? "";
+  const practica = text.match(/pr[aá]cti[cç]a\s*[#]?\s*(\d+)/i);
   if (practica) return `Práctica ${practica[1]}`;
-  const actividad = name.match(/actividad\s*[#]?\s*(\d+)/i);
+  const actividad = text.match(/actividad\s*[#]?\s*(\d+)/i);
   if (actividad) return `Actividad ${actividad[1]}`;
   return `#${index + 1}`;
 }

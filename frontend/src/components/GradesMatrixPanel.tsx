@@ -162,7 +162,7 @@ export default function GradesMatrixPanel({
           <button
             type="button"
             onClick={handleSaveAll}
-            disabled={busy || dirtyCount === 0}
+            disabled={saveMutation.isPending || dirtyCount === 0}
             className="rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-50"
           >
             {savingKey === "all" ? "Guardando..." : `Guardar cambios (${dirtyCount})`}
