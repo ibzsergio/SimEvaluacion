@@ -478,6 +478,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
       partialClosedAt: true,
       diplomaEnabled: true,
       diplomaEnabledAt: true,
+      currentPartial: true,
     },
   });
 
@@ -556,6 +557,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     myScore,
     ranking,
     myGroup?.partialClosed ?? false,
+    myGroup?.currentPartial ?? 1,
   );
 
   const participationStars = await getStudentParticipationStars(req.auth!.userId, me.groupId);
@@ -657,6 +659,7 @@ app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => 
       partialClosed: true,
       partialClosedAt: true,
       diplomaEnabled: true,
+      currentPartial: true,
     },
   });
   if (!group?.partialClosed || !group.partialClosedAt) {
@@ -694,6 +697,7 @@ app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => 
       firmasScore6: gradeInfo.firmasScore6,
       examScore4: gradeInfo.examScore4,
       isExempt: gradeInfo.isExempt,
+      currentPartial: group.currentPartial ?? 1,
     },
     `diploma_${safeName.replace(/\s+/g, "_")}.pdf`,
   );

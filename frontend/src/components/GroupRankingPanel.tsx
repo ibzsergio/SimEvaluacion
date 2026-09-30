@@ -25,9 +25,11 @@ export default function GroupRankingPanel({
   });
 
   const partialClosed = rankingQuery.data?.group?.partialClosed ?? selectedGroup?.partialClosed ?? false;
+  const currentPartial =
+    rankingQuery.data?.group?.currentPartial ?? selectedGroup?.currentPartial ?? 1;
   const ranking = (rankingQuery.data?.ranking ?? []).map((row) => ({
     ...row,
-    exemption: getExemptionStatus(row.place, partialClosed),
+    exemption: getExemptionStatus(row.place, partialClosed, currentPartial),
   }));
   const top10 = ranking.slice(0, 10);
   const [plannedText, setPlannedText] = useState(
@@ -79,9 +81,11 @@ export default function GroupRankingPanel({
           Cada falta injustificada baja 1 puesto · 3 retardos = 1 falta · las justificadas no cuentan.
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          {partialClosed
-            ? "Top 10: EXENTADO · Lugares 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS"
-            : "Parcial abierto: lugares 1–20 PUEDES EXENTAR · Resto NO DECAIGAS. EXENTADO (Top 10) se confirma al cerrar el parcial."}
+          {currentPartial >= 3
+            ? partialClosed
+              ? "3er parcial cerrado · Top 10: EXENTADO · 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS"
+              : "3er parcial: lugares 1–20 PUEDES EXENTAR · EXENTADO (Top 10) se confirma al cerrar."
+            : "La exención (EXENTADO) solo se confirma en el 3er parcial, Top 10. En 1° y 2° el ranking no exenta."}
         </p>
 
         <div className="mt-4 grid gap-3 rounded-xl border border-white/10 bg-white/5 p-4 sm:grid-cols-3">
@@ -147,7 +151,12 @@ export default function GroupRankingPanel({
             <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-white">
               <span>🏁</span> Top 10 del grupo
             </h3>
-            <Top10Ranking entries={top10} showExemption partialClosed={partialClosed} />
+            <Top10Ranking
+              entries={top10}
+              showExemption
+              partialClosed={partialClosed}
+              currentPartial={currentPartial}
+            />
           </div>
 
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-slate-400">

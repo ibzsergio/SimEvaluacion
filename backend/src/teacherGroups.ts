@@ -673,6 +673,7 @@ teacherGroupsRouter.get("/groups/:groupId/ranking", async (req: AuthedRequest, r
       progressClosedAt: true,
       partialClosed: true,
       partialClosedAt: true,
+      currentPartial: true,
     },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
@@ -769,7 +770,14 @@ teacherGroupsRouter.get("/groups/:groupId/partial-summary", async (req: AuthedRe
   const groupId = String(req.params.groupId);
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId: req.auth!.userId },
-    select: { id: true, code: true, shift: true, partialClosed: true, partialClosedAt: true },
+    select: {
+      id: true,
+      code: true,
+      shift: true,
+      partialClosed: true,
+      partialClosedAt: true,
+      currentPartial: true,
+    },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
@@ -1675,7 +1683,7 @@ teacherGroupsRouter.get("/groups/:groupId/diploma/preview.pdf", async (req: Auth
   const groupId = String(req.params.groupId);
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId: req.auth!.userId },
-    select: { code: true, shift: true, partialClosedAt: true },
+    select: { code: true, shift: true, partialClosedAt: true, currentPartial: true },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
@@ -1708,6 +1716,7 @@ teacherGroupsRouter.get("/groups/:groupId/diploma/preview.pdf", async (req: Auth
       firmasScore6: gradeInfo.firmasScore6,
       examScore4: gradeInfo.examScore4,
       isExempt: gradeInfo.isExempt,
+      currentPartial: group.currentPartial ?? 1,
     },
     `muestra_diploma_grupo_${group.code}.pdf`,
     inline,
@@ -1723,7 +1732,7 @@ teacherGroupsRouter.get(
 
     const group = await prisma.classGroup.findFirst({
       where: { id: groupId, teacherId: req.auth!.userId },
-      select: { code: true, shift: true, partialClosedAt: true },
+      select: { code: true, shift: true, partialClosedAt: true, currentPartial: true },
     });
     if (!group) return res.status(404).json({ error: "group_not_found" });
 
@@ -1753,6 +1762,7 @@ teacherGroupsRouter.get(
         firmasScore6: gradeInfo.firmasScore6,
         examScore4: gradeInfo.examScore4,
         isExempt: gradeInfo.isExempt,
+        currentPartial: group.currentPartial ?? 1,
       },
       `diploma_${safeName.replace(/\s+/g, "_")}.pdf`,
       inline,

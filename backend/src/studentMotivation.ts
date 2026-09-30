@@ -1,5 +1,5 @@
 import { firstNameFromDisplayName, getDailyMotivation } from "./dailyMotivation.js";
-import { getExemptionStatus, type ExemptionStatus } from "./exemptionStatus.js";
+import { getExemptionStatus, isExemptionPartial, type ExemptionStatus } from "./exemptionStatus.js";
 import type { RankingEntry } from "./ranking.js";
 
 export type StudentMotivation = {
@@ -27,9 +27,11 @@ export function buildStudentMotivation(
   myScore: number,
   ranking: RankingEntry[],
   partialClosed = false,
+  currentPartial = 1,
 ): StudentMotivation {
   const daily = getDailyMotivation(studentId);
-  const exemption = getExemptionStatus(place, partialClosed);
+  const exemption = getExemptionStatus(place, partialClosed, currentPartial);
+  const exemptNow = exemption.tier === "exempt";
   const base = {
     displayName,
     firstName: firstNameFromDisplayName(displayName),
@@ -49,9 +51,9 @@ export function buildStudentMotivation(
       inTop10: true,
       emoji: "🥇",
       title: partialClosed ? exemption.label : "¡LUGAR #1!",
-      message: partialClosed
-        ? "Vas en el 1er lugar del parcial. Tu desempeño te coloca como EXENTADO del examen final."
-        : "Vas en el 1er lugar del parcial. Mantén el ritmo para conservar tu posición en el Top 10.",
+      message: exemptNow
+        ? "Vas en el 1er lugar del tercer parcial. Tu desempeño te coloca como EXENTADO del examen final."
+        : "Vas en el 1er lugar del parcial. Mantén el ritmo: la exención se confirma solo en el tercer parcial.",
       pointsToTop10: null,
       exemption,
     };
@@ -65,9 +67,9 @@ export function buildStudentMotivation(
       inTop10: true,
       emoji: "🥈",
       title: partialClosed ? exemption.label : "¡LUGAR #2!",
-      message: partialClosed
-        ? "Estás en 2° lugar. Formas parte del Top 10 y quedas EXENTADO del examen final."
-        : "Estás en 2° lugar. Sigue con constancia para mantenerte en el Top 10.",
+      message: exemptNow
+        ? "Estás en 2° lugar del tercer parcial. Formas parte del Top 10 y quedas EXENTADO del examen final."
+        : "Estás en 2° lugar. Sigue con constancia: la exención se confirma solo en el tercer parcial.",
       pointsToTop10: null,
       exemption,
     };
@@ -81,9 +83,9 @@ export function buildStudentMotivation(
       inTop10: true,
       emoji: "🥉",
       title: partialClosed ? exemption.label : "¡LUGAR #3!",
-      message: partialClosed
-        ? "Vas en 3er lugar. Estás en el podio y dentro del Top 10: quedas EXENTADO del examen final."
-        : "Vas en 3er lugar. Estás en el podio: sigue así para asegurar el Top 10.",
+      message: exemptNow
+        ? "Vas en 3er lugar del tercer parcial. Estás en el podio y dentro del Top 10: quedas EXENTADO del examen final."
+        : "Vas en 3er lugar. Estás en el podio: la exención se confirma solo en el tercer parcial.",
       pointsToTop10: null,
       exemption,
     };
@@ -97,9 +99,11 @@ export function buildStudentMotivation(
       inTop10: true,
       emoji: "⭐",
       title: partialClosed ? exemption.label : `Top 10 · lugar #${place}`,
-      message: partialClosed
-        ? `Estás en el lugar #${place} del Top 10. Quedas EXENTADO del examen final por tu trabajo en el parcial.`
-        : `Estás en el lugar #${place} del Top 10. La exención se confirma cuando el docente cierra el parcial.`,
+      message: exemptNow
+        ? `Estás en el lugar #${place} del Top 10 del tercer parcial. Quedas EXENTADO del examen final.`
+        : isExemptionPartial(currentPartial)
+          ? `Estás en el lugar #${place} del Top 10. La exención se confirma al cerrar el tercer parcial.`
+          : `Estás en el lugar #${place} del Top 10. La exención del examen final se confirma solo en el tercer parcial.`,
       pointsToTop10: null,
       exemption,
     };
@@ -114,7 +118,7 @@ export function buildStudentMotivation(
       emoji: "🎯",
       title: exemption.label,
       message:
-        "Estás entre los lugares 11 y 20. Vas muy bien: con un poco más de esfuerzo puedes alcanzar la exención del examen final.",
+        "Estás entre los lugares 11 y 20. Vas muy bien: la exención se confirma en el tercer parcial, Top 10.",
       pointsToTop10: tenth ? Math.max(0, tenth.score - myScore) : null,
       exemption,
     };

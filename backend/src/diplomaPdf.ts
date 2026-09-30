@@ -22,6 +22,7 @@ export type DiplomaInput = {
   firmasScore6: number;
   examScore4: number;
   isExempt: boolean;
+  currentPartial?: number;
 };
 
 const C = {
@@ -122,10 +123,16 @@ function drawSeal(
 
 export function buildDiplomaPdf(input: DiplomaInput): InstanceType<typeof PDFDocument> {
   const doc = new PDFDocument({ size: "LETTER", layout: "landscape", margin: 0 });
-  const exemption = getExemptionStatus(input.place, true);
+  const currentPartial = input.currentPartial ?? 1;
+  const exemption = getExemptionStatus(input.place, true, currentPartial);
   const firstName = firstNameFromDisplayName(input.studentName);
   const headline = getDiplomaHeadline(input.place);
-  const encouragement = getDiplomaEncouragement(input.place, input.totalStudents, firstName);
+  const encouragement = getDiplomaEncouragement(
+    input.place,
+    input.totalStudents,
+    firstName,
+    currentPartial,
+  );
   const dateLabel = input.partialClosedAt.toLocaleDateString("es-MX", {
     day: "numeric",
     month: "long",

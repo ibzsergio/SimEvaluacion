@@ -48,9 +48,10 @@ async function getAttendanceDemotionInputs(groupId: string): Promise<AttendanceD
 export async function getGroupRanking(groupId: string) {
   const group = await prisma.classGroup.findUnique({
     where: { id: groupId },
-    select: { partialClosed: true },
+    select: { partialClosed: true, currentPartial: true },
   });
   const partialClosed = group?.partialClosed ?? false;
+  const currentPartial = group?.currentPartial ?? 1;
 
   const activities = await prisma.activity.findMany({
     where: { groupId },
@@ -102,7 +103,7 @@ export async function getGroupRanking(groupId: string) {
     ranking: ranking.map((r) => ({
       ...r,
       controlNumber: controlById.get(r.studentId) ?? null,
-      exemption: getExemptionStatus(r.place, partialClosed),
+      exemption: getExemptionStatus(r.place, partialClosed, currentPartial),
     })),
   };
 }

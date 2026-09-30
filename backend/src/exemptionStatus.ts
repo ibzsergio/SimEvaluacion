@@ -8,31 +8,27 @@ export type ExemptionStatus = {
   shortLabel: string;
 };
 
-/** Estatus de exención según lugar en el ranking del parcial. */
-export function getExemptionStatus(place: number, partialClosed = false): ExemptionStatus {
-  if (partialClosed) {
-    if (place <= 10) {
-      return {
-        tier: "exempt",
-        label: "¡EXENTADO!",
-        shortLabel: "EXENTADO",
-      };
-    }
-    if (place <= 20) {
-      return {
-        tier: "can_exempt",
-        label: "¡TÚ PUEDES EXENTAR!",
-        shortLabel: "PUEDES EXENTAR",
-      };
-    }
+/** La exención del examen final solo se confirma en el 3er parcial. */
+export const EXEMPTION_PARTIAL = 3;
+
+export function isExemptionPartial(currentPartial = 1) {
+  return (currentPartial ?? 1) >= EXEMPTION_PARTIAL;
+}
+
+/** Estatus de exención: EXENTADO solo en 3er parcial, al cerrar, Top 10. */
+export function getExemptionStatus(
+  place: number,
+  partialClosed = false,
+  currentPartial = 1,
+): ExemptionStatus {
+  const confirmExempt = partialClosed && isExemptionPartial(currentPartial);
+  if (confirmExempt && place <= 10) {
     return {
-      tier: "keep_going",
-      label: "¡ESTÁS CERCA, NO DECAIGAS!",
-      shortLabel: "NO DECAIGAS",
+      tier: "exempt",
+      label: "¡EXENTADO!",
+      shortLabel: "EXENTADO",
     };
   }
-
-  // Parcial abierto: aún no se confirma EXENTADO (solo al cerrar el parcial, Top 10).
   if (place <= 20) {
     return {
       tier: "can_exempt",
@@ -60,6 +56,7 @@ export function getDiplomaEncouragement(
   place: number,
   totalStudents: number,
   firstName?: string,
+  currentPartial = 1,
 ): string {
   const name = firstName?.trim() || "";
   const vocative = name ? `${name}, ` : "";
@@ -75,10 +72,13 @@ export function getDiplomaEncouragement(
     return `${vocative}cerraste el parcial en el lugar #3 de ${total}. Subiste al podio con mérito propio: disciplina, entrega y carácter. Este reconocimiento celebra a alguien que ya lidera con resultados. ¡El siguiente salto está a tu alcance!`;
   }
   if (place <= 10) {
-    return `${vocative}formaste parte de la élite: lugar #${place} de ${total}. Tu lugar en el Top 10 no es un premio menor; es la prueba de un semestre trabajado con seriedad. Quedas EXENTADO del examen final por un desempeño digno de este diploma. ¡Orgullo merecido!`;
+    const exemptLine = isExemptionPartial(currentPartial)
+      ? "Quedas EXENTADO del examen final por un desempeño digno de este diploma. ¡Orgullo merecido!"
+      : "La exención del examen final se confirma solo en el tercer parcial. Llega ahí con este mismo nivel. ¡Orgullo merecido!";
+    return `${vocative}formaste parte de la élite: lugar #${place} de ${total}. Tu lugar en el Top 10 no es un premio menor; es la prueba de un semestre trabajado con seriedad. ${exemptLine}`;
   }
   if (place <= 20) {
-    return `${vocative}concluiste en el lugar #${place} de ${total}. Estás en la zona alta del grupo y muy cerca de la exención. Tu avance es visible y sólido: una racha más de entregas impecables te puede llevar al Top 10. ¡No aflojes ahora!`;
+    return `${vocative}concluiste en el lugar #${place} de ${total}. Estás en la zona alta del grupo y muy cerca de la élite. La exención se juega en el tercer parcial: una racha más de entregas impecables te puede llevar al Top 10. ¡No aflojes ahora!`;
   }
   return `${vocative}finalizaste en el lugar #${place} de ${total}. Tu esfuerzo cuenta y se nota. Este diploma no cierra tu historia: afirma que ya empezaste el camino. Cada actividad bien hecha te acerca a un lugar más alto. ¡Sigue, porque tu mejor parcial todavía puede escribirse!`;
 }

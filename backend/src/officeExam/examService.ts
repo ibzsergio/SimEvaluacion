@@ -10,7 +10,7 @@ export const EXAM_INSTRUCTIONS = `INSTRUCCIONES DEL EXAMEN — Office 2019 (Word
 • IMPORTANTE: No cambies de pestaña, ventana ni aplicación durante el examen; hacerlo puede invalidar tu evaluación según el reglamento del curso.
 • Tus respuestas se guardan automáticamente en este dispositivo. Si pierdes conexión, no cierres el navegador: al volver a tener internet podrás continuar.
 • Al finalizar verás tu calificación del examen y tu calificación de la materia según las reglas del parcial.
-• Si estás EXENTADO (Top 10), el examen es opcional y no modifica tu calificación final de 10.`;
+• Si estás EXENTADO (Top 10 del tercer parcial), el examen es opcional y no modifica tu calificación final de 10.`;
 
 export async function ensureOfficeExam(teacherId: string) {
   let exam = await prisma.officeExam.findUnique({

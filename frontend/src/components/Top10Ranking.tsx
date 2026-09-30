@@ -19,8 +19,8 @@ export function rankMedal(place: number) {
   return `${place}.`;
 }
 
-function exemptionFromPlace(place: number, partialClosed = false): ExemptionStatus {
-  return getExemptionStatus(place, partialClosed);
+function exemptionFromPlace(place: number, partialClosed = false, currentPartial = 1): ExemptionStatus {
+  return getExemptionStatus(place, partialClosed, currentPartial);
 }
 
 export default function Top10Ranking({
@@ -29,12 +29,14 @@ export default function Top10Ranking({
   highlightStudentId,
   showExemption = false,
   partialClosed = false,
+  currentPartial = 1,
 }: {
   entries: Top10Entry[];
   emptyMessage?: string;
   highlightStudentId?: string;
   showExemption?: boolean;
   partialClosed?: boolean;
+  currentPartial?: number;
 }) {
   const top10 = entries.slice(0, 10);
 
@@ -48,7 +50,7 @@ export default function Top10Ranking({
         const medal = rankMedal(entry.place);
         const isPodium = entry.place <= 3;
         const isMe = highlightStudentId != null && entry.studentId === highlightStudentId;
-        const exemption = entry.exemption ?? exemptionFromPlace(entry.place, partialClosed);
+        const exemption = entry.exemption ?? exemptionFromPlace(entry.place, partialClosed, currentPartial);
         return (
           <li
             key={entry.studentId}

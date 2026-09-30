@@ -42,20 +42,22 @@ export default function StudentPage() {
   const progress = data.courseProgress;
   const progressPct = progress.percent;
   const partialClosed = data.group?.partialClosed ?? false;
+  const currentPartial = data.group?.currentPartial ?? 1;
   const diplomaEnabled = data.group?.diplomaEnabled ?? false;
   const diplomaHeadline = getDiplomaHeadline(data.my.place);
   const diplomaPhrase = getDiplomaEncouragement(
     data.my.place,
     data.my.totalStudents,
     data.motivation.firstName,
+    currentPartial,
   );
   const motivation = {
     ...data.motivation,
-    exemption: getExemptionStatus(data.my.place, partialClosed),
+    exemption: getExemptionStatus(data.my.place, partialClosed, currentPartial),
   };
   const top10 = data.top10.map((entry) => ({
     ...entry,
-    exemption: getExemptionStatus(entry.place, partialClosed),
+    exemption: getExemptionStatus(entry.place, partialClosed, currentPartial),
   }));
 
   const pendingActivities = data.activities.filter((a) => a.status === "pending");
@@ -219,6 +221,7 @@ export default function StudentPage() {
             highlightStudentId={user?.id}
             showExemption
             partialClosed={partialClosed}
+            currentPartial={currentPartial}
           />
           {!data.my.inTop10 ? (
             <p className="mt-3 text-xs text-slate-500">

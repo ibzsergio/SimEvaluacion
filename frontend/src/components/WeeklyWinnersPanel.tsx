@@ -51,6 +51,7 @@ export default function WeeklyWinnersPanel({
   });
 
   const partialClosed = selectedGroup?.partialClosed ?? false;
+  const currentPartial = selectedGroup?.currentPartial ?? 1;
   const weeks = weeksQuery.data?.weeks ?? [];
   const partialRows = partialQuery.data?.rows ?? [];
   const sampleRow = partialRows[4] ?? partialRows[0];
@@ -143,15 +144,22 @@ export default function WeeklyWinnersPanel({
       <section className="glass mt-6 p-6">
         <h2 className="text-lg font-semibold text-white">Resumen del parcial</h2>
         <p className="mt-1 text-xs text-slate-500">
-          {partialClosed
-            ? "Ranking final · Top 10: EXENTADO · 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS"
-            : "Parcial abierto · 1–20: PUEDES EXENTAR · Resto: NO DECAIGAS · EXENTADO al cerrar parcial (Top 10)"}
+          {currentPartial >= 3
+            ? partialClosed
+              ? "3er parcial · Top 10: EXENTADO · 11–20: PUEDES EXENTAR · Resto: NO DECAIGAS"
+              : "3er parcial · EXENTADO (Top 10) se confirma al cerrar"
+            : "La exención (EXENTADO) solo aplica en el 3er parcial."}
         </p>
 
         {partialQuery.isLoading ? (
           <p className="mt-6 text-sm text-slate-400">Cargando resumen...</p>
         ) : (
-          <PartialTable rows={partialRows} groupId={selectedGroupId} partialClosed={partialClosed} />
+          <PartialTable
+            rows={partialRows}
+            groupId={selectedGroupId}
+            partialClosed={partialClosed}
+            currentPartial={currentPartial}
+          />
         )}
       </section>
 
@@ -224,10 +232,12 @@ function PartialTable({
   rows,
   groupId,
   partialClosed,
+  currentPartial,
 }: {
   rows: PartialSummaryRow[];
   groupId: string;
   partialClosed: boolean;
+  currentPartial: number;
 }) {
   if (!rows.length) {
     return <p className="mt-6 text-sm text-slate-500">Sin alumnos.</p>;
@@ -266,7 +276,7 @@ function PartialTable({
                 {r.displayName}
               </td>
               <td className="px-4 py-3">
-                <ExemptionBadge exemption={getExemptionStatus(place, partialClosed)} />
+                <ExemptionBadge exemption={getExemptionStatus(place, partialClosed, currentPartial)} />
               </td>
               <td className="px-4 py-3 text-right font-bold text-cyan-300">{r.totalPoints}</td>
               <td className="px-4 py-3 text-right font-bold text-amber-200">{r.weeksWon}</td>
