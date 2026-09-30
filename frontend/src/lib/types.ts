@@ -406,6 +406,10 @@ export type ClassDayRow = {
 export type ClassDaySheet = {
   group: Pick<ClassGroup, "id" | "code" | "shift">;
   date: string;
+  currentPartial?: number;
+  datePartial?: number;
+  isHistory?: boolean;
+  history?: { partialNumber: number; dates: string[] }[];
   maxStars: number;
   /** Umbral: alerta si faltas > este valor (por defecto 3). */
   absenceAlertAfter?: number;

@@ -10,7 +10,7 @@ import {
   getApiErrorMessage,
   saveClassDayRecords,
 } from "../lib/api";
-import { todayLocalIso } from "../lib/dates";
+import { todayLocalIso, partialLabel, formatCalendarDate } from "../lib/dates";
 import type { AttendanceStatus, ClassDayRow, ClassGroup } from "../lib/types";
 
 function getSchoolWeekLabel(anchorIso: string) {
@@ -50,7 +50,10 @@ export default function ClassDayPanel({
   const [localRows, setLocalRows] = useState<LocalRow[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [downloading, setDownloading] = useState<string | null>(null);
+  const [collapsedHistory, setCollapsedHistory] = useState(true);
+  const [downloading, setDownloading] = useState<
+    "master" | "day-xlsx" | "day-pdf" | "week-xlsx" | "week-pdf" | null
+  >(null);
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const weekLabel = getSchoolWeekLabel(date);
@@ -218,8 +221,10 @@ export default function ClassDayPanel({
           <div>
             <h2 className="text-lg font-semibold text-white">Asistencia y participación</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Las estrellas suman 1 punto c/u en el ranking (máx. 3 por día). Toca una estrella para
-              asignar; vuelve a tocar la misma para bajar o quitar todas.
+              {partialLabel(query.data?.currentPartial ?? selectedGroup?.currentPartial ?? 1)}
+              {query.data?.isHistory
+                ? ` · Historial de ${partialLabel(query.data.datePartial ?? 1).toLowerCase()} (no se borra)`
+                : " · Las estrellas suman 1 punto c/u en el ranking (máx. 3 por día)."}
             </p>
           </div>
           <label className="block text-xs text-slate-400">
@@ -232,6 +237,68 @@ export default function ClassDayPanel({
             />
           </label>
         </div>
+
+        {(query.data?.currentPartial ?? selectedGroup?.currentPartial ?? 1) > 1 ? (
+          <div className="mt-4 rounded-xl border border-cyan-400/25 bg-cyan-500/5 px-4 py-3">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+              <span className="shrink-0 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-200">
+                Corte de asistencia
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+            </div>
+            <p className="text-xs text-slate-300">
+              Ahora pasas lista de {partialLabel(query.data?.currentPartial ?? 2).toLowerCase()}. El
+              primer parcial queda como historial; no se borra.
+            </p>
+            <button
+              type="button"
+              onClick={() => setCollapsedHistory((v) => !v)}
+              className="mt-2 text-[11px] font-semibold text-cyan-200/90 hover:text-cyan-100"
+            >
+              {collapsedHistory ? "Mostrar historial" : "Ocultar historial"}
+            </button>
+            {!collapsedHistory ? (
+              <div className="mt-3 space-y-3">
+                {(query.data?.history ?? [])
+                  .filter((h) => h.partialNumber < (query.data?.currentPartial ?? 2))
+                  .map((h) => (
+                    <div key={h.partialNumber}>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                        {partialLabel(h.partialNumber)} · {h.dates.length} día
+                        {h.dates.length === 1 ? "" : "s"}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {h.dates.map((iso) => (
+                          <button
+                            key={iso}
+                            type="button"
+                            onClick={() => setDate(iso)}
+                            className={`rounded-lg border px-2 py-1 text-[11px] ${
+                              date === iso
+                                ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-100"
+                                : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                            }`}
+                          >
+                            {formatCalendarDate(iso)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                {(query.data?.history ?? []).every(
+                  (h) => h.partialNumber >= (query.data?.currentPartial ?? 2),
+                ) ? (
+                  <p className="text-[11px] text-slate-500">
+                    Aún no hay días guardados del parcial anterior.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="mt-1 text-[11px] text-slate-500">Compactado para aclaraciones.</p>
+            )}
+          </div>
+        ) : null}
 
         <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/40 p-4">
           <p className="text-sm font-semibold text-white">Exportar reportes</p>
@@ -293,6 +360,14 @@ export default function ClassDayPanel({
             Los reportes marcan con alerta a quienes no asistieron o llegaron tarde.
           </p>
         </div>
+
+        {query.data?.isHistory ? (
+          <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            Estás viendo historial de {partialLabel(query.data.datePartial ?? 1).toLowerCase()}. No se
+            borra: puedes consultarlo o aclarar un día. La lista nueva del{" "}
+            {partialLabel(query.data.currentPartial ?? 2).toLowerCase()} se guarda aparte.
+          </div>
+        ) : null}
 
         {atRiskStudents.length > 0 ? (
           <div className="mt-4 rounded-xl border-2 border-rose-500/60 bg-rose-600/20 px-4 py-3 text-sm text-rose-50 shadow-[0_0_24px_rgba(244,63,94,0.15)]">

@@ -560,8 +560,16 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     myGroup?.currentPartial ?? 1,
   );
 
-  const participationStars = await getStudentParticipationStars(req.auth!.userId, me.groupId);
-  const attendance = await getStudentAttendanceSummary(req.auth!.userId, me.groupId);
+  const participationStars = await getStudentParticipationStars(
+    req.auth!.userId,
+    me.groupId,
+    myGroup?.currentPartial ?? 1,
+  );
+  const attendance = await getStudentAttendanceSummary(
+    req.auth!.userId,
+    me.groupId,
+    myGroup?.currentPartial ?? 1,
+  );
   let seating = null;
   try {
     seating = await getStudentSeating(req.auth!.userId, me.groupId, todayClassDayDate());

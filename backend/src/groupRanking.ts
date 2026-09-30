@@ -17,9 +17,15 @@ export type GroupRankingRow = RankingEntry & {
 };
 
 async function getAttendanceDemotionInputs(groupId: string): Promise<AttendanceDemotionInput[]> {
+  const group = await prisma.classGroup.findUnique({
+    where: { id: groupId },
+    select: { currentPartial: true },
+  });
+  const partialNumber = group?.currentPartial ?? 1;
   const rows = await prisma.classDayRecord.findMany({
     where: {
       groupId,
+      partialNumber,
       attendance: { in: ["ABSENT", "LATE"] },
     },
     select: { studentId: true, attendance: true, date: true },
@@ -70,7 +76,7 @@ export async function getGroupRanking(groupId: string) {
     _sum: { points: true },
   });
   const scoreByStudent = new Map(totals.map((t) => [t.studentId, t._sum.points ?? 0]));
-  const participationByStudent = await getParticipationStarsByStudent(groupId);
+  const participationByStudent = await getParticipationStarsByStudent(groupId, currentPartial);
 
   // Usar gradedAt (primera calificación): no se actualiza al recalificar.
   const allGrades = await prisma.grade.findMany({

@@ -38,6 +38,7 @@ type ExistingClassDayRow = {
   studentId: string;
   attendance: AttendanceStatus;
   stars: number;
+  partialNumber: number;
 };
 
 export async function dedupeClassDayRecordsForDay(groupId: string, dateIso: string) {
@@ -60,9 +61,15 @@ export async function dedupeClassDayRecordsForDay(groupId: string, dateIso: stri
 async function loadExistingByStudent(groupId: string, dateIso: string) {
   try {
     const rows = await prisma.$queryRaw<
-      Array<{ id: string; studentId: string; attendance: string; stars: number | bigint }>
+      Array<{
+        id: string;
+        studentId: string;
+        attendance: string;
+        stars: number | bigint;
+        partialNumber?: number | bigint | null;
+      }>
     >`
-      SELECT \`id\`, \`studentId\`, \`attendance\`, \`stars\`
+      SELECT \`id\`, \`studentId\`, \`attendance\`, \`stars\`, \`partialNumber\`
       FROM \`ClassDayRecord\`
       WHERE \`groupId\` = ${groupId} AND DATE(\`date\`) = DATE(${dateIso})
     `;
@@ -74,6 +81,7 @@ async function loadExistingByStudent(groupId: string, dateIso: string) {
           studentId: r.studentId,
           attendance: r.attendance as AttendanceStatus,
           stars: Number(r.stars),
+          partialNumber: Number(r.partialNumber ?? 1) || 1,
         },
       ]),
     );
@@ -83,9 +91,11 @@ async function loadExistingByStudent(groupId: string, dateIso: string) {
     if (!date) return new Map();
     const rows = await prisma.classDayRecord.findMany({
       where: { groupId, date },
-      select: { id: true, studentId: true, attendance: true, stars: true },
+      select: { id: true, studentId: true, attendance: true, stars: true, partialNumber: true },
     });
-    return new Map(rows.map((r) => [r.studentId, { ...r, stars: Number(r.stars) }]));
+    return new Map(
+      rows.map((r) => [r.studentId, { ...r, stars: Number(r.stars), partialNumber: r.partialNumber ?? 1 }]),
+    );
   }
 }
 
@@ -127,6 +137,7 @@ async function writeClassDayRecord(
     attendance: AttendanceStatus;
     stars: number;
     markedById: string;
+    partialNumber: number;
   },
   existingId?: string,
 ) {
@@ -151,6 +162,7 @@ async function writeClassDayRecord(
         groupId: data.groupId,
         studentId: data.studentId,
         date,
+        partialNumber: data.partialNumber,
         ...payload,
       },
     });
@@ -162,10 +174,36 @@ async function writeClassDayRecord(
   }
 }
 
-export async function getParticipationStarsByStudent(groupId: string): Promise<Map<string, number>> {
+async function listAttendanceHistory(groupId: string) {
+  const rows = await prisma.classDayRecord.findMany({
+    where: { groupId },
+    select: { date: true, partialNumber: true },
+  });
+  const byPartial = new Map<number, Set<string>>();
+  for (const row of rows) {
+    const n = row.partialNumber ?? 1;
+    const set = byPartial.get(n) ?? new Set<string>();
+    set.add(formatClassDayIso(row.date));
+    byPartial.set(n, set);
+  }
+  return [...byPartial.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([partialNumber, dates]) => ({
+      partialNumber,
+      dates: [...dates].sort(),
+    }));
+}
+
+export async function getParticipationStarsByStudent(
+  groupId: string,
+  partialNumber?: number,
+): Promise<Map<string, number>> {
   const rows = await prisma.classDayRecord.groupBy({
     by: ["studentId"],
-    where: { groupId },
+    where: {
+      groupId,
+      ...(partialNumber != null ? { partialNumber } : {}),
+    },
     _sum: { stars: true },
   });
   const map = new Map<string, number>();
@@ -175,22 +213,38 @@ export async function getParticipationStarsByStudent(groupId: string): Promise<M
   return map;
 }
 
-export async function getStudentParticipationStars(studentId: string, groupId: string): Promise<number> {
+export async function getStudentParticipationStars(
+  studentId: string,
+  groupId: string,
+  partialNumber?: number,
+): Promise<number> {
   const agg = await prisma.classDayRecord.aggregate({
-    where: { studentId, groupId },
+    where: {
+      studentId,
+      groupId,
+      ...(partialNumber != null ? { partialNumber } : {}),
+    },
     _sum: { stars: true },
   });
   return agg._sum.stars ?? 0;
 }
 
-export async function getStudentAttendanceSummary(studentId: string, groupId: string) {
+export async function getStudentAttendanceSummary(
+  studentId: string,
+  groupId: string,
+  partialNumber?: number,
+) {
+  const whereDay = {
+    groupId,
+    ...(partialNumber != null ? { partialNumber } : {}),
+  };
   const [rows, classDayDates] = await Promise.all([
     prisma.classDayRecord.findMany({
-      where: { studentId, groupId },
+      where: { studentId, ...whereDay },
       select: { attendance: true },
     }),
     prisma.classDayRecord.findMany({
-      where: { groupId },
+      where: whereDay,
       distinct: ["date"],
       select: { date: true },
     }),
@@ -216,7 +270,7 @@ export async function getClassDaySheet(
 ) {
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId },
-    select: { id: true, code: true, shift: true },
+    select: { id: true, code: true, shift: true, currentPartial: true },
   });
   if (!group) throw new Error("group_not_found");
 
@@ -228,6 +282,9 @@ export async function getClassDaySheet(
 
   const dateIso = formatClassDayIso(date);
   const existingByStudent = await loadExistingByStudent(groupId, dateIso);
+  const existingPartial = [...existingByStudent.values()][0]?.partialNumber;
+  const datePartial = existingPartial ?? group.currentPartial ?? 1;
+  const isHistory = datePartial < (group.currentPartial ?? 1);
   const byStudent = new Map(
     [...existingByStudent.entries()].map(([studentId, r]) => [
       studentId,
@@ -235,17 +292,22 @@ export async function getClassDaySheet(
     ]),
   );
 
-  /** Solo faltas (ABSENT). Justificada no cuenta: al marcar J baja el conteo. */
+  /** Faltas del parcial que se está viendo (historial o actual). */
   const absenceGroups = await prisma.classDayRecord.groupBy({
     by: ["studentId"],
-    where: { groupId, attendance: "ABSENT" },
+    where: { groupId, attendance: "ABSENT", partialNumber: datePartial },
     _count: { _all: true },
   });
   const absenceByStudent = new Map(absenceGroups.map((r) => [r.studentId, r._count._all]));
+  const history = await listAttendanceHistory(groupId);
 
   return {
     group,
     date: formatClassDayIso(date),
+    currentPartial: group.currentPartial ?? 1,
+    datePartial,
+    isHistory,
+    history,
     maxStars: MAX_STARS,
     /** Alerta cuando el alumno supera este número de faltas (más de 3 = 4+). */
     absenceAlertAfter: 3,
@@ -270,7 +332,7 @@ export async function saveClassDayRecords(
 ) {
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId },
-    select: { id: true },
+    select: { id: true, currentPartial: true },
   });
   if (!group) throw new Error("group_not_found");
 
@@ -286,6 +348,8 @@ export async function saveClassDayRecords(
   const dateIso = formatClassDayIso(date);
   await dedupeClassDayRecordsForDay(groupId, dateIso);
   const existingByStudent = await loadExistingByStudent(groupId, dateIso);
+  const existingPartial = [...existingByStudent.values()][0]?.partialNumber;
+  const partialNumber = existingPartial ?? group.currentPartial ?? 1;
 
   let saved = 0;
   for (const rec of records) {
@@ -302,6 +366,7 @@ export async function saveClassDayRecords(
         attendance: rec.attendance,
         stars,
         markedById: teacherId,
+        partialNumber,
       },
       prev?.id,
     );

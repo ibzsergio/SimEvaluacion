@@ -213,7 +213,7 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
             orderBy: [{ displayName: "asc" }, { listNumber: "asc" }],
     }),
     prisma.classDayRecord.findMany({
-      where: { groupId },
+      where: { groupId, partialNumber: 1 },
       select: { studentId: true, attendance: true, stars: true, date: true },
     }),
   ]);

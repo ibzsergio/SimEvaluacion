@@ -19,6 +19,17 @@ async function execOptional(sql: string, ignore = /Duplicate|already exists|errn
   }
 }
 
+async function columnExists(table: string, column: string) {
+  const rows = await prisma.$queryRaw<Array<{ cnt: bigint }>>`
+    SELECT COUNT(*) AS cnt
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND LOWER(table_name) = LOWER(${table})
+      AND LOWER(column_name) = LOWER(${column})
+  `;
+  return Number(rows[0]?.cnt ?? 0) > 0;
+}
+
 export async function getClassDaySchemaStatus() {
   const hasTable = await tableExists("ClassDayRecord");
   let prismaOk = false;
@@ -37,13 +48,8 @@ export async function getClassDaySchemaStatus() {
 export async function ensureClassDaySchema() {
   console.log("[startup] Ensuring class day schema...");
   const before = await getClassDaySchemaStatus();
-  if (before.ready) {
-    console.log("[startup] Class day schema already ready.");
-    await dedupeClassDayRecords();
-    return;
-  }
-
-  await execOptional(`
+  if (!before.ready) {
+    await execOptional(`
     CREATE TABLE IF NOT EXISTS \`ClassDayRecord\` (
       \`id\` VARCHAR(191) NOT NULL,
       \`groupId\` VARCHAR(191) NOT NULL,
@@ -51,6 +57,7 @@ export async function ensureClassDaySchema() {
       \`date\` DATE NOT NULL,
       \`attendance\` ENUM('PRESENT', 'ABSENT', 'LATE', 'JUSTIFIED') NOT NULL DEFAULT 'PRESENT',
       \`stars\` INTEGER NOT NULL DEFAULT 0,
+      \`partialNumber\` INTEGER NOT NULL DEFAULT 1,
       \`markedById\` VARCHAR(191) NOT NULL,
       \`createdAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
       \`updatedAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
@@ -61,26 +68,34 @@ export async function ensureClassDaySchema() {
     ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
 
-  await execOptional(`
+    await execOptional(`
     ALTER TABLE \`ClassDayRecord\`
     ADD CONSTRAINT \`ClassDayRecord_groupId_fkey\`
     FOREIGN KEY (\`groupId\`) REFERENCES \`ClassGroup\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
   `);
-  await execOptional(`
+    await execOptional(`
     ALTER TABLE \`ClassDayRecord\`
     ADD CONSTRAINT \`ClassDayRecord_studentId_fkey\`
     FOREIGN KEY (\`studentId\`) REFERENCES \`User\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
   `);
-  await execOptional(`
+    await execOptional(`
     ALTER TABLE \`ClassDayRecord\`
     ADD CONSTRAINT \`ClassDayRecord_markedById_fkey\`
     FOREIGN KEY (\`markedById\`) REFERENCES \`User\`(\`id\`) ON DELETE RESTRICT ON UPDATE CASCADE
   `);
 
-  const after = await getClassDaySchemaStatus();
-  if (!after.ready) {
-    throw new Error(`Class day schema incomplete: ${JSON.stringify(after)}`);
+    const after = await getClassDaySchemaStatus();
+    if (!after.ready) {
+      throw new Error(`Class day schema incomplete: ${JSON.stringify(after)}`);
+    }
   }
+
+  if (!(await columnExists("ClassDayRecord", "partialNumber"))) {
+    await execOptional(
+      "ALTER TABLE `ClassDayRecord` ADD COLUMN `partialNumber` INTEGER NOT NULL DEFAULT 1",
+    );
+  }
+
   console.log("[startup] Class day schema ready.");
   await dedupeClassDayRecords();
 }

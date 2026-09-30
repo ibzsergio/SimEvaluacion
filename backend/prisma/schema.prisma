@@ -330,6 +330,8 @@ model ClassDayRecord {
   /// Estrellas de participación (0–3); cada estrella suma 1 punto en la escala de firmas.
   stars      Int              @default(0)
   markedById String
+  /// 1 = primer parcial, 2 = segundo, …
+  partialNumber Int @default(1)
 
   group    ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   student  User       @relation("StudentClassDay", fields: [studentId], references: [id], onDelete: Cascade)
