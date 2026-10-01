@@ -7,6 +7,7 @@ import GroupDeliveryStatusPanel from "../components/GroupDeliveryStatusPanel";
 import GroupGradesImportPanel from "../components/GroupGradesImportPanel";
 import GroupRankingPanel from "../components/GroupRankingPanel";
 import GroupStudentsPanel from "../components/GroupStudentsPanel";
+import ColorReadingPanel from "../components/ColorReadingPanel";
 import IcebreakerRoulettePanel from "../components/IcebreakerRoulettePanel";
 import SeatingPanel from "../components/SeatingPanel";
 import TeacherSkillSurveyPanel from "../components/TeacherSkillSurveyPanel";
@@ -51,6 +52,7 @@ export default function TeacherPage() {
     | "asientos"
     | "equipos"
     | "rompehielo"
+    | "lectura"
     | "acceso"
   >("alumnos");
   const [selectedGroupId, setSelectedGroupId] = useState("");
@@ -265,6 +267,9 @@ export default function TeacherPage() {
         <TabButton active={tab === "rompehielo"} onClick={() => setTab("rompehielo")}>
           Ruleta rompehielo
         </TabButton>
+        <TabButton active={tab === "lectura"} onClick={() => setTab("lectura")}>
+          Lectura por colores
+        </TabButton>
         <TabButton active={tab === "acceso"} onClick={() => setTab("acceso")}>
           QR / Acceso
         </TabButton>
@@ -337,6 +342,16 @@ export default function TeacherPage() {
           <p className="text-slate-400">Cargando grupos...</p>
         ) : selectedGroupId ? (
           <IcebreakerRoulettePanel
+            groups={groups}
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={(id) => setSelectedGroupId(id)}
+          />
+        ) : null
+      ) : tab === "lectura" ? (
+        groupsQuery.isLoading ? (
+          <p className="text-slate-400">Cargando grupos...</p>
+        ) : selectedGroupId ? (
+          <ColorReadingPanel
             groups={groups}
             selectedGroupId={selectedGroupId}
             onSelectGroup={(id) => setSelectedGroupId(id)}

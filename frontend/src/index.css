@@ -48,3 +48,22 @@ body {
 .ice-reveal {
   animation: ice-reveal-in 0.45s ease-out;
 }
+
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #0f172a !important;
+  }
+
+  .glass,
+  .lectura-session article {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+}

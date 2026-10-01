@@ -5,6 +5,7 @@ import Layout from "../components/Layout";
 import StudentCommunication from "../components/StudentCommunication";
 import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
+import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
@@ -81,7 +82,10 @@ export default function StudentPage() {
       <StudentSkillSurveyPanel />
 
       {data.seating ? (
-        <StudentSeatingCard seating={data.seating} />
+        <>
+          <StudentSeatingCard seating={data.seating} />
+          <StudentColorReadingCard seating={data.seating} />
+        </>
       ) : (
         <section className="glass mb-6 border border-white/10 p-4">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Tu lugar hoy</p>
