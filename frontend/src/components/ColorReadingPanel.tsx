@@ -31,6 +31,8 @@ export default function ColorReadingPanel({
   const [focusIndex, setFocusIndex] = useState<number | "todos">("todos");
   const [topic, setTopic] = useState("");
   const [actionError, setActionError] = useState("");
+  const [openTeams, setOpenTeams] = useState<Record<number, boolean>>({});
+  const [openParas, setOpenParas] = useState<Record<string, boolean>>({});
 
   const sessionQuery = useQuery({
     queryKey: ["lectura-session", selectedGroupId],
@@ -47,8 +49,15 @@ export default function ColorReadingPanel({
   useEffect(() => {
     setFocusIndex("todos");
     setActionError("");
+    setOpenTeams({});
+    setOpenParas({});
     if (session?.topic) setTopic(session.topic);
   }, [selectedGroupId, session?.topic, teamCount]);
+
+  useEffect(() => {
+    if (focusIndex === "todos") return;
+    setOpenTeams((prev) => ({ ...prev, [focusIndex]: true }));
+  }, [focusIndex]);
 
   useEffect(() => {
     if (!running) return;
@@ -277,6 +286,29 @@ export default function ColorReadingPanel({
           <FilterChip active={focusIndex === "todos"} onClick={() => setFocusIndex("todos")}>
             Proyectar {teamCount} lectura{teamCount === 1 ? "" : "s"}
           </FilterChip>
+          <button
+            type="button"
+            onClick={() => {
+              const next: Record<number, boolean> = {};
+              teams.forEach((t) => {
+                next[t.readingIndex] = true;
+              });
+              setOpenTeams(next);
+            }}
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 hover:bg-white/10"
+          >
+            Expandir lecturas
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpenTeams({});
+              setOpenParas({});
+            }}
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 hover:bg-white/10"
+          >
+            Contraer lecturas
+          </button>
           {teams.map((team) => {
             return (
               <FilterChip
@@ -320,39 +352,89 @@ export default function ColorReadingPanel({
 
       <div className="space-y-4 print:space-y-6">
         {visibleTeams.map((team) => {
+          const teamOpen = Boolean(openTeams[team.readingIndex]);
           return (
             <article
               key={team.readingIndex}
               className="overflow-hidden rounded-2xl border"
               style={{ borderColor: `${team.hex}88` }}
             >
-              <header className="px-5 py-3" style={{ backgroundColor: `${team.hex}33` }}>
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenTeams((prev) => ({ ...prev, [team.readingIndex]: !prev[team.readingIndex] }))
+                }
+                className="flex w-full items-start justify-between gap-3 px-5 py-3 text-left no-print"
+                style={{ backgroundColor: `${team.hex}33` }}
+                aria-expanded={teamOpen}
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
+                    {team.colorName} · Columna {team.columna} · lectura {team.readingIndex + 1}/{teamCount} ·
+                    solo este equipo
+                  </p>
+                  <h3 className="mt-1 text-lg font-bold text-white">{team.titulo}</h3>
+                  <p className="text-sm text-slate-300">
+                    {team.members.length} integrante{team.members.length === 1 ? "" : "s"} ·{" "}
+                    {team.members.map((m) => m.displayName.split(" ")[0]).join(", ")}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200">
+                  {teamOpen ? "Ocultar" : "Ver lectura"}
+                </span>
+              </button>
+              <header className="hidden px-5 py-3 print:block" style={{ backgroundColor: `${team.hex}33` }}>
                 <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-                  {team.colorName} · Columna {team.columna} · lectura {team.readingIndex + 1}/{teamCount} ·
-                  solo este equipo
+                  {team.colorName} · Columna {team.columna} · lectura {team.readingIndex + 1}/{teamCount}
                 </p>
                 <h3 className="mt-1 text-lg font-bold text-white">{team.titulo}</h3>
                 <p className="text-sm text-slate-300">Misión: {team.mision}</p>
               </header>
-              <div className="bg-slate-950/50 px-5 py-4">
+              <div className={`bg-slate-950/50 px-5 py-4 ${teamOpen ? "block" : "hidden print:block"}`}>
                 <p className="text-xs font-bold uppercase tracking-widest text-cyan-200">
-                  Lectura del equipo · cada integrante lee su párrafo
+                  Lectura del equipo · toca un nombre para ver u ocultar su párrafo
                 </p>
+                <p className="mt-2 text-sm text-slate-300 print:block">{team.mision}</p>
                 <div className="mt-3 space-y-3">
-                  {team.members.map((m) => (
-                    <div
-                      key={m.studentId}
-                      className="rounded-xl border px-4 py-4"
-                      style={{ borderColor: `${team.hex}55`, backgroundColor: `${team.hex}14` }}
-                    >
-                      <p className="text-xs font-bold uppercase tracking-wide" style={{ color: team.hex }}>
-                        {m.roleName} · lee {m.displayName}
-                      </p>
-                      <p className="mt-2 max-w-prose text-[15px] leading-7 text-white">
-                        {m.paragraph || "Aún no hay párrafo: genera la lectura de esta semana."}
-                      </p>
-                    </div>
-                  ))}
+                  {team.members.map((m) => {
+                    const paraOpen = Boolean(openParas[m.studentId]);
+                    return (
+                      <div
+                        key={m.studentId}
+                        className="rounded-xl border"
+                        style={{ borderColor: `${team.hex}55`, backgroundColor: `${team.hex}14` }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenParas((prev) => ({ ...prev, [m.studentId]: !prev[m.studentId] }))
+                          }
+                          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left no-print"
+                          aria-expanded={paraOpen}
+                        >
+                          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: team.hex }}>
+                            {m.roleName} · lee {m.displayName}
+                          </p>
+                          <span className="text-xs font-semibold text-slate-400">
+                            {paraOpen ? "Ocultar" : "Ver"}
+                          </span>
+                        </button>
+                        <p
+                          className="hidden px-4 pt-3 text-xs font-bold uppercase tracking-wide print:block"
+                          style={{ color: team.hex }}
+                        >
+                          {m.roleName} · lee {m.displayName}
+                        </p>
+                        <p
+                          className={`max-w-prose px-4 pb-4 text-[15px] leading-7 text-white ${
+                            paraOpen ? "block" : "hidden print:block"
+                          }`}
+                        >
+                          {m.paragraph || "Aún no hay párrafo: genera la lectura de esta semana."}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="mt-4 text-sm font-medium text-cyan-200">Pregunta guía: {team.preguntaGuia}</p>
                 <p className="mt-2 text-xs text-slate-500">Claves: {team.clave.join(" · ")}</p>
