@@ -348,7 +348,7 @@ export default function ColorReadingPanel({
                       <p className="text-xs font-bold uppercase tracking-wide" style={{ color: team.hex }}>
                         {m.roleName} · lee {m.displayName}
                       </p>
-                      <p className="mt-2 text-base leading-relaxed text-white">
+                      <p className="mt-2 max-w-prose text-[15px] leading-7 text-white">
                         {m.paragraph || "Aún no hay párrafo: genera la lectura de esta semana."}
                       </p>
                     </div>

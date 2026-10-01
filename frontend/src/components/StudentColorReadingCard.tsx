@@ -21,7 +21,7 @@ export default function StudentColorReadingCard({ lectura }: { lectura: StudentL
         <p className="mt-1 text-sm font-semibold text-white">
           {lectura.roleName} · {lectura.displayName || lectura.teammates.find((m) => m.isMe)?.displayName || "Tu turno"}
         </p>
-        <p className="mt-3 text-base leading-relaxed text-white">{lectura.paragraph}</p>
+        <p className="mt-3 max-w-prose text-[15px] leading-7 text-white">{lectura.paragraph}</p>
       </div>
 
       <div className="px-5 py-4">
@@ -40,7 +40,7 @@ export default function StudentColorReadingCard({ lectura }: { lectura: StudentL
                 {m.roleName}
                 {m.isMe ? " · tú" : ""} · {m.displayName}
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-100">{m.paragraph}</p>
+              <p className="mt-2 max-w-prose text-[15px] leading-7 text-slate-100">{m.paragraph}</p>
             </li>
           ))}
         </ol>
