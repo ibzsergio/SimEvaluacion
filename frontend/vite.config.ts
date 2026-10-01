@@ -10,10 +10,11 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
+        cacheId: "simeval-20261001",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        navigateFallbackDenylist: [/^\/api/, /\/calendar\/file/],
+        navigateFallbackDenylist: [/^\/api/, /\/calendar\/file/, /\/assets\//],
       },
       includeAssets: ["favicon.svg", "icons.svg", "manifest.webmanifest", "manifest-docente.webmanifest"],
       manifest: {

@@ -34,10 +34,48 @@
     <title>SimEvaluación</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    </noscript>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;color:#94a3b8">Cargando SimEvaluación…</div>
+    <script>
+      (function () {
+        var FLAG = "simeval_sw_recover";
+        function recover() {
+          try {
+            if (sessionStorage.getItem(FLAG)) return;
+            sessionStorage.setItem(FLAG, "1");
+          } catch (e) {}
+          var done = function () {
+            location.reload();
+          };
+          if (!("serviceWorker" in navigator)) {
+            done();
+            return;
+          }
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            return Promise.all(regs.map(function (r) { return r.unregister(); }));
+          }).then(function () {
+            if (!window.caches) return;
+            return caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            });
+          }).then(done).catch(done);
+        }
+        window.setTimeout(function () {
+          var root = document.getElementById("root");
+          if (root && root.childElementCount === 0) recover();
+        }, 4000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

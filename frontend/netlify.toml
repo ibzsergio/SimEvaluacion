@@ -2,6 +2,26 @@
   command = "npm run build"
   publish = "dist"
 
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest-docente.webmanifest"
+  [headers.values]
+    Cache-Control = "no-cache"
+
 # Si VITE_API_URL no está en el build, /api se proxy al backend (actualiza el dominio si cambia).
 [[redirects]]
   from = "/api/*"
