@@ -14,6 +14,7 @@ import {
   commsTeacherRouter,
   getStudentCalendarFile,
   getStudentComms,
+  sendCalendarFile,
 } from "./commsRoutes.js";
 import {
   getStudentAttendanceSummary,
@@ -61,6 +62,7 @@ app.use(
       callback(null, false);
     },
     credentials: true,
+    exposedHeaders: ["Content-Disposition"],
   }),
 );
 app.use(express.json());
@@ -709,10 +711,8 @@ app.get("/student/comms", requireAuth, async (req: AuthedRequest, res) => {
 app.get("/student/calendar/file", requireAuth, async (req: AuthedRequest, res) => {
   if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
   const calendar = await getStudentCalendarFile(req.auth!.userId);
-  if (!calendar) return res.status(404).json({ error: "not_found" });
-  res.setHeader("Content-Type", calendar.mimeType);
-  res.setHeader("Content-Disposition", `inline; filename="${calendar.fileName}"`);
-  return res.send(Buffer.from(calendar.fileData));
+  if (!calendar) return res.status(404).json({ error: "calendar_not_found" });
+  return sendCalendarFile(res, calendar);
 });
 
 app.get("/student/office-exam", requireAuth, async (req: AuthedRequest, res) => {

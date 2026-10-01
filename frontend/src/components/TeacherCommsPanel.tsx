@@ -8,7 +8,7 @@ import {
   deleteTask,
   fetchTeacherComms,
   getApiErrorMessage,
-  openTeacherCalendarFile,
+  downloadTeacherCalendarFile,
   uploadSchoolCalendar,
 } from "../lib/api";
 
@@ -19,6 +19,7 @@ export default function TeacherCommsPanel() {
   const [calendarTitle, setCalendarTitle] = useState("Calendario escolar");
   const [semesterLabel, setSemesterLabel] = useState("");
   const [calendarFile, setCalendarFile] = useState<File | null>(null);
+  const [downloadingCalendar, setDownloadingCalendar] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -112,10 +113,21 @@ export default function TeacherCommsPanel() {
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => openTeacherCalendarFile().catch((err) => setError(getApiErrorMessage(err)))}
-                className="rounded-lg bg-cyan-500/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400"
+                disabled={downloadingCalendar}
+                onClick={async () => {
+                  setDownloadingCalendar(true);
+                  setError("");
+                  try {
+                    await downloadTeacherCalendarFile(data.calendar?.fileName ?? "calendario_escolar");
+                  } catch (err) {
+                    setError(getApiErrorMessage(err));
+                  } finally {
+                    setDownloadingCalendar(false);
+                  }
+                }}
+                className="rounded-lg bg-cyan-500/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-60"
               >
-                Ver archivo
+                {downloadingCalendar ? "Descargando..." : "Descargar calendario"}
               </button>
               <button
                 type="button"

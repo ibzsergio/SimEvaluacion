@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchStudentComms, getApiErrorMessage, openStudentCalendarFile } from "../lib/api";
+import { useState } from "react";
+import { fetchStudentComms, getApiErrorMessage, downloadStudentCalendarFile } from "../lib/api";
 
 export default function StudentCommunication() {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
   const { data, isLoading, error } = useQuery({
     queryKey: ["student-comms"],
     queryFn: fetchStudentComms,
@@ -42,11 +45,23 @@ export default function StudentCommunication() {
           ) : null}
           <button
             type="button"
-            onClick={() => openStudentCalendarFile().catch((err) => window.alert(getApiErrorMessage(err)))}
-            className="mt-4 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white hover:from-indigo-400 hover:to-cyan-400"
+            disabled={downloading}
+            onClick={async () => {
+              setDownloading(true);
+              setDownloadError("");
+              try {
+                await downloadStudentCalendarFile(data.calendar?.fileName ?? "calendario_escolar");
+              } catch (err) {
+                setDownloadError(getApiErrorMessage(err));
+              } finally {
+                setDownloading(false);
+              }
+            }}
+            className="mt-4 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-60"
           >
-            Ver / descargar calendario
+            {downloading ? "Descargando..." : "Descargar calendario"}
           </button>
+          {downloadError ? <p className="mt-2 text-sm text-rose-300">{downloadError}</p> : null}
         </section>
       ) : null}
 

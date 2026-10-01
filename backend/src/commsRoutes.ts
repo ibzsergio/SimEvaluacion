@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { prisma } from "./prisma.js";
@@ -14,6 +14,26 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
 });
+
+function asciiFileName(fileName: string) {
+  const cleaned = fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_").trim();
+  return cleaned || "calendario_escolar";
+}
+
+export function sendCalendarFile(
+  res: Response,
+  calendar: { fileName: string; mimeType: string; fileData: Buffer | Uint8Array },
+) {
+  const fileName = calendar.fileName?.trim() || "calendario_escolar";
+  const ascii = asciiFileName(fileName);
+  res.setHeader("Content-Type", calendar.mimeType || "application/octet-stream");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+  );
+  res.setHeader("Cache-Control", "private, no-store");
+  return res.send(Buffer.isBuffer(calendar.fileData) ? calendar.fileData : Buffer.from(calendar.fileData));
+}
 
 export const commsTeacherRouter = Router();
 commsTeacherRouter.use(requireAuth, requireTeacher);
@@ -189,11 +209,8 @@ commsTeacherRouter.get("/calendar/file", async (req: AuthedRequest, res) => {
   const calendar = await prisma.schoolCalendar.findUnique({
     where: { teacherId: req.auth!.userId },
   });
-  if (!calendar) return res.status(404).json({ error: "not_found" });
-
-  res.setHeader("Content-Type", calendar.mimeType);
-  res.setHeader("Content-Disposition", `inline; filename="${calendar.fileName}"`);
-  return res.send(Buffer.from(calendar.fileData));
+  if (!calendar) return res.status(404).json({ error: "calendar_not_found" });
+  return sendCalendarFile(res, calendar);
 });
 
 commsTeacherRouter.post("/semester/reset", async (req: AuthedRequest, res) => {

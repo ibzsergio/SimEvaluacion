@@ -13,6 +13,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        navigateFallbackDenylist: [/^\/api/, /\/calendar\/file/],
       },
       includeAssets: ["favicon.svg", "icons.svg", "manifest.webmanifest", "manifest-docente.webmanifest"],
       manifest: {

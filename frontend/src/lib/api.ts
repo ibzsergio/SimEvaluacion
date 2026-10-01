@@ -753,11 +753,8 @@ export async function deleteSchoolCalendar() {
   await api.delete("/teacher/comms/calendar");
 }
 
-export async function openTeacherCalendarFile() {
-  const { data } = await api.get<Blob>("/teacher/comms/calendar/file", { responseType: "blob" });
-  const url = URL.createObjectURL(data);
-  window.open(url, "_blank", "noopener,noreferrer");
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+export async function downloadTeacherCalendarFile(fileName = "calendario_escolar") {
+  await downloadTeacherBlob("/teacher/comms/calendar/file", fileName);
 }
 
 export async function resetSemester(confirmPhrase: string, clearComms = false) {
@@ -783,11 +780,8 @@ export async function fetchStudentComms() {
   return data;
 }
 
-export async function openStudentCalendarFile() {
-  const { data } = await api.get<Blob>("/student/calendar/file", { responseType: "blob" });
-  const url = URL.createObjectURL(data);
-  window.open(url, "_blank", "noopener,noreferrer");
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+export async function downloadStudentCalendarFile(fileName = "calendario_escolar") {
+  await downloadTeacherBlob("/student/calendar/file", fileName);
 }
 
 export async function fetchClassDaySheet(groupId: string, date: string) {
@@ -824,10 +818,39 @@ async function parseBlobError(data: Blob) {
   const text = await data.text();
   try {
     const parsed = JSON.parse(text) as { message?: string; error?: string };
+    if (parsed.error === "calendar_not_found" || parsed.error === "not_found") {
+      return "No hay calendario escolar publicado.";
+    }
     return parsed.message ?? parsed.error ?? text;
   } catch {
     return text || "No se pudo descargar el archivo.";
   }
+}
+
+function filenameFromDisposition(header: string | undefined, fallback: string) {
+  if (!header) return fallback;
+  const utf = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (utf?.[1]) {
+    try {
+      return decodeURIComponent(utf[1].trim());
+    } catch {
+      /* ignore */
+    }
+  }
+  const ascii = /filename="([^"]+)"/i.exec(header) ?? /filename=([^;]+)/i.exec(header);
+  return ascii?.[1]?.trim() || fallback;
+}
+
+function saveBlobFile(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 4_000);
 }
 
 async function downloadTeacherBlob(path: string, downloadName: string) {
@@ -837,12 +860,11 @@ async function downloadTeacherBlob(path: string, downloadName: string) {
     if (contentType.includes("json")) {
       throw new Error(await parseBlobError(data));
     }
-    const url = URL.createObjectURL(data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = downloadName;
-    link.click();
-    URL.revokeObjectURL(url);
+    const typed =
+      data.type && !contentType.includes("octet-stream")
+        ? data
+        : new Blob([data], { type: contentType || data.type || "application/octet-stream" });
+    saveBlobFile(typed, filenameFromDisposition(headers["content-disposition"], downloadName));
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
       throw new Error(await parseBlobError(error.response.data));
