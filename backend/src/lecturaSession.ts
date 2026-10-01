@@ -1,18 +1,9 @@
 import { prisma } from "./prisma.js";
 import { todayClassDayDate } from "./classDayService.js";
 import { COLUMN_PALETTE, getSeatingPlan, type SeatingTheme } from "./seatingService.js";
-import { generateBloque, speakScriptForRole, type GeneratedBloque } from "./lecturaGenerate.js";
+import { generateBloque, assignParagraphs, type GeneratedBloque } from "./lecturaGenerate.js";
 
 const COLUMN_LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
-
-const ROLES = [
-  { name: "Lector" },
-  { name: "Cazador" },
-  { name: "Cartógrafo" },
-  { name: "Crítico" },
-  { name: "Vocero" },
-  { name: "Verificador" },
-] as const;
 
 export type LecturaMember = {
   studentId: string;
@@ -23,6 +14,8 @@ export type LecturaMember = {
   roleName: string;
   roleTask: string;
   speakScript: string;
+  paragraphIndex: number;
+  paragraph: string;
 };
 
 export type LecturaTeam = {
@@ -35,6 +28,7 @@ export type LecturaTeam = {
   texto: string;
   clave: string[];
   preguntaGuia: string;
+  producto: string;
   organizador: GeneratedBloque["organizador"];
   members: LecturaMember[];
 };
@@ -107,7 +101,7 @@ function teamKey(theme: SeatingTheme | null, col: number, row: number, colorName
 }
 
 function roleNameForOrder(index: number) {
-  return ROLES[Math.min(index, ROLES.length - 1)]!.name;
+  return `Párrafo ${index + 1}`;
 }
 
 type RawBucket = {
@@ -167,17 +161,30 @@ function hydrateTeam(bucket: RawBucket, index: number, bloque: GeneratedBloque |
     titulo: "Falta generar la lectura de esta semana",
     mision: "El docente debe escribir el tema y pulsar Generar.",
     texto: "",
+    parrafos: [],
     clave: [],
     preguntaGuia: "",
+    producto: "",
     organizador: [],
   };
-  const members: LecturaMember[] = [...bucket.members]
-    .sort((a, b) => a.row - b.row || a.col - b.col)
-    .map((m, i) => {
-      const roleName = roleNameForOrder(i);
-      const spoken = speakScriptForRole(roleName, fallback, m.displayName);
-      return { ...m, roleName, roleTask: spoken.roleTask, speakScript: spoken.speakScript };
-    });
+  const sorted = [...bucket.members].sort((a, b) => a.row - b.row || a.col - b.col);
+  const storedParas = Array.isArray(fallback.parrafos) ? fallback.parrafos : [];
+  const parrafos = assignParagraphs(
+    storedParas.length ? storedParas : fallback.texto ? fallback.texto.split(/\n\n+/).filter(Boolean) : [],
+    sorted.length,
+  );
+  const members: LecturaMember[] = sorted.map((m, i) => {
+    const paragraph = parrafos[i] ?? "";
+    const roleName = roleNameForOrder(i);
+    return {
+      ...m,
+      roleName,
+      roleTask: `Lee en voz alta el párrafo ${i + 1}. Es el recuadro con tu nombre.`,
+      speakScript: paragraph,
+      paragraphIndex: i,
+      paragraph,
+    };
+  });
   return {
     readingIndex: index,
     colorName: bucket.colorName,
@@ -185,10 +192,11 @@ function hydrateTeam(bucket: RawBucket, index: number, bloque: GeneratedBloque |
     columna: COLUMN_LETTERS[bucket.sortCol - 1] ?? String(bucket.sortCol),
     titulo: fallback.titulo,
     mision: fallback.mision,
-    texto: fallback.texto,
+    texto: parrafos.join("\n\n") || fallback.texto,
     clave: fallback.clave,
     preguntaGuia: fallback.preguntaGuia,
-    organizador: fallback.organizador,
+    producto: fallback.producto || "",
+    organizador: fallback.organizador ?? [],
     members,
   };
 }
@@ -269,6 +277,7 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
       teamCount: buckets.length,
       sessionNumber,
       teamLabel: bucket.key,
+      memberCount: bucket.members.length,
     });
     return {
       key: bucket.key,
@@ -320,16 +329,22 @@ export function studentLecturaAssignment(session: LecturaSession, studentId: str
     texto: team.texto,
     clave: team.clave,
     preguntaGuia: team.preguntaGuia,
+    producto: team.producto,
     organizador: team.organizador,
+    displayName: me.displayName,
     roleName: me.roleName,
     roleTask: me.roleTask,
     speakScript: me.speakScript,
+    paragraphIndex: me.paragraphIndex,
+    paragraph: me.paragraph,
     teammates: team.members.map((m) => ({
       studentId: m.studentId,
       displayName: m.displayName,
       roleName: m.roleName,
       roleTask: m.roleTask,
       speakScript: m.speakScript,
+      paragraphIndex: m.paragraphIndex,
+      paragraph: m.paragraph,
       isMe: m.studentId === studentId,
     })),
   };

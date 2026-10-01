@@ -151,17 +151,27 @@ export function rolPorFila(row: number) {
 
 export function rutaLectura(teamCount: number) {
   const n = Math.max(1, teamCount);
-  const readEnd = 2 + Math.min(12, n * 2);
-  const analysisEnd = readEnd + 8;
-  const mapEnd = analysisEnd + 10;
-  const galleryEnd = Math.min(44, mapEnd + n);
+  const readEnd = 2 + Math.min(14, n * 2);
+  const mapEnd = readEnd + 16;
+  const galleryEnd = Math.min(48, mapEnd + n);
   return [
-    { min: "0–2", title: "Armado", detail: `Siguen en su butaca. Hay ${n} equipo(s); cada uno lee un texto distinto.` },
-    { min: `2–${readEnd}`, title: "Lectura en voz alta", detail: "Un equipo tras otro: solo el lector lee el bloque de su equipo. Los demás siguen en silencio." },
-    { min: `${readEnd}–${analysisEnd}`, title: "Análisis en equipo", detail: "Responden su pregunta guía. El crítico escribe 4–6 líneas." },
-    { min: `${analysisEnd}–${mapEnd}`, title: "Organizador", detail: "El cartógrafo dibuja. Un mapa por equipo, en una hoja." },
-    { min: `${mapEnd}–${galleryEnd}`, title: "Galería", detail: `${n} vocero(s), un minuto cada uno. El docente solo aclara si hay un error de concepto.` },
-    { min: `${galleryEnd}–50`, title: "Conclusión", detail: "Cada equipo escribe 2 frases: qué aprendimos y un error que ya no vamos a cometer." },
+    { min: "0–2", title: "Armado", detail: `Cada columna es un equipo. Hay ${n} lectura(s) distinta(s).` },
+    {
+      min: `2–${readEnd}`,
+      title: "Lectura en cadena",
+      detail: "En cada equipo, cada integrante lee EN VOZ ALTA su propio párrafo (el recuadro con su nombre). Van en orden, de adelante hacia atrás.",
+    },
+    {
+      min: `${readEnd}–${mapEnd}`,
+      title: "Un solo producto",
+      detail: "Todo el equipo arma UN organizador gráfico o mapa cognitivo en Canva (u otra herramienta digital). No es uno por persona.",
+    },
+    {
+      min: `${mapEnd}–${galleryEnd}`,
+      title: "Exposición",
+      detail: `${n} equipo(s) proyectan su Canva. Cualquier integrante puede explicar; el mapa es de todos.`,
+    },
+    { min: `${galleryEnd}–50`, title: "Cierre", detail: "Una idea que se llevan y un error que ya no van a cometer." },
   ];
 }
 

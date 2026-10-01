@@ -2,8 +2,10 @@ export type GeneratedBloque = {
   titulo: string;
   mision: string;
   texto: string;
+  parrafos: string[];
   clave: string[];
   preguntaGuia: string;
+  producto: string;
   organizador: Array<{ caja: string; hijos: string }>;
 };
 
@@ -29,13 +31,6 @@ const METAPHORS = [
   "una fila en la cafetería",
 ];
 
-const AUDIENCES = [
-  "un compañero que faltó",
-  "alguien que nunca ha abierto Tkinter",
-  "el docente en 40 segundos",
-  "un alumno de primer semestre",
-];
-
 function hashSeed(input: string) {
   let h = 2166136261;
   for (let i = 0; i < input.length; i += 1) {
@@ -49,27 +44,146 @@ function pick<T>(list: T[], seed: number, salt: number) {
 }
 
 function cleanTopic(raw: string) {
-  const t = raw.replace(/\s+/g, " ").trim();
-  return t.slice(0, 180);
+  return raw.replace(/\s+/g, " ").trim().slice(0, 180);
 }
 
-/** Un texto único por equipo y por sesión, aunque el tema se repita. */
+/** Reparte los párrafos de la lectura: uno por integrante. */
+export function assignParagraphs(parts: string[], memberCount: number): string[] {
+  const n = Math.max(1, memberCount);
+  const source = parts.map((p) => p.trim()).filter(Boolean);
+  if (!source.length) return Array.from({ length: n }, () => "");
+  if (source.length === n) return source;
+  if (source.length < n) {
+    const out = [...source];
+    let guard = 0;
+    while (out.length < n && guard < 12) {
+      guard += 1;
+      let idx = 0;
+      let best = 0;
+      out.forEach((p, i) => {
+        if (p.length > best) {
+          best = p.length;
+          idx = i;
+        }
+      });
+      const bits = out[idx]!.split(/(?<=\.)\s+/).filter(Boolean);
+      if (bits.length < 2) break;
+      const mid = Math.ceil(bits.length / 2);
+      out.splice(idx, 1, bits.slice(0, mid).join(" "), bits.slice(mid).join(" "));
+    }
+    while (out.length < n) out.push(out[out.length - 1] ?? "");
+    return out.slice(0, n);
+  }
+  const buckets: string[][] = Array.from({ length: n }, () => []);
+  source.forEach((p, i) => {
+    const idx = Math.min(n - 1, Math.floor((i * n) / source.length));
+    buckets[idx]!.push(p);
+  });
+  return buckets.map((b) => b.join(" "));
+}
+
+function productCopy(topic: string) {
+  return `Después de leer, TODO el equipo arma UN SOLO producto: un organizador gráfico o mapa cognitivo de «${topic}». Háganlo en una herramienta digital (Canva, PowerPoint o Google Drawings) y expónganlo frente al grupo. No es un trabajo por persona: es uno por equipo.`;
+}
+
+function sixParagraphs(topic: string, metaphor: string, week: number, n: number, of: number, angle: (typeof ANGLES)[number]): string[] {
+  const t = topic;
+  const m = metaphor;
+  if (angle === "que_es") {
+    return [
+      `El tema de esta lectura es «${t}». No es un adorno para el examen: es una idea que organiza cómo se escribe y se lee un programa. Si no puedes nombrarlo con tus palabras, todavía no lo dominas.`,
+      `Toda idea de interfaz tiene un problema que resuelve. Con «${t}» pregúntate: ¿qué necesidad del usuario cubre? ¿Qué pasaría si esa pieza no existiera en la ventana?`,
+      `También hay que decir qué NO es. «${t}» se confunde con otras herramientas. Si mezclas conceptos, el usuario cree una cosa y el programa hace otra.`,
+      `Compáralo con ${m}: hay un contenedor, hay partes que van adentro y hay reglas para no revolverlas. En el código esas reglas se ven tanto como en la pantalla.`,
+      `Este equipo (el ${n} de ${of}, sesión ${week}) explica solo este recorte. No tomen prestado el texto de otra columna: defiendan el suyo con un ejemplo del salón.`,
+      `Al cerrar el párrafo, dejen lista una definición de una oración. Esa frase alimentará el mapa que van a armar todos juntos en Canva.`,
+    ];
+  }
+  if (angle === "analogia") {
+    return [
+      `Piensa «${t}» como ${m}. Nadie deja todas las herramientas en un solo montón y espera que el trabajo salga limpio. Hay zonas, turnos y señales.`,
+      `En la interfaz pasa igual: un control no adivina tu intención. Tú lo agrupas, lo nombras y le das un valor. Si no hay agrupación, la analogía se rompe.`,
+      `Si dos grupos distintos usan la misma señal, el usuario cree que eligió una cosa y el programa escucha otra. Eso también pasa cuando se copia mal una variable.`,
+      `Den un paso atrás: ¿qué parte de ${m} sería el contenedor, cuál la opción exclusiva y cuál el botón que pregunta?`,
+      `Esta analogía es de este equipo (sesión ${week}, ${n} de ${of}). El equipo de al lado tiene otra a propósito. No la mezclen.`,
+      `Anoten tres flechas mundo-real → programa. Esas flechas son el esqueleto del organizador gráfico que harán en Canva.`,
+    ];
+  }
+  if (angle === "como_se_usa") {
+    return [
+      `Usar «${t}» no es copiar un tutorial de memoria. Hay un orden, y si lo saltas el programa “no jala”.`,
+      `Primero nace el contenedor. Después nacen los controles hijos. Si el hijo no tiene padre claro, no sabes dónde vive.`,
+      `Luego se acomodan con un solo gestor de geometría por caja. Mezclar pack y grid en el mismo padre es el error más común.`,
+      `Después se conectan a una variable o a un evento. Sin esa conexión, el clic no deja huella.`,
+      `Al final alguien lee el resultado. Si nadie pregunta qué eligió el usuario, el programa no decide nada.`,
+      `Ensayen ese orden en voz alta, párrafo por párrafo. Con eso ya pueden dibujar el flujo en Canva y exponerlo.`,
+    ];
+  }
+  if (angle === "errores") {
+    return [
+      `Hay lecturas de código que ahorran veinte minutos de “no jala”. Con «${t}» conviene cazar errores antes de ejecutar.`,
+      `Un clásico: crear controles sin padre claro, o crearlos y olvidar mostrarlos. El widget existe, pero nadie lo sentó en la ventana.`,
+      `Otro: mezclar pack y grid en la misma caja, o no compartir la variable en un grupo de opciones. La pantalla miente.`,
+      `También se repite el mismo valor en dos opciones, o la interfaz arranca en blanco sin valor inicial. El usuario no sabe qué está elegido.`,
+      `Un error se ve en la pantalla: hueco, dos marcas, botón invisible. Otro solo se ve en el código: dos variables que parecen un grupo y no lo son.`,
+      `Listen tres fallos (pantalla o código) y una reparación de una línea. Eso entra al mapa cognitivo del equipo en Canva.`,
+    ];
+  }
+  if (angle === "caso") {
+    return [
+      `Caso de esta semana: una ventana corta que usa «${t}» de verdad, no de adorno. Si el caso es enorme, recórtelo.`,
+      `Arriba, un encabezado. Abajo, una pregunta que no admite “un poco de todo”. Esa pregunta obliga a una sola decisión.`,
+      `A un lado, un botón que lee la elección y responde. Si pueden señalar contenedor, grupo, variable y evento, ya pueden programarlo después.`,
+      `El caso debe caber en un minuto de explicación. Si se parece al de otro equipo, cámbienlo con ${m} o con un trámite escolar.`,
+      `Leer para programar es ver el sistema antes de teclearlo. Cada párrafo de esta lectura es una pieza de ese sistema.`,
+      `El producto no es el código todavía: es el mapa del caso en Canva, expuesto frente al grupo por todo el equipo.`,
+    ];
+  }
+  if (angle === "diseno") {
+    return [
+      `No todo se resuelve con «${t}». Diseñar también es decir que no. Si el usuario puede marcar varias cosas a la vez, no es exclusión mutua.`,
+      `Si todo es un solo botón, no hace falta un grupo. Si no hay zonas, el contenedor sobra. El enunciado se lee antes que el código.`,
+      `Escriban un ejemplo escolar donde «${t}» SÍ aplica. Tiene que ser una sola decisión clara.`,
+      `Escriban otro ejemplo donde sería un error usarlo. Ahí proponen con qué lo sustituirían.`,
+      `Esta mirada es de la sesión ${week}. Aunque el tema se repita, el par de ejemplos tiene que ser otro.`,
+      `Esos dos ejemplos (sí / no) son el corazón del organizador. Pásenlos a Canva y explíquenlos en la exposición.`,
+    ];
+  }
+  if (angle === "relacion") {
+    return [
+      `«${t}» no llega de la nada. Se apoya en cosas que ya vieron: una ventana, un evento de clic, una variable, un acomodo.`,
+      `Si el contenedor es la caja, la opción exclusiva es la pregunta y la variable es el canal. Si mezclan idiomas de acomodo, la relación se rompe.`,
+      `Dibujen una flecha de lo viejo a lo nuevo. ¿Qué idea de clases anteriores es imposible quitar?`,
+      `Una segunda flecha: cómo el evento necesita a la variable. Sin esa pareja, el clic no significa nada.`,
+      `Una tercera flecha: cómo el usuario entiende la pantalla. Si el grupo no se ve como grupo, la lectura del diseño falló.`,
+      `Tres flechas son un mapa. Háganlo en Canva, una sola lámina del equipo, y preséntenla al salón.`,
+    ];
+  }
+  return [
+    `Cierren con un plan, no con un copiar-pegar. «${t}» se vuelve pasos: qué se crea primero y qué se prueba al final.`,
+    `Anoten el nombre de la ventana y cuántas zonas necesita. Si hay más de tres, recorten.`,
+    `Anoten la pregunta que hace el grupo de opciones y cómo se llama la variable. Sin nombre, no hay lectura del resultado.`,
+    `Anoten qué hace el botón. Una acción. Si el plan no se puede decir en un minuto, está demasiado grande.`,
+    `Comparen el plan con ${m}: si alguna zona sobra, quítenla. Esta es la sesión ${week}; el plan no puede ser el de la semana pasada.`,
+    `Pasen el plan a un organizador en Canva. Todo el equipo expone esa única lámina. Nadie lee el texto de otro color.`,
+  ];
+}
+
 export function generateBloque(params: {
   topic: string;
   teamIndex: number;
   teamCount: number;
   sessionNumber: number;
   teamLabel: string;
+  memberCount: number;
 }): GeneratedBloque {
   const topic = cleanTopic(params.topic) || "el tema de la clase";
   const seed = hashSeed(`${topic}|${params.sessionNumber}|${params.teamIndex}|${params.teamLabel}`);
   const angle = ANGLES[(params.sessionNumber + params.teamIndex) % ANGLES.length]!;
   const metaphor = pick(METAPHORS, seed, 1);
-  const audience = pick(AUDIENCES, seed, 3);
   const n = params.teamIndex + 1;
   const of = params.teamCount;
   const week = params.sessionNumber;
-
   const claveBase = topic
     .split(/[,\-/]| y /i)
     .map((p) => p.trim())
@@ -77,157 +191,33 @@ export function generateBloque(params: {
     .slice(0, 3);
   while (claveBase.length < 3) claveBase.push(["concepto", "uso", "error"][claveBase.length]!);
 
-  if (angle === "que_es") {
-    return {
-      titulo: `Qué es, en serio: ${topic}`,
-      mision: "Definir el tema con palabras propias, sin copiar el título.",
-      texto: `Sesión ${week} · Equipo ${n} de ${of}. El tema de hoy es «${topic}». No es un adorno del programa ni una palabra para el examen: es una idea que organiza cómo se escribe y se lee un programa. Si no puedes explicarlo a ${audience}, todavía no lo dominas. Empieza por nombrar las piezas: qué problema resuelve, qué no es, y qué se rompe si falta. Compáralo con ${metaphor}: hay un contenedor, hay partes que van adentro y hay reglas para no mezclarlas. En programación, esas reglas se ven en el código tanto como en la pantalla. Tu equipo no explica “todo Tkinter”; explica este recorte. Si alguien de otro color pregunta, no leas su texto: defiende el tuyo con un ejemplo del salón.`,
-      clave: [...claveBase, "definición"],
-      preguntaGuia: `Si tuvieras que definir «${topic}» en una sola oración para ${audience}, ¿cuál sería?`,
-      organizador: [
-        { caja: "Problema", hijos: `Qué necesidad cubre ${topic}` },
-        { caja: "Piezas", hijos: "Nombres de las partes que sí importan" },
-        { caja: "No es", hijos: "Con qué se confunde y por qué" },
-      ],
-    };
-  }
-  if (angle === "analogia") {
-    return {
-      titulo: `Como ${metaphor}: ${topic}`,
-      mision: "Traducir el tema a una analogía del mundo real y volver al código.",
-      texto: `Sesión ${week} · Equipo ${n} de ${of}. Piensa «${topic}» como ${metaphor}. Nadie deja todas las herramientas en un solo montón y espera que el trabajo salga limpio. Hay zonas, turnos y señales. En la interfaz pasa igual: un control no “adivina” tu intención; tú lo agrupas, lo nombras y le das un valor. Si la analogía falla, el código también: por ejemplo, si dos grupos distintos usan la misma señal, el usuario cree que eligió una cosa y el programa escucha otra. Esta lectura no se parece a la del equipo de al lado a propósito. Ustedes son los dueños de esta analogía. Al final, den un paso atrás: ¿qué parte de ${metaphor} es el Frame, cuál es la opción exclusiva y cuál es el botón que pregunta?`,
-      clave: [...claveBase, "analogía"],
-      preguntaGuia: `En tu analogía de ${metaphor}, ¿qué objeto es el grupo de opciones y qué objeto es el contenedor?`,
-      organizador: [
-        { caja: "Mundo real", hijos: metaphor },
-        { caja: "En el programa", hijos: topic },
-        { caja: "Traducción", hijos: "Una flecha de cada objeto a un widget o idea" },
-      ],
-    };
-  }
-  if (angle === "como_se_usa") {
-    return {
-      titulo: `Cómo se usa «${topic}» sin teatro`,
-      mision: "Describir el orden: crear, agrupar, conectar, leer el resultado.",
-      texto: `Sesión ${week} · Equipo ${n} de ${of}. Usar «${topic}» no es copiar un tutorial de memoria. Hay un orden: 1) nace el contenedor, 2) nacen los controles hijos, 3) se acomodan con un solo gestor de geometría por caja, 4) se conectan a una variable o a un evento, 5) alguien lee el resultado. Si saltas el paso 3, “no se ve”. Si saltas el 4, “no responde”. Si saltas el 5, el programa no decide nada. Esta semana (${week}) tu equipo ensaya ese orden en voz alta, como si dictaran a ${audience}. No inventen API de más: con tres radios, un Frame y un botón Comprobar alcanza para demostrar el tema. Lo que no está en su texto no lo pidan prestado a otra columna.`,
-      clave: [...claveBase, "orden de uso"],
-      preguntaGuia: `¿Cuál de los cinco pasos de uso de «${topic}» es el que más se les olvida en clase y por qué?`,
-      organizador: [
-        { caja: "1–2 Crear", hijos: "Padre + hijos" },
-        { caja: "3 Acomodar", hijos: "Un gestor por caja" },
-        { caja: "4–5 Conectar y leer", hijos: "Variable / evento / get" },
-      ],
-    };
-  }
-  if (angle === "errores") {
-    return {
-      titulo: `Los errores que delatan que no se leyó «${topic}»`,
-      mision: "Anticipar fallos visibles en pantalla y fallos que solo se ven en el código.",
-      texto: `Sesión ${week} · Equipo ${n} de ${of}. Hay lecturas de código que ahorran veinte minutos de “no jala”. Con «${topic}», los clásicos son: crear controles sin padre claro; mezclar pack y grid en la misma caja; no compartir la variable en un grupo de opciones; repetir el mismo value; olvidar mostrar el widget; dejar la interfaz en blanco sin valor inicial. Un error se ve en la pantalla (hueco, dos opciones marcadas, botón invisible). Otro solo se ve en el código (dos variables distintas que parecen un grupo). Su misión es hacer una lista de tres fallos y decir cuál es de pantalla y cuál de código. No usen el ejemplo del equipo vecino: inventen uno con ${metaphor} o con algo que pasó esta semana en el salón.`,
-      clave: [...claveBase, "errores"],
-      preguntaGuia: `De los errores de «${topic}», ¿cuál se ve sin ejecutar y cuál solo al correr el programa?`,
-      organizador: [
-        { caja: "Se ve", hijos: "Síntoma en la ventana" },
-        { caja: "No se ve", hijos: "Síntoma en el código" },
-        { caja: "Reparación", hijos: "Qué cambiarían en una línea" },
-      ],
-    };
-  }
-  if (angle === "caso") {
-    return {
-      titulo: `Caso: un mini programa que obliga a usar «${topic}»`,
-      mision: "Inventar un caso mínimo (ventana + 2 zonas + una decisión) y mapearlo.",
-      texto: `Sesión ${week} · Equipo ${n} de ${of}. Caso de esta semana: una ventana corta que usa «${topic}» de verdad, no de adorno. Arriba, un encabezado. Abajo, una pregunta que no admite “un poco de todo”. A un lado, un botón que lee la elección y responde. Si pueden señalar con el dedo: contenedor, grupo, variable, evento, ya pueden programarlo después. El caso debe caber en un minuto de explicación. Si se parece al de otro equipo, cámbienlo: usen ${metaphor} o un trámite escolar (lista, turno, guardar archivo). Recuerden: leer para programar es ver el sistema antes de teclearlo. Esta es la lectura ${n}; las otras columnas tienen otro caso a propósito.`,
-      clave: [...claveBase, "caso"],
-      preguntaGuia: `¿Qué Frame podrías quitar de tu caso sin romper la lógica de «${topic}», y cuál no?`,
-      organizador: [
-        { caja: "Ventana", hijos: "Título + 2 o 3 Frames" },
-        { caja: "Decisión", hijos: "Grupo de una sola opción" },
-        { caja: "Acción", hijos: "Botón que lee .get() o equivalente" },
-      ],
-    };
-  }
-  if (angle === "diseno") {
-    return {
-      titulo: `Diseñar la pregunta: ¿«${topic}» es la herramienta correcta?`,
-      mision: "Decidir cuándo sí y cuándo no usar este concepto.",
-      texto: `Sesión ${week} · Equipo ${n} de ${of}. No todo se resuelve con «${topic}». Si el usuario puede marcar varias cosas a la vez, no es exclusión mutua. Si todo es un solo botón, no hace falta un grupo. Si no hay zonas, el Frame sobra. Diseñar es decir que no. Escriban dos enunciados de programa: uno donde «${topic}» es obligatorio y otro donde sería un error usarlo. Explíquenlo a ${audience}. Esta decisión es lectura: el enunciado del problema se lee antes que el código. La semana ${week} pide esa mirada, no un tutorial. Su texto es exclusivo de su color; no completen con ideas que oyeron de otra fila.`,
-      clave: [...claveBase, "cuándo sí / no"],
-      preguntaGuia: `Da un ejemplo escolar donde «${topic}» SÍ aplica y uno donde NO.`,
-      organizador: [
-        { caja: "Sí aplica", hijos: "Una sola decisión / una zona" },
-        { caja: "No aplica", hijos: "Varias a la vez o sin agrupación" },
-        { caja: "Widget o idea", hijos: "Con qué lo sustituirían" },
-      ],
-    };
-  }
-  if (angle === "relacion") {
-    return {
-      titulo: `Cómo se conecta «${topic}» con lo que ya vieron`,
-      mision: "Unir este tema con ventanas, eventos o variables ya usados en clase.",
-      texto: `Sesión ${week} · Equipo ${n} de ${of}. «${topic}» no llega de la nada. Se apoya en cosas que ya tocaron: una ventana, un evento de clic, una variable, un acomodo. Si el Frame es la caja, el radio es la pregunta y la variable es el canal. Si mezclan idiomas de acomodo, la relación se rompe. Dibujen tres flechas: de lo viejo a lo nuevo. Usen ${metaphor} solo si les ayuda a ${audience}. El punto no es lucirse: es que el mapa se pueda explicar sin leer el párrafo de otra columna. Cada equipo tiene un recorte distinto de la misma materia; el de ustedes es este.`,
-      clave: [...claveBase, "conexión"],
-      preguntaGuia: `¿Qué idea de clases anteriores es imposible quitar si queremos entender «${topic}»?`,
-      organizador: [
-        { caja: "Ya lo vimos", hijos: "Ventana / evento / variable" },
-        { caja: "Hoy", hijos: topic },
-        { caja: "Flecha", hijos: "Cómo se necesitan mutuamente" },
-      ],
-    };
-  }
-  return {
-    titulo: `De la lectura al teclado: «${topic}» en 15 líneas de plan`,
-    mision: "Salir con un plan de código mínimo, no con un programa terminado.",
-    texto: `Sesión ${week} · Equipo ${n} de ${of}. Cierren con un plan, no con un copiar-pegar. Escriban en la hoja: nombre de la ventana, cuántos Frames, qué pregunta hace el grupo de opciones, cómo se llama la variable, qué hace el botón. Eso es «${topic}» convertido en pasos. Si el plan no se puede leer en voz alta en un minuto, está demasiado grande. Recorten. Compárenlo con ${metaphor} para ver si alguna zona sobra. Esta práctica es de la sesión ${week}: aunque el tema se repita la próxima semana, el plan tiene que ser otro. No tomen prestado el plan del equipo de al lado; el vocero solo puede apuntar a su propio mapa.`,
-    clave: [...claveBase, "plan de código"],
-    preguntaGuia: `¿Cuál es el primer widget que crearían y cuál el último, y por qué ese orden?`,
-    organizador: [
-      { caja: "Widgets", hijos: "Lista mínima (5 o menos)" },
-      { caja: "Orden", hijos: "Qué se crea primero" },
-      { caja: "Prueba", hijos: "Cómo sabrían que sí funciona" },
-    ],
-  };
-}
+  const raw = sixParagraphs(topic, metaphor, week, n, of, angle);
+  const parrafos = assignParagraphs(raw, Math.max(1, params.memberCount));
+  const texto = parrafos.join("\n\n");
 
-export function speakScriptForRole(
-  roleName: string,
-  bloque: GeneratedBloque,
-  displayName: string,
-): { roleTask: string; speakScript: string } {
-  const claves = bloque.clave.slice(0, 4).join(", ");
-  if (roleName === "Lector") {
-    return {
-      roleTask: "Lee en voz alta el texto completo de TU equipo. No leas el de otro color.",
-      speakScript: `${displayName} lee en voz alta, sin resumir, el texto titulado «${bloque.titulo}». Es el único texto que este equipo puede leer en voz alta.`,
-    };
-  }
-  if (roleName === "Cazador") {
-    return {
-      roleTask: "Di las palabras clave y una frase tuya (no copies el párrafo).",
-      speakScript: `${displayName} dice: «Palabras clave: ${claves}. En una frase, esto trata de…» y completa con sus palabras. No recite el texto del lector.`,
-    };
-  }
-  if (roleName === "Cartógrafo") {
-    const cajas = bloque.organizador.map((o) => o.caja).join(" → ");
-    return {
-      roleTask: "Dibuja el organizador y explícalo señalando las cajas.",
-      speakScript: `${displayName} muestra el mapa (${cajas}) y explica cada caja en una oración. No copie el párrafo: diagramalo.`,
-    };
-  }
-  if (roleName === "Crítico") {
-    return {
-      roleTask: "Responde en voz alta la pregunta guía del equipo.",
-      speakScript: `${displayName} responde la pregunta guía: «${bloque.preguntaGuia}». Habla 20–30 segundos.`,
-    };
-  }
-  if (roleName === "Vocero") {
-    return {
-      roleTask: "Expón 60 segundos al salón usando SOLO este texto de tu equipo.",
-      speakScript: `${displayName} tiene 60 segundos frente al grupo. Debe decir: 1) el título «${bloque.titulo}», 2) la misión, 3) una idea del mapa. Prohibido leer o contar la lectura de otro equipo.`,
-    };
-  }
+  const titles: Record<(typeof ANGLES)[number], string> = {
+    que_es: `Qué es «${topic}»`,
+    analogia: `Como ${metaphor}: ${topic}`,
+    como_se_usa: `Cómo se usa «${topic}»`,
+    errores: `Errores al aplicar «${topic}»`,
+    caso: `Un caso con «${topic}»`,
+    diseno: `¿Cuándo sí y cuándo no? «${topic}»`,
+    relacion: `Cómo se conecta «${topic}»`,
+    cierre_practica: `Plan mínimo de «${topic}»`,
+  };
+
   return {
-    roleTask: "Verifica que cada compañero cumpla su parte y añade un ejemplo extra.",
-    speakScript: `${displayName} pregunta a cada integrante: «¿Ya dijiste tu parte?» y añade un ejemplo extra de «${bloque.clave[0] ?? "el tema"}» que no esté en el párrafo.`,
+    titulo: titles[angle],
+    mision: "Cada integrante lee EN VOZ ALTA su párrafo. Luego el equipo entero arma un solo mapa en Canva y lo expone.",
+    texto,
+    parrafos,
+    clave: [...claveBase, angle.replace("_", " ")],
+    preguntaGuia: `Con los ${parrafos.length} párrafos de este equipo, ¿qué idea no puede faltar en el mapa de Canva?`,
+    producto: productCopy(topic),
+    organizador: [
+      { caja: "Idea central", hijos: topic },
+      { caja: "De cada párrafo", hijos: "Una palabra o flecha" },
+      { caja: "Producto", hijos: "Una lámina en Canva · todo el equipo expone" },
+    ],
   };
 }

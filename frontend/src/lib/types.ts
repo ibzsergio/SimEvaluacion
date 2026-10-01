@@ -144,16 +144,22 @@ export type StudentLectura = {
   texto: string;
   clave: string[];
   preguntaGuia: string;
+  producto: string;
   organizador: Array<{ caja: string; hijos: string }>;
+  displayName: string;
   roleName: string;
   roleTask: string;
   speakScript: string;
+  paragraphIndex: number;
+  paragraph: string;
   teammates: Array<{
     studentId: string;
     displayName: string;
     roleName: string;
     roleTask: string;
     speakScript: string;
+    paragraphIndex: number;
+    paragraph: string;
     isMe: boolean;
   }>;
 };
@@ -181,6 +187,7 @@ export type LecturaSession = {
     texto: string;
     clave: string[];
     preguntaGuia: string;
+    producto: string;
     organizador: Array<{ caja: string; hijos: string }>;
     members: Array<{
       studentId: string;
@@ -191,6 +198,8 @@ export type LecturaSession = {
       roleName: string;
       roleTask: string;
       speakScript: string;
+      paragraphIndex: number;
+      paragraph: string;
     }>;
   }>;
 };

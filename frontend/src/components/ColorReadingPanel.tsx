@@ -6,7 +6,7 @@ import {
   getApiErrorMessage,
   updateGroupLecturaSettings,
 } from "../lib/api";
-import { LECTURA_MINUTOS, LECTURA_PROGRAMA, LECTURA_ROLES, rutaLectura } from "../lib/lecturaTkinter";
+import { LECTURA_MINUTOS, LECTURA_PROGRAMA, rutaLectura } from "../lib/lecturaTkinter";
 import type { ClassGroup } from "../lib/types";
 
 function formatClock(totalSeconds: number) {
@@ -95,7 +95,7 @@ export default function ColorReadingPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar la lectura para el grupo ${selectedGroup?.code}?\n\nCada alumno verá SOLO el texto de su equipo y lo que le toca decir a cada integrante de ese equipo. Nadie ve la lectura de otro color.`,
+        `¿Liberar la lectura para el grupo ${selectedGroup?.code}?\n\nCada alumno verá SOLO la lectura de su equipo, partida en párrafos. Cada integrante lee el suyo en voz alta. Nadie ve el texto de otro color.`,
       );
       if (!ok) return;
     }
@@ -129,8 +129,9 @@ export default function ColorReadingPanel({
         <p className="mt-2 text-sm text-slate-300">
           Grupo {selectedGroup?.code} · {selectedGroup?.shift}
           {session?.sessionNumber ? ` · Sesión ${session.sessionNumber}` : ""}. Cada 8 días (o cada semana)
-          escribes el tema, generas textos nuevos —aunque el tema se repita— y luego liberas. Un alumno no
-          puede ver la lectura de otro equipo.
+          escribes el tema, generas textos nuevos —aunque el tema se repita— y luego liberas. Cada equipo
+          recibe una lectura distinta, partida en un párrafo por integrante. Después arman un solo mapa en
+          Canva y lo exponen. Un alumno no ve la lectura de otro color.
         </p>
 
         <label className="mt-4 block text-xs text-slate-400 no-print">
@@ -208,8 +209,8 @@ export default function ColorReadingPanel({
         {actionError ? <p className="mt-2 text-sm text-rose-300">{actionError}</p> : null}
         {released ? (
           <p className="mt-3 text-sm text-emerald-200">
-            Liberada. Cada alumno ve solo el texto de su equipo y lo que le toca decir a cada integrante de
-            ese equipo.
+            Liberada. Cada alumno ve la lectura de su equipo, su párrafo destacado y los párrafos de sus
+            compañeros. No ve otros colores.
           </p>
         ) : (
           <p className="mt-3 text-sm text-slate-400">
@@ -253,21 +254,22 @@ export default function ColorReadingPanel({
       </section>
 
       <section className="glass mb-6 p-6">
-        <h3 className="text-lg font-semibold text-white">Roles por orden en el equipo</h3>
-        <p className="mt-1 text-sm text-slate-400">
-          El de más adelante es Lector; el siguiente Cazador, y así. Si el equipo es de 3 o 4, el de más
-          atrás también es vocero.
-        </p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {LECTURA_ROLES.map((rol) => (
-            <div key={rol.fila} className="rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2">
+        <h3 className="text-lg font-semibold text-white">Cómo se lee y qué se entrega</h3>
+        <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { n: "1", t: "Una lectura por equipo", d: "Texto distinto al de las otras columnas." },
+            { n: "2", t: "Un párrafo por persona", d: "Cada integrante lee EN VOZ ALTA el recuadro con su nombre." },
+            { n: "3", t: "Un solo producto", d: "Todo el equipo arma UN organizador o mapa cognitivo en Canva." },
+            { n: "4", t: "Exposición", d: "Proyectan esa lámina frente al grupo. No es un trabajo por persona." },
+          ].map((step) => (
+            <div key={step.n} className="rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2">
               <p className="text-sm font-bold text-white">
-                {rol.fila}° · {rol.name}
+                {step.n}. {step.t}
               </p>
-              <p className="text-xs text-slate-400">{rol.task}</p>
+              <p className="text-xs text-slate-400">{step.d}</p>
             </div>
           ))}
-        </div>
+        </ol>
       </section>
 
       <section className="mb-6 no-print">
@@ -306,7 +308,7 @@ export default function ColorReadingPanel({
                   {team.members.map((m) => (
                     <li key={m.studentId} className="text-sm text-slate-200">
                       <span className="font-semibold text-white">{m.displayName}</span>
-                      <span className="text-slate-500"> · {m.roleName}</span>
+                      <span className="text-slate-500"> · lee {m.roleName.toLowerCase()}</span>
                     </li>
                   ))}
                 </ul>
@@ -333,18 +335,33 @@ export default function ColorReadingPanel({
                 <p className="text-sm text-slate-300">Misión: {team.mision}</p>
               </header>
               <div className="bg-slate-950/50 px-5 py-4">
-                <p className="text-[15px] leading-relaxed text-slate-200">{team.texto}</p>
-                <p className="mt-3 text-sm font-medium text-cyan-200">Pregunta guía: {team.preguntaGuia}</p>
-                <p className="mt-2 text-xs text-slate-500">Claves: {team.clave.join(" · ")}</p>
-                <div className="mt-4 space-y-2">
+                <p className="text-xs font-bold uppercase tracking-widest text-cyan-200">
+                  Lectura del equipo · cada integrante lee su párrafo
+                </p>
+                <div className="mt-3 space-y-3">
                   {team.members.map((m) => (
-                    <p key={m.studentId} className="text-xs leading-relaxed text-slate-300">
-                      <span className="font-semibold text-white">
-                        {m.displayName} · {m.roleName}:
-                      </span>{" "}
-                      {m.speakScript}
-                    </p>
+                    <div
+                      key={m.studentId}
+                      className="rounded-xl border px-4 py-4"
+                      style={{ borderColor: `${team.hex}55`, backgroundColor: `${team.hex}14` }}
+                    >
+                      <p className="text-xs font-bold uppercase tracking-wide" style={{ color: team.hex }}>
+                        {m.roleName} · lee {m.displayName}
+                      </p>
+                      <p className="mt-2 text-base leading-relaxed text-white">
+                        {m.paragraph || "Aún no hay párrafo: genera la lectura de esta semana."}
+                      </p>
+                    </div>
                   ))}
+                </div>
+                <p className="mt-4 text-sm font-medium text-cyan-200">Pregunta guía: {team.preguntaGuia}</p>
+                <p className="mt-2 text-xs text-slate-500">Claves: {team.clave.join(" · ")}</p>
+                <div className="mt-4 rounded-xl border border-indigo-400/30 bg-indigo-500/10 px-4 py-3">
+                  <p className="text-sm font-semibold text-indigo-100">Producto de todo el equipo</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-200">
+                    {team.producto ||
+                      "Armen UN solo organizador gráfico o mapa cognitivo en Canva y expónganlo frente al grupo."}
+                  </p>
                 </div>
                 {team.organizador.length > 0 ? (
                   <table className="mt-4 min-w-full text-sm">
@@ -369,11 +386,10 @@ export default function ColorReadingPanel({
 
 function currentPhase(elapsed: number) {
   if (elapsed < 2 * 60) return "Ahora: armado de equipos";
-  if (elapsed < 14 * 60) return "Ahora: lectura en voz alta por equipo";
-  if (elapsed < 22 * 60) return "Ahora: análisis en equipo";
-  if (elapsed < 32 * 60) return "Ahora: mapa / organizador";
-  if (elapsed < 44 * 60) return "Ahora: galería de voceros";
-  if (elapsed < 50 * 60) return "Ahora: conclusión de 2 frases";
+  if (elapsed < 16 * 60) return "Ahora: cada integrante lee su párrafo";
+  if (elapsed < 32 * 60) return "Ahora: un mapa en Canva (todo el equipo)";
+  if (elapsed < 48 * 60) return "Ahora: exposición frente al grupo";
+  if (elapsed < 50 * 60) return "Ahora: cierre";
   return "Sesión cerrada";
 }
 
