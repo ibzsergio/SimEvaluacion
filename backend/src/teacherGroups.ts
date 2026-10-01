@@ -29,6 +29,7 @@ import {
   todayClassDayDate,
 } from "./classDayService.js";
 import { getGroupDeliveryStatus } from "./deliveryStatusService.js";
+import { getLecturaSession } from "./lecturaSession.js";
 import {
   getSeatingPlan,
   resolveSeatingDate,
@@ -532,6 +533,41 @@ teacherGroupsRouter.put("/groups/:groupId/diploma-settings", async (req: AuthedR
   });
 
   return res.json({ group: updated });
+});
+
+teacherGroupsRouter.get("/groups/:groupId/lectura-session", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await getLecturaSession(groupId);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.put("/groups/:groupId/lectura-settings", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ released: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  await prisma.classGroup.update({
+    where: { id: groupId },
+    data: {
+      lecturaReleased: body.data.released,
+      lecturaReleasedAt: body.data.released ? new Date() : null,
+    },
+  });
+
+  const session = await getLecturaSession(groupId);
+  return res.json(session);
 });
 
 teacherGroupsRouter.post("/groups/:groupId/students", async (req: AuthedRequest, res) => {

@@ -20,6 +20,7 @@ import type {
   TeacherCommsData,
   User,
   ListasF1Preview,
+  LecturaSession,
 } from "./types";
 
 /** Normaliza VITE_API_URL (sin barra final ni sufijo /api de desarrollo). */
@@ -270,6 +271,16 @@ export async function updateGroupDiplomaSettings(groupId: string, payload: { dip
     payload,
   );
   return data.group;
+}
+
+export async function fetchLecturaSession(groupId: string) {
+  const { data } = await api.get<LecturaSession>(`/teacher/groups/${groupId}/lectura-session`);
+  return data;
+}
+
+export async function updateGroupLecturaSettings(groupId: string, payload: { released: boolean }) {
+  const { data } = await api.put<LecturaSession>(`/teacher/groups/${groupId}/lectura-settings`, payload);
+  return data;
 }
 
 export async function fetchListasF1Preview(groupId: string) {

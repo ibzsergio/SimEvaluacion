@@ -82,10 +82,7 @@ export default function StudentPage() {
       <StudentSkillSurveyPanel />
 
       {data.seating ? (
-        <>
-          <StudentSeatingCard seating={data.seating} />
-          <StudentColorReadingCard seating={data.seating} />
-        </>
+        <StudentSeatingCard seating={data.seating} />
       ) : (
         <section className="glass mb-6 border border-white/10 p-4">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Tu lugar hoy</p>
@@ -95,6 +92,8 @@ export default function StudentPage() {
           </p>
         </section>
       )}
+
+      {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
       <StudentCommunication />
 

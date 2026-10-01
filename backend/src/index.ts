@@ -30,6 +30,7 @@ import {
   getDiplomaGradeInfo,
 } from "./officeExam/officeExamRoutes.js";
 import { getGroupRanking, getOfficialGroupRanking, RANKING_RULE } from "./groupRanking.js";
+import { getLecturaSession, studentLecturaAssignment } from "./lecturaSession.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
 import { getStudentSeating } from "./seatingService.js";
 import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSchema.js";
@@ -38,6 +39,7 @@ import { ensureSkillSurveySchema } from "./ensureSkillSurveySchema.js";
 import { ensurePartialExamSchema } from "./ensurePartialExamSchema.js";
 import { ensurePartialCutSchema } from "./ensurePartialCutSchema.js";
 import { ensureDiplomaSchema } from "./ensureDiplomaSchema.js";
+import { ensureLecturaSchema } from "./ensureLecturaSchema.js";
 import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
@@ -456,6 +458,8 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
       partialClosedAt: true,
       diplomaEnabled: true,
       diplomaEnabledAt: true,
+      lecturaReleased: true,
+      lecturaReleasedAt: true,
       currentPartial: true,
     },
   });
@@ -555,6 +559,11 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     console.warn("[student/progress] seating lookup failed:", err);
   }
 
+  const lecturaSession = await getLecturaSession(me.groupId);
+  const lectura = lecturaSession
+    ? studentLecturaAssignment(lecturaSession, req.auth!.userId, me.displayName)
+    : null;
+
   return res.json({
     group: myGroup,
     my: {
@@ -574,6 +583,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
       attendance,
     },
     seating,
+    lectura,
     motivation,
     summary,
     top10,
@@ -803,6 +813,7 @@ void (async () => {
     await ensurePartialExamSchema();
     await ensurePartialCutSchema();
     await ensureDiplomaSchema();
+    await ensureLecturaSchema();
   } catch (err) {
     console.error("[startup] Startup schema failed:", err);
     process.exit(1);

@@ -14,6 +14,8 @@ export type ClassGroup = {
   currentPartial?: number;
   diplomaEnabled?: boolean;
   diplomaEnabledAt?: string | null;
+  lecturaReleased?: boolean;
+  lecturaReleasedAt?: string | null;
 };
 
 export type User = {
@@ -111,6 +113,7 @@ export type StudentProgress = {
   rankingRule: string;
   activities: StudentActivity[];
   seating?: StudentSeating | null;
+  lectura?: StudentLectura | null;
 };
 
 export type StudentSeating = {
@@ -126,6 +129,48 @@ export type StudentSeating = {
   listPosition: number | null;
   listNumber: number | null;
   displayName: string;
+};
+
+export type StudentLectura = {
+  readingIndex: number;
+  teamCount: number;
+  colorName: string;
+  hex: string;
+  columna: string;
+  roleName: string;
+  roleTask: string;
+  teammates: Array<{
+    studentId: string;
+    displayName: string;
+    roleName: string;
+    isMe: boolean;
+  }>;
+};
+
+export type LecturaSession = {
+  groupId: string;
+  groupCode: string;
+  shift: string;
+  released: boolean;
+  releasedAt: string | null;
+  theme: SeatingTheme | null;
+  teamCount: number;
+  skipped: Array<{ displayName: string; reason: "baja" | "incapacidad" }>;
+  teams: Array<{
+    readingIndex: number;
+    colorName: string;
+    hex: string;
+    columna: string;
+    members: Array<{
+      studentId: string;
+      displayName: string;
+      listNumber: number | null;
+      row: number;
+      col: number;
+      roleName: string;
+      roleTask: string;
+    }>;
+  }>;
 };
 
 export type SeatingCell = {

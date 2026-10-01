@@ -51,6 +51,9 @@ model ClassGroup {
   /// El docente activa diplomas después de validar calificaciones (no al cerrar).
   diplomaEnabled Boolean @default(false)
   diplomaEnabledAt DateTime?
+  /// El docente libera la lectura colaborativa para que los alumnos la vean.
+  lecturaReleased Boolean @default(false)
+  lecturaReleasedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
