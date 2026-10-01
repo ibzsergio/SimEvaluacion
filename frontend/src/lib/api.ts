@@ -159,6 +159,18 @@ export function getApiErrorMessage(error: unknown): string {
         ? `Error en butacas: ${detail}`
         : "No se pudo guardar el acomodo de butacas. Inténtalo de nuevo.";
     }
+    if (code === "no_teams") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "No hay equipos con alumnos activos. Asigna butacas primero."
+      );
+    }
+    if (code === "topic_required") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Escribe el tema principal de la semana."
+      );
+    }
     if (code === "not_found") {
       return (
         "Ruta no encontrada en el servidor. Verifica que Railway esté desplegado y que VITE_API_URL sea " +
@@ -275,6 +287,11 @@ export async function updateGroupDiplomaSettings(groupId: string, payload: { dip
 
 export async function fetchLecturaSession(groupId: string) {
   const { data } = await api.get<LecturaSession>(`/teacher/groups/${groupId}/lectura-session`);
+  return data;
+}
+
+export async function generateLecturaSession(groupId: string, payload: { topic: string }) {
+  const { data } = await api.post<LecturaSession>(`/teacher/groups/${groupId}/lectura-generate`, payload);
   return data;
 }
 

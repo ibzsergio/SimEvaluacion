@@ -132,17 +132,28 @@ export type StudentSeating = {
 };
 
 export type StudentLectura = {
+  topic: string;
+  sessionNumber: number;
   readingIndex: number;
   teamCount: number;
   colorName: string;
   hex: string;
   columna: string;
+  titulo: string;
+  mision: string;
+  texto: string;
+  clave: string[];
+  preguntaGuia: string;
+  organizador: Array<{ caja: string; hijos: string }>;
   roleName: string;
   roleTask: string;
+  speakScript: string;
   teammates: Array<{
     studentId: string;
     displayName: string;
     roleName: string;
+    roleTask: string;
+    speakScript: string;
     isMe: boolean;
   }>;
 };
@@ -151,16 +162,26 @@ export type LecturaSession = {
   groupId: string;
   groupCode: string;
   shift: string;
+  topic: string;
+  sessionNumber: number;
+  generatedAt: string | null;
   released: boolean;
   releasedAt: string | null;
   theme: SeatingTheme | null;
   teamCount: number;
   skipped: Array<{ displayName: string; reason: "baja" | "incapacidad" }>;
+  hasContent: boolean;
   teams: Array<{
     readingIndex: number;
     colorName: string;
     hex: string;
     columna: string;
+    titulo: string;
+    mision: string;
+    texto: string;
+    clave: string[];
+    preguntaGuia: string;
+    organizador: Array<{ caja: string; hijos: string }>;
     members: Array<{
       studentId: string;
       displayName: string;
@@ -169,6 +190,7 @@ export type LecturaSession = {
       col: number;
       roleName: string;
       roleTask: string;
+      speakScript: string;
     }>;
   }>;
 };

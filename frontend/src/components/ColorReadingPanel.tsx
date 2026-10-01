@@ -2,19 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchLecturaSession,
+  generateLecturaSession,
   getApiErrorMessage,
   updateGroupLecturaSettings,
 } from "../lib/api";
-import {
-  LECTURA_CONCLUSION_MODELO,
-  LECTURA_MINUTOS,
-  LECTURA_ORGANIZADOR,
-  LECTURA_PROGRAMA,
-  LECTURA_ROLES,
-  LECTURA_TEMA,
-  bloquePorIndice,
-  rutaLectura,
-} from "../lib/lecturaTkinter";
+import { LECTURA_MINUTOS, LECTURA_PROGRAMA, LECTURA_ROLES, rutaLectura } from "../lib/lecturaTkinter";
 import type { ClassGroup } from "../lib/types";
 
 function formatClock(totalSeconds: number) {
@@ -37,6 +29,8 @@ export default function ColorReadingPanel({
   const [seconds, setSeconds] = useState(LECTURA_MINUTOS * 60);
   const [running, setRunning] = useState(false);
   const [focusIndex, setFocusIndex] = useState<number | "todos">("todos");
+  const [topic, setTopic] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const sessionQuery = useQuery({
     queryKey: ["lectura-session", selectedGroupId],
@@ -48,10 +42,13 @@ export default function ColorReadingPanel({
   const teams = session?.teams ?? [];
   const teamCount = session?.teamCount ?? 0;
   const released = session?.released ?? selectedGroup?.lecturaReleased ?? false;
+  const hasContent = session?.hasContent ?? false;
 
   useEffect(() => {
     setFocusIndex("todos");
-  }, [selectedGroupId, teamCount]);
+    setActionError("");
+    if (session?.topic) setTopic(session.topic);
+  }, [selectedGroupId, session?.topic, teamCount]);
 
   useEffect(() => {
     if (!running) return;
@@ -66,6 +63,16 @@ export default function ColorReadingPanel({
     }, 1000);
     return () => window.clearInterval(id);
   }, [running]);
+
+  const generateMutation = useMutation({
+    mutationFn: () => generateLecturaSession(selectedGroupId, { topic: topic.trim() }),
+    onSuccess: async () => {
+      setActionError("");
+      await qc.invalidateQueries({ queryKey: ["lectura-session", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["groups"] });
+    },
+    onError: (err) => setActionError(getApiErrorMessage(err)),
+  });
 
   const releaseMutation = useMutation({
     mutationFn: (next: boolean) => updateGroupLecturaSettings(selectedGroupId, { released: next }),
@@ -88,7 +95,7 @@ export default function ColorReadingPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar la lectura para el grupo ${selectedGroup?.code}?\n\nLos alumnos verán solo el texto de su equipo (${teamCount} lectura${teamCount === 1 ? "" : "s"} distinta${teamCount === 1 ? "" : "s"}). Julieta, Getsemaní, Maya y Natalia no entran en 301.`,
+        `¿Liberar la lectura para el grupo ${selectedGroup?.code}?\n\nCada alumno verá SOLO el texto de su equipo y lo que le toca decir a cada integrante de ese equipo. Nadie ve la lectura de otro color.`,
       );
       if (!ok) return;
     }
@@ -116,13 +123,29 @@ export default function ColorReadingPanel({
 
       <section className="glass mb-6 p-6">
         <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">{LECTURA_PROGRAMA}</p>
-        <h2 className="mt-1 text-2xl font-bold text-white">{LECTURA_TEMA}</h2>
+        <h2 className="mt-1 text-2xl font-bold text-white">
+          {session?.topic ? session.topic : "Lectura de la semana"}
+        </h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code} · {selectedGroup?.shift}. Los alumnos no ven nada hasta que liberes la
-          actividad.           Hay <strong className="text-white">{teamCount}</strong> equipo
-          {teamCount === 1 ? "" : "s"} y por eso se entregan{" "}
-          <strong className="text-white">{teamCount}</strong> lectura
-          {teamCount === 1 ? "" : "s"} distinta{teamCount === 1 ? "" : "s"}.
+          Grupo {selectedGroup?.code} · {selectedGroup?.shift}
+          {session?.sessionNumber ? ` · Sesión ${session.sessionNumber}` : ""}. Cada 8 días (o cada semana)
+          escribes el tema, generas textos nuevos —aunque el tema se repita— y luego liberas. Un alumno no
+          puede ver la lectura de otro equipo.
+        </p>
+
+        <label className="mt-4 block text-xs text-slate-400 no-print">
+          Tema principal de esta semana
+          <input
+            type="text"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="Ej. Frames y Radiobuttons en Tkinter"
+            className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white"
+          />
+        </label>
+        <p className="mt-1 text-[11px] text-slate-500 no-print">
+          Si la próxima semana siguen con el mismo tema, vuelve a generar: salen lecturas distintas (sesión{" "}
+          {(session?.sessionNumber ?? 0) + 1}).
         </p>
 
         <div className="mt-4 flex flex-wrap items-end gap-3 no-print">
@@ -135,8 +158,16 @@ export default function ColorReadingPanel({
           </div>
           <button
             type="button"
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending || topic.trim().length < 4 || teamCount === 0}
+            className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
+          >
+            {generateMutation.isPending ? "Generando..." : "Generar lecturas de esta semana"}
+          </button>
+          <button
+            type="button"
             onClick={toggleRelease}
-            disabled={releaseMutation.isPending || teamCount === 0}
+            disabled={releaseMutation.isPending || teamCount === 0 || !hasContent}
             className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
               released
                 ? "border border-amber-400/40 bg-amber-500/15 text-amber-100"
@@ -174,15 +205,23 @@ export default function ColorReadingPanel({
             Imprimir / PDF
           </button>
         </div>
+        {actionError ? <p className="mt-2 text-sm text-rose-300">{actionError}</p> : null}
         {released ? (
           <p className="mt-3 text-sm text-emerald-200">
-            Liberada. Cada alumno ve solo el texto de su equipo. Puedes ocultarla cuando termine la clase.
+            Liberada. Cada alumno ve solo el texto de su equipo y lo que le toca decir a cada integrante de
+            ese equipo.
           </p>
         ) : (
           <p className="mt-3 text-sm text-slate-400">
-            Aún es solo para ti. Asigna butacas (equipos por columna) y luego libera.
+            Primero genera las lecturas; luego libéralas. Mientras no pulses Liberar, los alumnos no ven
+            nada.
           </p>
         )}
+        {!hasContent && teamCount > 0 ? (
+          <p className="mt-2 text-sm text-amber-200">
+            Hay equipos, pero aún no hay textos de esta semana. Escribe el tema y pulsa Generar.
+          </p>
+        ) : null}
         {teamCount === 0 ? (
           <p className="mt-2 text-sm text-amber-200">
             No hay equipos con alumnos activos. En Butacas forma columnas y vuelve a esta pestaña.
@@ -251,7 +290,6 @@ export default function ColorReadingPanel({
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((team) => {
-            const bloque = bloquePorIndice(team.readingIndex);
             return (
               <div
                 key={team.readingIndex}
@@ -261,7 +299,9 @@ export default function ColorReadingPanel({
                 <p className="text-xs font-bold uppercase tracking-wide" style={{ color: team.hex }}>
                   {team.colorName} · Col. {team.columna} · lectura {team.readingIndex + 1} de {teamCount}
                 </p>
-                <p className="mt-1 text-sm font-semibold text-white">{bloque.titulo}</p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  {team.titulo || "Sin texto: genera esta semana"}
+                </p>
                 <ul className="mt-2 space-y-1">
                   {team.members.map((m) => (
                     <li key={m.studentId} className="text-sm text-slate-200">
@@ -278,7 +318,6 @@ export default function ColorReadingPanel({
 
       <div className="space-y-4 print:space-y-6">
         {visibleTeams.map((team) => {
-          const bloque = bloquePorIndice(team.readingIndex);
           return (
             <article
               key={team.readingIndex}
@@ -287,49 +326,43 @@ export default function ColorReadingPanel({
             >
               <header className="px-5 py-3" style={{ backgroundColor: `${team.hex}33` }}>
                 <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-                  {team.colorName} · Columna {team.columna} · lectura {team.readingIndex + 1}/{teamCount}
+                  {team.colorName} · Columna {team.columna} · lectura {team.readingIndex + 1}/{teamCount} ·
+                  solo este equipo
                 </p>
-                <h3 className="mt-1 text-lg font-bold text-white">{bloque.titulo}</h3>
-                <p className="text-sm text-slate-300">Misión: {bloque.mision}</p>
+                <h3 className="mt-1 text-lg font-bold text-white">{team.titulo}</h3>
+                <p className="text-sm text-slate-300">Misión: {team.mision}</p>
               </header>
               <div className="bg-slate-950/50 px-5 py-4">
-                <p className="text-[15px] leading-relaxed text-slate-200">{bloque.texto}</p>
-                <p className="mt-3 text-sm font-medium text-cyan-200">Pregunta guía: {bloque.preguntaGuia}</p>
-                <p className="mt-2 text-xs text-slate-500">Claves: {bloque.clave.join(" · ")}</p>
+                <p className="text-[15px] leading-relaxed text-slate-200">{team.texto}</p>
+                <p className="mt-3 text-sm font-medium text-cyan-200">Pregunta guía: {team.preguntaGuia}</p>
+                <p className="mt-2 text-xs text-slate-500">Claves: {team.clave.join(" · ")}</p>
+                <div className="mt-4 space-y-2">
+                  {team.members.map((m) => (
+                    <p key={m.studentId} className="text-xs leading-relaxed text-slate-300">
+                      <span className="font-semibold text-white">
+                        {m.displayName} · {m.roleName}:
+                      </span>{" "}
+                      {m.speakScript}
+                    </p>
+                  ))}
+                </div>
+                {team.organizador.length > 0 ? (
+                  <table className="mt-4 min-w-full text-sm">
+                    <tbody>
+                      {team.organizador.map((row) => (
+                        <tr key={row.caja} className="border-t border-white/10">
+                          <td className="px-1 py-1 font-medium text-white">{row.caja}</td>
+                          <td className="px-1 py-1 text-slate-300">{row.hijos}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : null}
               </div>
             </article>
           );
         })}
       </div>
-
-      <section className="glass mt-6 p-6">
-        <h3 className="text-lg font-semibold text-white">Organizador que deben copiar (y completar)</h3>
-        <p className="mt-1 text-sm text-slate-400">
-          No es un resumen: es un mapa. El cartógrafo lo dibuja; el vocero lo señala al explicar.
-        </p>
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-3 py-2">Caja</th>
-                <th className="px-3 py-2">Qué va adentro</th>
-              </tr>
-            </thead>
-            <tbody>
-              {LECTURA_ORGANIZADOR.map((row) => (
-                <tr key={row.caja} className="border-t border-white/10">
-                  <td className="px-3 py-2 font-medium text-white">{row.caja}</td>
-                  <td className="px-3 py-2 text-slate-300">{row.hijos}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-4 text-sm leading-relaxed text-slate-300">
-          <span className="font-semibold text-white">Conclusión modelo (no la dictes completa): </span>
-          {LECTURA_CONCLUSION_MODELO}
-        </p>
-      </section>
     </div>
   );
 }

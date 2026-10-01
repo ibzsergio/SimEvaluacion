@@ -54,6 +54,9 @@ model ClassGroup {
   /// El docente libera la lectura colaborativa para que los alumnos la vean.
   lecturaReleased Boolean @default(false)
   lecturaReleasedAt DateTime?
+  lecturaTopic String? @db.VarChar(240)
+  lecturaSessionNumber Int @default(0)
+  lecturaPayload Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -29,7 +29,7 @@ import {
   todayClassDayDate,
 } from "./classDayService.js";
 import { getGroupDeliveryStatus } from "./deliveryStatusService.js";
-import { getLecturaSession } from "./lecturaSession.js";
+import { generateLecturaForGroup, getLecturaSession } from "./lecturaSession.js";
 import {
   getSeatingPlan,
   resolveSeatingDate,
@@ -545,6 +545,43 @@ teacherGroupsRouter.get("/groups/:groupId/lectura-session", async (req: AuthedRe
   const session = await getLecturaSession(groupId);
   if (!session) return res.status(404).json({ error: "group_not_found" });
   return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/lectura-generate", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ topic: z.string().min(4).max(180) }).safeParse(req.body);
+  if (!body.success) {
+    return res.status(400).json({
+      error: "topic_required",
+      message: "Escribe el tema principal (mínimo 4 caracteres).",
+    });
+  }
+
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  try {
+    const session = await generateLecturaForGroup(groupId, body.data.topic);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    if (msg === "no_teams") {
+      return res.status(400).json({
+        error: "no_teams",
+        message: "No hay equipos con alumnos activos. Asigna butacas primero.",
+      });
+    }
+    if (msg === "topic_required") {
+      return res.status(400).json({
+        error: "topic_required",
+        message: "Escribe el tema principal.",
+      });
+    }
+    throw err;
+  }
 });
 
 teacherGroupsRouter.put("/groups/:groupId/lectura-settings", async (req: AuthedRequest, res) => {

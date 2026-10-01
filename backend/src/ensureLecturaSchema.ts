@@ -31,5 +31,16 @@ export async function ensureLecturaSchema() {
   if (!(await columnExists("ClassGroup", "lecturaReleasedAt"))) {
     await execOptional("ALTER TABLE `ClassGroup` ADD COLUMN `lecturaReleasedAt` DATETIME(3) NULL");
   }
+  if (!(await columnExists("ClassGroup", "lecturaTopic"))) {
+    await execOptional("ALTER TABLE `ClassGroup` ADD COLUMN `lecturaTopic` VARCHAR(240) NULL");
+  }
+  if (!(await columnExists("ClassGroup", "lecturaSessionNumber"))) {
+    await execOptional(
+      "ALTER TABLE `ClassGroup` ADD COLUMN `lecturaSessionNumber` INTEGER NOT NULL DEFAULT 0",
+    );
+  }
+  if (!(await columnExists("ClassGroup", "lecturaPayload"))) {
+    await execOptional("ALTER TABLE `ClassGroup` ADD COLUMN `lecturaPayload` JSON NULL");
+  }
   console.log("[startup] Lectura schema ready.");
 }
