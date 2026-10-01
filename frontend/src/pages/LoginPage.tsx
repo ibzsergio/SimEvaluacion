@@ -9,6 +9,7 @@ import {
   loginTeacher,
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import ThemeToggle from "../components/ThemeToggle";
 
 type Mode = "teacher" | "student";
 
@@ -135,6 +136,9 @@ export default function LoginPage({
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.25),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.18),transparent_35%)]" />
+      <div className="absolute right-4 top-4 z-10 no-print">
+        <ThemeToggle />
+      </div>
       <div className="glass relative w-full max-w-md p-8">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-400 text-3xl shadow-lg">

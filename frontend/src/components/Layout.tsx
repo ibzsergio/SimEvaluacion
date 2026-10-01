@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useAuth } from "../lib/auth";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Layout({
   title,
@@ -24,7 +25,13 @@ export default function Layout({
           <h1 className="text-2xl font-bold text-white">{title}</h1>
           {subtitle ? <p className="text-sm text-slate-400">{subtitle}</p> : null}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="sm:hidden">
+            <ThemeToggle compact />
+          </div>
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium text-white">{user?.displayName}</p>
             <p className="text-xs text-slate-400">{user?.email}</p>
