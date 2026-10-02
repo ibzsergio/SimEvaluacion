@@ -38,6 +38,13 @@ export type LecturaSkipped = {
   reason: "baja" | "incapacidad";
 };
 
+export type LecturaArchive = {
+  sessionNumber: number;
+  topic: string;
+  generatedAt: string | null;
+  teams: LecturaTeam[];
+};
+
 export type LecturaSession = {
   groupId: string;
   groupCode: string;
@@ -52,6 +59,7 @@ export type LecturaSession = {
   skipped: LecturaSkipped[];
   teams: LecturaTeam[];
   hasContent: boolean;
+  history: LecturaArchive[];
 };
 
 type StoredTeam = {
@@ -68,6 +76,7 @@ type StoredPayload = {
   sessionNumber: number;
   generatedAt: string;
   teams: StoredTeam[];
+  history?: LecturaArchive[];
 };
 
 function normalizePersonName(value: string) {
@@ -208,6 +217,26 @@ function parsePayload(raw: unknown): StoredPayload | null {
   return p;
 }
 
+function parseHistory(raw: StoredPayload | null): LecturaArchive[] {
+  if (!raw || !Array.isArray(raw.history)) return [];
+  return raw.history.filter(
+    (item): item is LecturaArchive =>
+      Boolean(item) &&
+      typeof item.sessionNumber === "number" &&
+      typeof item.topic === "string" &&
+      Array.isArray(item.teams),
+  );
+}
+
+function snapshotArchive(session: LecturaSession): LecturaArchive {
+  return {
+    sessionNumber: session.sessionNumber,
+    topic: session.topic,
+    generatedAt: session.generatedAt,
+    teams: session.teams,
+  };
+}
+
 export async function getLecturaSession(groupId: string): Promise<LecturaSession | null> {
   const group = await prisma.classGroup.findUnique({
     where: { id: groupId },
@@ -248,6 +277,7 @@ export async function getLecturaSession(groupId: string): Promise<LecturaSession
     skipped,
     teams,
     hasContent: Boolean(stored && stored.teams.length > 0),
+    history: parseHistory(stored),
   };
 }
 
@@ -259,6 +289,7 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
       code: true,
       teacherId: true,
       lecturaSessionNumber: true,
+      lecturaPayload: true,
     },
   });
   if (!group) return null;
@@ -268,6 +299,14 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
 
   const { buckets } = await loadSeatingBuckets(groupId, group.code, group.teacherId);
   if (!buckets.length) throw new Error("no_teams");
+
+  const previous = await getLecturaSession(groupId);
+  const existing = parsePayload(group.lecturaPayload);
+  let history = parseHistory(existing);
+  if (previous?.hasContent) {
+    const snap = snapshotArchive(previous);
+    history = [snap, ...history.filter((h) => h.sessionNumber !== snap.sessionNumber)].slice(0, 16);
+  }
 
   const sessionNumber = (group.lecturaSessionNumber ?? 0) + 1;
   const storedTeams: StoredTeam[] = buckets.map((bucket, teamIndex) => {
@@ -294,6 +333,7 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
     sessionNumber,
     generatedAt: new Date().toISOString(),
     teams: storedTeams,
+    history,
   };
 
   await prisma.classGroup.update({
@@ -310,17 +350,18 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
   return getLecturaSession(groupId);
 }
 
-export function studentLecturaAssignment(session: LecturaSession, studentId: string, displayName: string) {
-  if (!session.released || !session.hasContent) return null;
-  if (exclusionForLectura(session.groupCode, displayName)) return null;
-  const team = session.teams.find((t) => t.members.some((m) => m.studentId === studentId));
-  if (!team || !team.texto) return null;
-  const me = team.members.find((m) => m.studentId === studentId)!;
+function assignmentFromTeam(
+  sessionMeta: { topic: string; sessionNumber: number; teamCount: number },
+  team: LecturaTeam,
+  studentId: string,
+) {
+  const me = team.members.find((m) => m.studentId === studentId);
+  if (!me || !team.texto) return null;
   return {
-    topic: session.topic,
-    sessionNumber: session.sessionNumber,
+    topic: sessionMeta.topic,
+    sessionNumber: sessionMeta.sessionNumber,
     readingIndex: team.readingIndex,
-    teamCount: session.teamCount,
+    teamCount: sessionMeta.teamCount,
     colorName: team.colorName,
     hex: team.hex,
     columna: team.columna,
@@ -348,4 +389,35 @@ export function studentLecturaAssignment(session: LecturaSession, studentId: str
       isMe: m.studentId === studentId,
     })),
   };
+}
+
+export function studentLecturaAssignment(session: LecturaSession, studentId: string, displayName: string) {
+  if (exclusionForLectura(session.groupCode, displayName)) return null;
+
+  const pastReadings = session.history
+    .map((archive) => {
+      const team = archive.teams.find((t) => t.members.some((m) => m.studentId === studentId));
+      if (!team) return null;
+      return assignmentFromTeam(
+        { topic: archive.topic, sessionNumber: archive.sessionNumber, teamCount: archive.teams.length },
+        team,
+        studentId,
+      );
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const currentTeam = session.teams.find((t) => t.members.some((m) => m.studentId === studentId));
+  const current =
+    session.released && session.hasContent && currentTeam
+      ? assignmentFromTeam(
+          { topic: session.topic, sessionNumber: session.sessionNumber, teamCount: session.teamCount },
+          currentTeam,
+          studentId,
+        )
+      : null;
+
+  if (current) return { ...current, pastReadings };
+  if (!pastReadings.length) return null;
+  const latest = pastReadings[0]!;
+  return { ...latest, pastReadings };
 }

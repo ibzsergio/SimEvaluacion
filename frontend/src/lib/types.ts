@@ -162,6 +162,29 @@ export type StudentLectura = {
     paragraph: string;
     isMe: boolean;
   }>;
+  pastReadings?: Array<{
+    topic: string;
+    sessionNumber: number;
+    readingIndex: number;
+    teamCount: number;
+    colorName: string;
+    hex: string;
+    columna: string;
+    titulo: string;
+    mision: string;
+    texto: string;
+    clave: string[];
+    preguntaGuia: string;
+    producto: string;
+    organizador: Array<{ caja: string; hijos: string }>;
+    displayName: string;
+    roleName: string;
+    roleTask: string;
+    speakScript: string;
+    paragraphIndex: number;
+    paragraph: string;
+    teammates: StudentLectura["teammates"];
+  }>;
 };
 
 export type LecturaSession = {
@@ -201,6 +224,12 @@ export type LecturaSession = {
       paragraphIndex: number;
       paragraph: string;
     }>;
+  }>;
+  history?: Array<{
+    sessionNumber: number;
+    topic: string;
+    generatedAt: string | null;
+    teams: LecturaSession["teams"];
   }>;
 };
 

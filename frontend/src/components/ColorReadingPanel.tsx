@@ -7,7 +7,7 @@ import {
   updateGroupLecturaSettings,
 } from "../lib/api";
 import { LECTURA_MINUTOS, LECTURA_PROGRAMA, rutaLectura } from "../lib/lecturaTkinter";
-import type { ClassGroup } from "../lib/types";
+import type { ClassGroup, LecturaSession } from "../lib/types";
 
 function formatClock(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60);
@@ -28,10 +28,9 @@ export default function ColorReadingPanel({
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const [seconds, setSeconds] = useState(LECTURA_MINUTOS * 60);
   const [running, setRunning] = useState(false);
-  const [focusIndex, setFocusIndex] = useState<number | "todos">("todos");
+  const [consultKey, setConsultKey] = useState("");
   const [topic, setTopic] = useState("");
   const [actionError, setActionError] = useState("");
-  const [openTeams, setOpenTeams] = useState<Record<number, boolean>>({});
   const [openParas, setOpenParas] = useState<Record<string, boolean>>({});
 
   const sessionQuery = useQuery({
@@ -47,17 +46,11 @@ export default function ColorReadingPanel({
   const hasContent = session?.hasContent ?? false;
 
   useEffect(() => {
-    setFocusIndex("todos");
+    setConsultKey("");
     setActionError("");
-    setOpenTeams({});
     setOpenParas({});
     if (session?.topic) setTopic(session.topic);
   }, [selectedGroupId, session?.topic, teamCount]);
-
-  useEffect(() => {
-    if (focusIndex === "todos") return;
-    setOpenTeams((prev) => ({ ...prev, [focusIndex]: true }));
-  }, [focusIndex]);
 
   useEffect(() => {
     if (!running) return;
@@ -92,10 +85,35 @@ export default function ColorReadingPanel({
     },
   });
 
-  const visibleTeams = useMemo(() => {
-    if (focusIndex === "todos") return teams;
-    return teams.filter((t) => t.readingIndex === focusIndex);
-  }, [teams, focusIndex]);
+  const consultArchives = useMemo(() => {
+    const history = session?.history ?? [];
+    const current =
+      hasContent && session
+        ? [
+            {
+              sessionNumber: session.sessionNumber,
+              topic: session.topic,
+              generatedAt: session.generatedAt,
+              teams,
+            },
+          ]
+        : [];
+    const rest = history.filter((h) => h.sessionNumber !== session?.sessionNumber);
+    return [...current, ...rest];
+  }, [hasContent, session, teams]);
+
+  const consultOptions = useMemo(() => {
+    return consultArchives.flatMap((archive) =>
+      archive.teams.map((team) => ({
+        key: `${archive.sessionNumber}:${team.readingIndex}`,
+        archive,
+        team,
+      })),
+    );
+  }, [consultArchives]);
+
+  const selectedConsult =
+    consultOptions.find((o) => o.key === consultKey) ?? consultOptions[0] ?? null;
 
   const ruta = rutaLectura(teamCount || 1);
   const elapsed = LECTURA_MINUTOS * 60 - seconds;
@@ -281,188 +299,137 @@ export default function ColorReadingPanel({
         </ol>
       </section>
 
-      <section className="mb-6 no-print">
-        <div className="mb-3 flex flex-wrap gap-2">
-          <FilterChip active={focusIndex === "todos"} onClick={() => setFocusIndex("todos")}>
-            Proyectar {teamCount} lectura{teamCount === 1 ? "" : "s"}
-          </FilterChip>
-          <button
-            type="button"
-            onClick={() => {
-              const next: Record<number, boolean> = {};
-              teams.forEach((t) => {
-                next[t.readingIndex] = true;
-              });
-              setOpenTeams(next);
-            }}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 hover:bg-white/10"
-          >
-            Expandir lecturas
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setOpenTeams({});
-              setOpenParas({});
-            }}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 hover:bg-white/10"
-          >
-            Contraer lecturas
-          </button>
-          {teams.map((team) => {
-            return (
-              <FilterChip
-                key={team.readingIndex}
-                active={focusIndex === team.readingIndex}
-                onClick={() => setFocusIndex(team.readingIndex)}
-                color={team.hex}
-              >
-                {team.colorName}
-              </FilterChip>
-            );
-          })}
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {teams.map((team) => {
+      {consultOptions.length > 0 ? (
+        <section className="glass mb-6 p-6">
+          <label className="block text-sm font-semibold text-white">
+            Consultar una lectura
+            <select
+              value={selectedConsult?.key ?? ""}
+              onChange={(e) => {
+                setConsultKey(e.target.value);
+                setOpenParas({});
+              }}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2.5 text-sm text-white"
+            >
+              {consultArchives.map((archive) => (
+                <optgroup
+                  key={archive.sessionNumber}
+                  label={`Sesión ${archive.sessionNumber} · ${archive.topic}${
+                    archive.generatedAt ? ` · ${formatConsultDate(archive.generatedAt)}` : ""
+                  }`}
+                >
+                  {archive.teams.map((team) => (
+                    <option
+                      key={`${archive.sessionNumber}:${team.readingIndex}`}
+                      value={`${archive.sessionNumber}:${team.readingIndex}`}
+                    >
+                      {team.colorName} · {team.titulo}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <p className="mt-2 text-xs text-slate-500">
+            La lectura del día queda aquí compactada. Elige el color del equipo para volver a verla.
+          </p>
+        </section>
+      ) : null}
+
+      {selectedConsult ? (
+        <ConsultedTeamCard
+          archive={selectedConsult.archive}
+          team={selectedConsult.team}
+          openParas={openParas}
+          onTogglePara={(id) => setOpenParas((prev) => ({ ...prev, [id]: !prev[id] }))}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function formatConsultDate(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
+
+function ConsultedTeamCard({
+  archive,
+  team,
+  openParas,
+  onTogglePara,
+}: {
+  archive: { sessionNumber: number; topic: string; generatedAt: string | null };
+  team: LecturaSession["teams"][number];
+  openParas: Record<string, boolean>;
+  onTogglePara: (id: string) => void;
+}) {
+  return (
+    <article className="overflow-hidden rounded-2xl border" style={{ borderColor: `${team.hex}88` }}>
+      <header className="px-5 py-3" style={{ backgroundColor: `${team.hex}33` }}>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
+          Sesión {archive.sessionNumber} · {team.colorName} · Columna {team.columna}
+        </p>
+        <h3 className="mt-1 text-lg font-bold text-white">{team.titulo}</h3>
+        <p className="text-sm text-slate-300">{team.mision}</p>
+        <p className="mt-1 text-xs text-slate-400">
+          {team.members.length} integrante{team.members.length === 1 ? "" : "s"} ·{" "}
+          {team.members.map((m) => m.displayName.split(" ")[0]).join(", ")}
+        </p>
+      </header>
+      <div className="bg-slate-950/50 px-5 py-4">
+        <p className="text-xs font-bold uppercase tracking-widest text-cyan-200">
+          Toca un nombre para ver u ocultar su párrafo
+        </p>
+        <div className="mt-3 space-y-3">
+          {team.members.map((m) => {
+            const paraOpen = Boolean(openParas[m.studentId]);
             return (
               <div
-                key={team.readingIndex}
-                className="rounded-xl border p-3"
-                style={{ borderColor: `${team.hex}66`, backgroundColor: `${team.hex}14` }}
+                key={m.studentId}
+                className="rounded-xl border"
+                style={{ borderColor: `${team.hex}55`, backgroundColor: `${team.hex}14` }}
               >
-                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: team.hex }}>
-                  {team.colorName} · Col. {team.columna} · lectura {team.readingIndex + 1} de {teamCount}
+                <button
+                  type="button"
+                  onClick={() => onTogglePara(m.studentId)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left no-print"
+                  aria-expanded={paraOpen}
+                >
+                  <p className="text-xs font-bold uppercase tracking-wide" style={{ color: team.hex }}>
+                    {m.roleName} · lee {m.displayName}
+                  </p>
+                  <span className="text-xs font-semibold text-slate-400">{paraOpen ? "Ocultar" : "Ver"}</span>
+                </button>
+                <p
+                  className="hidden px-4 pt-3 text-xs font-bold uppercase tracking-wide print:block"
+                  style={{ color: team.hex }}
+                >
+                  {m.roleName} · lee {m.displayName}
                 </p>
-                <p className="mt-1 text-sm font-semibold text-white">
-                  {team.titulo || "Sin texto: genera esta semana"}
+                <p
+                  className={`max-w-prose px-4 pb-4 text-[15px] leading-7 text-white ${
+                    paraOpen ? "block" : "hidden print:block"
+                  }`}
+                >
+                  {m.paragraph || "Aún no hay párrafo."}
                 </p>
-                <ul className="mt-2 space-y-1">
-                  {team.members.map((m) => (
-                    <li key={m.studentId} className="text-sm text-slate-200">
-                      <span className="font-semibold text-white">{m.displayName}</span>
-                      <span className="text-slate-500"> · lee {m.roleName.toLowerCase()}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
             );
           })}
         </div>
-      </section>
-
-      <div className="space-y-4 print:space-y-6">
-        {visibleTeams.map((team) => {
-          const teamOpen = Boolean(openTeams[team.readingIndex]);
-          return (
-            <article
-              key={team.readingIndex}
-              className="overflow-hidden rounded-2xl border"
-              style={{ borderColor: `${team.hex}88` }}
-            >
-              <button
-                type="button"
-                onClick={() =>
-                  setOpenTeams((prev) => ({ ...prev, [team.readingIndex]: !prev[team.readingIndex] }))
-                }
-                className="flex w-full items-start justify-between gap-3 px-5 py-3 text-left no-print"
-                style={{ backgroundColor: `${team.hex}33` }}
-                aria-expanded={teamOpen}
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-                    {team.colorName} · Columna {team.columna} · lectura {team.readingIndex + 1}/{teamCount} ·
-                    solo este equipo
-                  </p>
-                  <h3 className="mt-1 text-lg font-bold text-white">{team.titulo}</h3>
-                  <p className="text-sm text-slate-300">
-                    {team.members.length} integrante{team.members.length === 1 ? "" : "s"} ·{" "}
-                    {team.members.map((m) => m.displayName.split(" ")[0]).join(", ")}
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200">
-                  {teamOpen ? "Ocultar" : "Ver lectura"}
-                </span>
-              </button>
-              <header className="hidden px-5 py-3 print:block" style={{ backgroundColor: `${team.hex}33` }}>
-                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-                  {team.colorName} · Columna {team.columna} · lectura {team.readingIndex + 1}/{teamCount}
-                </p>
-                <h3 className="mt-1 text-lg font-bold text-white">{team.titulo}</h3>
-                <p className="text-sm text-slate-300">Misión: {team.mision}</p>
-              </header>
-              <div className={`bg-slate-950/50 px-5 py-4 ${teamOpen ? "block" : "hidden print:block"}`}>
-                <p className="text-xs font-bold uppercase tracking-widest text-cyan-200">
-                  Lectura del equipo · toca un nombre para ver u ocultar su párrafo
-                </p>
-                <p className="mt-2 text-sm text-slate-300 print:block">{team.mision}</p>
-                <div className="mt-3 space-y-3">
-                  {team.members.map((m) => {
-                    const paraOpen = Boolean(openParas[m.studentId]);
-                    return (
-                      <div
-                        key={m.studentId}
-                        className="rounded-xl border"
-                        style={{ borderColor: `${team.hex}55`, backgroundColor: `${team.hex}14` }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenParas((prev) => ({ ...prev, [m.studentId]: !prev[m.studentId] }))
-                          }
-                          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left no-print"
-                          aria-expanded={paraOpen}
-                        >
-                          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: team.hex }}>
-                            {m.roleName} · lee {m.displayName}
-                          </p>
-                          <span className="text-xs font-semibold text-slate-400">
-                            {paraOpen ? "Ocultar" : "Ver"}
-                          </span>
-                        </button>
-                        <p
-                          className="hidden px-4 pt-3 text-xs font-bold uppercase tracking-wide print:block"
-                          style={{ color: team.hex }}
-                        >
-                          {m.roleName} · lee {m.displayName}
-                        </p>
-                        <p
-                          className={`max-w-prose px-4 pb-4 text-[15px] leading-7 text-white ${
-                            paraOpen ? "block" : "hidden print:block"
-                          }`}
-                        >
-                          {m.paragraph || "Aún no hay párrafo: genera la lectura de esta semana."}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="mt-4 text-sm font-medium text-cyan-200">Pregunta guía: {team.preguntaGuia}</p>
-                <p className="mt-2 text-xs text-slate-500">Claves: {team.clave.join(" · ")}</p>
-                <div className="mt-4 rounded-xl border border-indigo-400/30 bg-indigo-500/10 px-4 py-3">
-                  <p className="text-sm font-semibold text-indigo-100">Producto de todo el equipo</p>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-200">
-                    {team.producto ||
-                      "Armen UN solo organizador gráfico o mapa cognitivo en Canva y expónganlo frente al grupo."}
-                  </p>
-                </div>
-                {team.organizador.length > 0 ? (
-                  <table className="mt-4 min-w-full text-sm">
-                    <tbody>
-                      {team.organizador.map((row) => (
-                        <tr key={row.caja} className="border-t border-white/10">
-                          <td className="px-1 py-1 font-medium text-white">{row.caja}</td>
-                          <td className="px-1 py-1 text-slate-300">{row.hijos}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : null}
-              </div>
-            </article>
-          );
-        })}
+        <p className="mt-4 text-sm font-medium text-cyan-200">Pregunta guía: {team.preguntaGuia}</p>
+        <p className="mt-2 text-xs text-slate-500">Claves: {team.clave.join(" · ")}</p>
+        <div className="mt-4 rounded-xl border border-indigo-400/30 bg-indigo-500/10 px-4 py-3">
+          <p className="text-sm font-semibold text-indigo-100">Producto de todo el equipo</p>
+          <p className="mt-1 text-sm leading-relaxed text-slate-200">
+            {team.producto ||
+              "Armen UN solo organizador gráfico o mapa cognitivo en Canva y expónganlo frente al grupo."}
+          </p>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -475,27 +442,3 @@ function currentPhase(elapsed: number) {
   return "Sesión cerrada";
 }
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-  color,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  color?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-        active ? "border-white/40 bg-white/15 text-white" : "border-white/10 bg-white/5 text-slate-300"
-      }`}
-      style={color && active ? { borderColor: color, color } : color ? { borderColor: `${color}55` } : undefined}
-    >
-      {children}
-    </button>
-  );
-}
