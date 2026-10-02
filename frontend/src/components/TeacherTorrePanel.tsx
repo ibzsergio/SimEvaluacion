@@ -28,7 +28,8 @@ export default function TeacherTorrePanel({
     queryKey: ["torre-session", selectedGroupId],
     queryFn: () => fetchTorreSession(selectedGroupId),
     enabled: !!selectedGroupId,
-    refetchInterval: (query) => (query.state.data?.teams.some((t) => t.startedAt) ? 5000 : 20_000),
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
   });
 
   const session = sessionQuery.data;
@@ -74,6 +75,9 @@ export default function TeacherTorrePanel({
     resetMutation.mutate();
   }
 
+  const withLeader = teams.filter((t) => t.leaderId).length;
+  const withTimer = teams.filter((t) => t.startedAt).length;
+  const minutes = session?.minutes ?? TORRE_MINUTOS;
   void now;
 
   return (
@@ -94,6 +98,84 @@ export default function TeacherTorrePanel({
           </button>
         ))}
       </div>
+
+      <section className="glass mb-6 p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">En vivo</p>
+            <h2 className="mt-1 text-xl font-bold text-white">Líder y temporizador por equipo</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Se actualiza solo. Ves quién ya eligió líder y el reloj de 45 minutos de cada color.
+            </p>
+          </div>
+          <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            Líderes {withLeader}/{teams.length || 6} · Relojes {withTimer}/{teams.length || 6}
+          </p>
+        </div>
+        {sessionQuery.isLoading ? (
+          <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
+        ) : teams.length === 0 ? (
+          <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+            No hay equipos de butacas. Asigna lugares primero (los mismos de la lectura).
+          </p>
+        ) : (
+          <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {teams.map((team) => {
+              const remain = remainingSeconds(team.startedAt, minutes);
+              const running = Boolean(team.startedAt) && remain > 0;
+              const done = Boolean(team.startedAt) && remain === 0;
+              return (
+                <li
+                  key={team.key}
+                  className="rounded-2xl border p-4"
+                  style={{ borderColor: `${team.hex}88`, backgroundColor: `${team.hex}18` }}
+                >
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
+                    {team.colorName} · columna {team.columna}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-white">
+                    {team.leaderName ? `Líder: ${team.leaderName}` : "Aún no eligen líder"}
+                  </p>
+                  <p
+                    className={`mt-2 font-mono text-3xl font-bold ${
+                      done ? "text-rose-200" : running ? "text-white" : "text-slate-500"
+                    }`}
+                  >
+                    {team.startedAt ? formatClock(remain) : `${minutes}:00`}
+                  </p>
+                  <p
+                    className={`mt-1 text-xs font-semibold ${
+                      done
+                        ? "text-rose-200"
+                        : running
+                          ? "text-emerald-200"
+                          : team.leaderName
+                            ? "text-amber-200"
+                            : "text-slate-400"
+                    }`}
+                  >
+                    {done
+                      ? "Tiempo agotado — manos arriba"
+                      : running
+                        ? "Reloj en curso"
+                        : team.leaderName
+                          ? "Líder listo · falta activar el reloj"
+                          : "Esperando líder"}
+                  </p>
+                  <ul className="mt-3 space-y-0.5 text-xs text-slate-300">
+                    {team.members.map((m) => (
+                      <li key={m.studentId}>
+                        {m.displayName}
+                        {m.studentId === team.leaderId ? " · líder" : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       <section className="glass mb-6 p-6">
         <p className="text-xs font-bold uppercase tracking-widest text-amber-300">{TORRE_PROGRAMA}</p>
@@ -157,53 +239,6 @@ export default function TeacherTorrePanel({
         {sessionQuery.isError ? (
           <p className="mt-3 text-sm text-rose-300">{getApiErrorMessage(sessionQuery.error)}</p>
         ) : null}
-        {teams.length === 0 ? (
-          <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-            No hay equipos de butacas. Asigna lugares primero (los mismos de la lectura).
-          </p>
-        ) : null}
-      </section>
-
-      <section className="glass p-6">
-        <h3 className="text-lg font-semibold text-white">Equipos (colores de butacas)</h3>
-        <p className="mt-1 text-sm text-slate-400">
-          {teams.length} equipo{teams.length === 1 ? "" : "s"}. Cada columna de color es un equipo.
-        </p>
-        <ul className="mt-4 grid gap-3 md:grid-cols-2">
-          {teams.map((team) => {
-            const remain = remainingSeconds(team.startedAt, session?.minutes ?? TORRE_MINUTOS);
-            const running = Boolean(team.startedAt) && remain > 0;
-            const done = Boolean(team.startedAt) && remain === 0;
-            return (
-              <li
-                key={team.key}
-                className="rounded-2xl border p-4"
-                style={{ borderColor: `${team.hex}66`, backgroundColor: `${team.hex}14` }}
-              >
-                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-                  {team.colorName} · columna {team.columna}
-                </p>
-                <p className="mt-1 text-sm text-white">
-                  {team.leaderName ? `Líder: ${team.leaderName}` : "Sin líder todavía"}
-                </p>
-                <p className="mt-1 font-mono text-lg font-bold text-white">
-                  {team.startedAt ? formatClock(remain) : `${session?.minutes ?? TORRE_MINUTOS}:00`}
-                </p>
-                <p className="text-xs text-slate-400">
-                  {done ? "Tiempo agotado" : running ? "Reloj en curso" : "Esperando al líder"}
-                </p>
-                <ul className="mt-2 space-y-0.5 text-xs text-slate-300">
-                  {team.members.map((m) => (
-                    <li key={m.studentId}>
-                      {m.displayName}
-                      {m.studentId === team.leaderId ? " · líder" : ""}
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            );
-          })}
-        </ul>
       </section>
     </div>
   );
