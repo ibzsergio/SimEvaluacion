@@ -30,6 +30,7 @@ import {
 } from "./classDayService.js";
 import { getGroupDeliveryStatus } from "./deliveryStatusService.js";
 import { generateLecturaForGroup, getLecturaSession } from "./lecturaSession.js";
+import { getTorreSession, resetTorreSession, setTorreReleased } from "./torreChallenge.js";
 import {
   getSeatingPlan,
   resolveSeatingDate,
@@ -604,6 +605,46 @@ teacherGroupsRouter.put("/groups/:groupId/lectura-settings", async (req: AuthedR
   });
 
   const session = await getLecturaSession(groupId);
+  return res.json(session);
+});
+
+teacherGroupsRouter.get("/groups/:groupId/torre-session", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await getTorreSession(groupId);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.put("/groups/:groupId/torre-settings", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ released: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  const session = await setTorreReleased(groupId, body.data.released);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/torre-reset", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await resetTorreSession(groupId);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
   return res.json(session);
 });
 

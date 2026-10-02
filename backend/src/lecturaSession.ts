@@ -3,7 +3,7 @@ import { todayClassDayDate } from "./classDayService.js";
 import { COLUMN_PALETTE, getSeatingPlan, type SeatingTheme } from "./seatingService.js";
 import { generateBloque, assignParagraphs, type GeneratedBloque } from "./lecturaGenerate.js";
 
-const COLUMN_LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
+export const COLUMN_LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
 
 export type LecturaMember = {
   studentId: string;
@@ -113,7 +113,7 @@ function roleNameForOrder(index: number) {
   return `Párrafo ${index + 1}`;
 }
 
-type RawBucket = {
+export type RawBucket = {
   key: string;
   sortCol: number;
   sortRow: number;
@@ -128,7 +128,9 @@ type RawBucket = {
   }>;
 };
 
-async function loadSeatingBuckets(groupId: string, groupCode: string, teacherId: string) {
+export type SeatingBucket = RawBucket;
+
+export async function loadSeatingBuckets(groupId: string, groupCode: string, teacherId: string) {
   const plan = await getSeatingPlan(teacherId, groupId, todayClassDayDate());
   const theme = (plan?.theme as SeatingTheme | undefined) ?? null;
   const skippedMap = new Map<string, LecturaSkipped>();

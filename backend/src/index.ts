@@ -32,6 +32,13 @@ import {
 } from "./officeExam/officeExamRoutes.js";
 import { getGroupRanking, getOfficialGroupRanking, RANKING_RULE } from "./groupRanking.js";
 import { getLecturaSession, studentLecturaAssignment } from "./lecturaSession.js";
+import {
+  chooseTorreLeader,
+  getTorreSession,
+  startTorreTimer,
+  studentTorreAssignment,
+  torreErrorHttp,
+} from "./torreChallenge.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
 import { getStudentSeating } from "./seatingService.js";
 import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSchema.js";
@@ -41,6 +48,7 @@ import { ensurePartialExamSchema } from "./ensurePartialExamSchema.js";
 import { ensurePartialCutSchema } from "./ensurePartialCutSchema.js";
 import { ensureDiplomaSchema } from "./ensureDiplomaSchema.js";
 import { ensureLecturaSchema } from "./ensureLecturaSchema.js";
+import { ensureTorreSchema } from "./ensureTorreSchema.js";
 import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
@@ -462,6 +470,8 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
       diplomaEnabledAt: true,
       lecturaReleased: true,
       lecturaReleasedAt: true,
+      torreReleased: true,
+      torreReleasedAt: true,
       currentPartial: true,
     },
   });
@@ -565,6 +575,8 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   const lectura = lecturaSession
     ? studentLecturaAssignment(lecturaSession, req.auth!.userId, me.displayName)
     : null;
+  const torreSession = await getTorreSession(me.groupId);
+  const torre = torreSession ? studentTorreAssignment(torreSession, req.auth!.userId) : null;
 
   return res.json({
     group: myGroup,
@@ -586,6 +598,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     },
     seating,
     lectura,
+    torre,
     motivation,
     summary,
     top10,
@@ -638,6 +651,42 @@ app.post("/student/skill-survey", requireAuth, requireStudent, async (req: Authe
     }
     console.error("[skill-survey] student submit failed:", err);
     return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
+app.post("/student/torre/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const me = await prisma.user.findUnique({
+    where: { id: req.auth!.userId },
+    select: { groupId: true },
+  });
+  if (!me?.groupId) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await chooseTorreLeader(me.groupId, req.auth!.userId, body.data.leaderId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ torre: studentTorreAssignment(session, req.auth!.userId) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = torreErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+app.post("/student/torre/start", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const me = await prisma.user.findUnique({
+    where: { id: req.auth!.userId },
+    select: { groupId: true },
+  });
+  if (!me?.groupId) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await startTorreTimer(me.groupId, req.auth!.userId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ torre: studentTorreAssignment(session, req.auth!.userId) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = torreErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
   }
 });
 
@@ -814,6 +863,7 @@ void (async () => {
     await ensurePartialCutSchema();
     await ensureDiplomaSchema();
     await ensureLecturaSchema();
+    await ensureTorreSchema();
   } catch (err) {
     console.error("[startup] Startup schema failed:", err);
     process.exit(1);

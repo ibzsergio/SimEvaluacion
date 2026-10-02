@@ -16,6 +16,8 @@ export type ClassGroup = {
   diplomaEnabledAt?: string | null;
   lecturaReleased?: boolean;
   lecturaReleasedAt?: string | null;
+  torreReleased?: boolean;
+  torreReleasedAt?: string | null;
 };
 
 export type User = {
@@ -114,6 +116,7 @@ export type StudentProgress = {
   activities: StudentActivity[];
   seating?: StudentSeating | null;
   lectura?: StudentLectura | null;
+  torre?: StudentTorre | null;
 };
 
 export type StudentSeating = {
@@ -184,6 +187,47 @@ export type StudentLectura = {
     paragraphIndex: number;
     paragraph: string;
     teammates: StudentLectura["teammates"];
+  }>;
+};
+
+export type StudentTorre = {
+  minutes: number;
+  colorName: string;
+  hex: string;
+  columna: string;
+  displayName: string;
+  isLeader: boolean;
+  leaderId: string | null;
+  leaderName: string | null;
+  startedAt: string | null;
+  members: Array<{
+    studentId: string;
+    displayName: string;
+    listNumber: number | null;
+  }>;
+};
+
+export type TorreSession = {
+  groupId: string;
+  groupCode: string;
+  released: boolean;
+  releasedAt: string | null;
+  minutes: number;
+  teamCount: number;
+  teams: Array<{
+    key: string;
+    readingIndex: number;
+    colorName: string;
+    hex: string;
+    columna: string;
+    members: Array<{
+      studentId: string;
+      displayName: string;
+      listNumber: number | null;
+    }>;
+    leaderId: string | null;
+    leaderName: string | null;
+    startedAt: string | null;
   }>;
 };
 

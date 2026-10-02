@@ -6,6 +6,7 @@ import StudentCommunication from "../components/StudentCommunication";
 import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
+import StudentTorreCard from "../components/StudentTorreCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
@@ -26,9 +27,9 @@ export default function StudentPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
     queryFn: fetchStudentProgress,
-    staleTime: 30_000,
+    staleTime: 15_000,
     refetchOnWindowFocus: true,
-    refetchInterval: 60_000,
+    refetchInterval: (query) => (query.state.data?.torre?.startedAt ? 5000 : 30_000),
   });
 
   if (isLoading || !data) {
@@ -94,6 +95,8 @@ export default function StudentPage() {
       )}
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
+
+      {data.torre ? <StudentTorreCard torre={data.torre} /> : null}
 
       <StudentCommunication />
 

@@ -8,7 +8,8 @@ export default function StudentCommunication() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["student-comms"],
     queryFn: fetchStudentComms,
-    staleTime: 10 * 60_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
   if (isLoading) {

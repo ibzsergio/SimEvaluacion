@@ -21,6 +21,8 @@ import type {
   User,
   ListasF1Preview,
   LecturaSession,
+  TorreSession,
+  StudentTorre,
 } from "./types";
 
 /** Normaliza VITE_API_URL (sin barra final ni sufijo /api de desarrollo). */
@@ -165,6 +167,30 @@ export function getApiErrorMessage(error: unknown): string {
         "No hay equipos con alumnos activos. Asigna butacas primero."
       );
     }
+    if (code === "not_leader") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Solo el líder del equipo puede activar el reloj."
+      );
+    }
+    if (code === "already_started") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "El reloj ya está corriendo. Ya no se puede cambiar de líder."
+      );
+    }
+    if (code === "invalid_leader") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Elige a alguien de tu mismo equipo."
+      );
+    }
+    if (code === "not_released") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "El docente aún no libera la actividad."
+      );
+    }
     if (code === "topic_required") {
       return (
         (error.response.data as { message?: string })?.message ??
@@ -298,6 +324,31 @@ export async function generateLecturaSession(groupId: string, payload: { topic: 
 export async function updateGroupLecturaSettings(groupId: string, payload: { released: boolean }) {
   const { data } = await api.put<LecturaSession>(`/teacher/groups/${groupId}/lectura-settings`, payload);
   return data;
+}
+
+export async function fetchTorreSession(groupId: string) {
+  const { data } = await api.get<TorreSession>(`/teacher/groups/${groupId}/torre-session`);
+  return data;
+}
+
+export async function updateGroupTorreSettings(groupId: string, payload: { released: boolean }) {
+  const { data } = await api.put<TorreSession>(`/teacher/groups/${groupId}/torre-settings`, payload);
+  return data;
+}
+
+export async function resetTorreSession(groupId: string) {
+  const { data } = await api.post<TorreSession>(`/teacher/groups/${groupId}/torre-reset`);
+  return data;
+}
+
+export async function chooseStudentTorreLeader(leaderId: string) {
+  const { data } = await api.post<{ torre: StudentTorre | null }>("/student/torre/leader", { leaderId });
+  return data.torre;
+}
+
+export async function startStudentTorreTimer() {
+  const { data } = await api.post<{ torre: StudentTorre | null }>("/student/torre/start");
+  return data.torre;
 }
 
 export async function fetchListasF1Preview(groupId: string) {

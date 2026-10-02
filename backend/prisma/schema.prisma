@@ -57,6 +57,10 @@ model ClassGroup {
   lecturaTopic String? @db.VarChar(240)
   lecturaSessionNumber Int @default(0)
   lecturaPayload Json?
+  /// Reto de torre Tkinter (popotes): el docente libera, el líder arranca 45 min.
+  torreReleased Boolean @default(false)
+  torreReleasedAt DateTime?
+  torrePayload Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
