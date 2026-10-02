@@ -1,6 +1,7 @@
 export const TORRE_MINUTOS = 45;
 export const TORRE_TITULO = "Torre Tkinter";
 export const TORRE_PROGRAMA = "Reto colaborativo";
+export const TORRE_PUNTOS_MAX = 1000;
 
 export const TORRE_NIVELES = [
   {
@@ -36,8 +37,20 @@ export const TORRE_PASOS = [
   "Elijan un líder. Cualquiera del equipo puede marcarlo; el líder es quien activa la actividad.",
   "Materiales: popotes, pegamento y hojas de color para hacer banderillas de papel.",
   "Construyan una sola torre. Cada fase o nivel debe llevar banderillas con palabras significativas de Tkinter (las de abajo o equivalentes).",
+  "En la cima, la torre deberá llevar una bandera que diga Tkinter.",
   "La torre más alta que se sostenga sola al terminar el tiempo es la ganadora.",
 ];
+
+/** 6 equipos: el puntaje de cada integrante depende del lugar por altura. El ganador obtiene 1000. */
+export const TORRE_PUNTAJE = [
+  { lugar: 1, etiqueta: "1° · la más alta (ganador)", puntos: 1000 },
+  { lugar: 2, etiqueta: "2° · segunda más alta", puntos: 800 },
+  { lugar: 3, etiqueta: "3° · tercera", puntos: 650 },
+  { lugar: 4, etiqueta: "4° · cuarta", puntos: 500 },
+  { lugar: 5, etiqueta: "5° · quinta", puntos: 350 },
+  { lugar: 6, etiqueta: "6° · la más baja", puntos: 200 },
+] as const;
+
 
 export function remainingSeconds(startedAt: string | null | undefined, minutes = TORRE_MINUTOS) {
   if (!startedAt) return minutes * 60;

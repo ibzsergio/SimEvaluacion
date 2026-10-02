@@ -10,14 +10,14 @@ import {
   remainingSeconds,
   TORRE_MINUTOS,
   TORRE_NIVELES,
-  TORRE_PASOS,
   TORRE_PROGRAMA,
   TORRE_TITULO,
 } from "../lib/torreTkinter";
 import type { StudentTorre } from "../lib/types";
 import TorreIllustration from "./TorreIllustration";
+import TorreIndicacion from "./TorreIndicacion";
 
-const READ_KEY = "simeval-torre-read-v1";
+const READ_KEY = "simeval-torre-read-v2";
 
 export default function StudentTorreCard({ torre }: { torre: StudentTorre }) {
   const qc = useQueryClient();
@@ -97,7 +97,7 @@ export default function StudentTorreCard({ torre }: { torre: StudentTorre }) {
           <p className="mt-1 text-sm text-slate-300">
             {torre.startedAt
               ? done
-                ? "Tiempo agotado — la torre debe sostenerse sola"
+                ? "Tiempo agotado — levanten las manos. No sigan construyendo."
                 : `Reloj: ${formatClock(remain)}`
               : torre.leaderName
                 ? `Líder: ${torre.leaderName}. Lean y activen cuando estén listos.`
@@ -113,17 +113,7 @@ export default function StudentTorreCard({ torre }: { torre: StudentTorre }) {
         <div className="space-y-5 px-5 pb-5 pt-2">
           <TorreIllustration compact />
 
-          <div>
-            <h3 className="text-sm font-semibold text-white">Instrucciones</h3>
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-300">
-              {TORRE_PASOS.map((paso) => (
-                <li key={paso}>{paso}</li>
-              ))}
-            </ol>
-            <p className="mt-3 text-sm font-semibold text-amber-200">
-              Gana la torre más alta que se sostenga sola al terminar los {torre.minutes} minutos.
-            </p>
-          </div>
+          <TorreIndicacion />
 
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-white">Palabras para las banderillas (hojas de color)</h3>
@@ -206,6 +196,11 @@ export default function StudentTorreCard({ torre }: { torre: StudentTorre }) {
                     {done ? "Tiempo agotado" : "Tiempo restante"}
                   </p>
                   <p className="mt-1 font-mono text-4xl font-bold text-white">{formatClock(remain)}</p>
+                  {done ? (
+                    <p className="mt-2 text-sm font-semibold text-rose-100">
+                      Levanten las manos. No sigan construyendo.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>

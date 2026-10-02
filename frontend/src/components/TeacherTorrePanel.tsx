@@ -6,9 +6,10 @@ import {
   resetTorreSession,
   updateGroupTorreSettings,
 } from "../lib/api";
-import { formatClock, remainingSeconds, TORRE_MINUTOS, TORRE_NIVELES, TORRE_PASOS, TORRE_PROGRAMA, TORRE_TITULO } from "../lib/torreTkinter";
+import { formatClock, remainingSeconds, TORRE_MINUTOS, TORRE_NIVELES, TORRE_PROGRAMA, TORRE_TITULO } from "../lib/torreTkinter";
 import type { ClassGroup } from "../lib/types";
 import TorreIllustration from "./TorreIllustration";
+import TorreIndicacion from "./TorreIndicacion";
 
 export default function TeacherTorrePanel({
   groups,
@@ -100,17 +101,14 @@ export default function TeacherTorrePanel({
         <p className="mt-2 text-sm text-slate-300">
           Grupo {selectedGroup?.code} · {selectedGroup?.shift}. Mismos equipos de color que la lectura. Tú
           revisas la indicación y, cuando esté listo el material, liberas. Los alumnos leen, eligen líder y el
-          líder activa un reloj de {TORRE_MINUTOS} minutos. Gana la torre más alta que se sostenga sola.
+          líder activa un reloj de {TORRE_MINUTOS} minutos. Al acabar: manos arriba, no siguen construyendo.
+          En la cima debe ir una bandera que diga Tkinter. El ganador (la más alta) vale 1000 puntos por
+          integrante.
         </p>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div>
-            <h3 className="text-sm font-semibold text-white">Indicación para el grupo</h3>
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-300">
-              {TORRE_PASOS.map((paso) => (
-                <li key={paso}>{paso}</li>
-              ))}
-            </ol>
+            <TorreIndicacion />
             <div className="mt-4 space-y-2">
               {TORRE_NIVELES.map((nivel) => (
                 <div key={nivel.nivel} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">

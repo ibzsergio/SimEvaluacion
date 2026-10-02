@@ -161,7 +161,7 @@ export async function setTorreReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: "Nueva actividad: Torre Tkinter",
-          body: `Grupo ${group.code}: construyan la torre más alta con popotes y pegamento. Cada nivel lleva banderillas de papel de color con palabras de Tkinter. Lean las instrucciones, elijan un líder y el líder activa el reloj de 45 minutos.`,
+          body: `Grupo ${group.code}: construyan la torre más alta con popotes y pegamento. Cada nivel lleva banderillas de papel de color con palabras de Tkinter. En la cima, una bandera que diga Tkinter. Al acabarse los 45 minutos: levanten las manos y no sigan construyendo. El ganador obtiene 1000 puntos por integrante.`,
         },
       });
     }
