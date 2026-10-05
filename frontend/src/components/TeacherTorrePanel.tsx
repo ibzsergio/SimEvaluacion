@@ -12,6 +12,10 @@ import type { ClassGroup } from "../lib/types";
 import TorreIllustration from "./TorreIllustration";
 import TorreIndicacion from "./TorreIndicacion";
 
+function torrePauseKey(groupId: string) {
+  return `simeval-torre-pausedAt:${groupId}`;
+}
+
 export default function TeacherTorrePanel({
   groups,
   selectedGroupId,
@@ -24,7 +28,9 @@ export default function TeacherTorrePanel({
   const qc = useQueryClient();
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const [now, setNow] = useState(() => Date.now());
-  const [localPausedAt, setLocalPausedAt] = useState<string | null>(null);
+  const [localPausedAt, setLocalPausedAt] = useState<string | null>(() =>
+    selectedGroupId ? localStorage.getItem(torrePauseKey(selectedGroupId)) : null,
+  );
   const [pauseError, setPauseError] = useState("");
 
   const sessionQuery = useQuery({
@@ -69,15 +75,22 @@ export default function TeacherTorrePanel({
       }
       return selectedSession;
     },
-    onSuccess: async (data) => {
+    onSuccess: async (data, paused) => {
       setPauseError("");
-      setLocalPausedAt(null);
+      if (paused) {
+        const at = data?.pausedAt ?? localPausedAt ?? new Date().toISOString();
+        for (const group of groups) localStorage.setItem(torrePauseKey(group.id), at);
+        setLocalPausedAt(at);
+      } else {
+        for (const group of groups) localStorage.removeItem(torrePauseKey(group.id));
+        setLocalPausedAt(null);
+      }
       if (data) qc.setQueryData(["torre-session", selectedGroupId], data);
       await qc.invalidateQueries({ queryKey: ["torre-session"] });
     },
-    onError: (err) => {
+    onError: (err, paused) => {
       setPauseError(getApiErrorMessage(err));
-      setLocalPausedAt(null);
+      if (!paused) return;
     },
   });
 
@@ -107,7 +120,7 @@ export default function TeacherTorrePanel({
   void now;
 
   useEffect(() => {
-    setLocalPausedAt(null);
+    setLocalPausedAt(selectedGroupId ? localStorage.getItem(torrePauseKey(selectedGroupId)) : null);
     setPauseError("");
   }, [selectedGroupId]);
 
@@ -151,7 +164,9 @@ export default function TeacherTorrePanel({
                     "¿Pausar los cronómetros de 301 y 302?\n\nEl tiempo transcurrido se conserva. Recargar la página no lo pierde. Después pulsa Reanudar.",
                   );
                   if (!ok) return;
-                  setLocalPausedAt(new Date().toISOString());
+                  const at = new Date().toISOString();
+                  for (const group of groups) localStorage.setItem(torrePauseKey(group.id), at);
+                  setLocalPausedAt(at);
                   pauseMutation.mutate(true);
                   return;
                 }

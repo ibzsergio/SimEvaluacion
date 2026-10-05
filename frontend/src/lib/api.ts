@@ -204,9 +204,13 @@ export function getApiErrorMessage(error: unknown): string {
       );
     }
     if (code === "not_found") {
+      const path = (error.response.data as { path?: string })?.path;
+      if (path?.includes("torre-pause")) {
+        return "El servidor todavía está actualizando la pausa. Recarga en 1 o 2 minutos. Los relojes ya están congelados en la base de datos.";
+      }
       return (
-        "Ruta no encontrada en el servidor. Verifica que Railway esté desplegado y que VITE_API_URL sea " +
-        `https://tu-backend.up.railway.app (sin /api). Base actual: ${getApiBaseUrl()}`
+        "Esa función aún no está en el servidor (Railway está desplegando). Espera 1 o 2 minutos y recarga. " +
+        `Base: ${getApiBaseUrl()}`
       );
     }
     if (error.response.status === 404) {
