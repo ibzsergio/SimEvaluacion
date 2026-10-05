@@ -52,9 +52,14 @@ export const TORRE_PUNTAJE = [
 ] as const;
 
 
-export function remainingSeconds(startedAt: string | null | undefined, minutes = TORRE_MINUTOS) {
+export function remainingSeconds(
+  startedAt: string | null | undefined,
+  minutes = TORRE_MINUTOS,
+  pausedAt?: string | null,
+) {
   if (!startedAt) return minutes * 60;
-  const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+  const frozenAt = pausedAt ? new Date(pausedAt).getTime() : Date.now();
+  const elapsed = Math.max(0, Math.floor((frozenAt - new Date(startedAt).getTime()) / 1000));
   return Math.max(0, minutes * 60 - elapsed);
 }
 

@@ -37,8 +37,9 @@ export default function StudentTorreCard({ torre }: { torre: StudentTorre }) {
     return () => window.clearInterval(id);
   }, []);
 
-  const remain = remainingSeconds(torre.startedAt, torre.minutes || TORRE_MINUTOS);
-  const done = Boolean(torre.startedAt) && remain === 0;
+  const remain = remainingSeconds(torre.startedAt, torre.minutes || TORRE_MINUTOS, torre.pausedAt);
+  const paused = Boolean(torre.pausedAt);
+  const done = Boolean(torre.startedAt) && remain === 0 && !paused;
   void now;
 
   const leaderMutation = useMutation({
@@ -95,13 +96,17 @@ export default function StudentTorreCard({ torre }: { torre: StudentTorre }) {
           </p>
           <h2 className="mt-1 text-lg font-bold text-white">{TORRE_TITULO}</h2>
           <p className="mt-1 text-sm text-slate-300">
-            {torre.startedAt
-              ? done
-                ? "Tiempo agotado — levanten las manos. No sigan construyendo."
-                : `Reloj: ${formatClock(remain)}`
-              : torre.leaderName
-                ? `Líder: ${torre.leaderName}. Lean y activen cuando estén listos.`
-                : "Lean las instrucciones y elijan un líder."}
+            {paused
+              ? torre.startedAt
+                ? `Pausado por el docente · ${formatClock(remain)}`
+                : "Pausado por el docente. El reloj aún no arranca."
+              : torre.startedAt
+                ? done
+                  ? "Tiempo agotado — levanten las manos. No sigan construyendo."
+                  : `Reloj: ${formatClock(remain)}`
+                : torre.leaderName
+                  ? `Líder: ${torre.leaderName}. Lean y activen cuando estén listos.`
+                  : "Lean las instrucciones y elijan un líder."}
           </p>
         </div>
         <span className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200">
@@ -177,10 +182,14 @@ export default function StudentTorreCard({ torre }: { torre: StudentTorre }) {
                 <button
                   type="button"
                   onClick={startTimer}
-                  disabled={startMutation.isPending}
+                  disabled={startMutation.isPending || paused}
                   className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
                 >
-                  {startMutation.isPending ? "Activando..." : `Activar actividad (${torre.minutes} min)`}
+                  {paused
+                    ? "Pausado — esperen a que reanude el docente"
+                    : startMutation.isPending
+                      ? "Activando..."
+                      : `Activar actividad (${torre.minutes} min)`}
                 </button>
               ) : null}
 
@@ -193,10 +202,14 @@ export default function StudentTorreCard({ torre }: { torre: StudentTorre }) {
               {torre.startedAt ? (
                 <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-center">
                   <p className="text-xs font-bold uppercase tracking-widest text-amber-200">
-                    {done ? "Tiempo agotado" : "Tiempo restante"}
+                    {done ? "Tiempo agotado" : paused ? "Pausado" : "Tiempo restante"}
                   </p>
                   <p className="mt-1 font-mono text-4xl font-bold text-white">{formatClock(remain)}</p>
-                  {done ? (
+                  {paused ? (
+                    <p className="mt-2 text-sm font-semibold text-amber-100">
+                      El docente pausó el reto. El tiempo ya corrido se conserva.
+                    </p>
+                  ) : done ? (
                     <p className="mt-2 text-sm font-semibold text-rose-100">
                       Levanten las manos. No sigan construyendo.
                     </p>

@@ -29,7 +29,11 @@ export default function StudentPage() {
     queryFn: fetchStudentProgress,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
-    refetchInterval: (query) => (query.state.data?.torre?.startedAt ? 5000 : 30_000),
+    refetchInterval: (query) => {
+      const torre = query.state.data?.torre;
+      if (torre?.startedAt || torre?.pausedAt) return 5000;
+      return 30_000;
+    },
   });
 
   if (isLoading || !data) {

@@ -30,7 +30,7 @@ import {
 } from "./classDayService.js";
 import { getGroupDeliveryStatus } from "./deliveryStatusService.js";
 import { generateLecturaForGroup, getLecturaSession } from "./lecturaSession.js";
-import { getTorreSession, resetTorreSession, setTorreReleased } from "./torreChallenge.js";
+import { getTorreSession, resetTorreSession, setTorrePaused, setTorreReleased } from "./torreChallenge.js";
 import {
   getSeatingPlan,
   resolveSeatingDate,
@@ -644,6 +644,20 @@ teacherGroupsRouter.post("/groups/:groupId/torre-reset", async (req: AuthedReque
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
   const session = await resetTorreSession(groupId);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/torre-pause", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ paused: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await setTorrePaused(groupId, body.data.paused);
   if (!session) return res.status(404).json({ error: "group_not_found" });
   return res.json(session);
 });

@@ -200,6 +200,7 @@ export type StudentTorre = {
   leaderId: string | null;
   leaderName: string | null;
   startedAt: string | null;
+  pausedAt?: string | null;
   members: Array<{
     studentId: string;
     displayName: string;
@@ -212,6 +213,8 @@ export type TorreSession = {
   groupCode: string;
   released: boolean;
   releasedAt: string | null;
+  paused?: boolean;
+  pausedAt?: string | null;
   minutes: number;
   teamCount: number;
   teams: Array<{

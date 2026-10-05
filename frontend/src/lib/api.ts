@@ -173,6 +173,12 @@ export function getApiErrorMessage(error: unknown): string {
         "Solo el líder del equipo puede activar el reloj."
       );
     }
+    if (code === "paused") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "El docente pausó el reto. El reloj está congelado."
+      );
+    }
     if (code === "already_started") {
       return (
         (error.response.data as { message?: string })?.message ??
@@ -338,6 +344,11 @@ export async function updateGroupTorreSettings(groupId: string, payload: { relea
 
 export async function resetTorreSession(groupId: string) {
   const { data } = await api.post<TorreSession>(`/teacher/groups/${groupId}/torre-reset`);
+  return data;
+}
+
+export async function setTorrePaused(groupId: string, paused: boolean) {
+  const { data } = await api.post<TorreSession>(`/teacher/groups/${groupId}/torre-pause`, { paused });
   return data;
 }
 

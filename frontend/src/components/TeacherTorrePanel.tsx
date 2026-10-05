@@ -4,6 +4,7 @@ import {
   fetchTorreSession,
   getApiErrorMessage,
   resetTorreSession,
+  setTorrePaused,
   updateGroupTorreSettings,
 } from "../lib/api";
 import { formatClock, remainingSeconds, TORRE_MINUTOS, TORRE_NIVELES, TORRE_PROGRAMA, TORRE_TITULO } from "../lib/torreTkinter";
@@ -57,6 +58,14 @@ export default function TeacherTorrePanel({
     },
   });
 
+  const pauseMutation = useMutation({
+    mutationFn: (paused: boolean) => setTorrePaused(selectedGroupId, paused),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["torre-session", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["student-progress"] });
+    },
+  });
+
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
@@ -78,6 +87,8 @@ export default function TeacherTorrePanel({
   const withLeader = teams.filter((t) => t.leaderId).length;
   const withTimer = teams.filter((t) => t.startedAt).length;
   const minutes = session?.minutes ?? TORRE_MINUTOS;
+  const paused = Boolean(session?.paused ?? session?.pausedAt);
+  const pausedAt = session?.pausedAt ?? null;
   void now;
 
   return (
@@ -108,10 +119,38 @@ export default function TeacherTorrePanel({
               Se actualiza solo. Ves quién ya eligió líder y el reloj de 45 minutos de cada color.
             </p>
           </div>
-          <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
-            Líderes {withLeader}/{teams.length || 6} · Relojes {withTimer}/{teams.length || 6}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+              Líderes {withLeader}/{teams.length || 6} · Relojes {withTimer}/{teams.length || 6}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (!paused) {
+                  const ok = window.confirm(
+                    "¿Pausar todos los cronómetros?\n\nEl tiempo transcurrido se conserva. Puedes recargar la página y después reanudar.",
+                  );
+                  if (!ok) return;
+                }
+                pauseMutation.mutate(!paused);
+              }}
+              disabled={pauseMutation.isPending || !selectedGroupId || !released}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 ${
+                paused
+                  ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                  : "bg-amber-500 text-slate-950 hover:bg-amber-400"
+              }`}
+            >
+              {pauseMutation.isPending ? "Guardando..." : paused ? "Reanudar" : "Pausar"}
+            </button>
+          </div>
         </div>
+        {paused ? (
+          <p className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-sm font-semibold text-amber-100">
+            Pausado. Los relojes están congelados (el tiempo ya corrido no se pierde). Pulsa Reanudar cuando
+            terminen la otra actividad.
+          </p>
+        ) : null}
         {sessionQuery.isLoading ? (
           <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
         ) : teams.length === 0 ? (
@@ -121,8 +160,8 @@ export default function TeacherTorrePanel({
         ) : (
           <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {teams.map((team) => {
-              const remain = remainingSeconds(team.startedAt, minutes);
-              const running = Boolean(team.startedAt) && remain > 0;
+              const remain = remainingSeconds(team.startedAt, minutes, pausedAt);
+              const running = Boolean(team.startedAt) && remain > 0 && !paused;
               const done = Boolean(team.startedAt) && remain === 0;
               return (
                 <li
@@ -138,7 +177,13 @@ export default function TeacherTorrePanel({
                   </p>
                   <p
                     className={`mt-2 font-mono text-3xl font-bold ${
-                      done ? "text-rose-200" : running ? "text-white" : "text-slate-500"
+                      done
+                        ? "text-rose-200"
+                        : paused && team.startedAt
+                          ? "text-amber-200"
+                          : running
+                            ? "text-white"
+                            : "text-slate-500"
                     }`}
                   >
                     {team.startedAt ? formatClock(remain) : `${minutes}:00`}
@@ -156,11 +201,13 @@ export default function TeacherTorrePanel({
                   >
                     {done
                       ? "Tiempo agotado — manos arriba"
-                      : running
-                        ? "Reloj en curso"
-                        : team.leaderName
-                          ? "Líder listo · falta activar el reloj"
-                          : "Esperando líder"}
+                      : paused && team.startedAt
+                        ? "Pausado"
+                        : running
+                          ? "Reloj en curso"
+                          : team.leaderName
+                            ? "Líder listo · falta activar el reloj"
+                            : "Esperando líder"}
                   </p>
                   <ul className="mt-3 space-y-0.5 text-xs text-slate-300">
                     {team.members.map((m) => (
