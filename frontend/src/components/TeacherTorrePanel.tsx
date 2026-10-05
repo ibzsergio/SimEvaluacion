@@ -24,6 +24,8 @@ export default function TeacherTorrePanel({
   const qc = useQueryClient();
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const [now, setNow] = useState(() => Date.now());
+  const [localPausedAt, setLocalPausedAt] = useState<string | null>(null);
+  const [pauseError, setPauseError] = useState("");
 
   const sessionQuery = useQuery({
     queryKey: ["torre-session", selectedGroupId],
@@ -59,10 +61,23 @@ export default function TeacherTorrePanel({
   });
 
   const pauseMutation = useMutation({
-    mutationFn: (paused: boolean) => setTorrePaused(selectedGroupId, paused),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["torre-session", selectedGroupId] });
-      await qc.invalidateQueries({ queryKey: ["student-progress"] });
+    mutationFn: async (paused: boolean) => {
+      let selectedSession = null;
+      for (const group of groups) {
+        const next = await setTorrePaused(group.id, paused);
+        if (group.id === selectedGroupId) selectedSession = next;
+      }
+      return selectedSession;
+    },
+    onSuccess: async (data) => {
+      setPauseError("");
+      setLocalPausedAt(null);
+      if (data) qc.setQueryData(["torre-session", selectedGroupId], data);
+      await qc.invalidateQueries({ queryKey: ["torre-session"] });
+    },
+    onError: (err) => {
+      setPauseError(getApiErrorMessage(err));
+      setLocalPausedAt(null);
     },
   });
 
@@ -87,9 +102,14 @@ export default function TeacherTorrePanel({
   const withLeader = teams.filter((t) => t.leaderId).length;
   const withTimer = teams.filter((t) => t.startedAt).length;
   const minutes = session?.minutes ?? TORRE_MINUTOS;
-  const paused = Boolean(session?.paused ?? session?.pausedAt);
-  const pausedAt = session?.pausedAt ?? null;
+  const pausedAt = localPausedAt ?? session?.pausedAt ?? null;
+  const paused = Boolean(pausedAt);
   void now;
+
+  useEffect(() => {
+    setLocalPausedAt(null);
+    setPauseError("");
+  }, [selectedGroupId]);
 
   return (
     <div>
@@ -128,13 +148,16 @@ export default function TeacherTorrePanel({
               onClick={() => {
                 if (!paused) {
                   const ok = window.confirm(
-                    "¿Pausar todos los cronómetros?\n\nEl tiempo transcurrido se conserva. Puedes recargar la página y después reanudar.",
+                    "¿Pausar los cronómetros de 301 y 302?\n\nEl tiempo transcurrido se conserva. Recargar la página no lo pierde. Después pulsa Reanudar.",
                   );
                   if (!ok) return;
+                  setLocalPausedAt(new Date().toISOString());
+                  pauseMutation.mutate(true);
+                  return;
                 }
-                pauseMutation.mutate(!paused);
+                pauseMutation.mutate(false);
               }}
-              disabled={pauseMutation.isPending || !selectedGroupId || !released}
+              disabled={pauseMutation.isPending || groups.length === 0}
               className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 ${
                 paused
                   ? "bg-emerald-600 text-white hover:bg-emerald-500"
@@ -149,6 +172,11 @@ export default function TeacherTorrePanel({
           <p className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-sm font-semibold text-amber-100">
             Pausado. Los relojes están congelados (el tiempo ya corrido no se pierde). Pulsa Reanudar cuando
             terminen la otra actividad.
+          </p>
+        ) : null}
+        {pauseError ? (
+          <p className="mt-3 rounded-xl border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-sm text-rose-100">
+            {pauseError}
           </p>
         ) : null}
         {sessionQuery.isLoading ? (

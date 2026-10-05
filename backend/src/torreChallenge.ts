@@ -122,14 +122,27 @@ async function persist(
     });
     pausedAt = parsePayload(current?.torrePayload).pausedAt;
   }
+  const payload = JSON.parse(JSON.stringify(toPayload(teams, pausedAt ?? null))) as Prisma.InputJsonValue;
   await prisma.classGroup.update({
     where: { id: groupId },
     data: {
-      torrePayload: toPayload(teams, pausedAt ?? null) as Prisma.InputJsonValue,
+      torrePayload: payload,
       ...(extra.torreReleased !== undefined ? { torreReleased: extra.torreReleased } : {}),
       ...(extra.torreReleasedAt !== undefined ? { torreReleasedAt: extra.torreReleasedAt } : {}),
     },
   });
+  if (pausedAt) {
+    await prisma.$executeRawUnsafe(
+      "UPDATE `ClassGroup` SET `torrePayload` = JSON_SET(`torrePayload`, '$.pausedAt', ?) WHERE `id` = ?",
+      pausedAt,
+      groupId,
+    );
+  } else {
+    await prisma.$executeRawUnsafe(
+      "UPDATE `ClassGroup` SET `torrePayload` = JSON_REMOVE(`torrePayload`, '$.pausedAt') WHERE `id` = ?",
+      groupId,
+    );
+  }
 }
 
 export async function getTorreSession(groupId: string): Promise<TorreSession | null> {
