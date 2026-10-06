@@ -43,12 +43,23 @@ export type ListasF1StudentRow = {
   rankingScore: number;
   scale6: number;
   attendancePercent: number;
+  deliveredCount: number;
   examScore4: number | null;
   finalGrade: number | null;
   place: number;
   firstGradings: number;
   firstGradedAt: string | null;
   deliveryPriority: number;
+};
+
+export type ListasF1LiveScale = {
+  partialNumber: number;
+  activityCount: number;
+  activityMax: number;
+  classDays: number;
+  useParticipation: boolean;
+  firstPlaceScore: number;
+  rows: ListasF1StudentRow[];
 };
 
 export type ListasF1GroupPreview = {
@@ -58,14 +69,18 @@ export type ListasF1GroupPreview = {
     shift: string;
     partialClosed: boolean;
     partialClosedAt: string | null;
+    currentPartial: number;
   };
   rule: typeof SCALE_RULE;
+  scalePartial: number;
+  livePartial: number;
   activityCount: number;
   activityMax: number;
   classDays: number;
   useParticipation: boolean;
   firstPlaceScore: number;
   rows: ListasF1StudentRow[];
+  live: ListasF1LiveScale | null;
 };
 
 type ExcelStudentRow = { row: number; name: string; control: string; listNo: number | null };
@@ -187,7 +202,7 @@ function writeFinalFormula(cell: ExcelJS.Cell, row: number) {
   cell.value = { formula: `IF(COUNT(${scaleAddr},${examAddr})=2,ROUND(${scaleAddr}+${examAddr},1),"")` };
 }
 
-async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview | null> {
+async function getGroupScaleData(groupId: string, partialNumber: number): Promise<ListasF1GroupPreview | null> {
   const group = await prisma.classGroup.findUnique({
     where: { id: groupId },
     select: {
@@ -196,13 +211,17 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
       shift: true,
       partialClosed: true,
       partialClosedAt: true,
+      currentPartial: true,
     },
   });
   if (!group) return null;
 
+  const scalePartial = Math.max(1, Math.floor(partialNumber) || 1);
+  const currentPartial = group.currentPartial ?? 1;
+
   const [activities, students, dayRecords] = await Promise.all([
     prisma.activity.findMany({
-      where: { groupId, partialNumber: 1 },
+      where: { groupId, partialNumber: scalePartial },
       select: { id: true, maxPoints: true },
     }),
     prisma.user.findMany({
@@ -211,7 +230,7 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
             orderBy: [{ displayName: "asc" }, { listNumber: "asc" }],
     }),
     prisma.classDayRecord.findMany({
-      where: { groupId, partialNumber: 1 },
+      where: { groupId, partialNumber: scalePartial },
       select: { studentId: true, attendance: true, stars: true, date: true },
     }),
   ]);
@@ -225,9 +244,11 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
           by: ["studentId"],
           where: { studentId: { in: students.map((s) => s.id) }, activityId: { in: activityIds } },
           _sum: { points: true },
+          _count: { _all: true },
         })
       : [];
   const pointsByStudent = new Map(grades.map((g) => [g.studentId, g._sum.points ?? 0]));
+  const deliveredByStudent = new Map(grades.map((g) => [g.studentId, g._count._all ?? 0]));
 
   const uniqueDays = new Set(dayRecords.map((r) => r.date.toISOString().slice(0, 10)));
   const classDays = uniqueDays.size;
@@ -272,6 +293,7 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
         classDays,
         absent: att?.absent ?? 0,
       }),
+      deliveredCount: deliveredByStudent.get(s.id) ?? 0,
     };
   });
 
@@ -283,7 +305,7 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
       where: { groupId },
       select: { studentId: true, examScore4: true },
     }),
-    getGroupRanking(groupId, 1),
+    getGroupRanking(groupId, scalePartial),
   ]);
   const examByStudent = new Map(examRows.map((e) => [e.studentId, e.examScore4]));
   const rankingByStudent = new Map(rankingData.ranking.map((r) => [r.studentId, r]));
@@ -338,26 +360,48 @@ async function getGroupScaleData(groupId: string): Promise<ListasF1GroupPreview 
       shift: group.shift,
       partialClosed: group.partialClosed,
       partialClosedAt: group.partialClosedAt?.toISOString() ?? null,
+      currentPartial,
     },
     rule: SCALE_RULE,
+    scalePartial,
+    livePartial: currentPartial,
     activityCount: activities.length,
     activityMax,
     classDays,
     useParticipation,
     firstPlaceScore,
     rows,
+    live: null,
+  };
+}
+
+const LISTAS_F1_PARTIAL = 1;
+
+function toLiveScale(preview: ListasF1GroupPreview): ListasF1LiveScale {
+  return {
+    partialNumber: preview.scalePartial,
+    activityCount: preview.activityCount,
+    activityMax: preview.activityMax,
+    classDays: preview.classDays,
+    useParticipation: preview.useParticipation,
+    firstPlaceScore: preview.firstPlaceScore,
+    rows: preview.rows,
   };
 }
 
 export async function getListasF1Preview(teacherId: string, groupId: string) {
   const owned = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId },
-    select: { id: true },
+    select: { id: true, currentPartial: true },
   });
   if (!owned) return null;
 
-  const preview = await getGroupScaleData(groupId);
+  const currentPartial = owned.currentPartial ?? 1;
+  const preview = await getGroupScaleData(groupId, LISTAS_F1_PARTIAL);
   if (!preview) return null;
+
+  const livePreview =
+    currentPartial !== LISTAS_F1_PARTIAL ? await getGroupScaleData(groupId, currentPartial) : null;
 
   const workbook = await loadTemplateWorkbook();
   const expected = [...LISTAS_F1_EXPECTED_GROUPS];
@@ -387,6 +431,8 @@ export async function getListasF1Preview(teacherId: string, groupId: string) {
 
   return {
     ...preview,
+    livePartial: currentPartial,
+    live: livePreview ? toLiveScale(livePreview) : toLiveScale(preview),
     activityWeight: ACTIVITY_WEIGHT,
     participationWeight: PARTICIPATION_WEIGHT,
     excel: {
@@ -466,7 +512,7 @@ export async function generateListasF1Excel(teacherId: string): Promise<Buffer |
 
   const allRows: ListasF1StudentRow[] = [];
   for (const group of groups) {
-    const preview = await getGroupScaleData(group.id);
+    const preview = await getGroupScaleData(group.id, LISTAS_F1_PARTIAL);
     if (preview) allRows.push(...preview.rows);
   }
 

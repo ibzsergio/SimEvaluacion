@@ -717,12 +717,23 @@ export type ListasF1PreviewRow = {
   rankingScore: number;
   scale6: number;
   attendancePercent: number;
+  deliveredCount?: number;
   examScore4: number | null;
   finalGrade: number | null;
   place: number;
   firstGradings: number;
   firstGradedAt: string | null;
   deliveryPriority: number;
+};
+
+export type ListasF1LiveScale = {
+  partialNumber: number;
+  activityCount: number;
+  activityMax: number;
+  classDays: number;
+  useParticipation: boolean;
+  firstPlaceScore: number;
+  rows: ListasF1PreviewRow[];
 };
 
 export type ListasF1Preview = {
@@ -732,6 +743,7 @@ export type ListasF1Preview = {
     shift: string;
     partialClosed: boolean;
     partialClosedAt: string | null;
+    currentPartial?: number;
   };
   rule: {
     scaleMax: number;
@@ -741,12 +753,15 @@ export type ListasF1Preview = {
     starsPerDay: number;
     description: string;
   };
+  scalePartial?: number;
+  livePartial?: number;
   activityCount: number;
   activityMax: number;
   classDays: number;
   useParticipation: boolean;
   firstPlaceScore: number;
   rows: ListasF1PreviewRow[];
+  live?: ListasF1LiveScale | null;
   excel: {
     templateFound: boolean;
     expectedGroups: string[];

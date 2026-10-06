@@ -138,6 +138,7 @@ export default function TeacherPage() {
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["groups"] });
       await qc.invalidateQueries({ queryKey: ["grades-matrix", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["listas-f1-preview", selectedGroupId] });
       setSelectedId(activity.id);
       resetActivityForm();
     },
@@ -156,6 +157,7 @@ export default function TeacherPage() {
       );
       await qc.invalidateQueries({ queryKey: ["groups"] });
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["listas-f1-preview", selectedGroupId] });
     },
     onError: (error) => {
       setFormSuccess("");
@@ -177,6 +179,7 @@ export default function TeacherPage() {
       resetActivityForm();
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["grades-matrix", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["listas-f1-preview", selectedGroupId] });
       setSelectedId(activity.id);
     },
     onError: (error) => {
@@ -198,6 +201,7 @@ export default function TeacherPage() {
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["group-ranking", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["grades-matrix", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["listas-f1-preview", selectedGroupId] });
     },
     onError: (error) => {
       setFormError(getApiErrorMessage(error));

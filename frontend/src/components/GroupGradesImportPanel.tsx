@@ -119,6 +119,7 @@ export default function GroupGradesImportPanel({
     qc.invalidateQueries({ queryKey: ["activities"] });
     qc.invalidateQueries({ queryKey: ["grades"] });
     qc.invalidateQueries({ queryKey: ["groups"] });
+    qc.invalidateQueries({ queryKey: ["listas-f1-preview"] });
   };
 
   const workbookMutation = useMutation({

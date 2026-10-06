@@ -122,6 +122,7 @@ export default function GradesMatrixPanel({
       await qc.invalidateQueries({ queryKey: ["grades-matrix", groupId, partialNumber] });
       await qc.invalidateQueries({ queryKey: ["group-ranking", groupId] });
       await qc.invalidateQueries({ queryKey: ["delivery-status", groupId] });
+      await qc.invalidateQueries({ queryKey: ["listas-f1-preview", groupId] });
     },
     onError: (err) => setError(getApiErrorMessage(err)),
     onSettled: () => setSavingKey(null),

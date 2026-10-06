@@ -10,7 +10,7 @@ import {
   updateGroupPartialSettings,
 } from "../lib/api";
 import { formatDateTime, partialLabel } from "../lib/dates";
-import type { ClassGroup, ListasF1PreviewRow } from "../lib/types";
+import type { ClassGroup, ListasF1LiveScale, ListasF1PreviewRow } from "../lib/types";
 
 function parseExamDraft(raw: string): number | null | "invalid" {
   const trimmed = raw.trim().replace(",", ".");
@@ -57,6 +57,8 @@ export default function ClosePartialPanel({
     queryKey: ["listas-f1-preview", selectedGroupId],
     queryFn: () => fetchListasF1Preview(selectedGroupId),
     enabled: !!selectedGroupId,
+    refetchInterval: 8_000,
+    refetchOnWindowFocus: true,
   });
 
   const preview = previewQuery.data;
@@ -80,6 +82,14 @@ export default function ClosePartialPanel({
   const examRows = useMemo(
     () => (preview ? sortRowsByName(preview.rows) : []),
     [preview],
+  );
+  const liveScale = preview?.live ?? null;
+  const livePartial = preview?.livePartial ?? currentPartial;
+  const examPartial = preview?.scalePartial ?? 1;
+  const showLiveScale = Boolean(liveScale) && livePartial !== examPartial;
+  const liveRows = useMemo(
+    () => (liveScale ? sortRowsByName(liveScale.rows) : []),
+    [liveScale],
   );
 
   const capturedCount = useMemo(() => {
@@ -149,6 +159,7 @@ export default function ClosePartialPanel({
     onSuccess: async (group) => {
       await qc.invalidateQueries({ queryKey: ["groups"] });
       await qc.invalidateQueries({ queryKey: ["activities", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["listas-f1-preview", selectedGroupId] });
       setActionError("");
       setActionSuccess(
         `Ya puedes publicar actividades de ${partialLabel(group.currentPartial ?? currentPartial + 1).toLowerCase()}. El examen se puede capturar después.`,
@@ -316,6 +327,10 @@ export default function ClosePartialPanel({
             completar después.
           </li>
           <li>
+            Tras el cierre, la <strong className="text-slate-200">escala del parcial actual</strong> se
+            va actualizando sola con las actividades y prácticas que calificas. El 1° obtiene 6.
+          </li>
+          <li>
             Cuando termines la captura, <strong className="text-slate-200">cierra el parcial</strong> y se
             descarga LISTAS F1 con asistencia, escala, examen y calificación final.
           </li>
@@ -353,6 +368,11 @@ export default function ClosePartialPanel({
             <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
               Examen capturado: {capturedCount}/{examRows.length}
             </span>
+            {showLiveScale && liveScale ? (
+              <span className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-cyan-100">
+                Escala viva · {partialLabel(livePartial)} · {liveScale.activityCount} actividad(es)
+              </span>
+            ) : null}
           </div>
           {missingSheets.length > 0 ? (
             <p className="mt-2 text-xs text-amber-200">
@@ -366,14 +386,27 @@ export default function ClosePartialPanel({
             </p>
           )}
 
+          {showLiveScale && liveScale ? (
+            <LiveScaleTable
+              live={liveScale}
+              rows={liveRows}
+              updatedAt={previewQuery.dataUpdatedAt}
+            />
+          ) : null}
+
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-semibold text-white">Captura de examen (0 a 4)</h3>
+              <h3 className="text-base font-semibold text-white">
+                Captura de examen (0 a 4)
+                {showLiveScale ? ` · ${partialLabel(examPartial)}` : ""}
+              </h3>
               <p className="mt-0.5 text-xs text-slate-500">
                 Orden alfabético, igual que en actividades. El total se calcula en vivo (escala + examen).
                 {partialClosed
-                  ? " El parcial ya está cerrado: puedes seguir capturando o corrigiendo el examen; asistencia y actividades no se mueven."
-                  : ""}
+                  ? showLiveScale
+                    ? " El examen y la escala de LISTAS F1 son del parcial cerrado; la escala de arriba sí se mueve con lo que calificas ahora."
+                    : " El parcial ya está cerrado: puedes seguir capturando o corrigiendo el examen."
+                  : " La escala se actualiza al calificar actividades y prácticas."}
               </p>
             </div>
             <button
@@ -471,6 +504,94 @@ export default function ClosePartialPanel({
         </p>
       ) : null}
     </section>
+  );
+}
+
+function LiveScaleTable({
+  live,
+  rows,
+  updatedAt,
+}: {
+  live: ListasF1LiveScale;
+  rows: ListasF1PreviewRow[];
+  updatedAt: number;
+}) {
+  const firstPlaceScore = live.firstPlaceScore;
+  const updatedLabel = updatedAt
+    ? new Date(updatedAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : "";
+  return (
+    <div className="mt-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-white">
+            Escala en vivo · {partialLabel(live.partialNumber)} (máx. 6)
+          </h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Se actualiza con las actividades y prácticas que calificas. El 1° obtiene 6; el resto es
+            proporcional a sus puntos
+            {live.useParticipation ? " + estrellas" : ""}.
+            {live.activityCount === 0
+              ? " Aún no hay actividades de este parcial."
+              : ` ${live.activityCount} actividad(es) · ${live.activityMax} pts máx.${
+                  firstPlaceScore > 0 ? ` · 1° lleva ${firstPlaceScore} pts` : ""
+                }.`}
+          </p>
+        </div>
+        {updatedLabel ? (
+          <p className="text-[11px] text-slate-500">Actualizado {updatedLabel}</p>
+        ) : null}
+      </div>
+      <div className="mt-3 max-h-[28rem] overflow-auto rounded-xl border border-cyan-400/25 bg-cyan-500/5">
+        <table className="min-w-full text-sm">
+          <thead className="sticky top-0 bg-slate-900/90 text-left text-xs uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="px-3 py-2">Alumno</th>
+              <th className="px-3 py-2">Entregadas</th>
+              <th className="px-3 py-2">Puntos</th>
+              {live.useParticipation ? <th className="px-3 py-2">Estrellas</th> : null}
+              <th className="px-3 py-2">Escala / 6</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const isFirst = firstPlaceScore > 0 && row.rankingScore === firstPlaceScore;
+              const delivered = row.deliveredCount ?? 0;
+              return (
+                <tr
+                  key={row.studentId}
+                  className={`border-t border-white/5 ${isFirst ? "bg-amber-500/10" : ""}`}
+                >
+                  <td className="px-3 py-1.5 align-top">
+                    <p className="font-medium text-white">{row.displayName}</p>
+                    {isFirst ? (
+                      <p className="text-[11px] text-amber-200/90">1° del ranking · escala 6.0</p>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-1.5 align-top text-slate-300">
+                    {delivered}/{live.activityCount}
+                  </td>
+                  <td className="px-3 py-1.5 align-top text-slate-300">{row.activityPoints}</td>
+                  {live.useParticipation ? (
+                    <td className="px-3 py-1.5 align-top text-slate-300">{row.participationStars}</td>
+                  ) : null}
+                  <td className="px-3 py-1.5 align-top font-semibold text-cyan-100">
+                    {row.scale6.toFixed(1)}
+                  </td>
+                </tr>
+              );
+            })}
+            {!rows.length ? (
+              <tr>
+                <td className="px-3 py-3 text-slate-500" colSpan={live.useParticipation ? 5 : 4}>
+                  Este grupo aún no tiene alumnos.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
