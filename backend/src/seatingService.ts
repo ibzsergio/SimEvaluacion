@@ -25,27 +25,37 @@ export const SEATING_MODE_LABELS: Record<SeatingMode, string> = {
   column_teams: "Equipos por columna",
 };
 
+/** Seis colores saturados y bien separados (no pasteles que se confunden). Orden = columnas A→F. */
 export const COLUMN_PALETTE = [
-  { name: "Rosa", hex: "#f472b6" },
-  { name: "Cian", hex: "#22d3ee" },
-  { name: "Ámbar", hex: "#fbbf24" },
-  { name: "Verde", hex: "#34d399" },
-  { name: "Violeta", hex: "#a78bfa" },
-  { name: "Naranja", hex: "#fb923c" },
+  { name: "Rojo", hex: "#e11d48" },
+  { name: "Azul", hex: "#2563eb" },
+  { name: "Amarillo", hex: "#ca8a04" },
+  { name: "Verde", hex: "#15803d" },
+  { name: "Morado", hex: "#6d28d9" },
+  { name: "Naranja", hex: "#ea580c" },
 ] as const;
 
-export const RANDOM_PALETTE = [
-  "#f472b6",
-  "#22d3ee",
-  "#fbbf24",
-  "#34d399",
-  "#a78bfa",
-  "#fb923c",
-  "#f87171",
-  "#60a5fa",
-  "#c084fc",
-  "#4ade80",
-] as const;
+export const RANDOM_PALETTE = COLUMN_PALETTE.map((c) => c.hex);
+
+const LEGACY_HEX: Record<string, string> = {
+  "#f472b6": "#e11d48",
+  "#db2777": "#e11d48",
+  "#f87171": "#e11d48",
+  "#22d3ee": "#2563eb",
+  "#60a5fa": "#2563eb",
+  "#38bdf8": "#2563eb",
+  "#fbbf24": "#ca8a04",
+  "#facc15": "#ca8a04",
+  "#eab308": "#ca8a04",
+  "#34d399": "#15803d",
+  "#4ade80": "#15803d",
+  "#22c55e": "#15803d",
+  "#a78bfa": "#6d28d9",
+  "#c084fc": "#6d28d9",
+  "#7c3aed": "#6d28d9",
+  "#fb923c": "#ea580c",
+  "#f97316": "#ea580c",
+};
 
 function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -149,20 +159,72 @@ function orderStudentsColumnTeams(students: StudentRow[], heights: number[]) {
 
 function colorForSeat(theme: SeatingTheme, row: number, col: number, studentIndex: number): string {
   if (theme === "random_colors") {
-    return RANDOM_PALETTE[studentIndex % RANDOM_PALETTE.length] ?? RANDOM_PALETTE[0];
+    return RANDOM_PALETTE[studentIndex % RANDOM_PALETTE.length] ?? RANDOM_PALETTE[0]!;
   }
-  if (theme === "row_colors") {
-    return COLUMN_PALETTE[row - 1]?.hex ?? COLUMN_PALETTE[0].hex;
-  }
-  if (theme === "team_pairs") {
-    const teamIndex = Math.floor((col - 1) / 2);
-    return COLUMN_PALETTE[teamIndex]?.hex ?? COLUMN_PALETTE[0].hex;
-  }
-  return COLUMN_PALETTE[col - 1]?.hex ?? COLUMN_PALETTE[0].hex;
+  return paletteSwatchForSeat(theme, row, col).hex;
 }
 
-function colorNameForHex(hex: string) {
-  return COLUMN_PALETTE.find((c) => c.hex.toLowerCase() === hex.toLowerCase())?.name ?? "Color del día";
+function parseHexRgb(hex: string): [number, number, number] | null {
+  const raw = hex.replace("#", "").trim();
+  if (raw.length !== 6) return null;
+  const n = Number.parseInt(raw, 16);
+  if (Number.isNaN(n)) return null;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function nearestPaletteHex(hex: string) {
+  const rgb = parseHexRgb(hex);
+  if (!rgb) return COLUMN_PALETTE[0].hex as string;
+  let best: string = COLUMN_PALETTE[0].hex;
+  let bestDist = Infinity;
+  for (const swatch of COLUMN_PALETTE) {
+    const other = parseHexRgb(swatch.hex);
+    if (!other) continue;
+    const dist =
+      (rgb[0] - other[0]) ** 2 + (rgb[1] - other[1]) ** 2 + (rgb[2] - other[2]) ** 2;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = swatch.hex;
+    }
+  }
+  return best;
+}
+
+export function normalizeSeatHex(hex: string | null | undefined) {
+  const raw = (hex ?? "").trim().toLowerCase();
+  if (!raw) return COLUMN_PALETTE[0].hex;
+  if (LEGACY_HEX[raw]) return LEGACY_HEX[raw];
+  if (COLUMN_PALETTE.some((c) => c.hex.toLowerCase() === raw)) return raw;
+  return nearestPaletteHex(raw);
+}
+
+export function colorNameForHex(hex: string) {
+  const canonical = normalizeSeatHex(hex);
+  return COLUMN_PALETTE.find((c) => c.hex.toLowerCase() === canonical)?.name ?? "Equipo";
+}
+
+export function paletteSwatchForSeat(theme: SeatingTheme, row: number, col: number) {
+  if (theme === "row_colors") return COLUMN_PALETTE[Math.max(0, row - 1)] ?? COLUMN_PALETTE[0];
+  if (theme === "team_pairs") {
+    const teamIndex = Math.floor(Math.max(0, col - 1) / 2);
+    return COLUMN_PALETTE[teamIndex] ?? COLUMN_PALETTE[0];
+  }
+  return COLUMN_PALETTE[Math.max(0, col - 1)] ?? COLUMN_PALETTE[0];
+}
+
+/** Color visible: por columna/fila/pareja usa la paleta nueva; en sorpresa acerca el hex guardado. */
+export function resolveSeatSwatch(
+  theme: SeatingTheme,
+  row: number,
+  col: number,
+  storedHex?: string | null,
+) {
+  if (theme === "random_colors") {
+    const hex = normalizeSeatHex(storedHex);
+    return { name: colorNameForHex(hex), hex };
+  }
+  const swatch = paletteSwatchForSeat(theme, row, col);
+  return { name: swatch.name, hex: swatch.hex };
 }
 
 export function formatSeatLabel(row: number, col: number) {
@@ -296,11 +358,14 @@ function buildGrid(
   const byKey = new Map(assignments.map((a) => [`${a.row}:${a.col}`, a]));
   return allSeatsRowMajor().map((seat) => {
     const assigned = byKey.get(`${seat.row}:${seat.col}`);
+    const swatch = assigned
+      ? resolveSeatSwatch(theme, seat.row, seat.col, assigned.color)
+      : null;
     return {
       ...seat,
       empty: !assigned,
-      color: assigned?.color ?? null,
-      colorName: assigned ? colorNameForHex(assigned.color) : null,
+      color: swatch?.hex ?? null,
+      colorName: swatch?.name ?? null,
       student: assigned
         ? {
             id: assigned.student.id,
@@ -560,6 +625,8 @@ export async function getStudentSeating(studentId: string, groupId: string, date
   if (!assignment) return null;
 
   const seat = formatSeatLabel(assignment.row, assignment.col);
+  const theme = session.theme as SeatingTheme;
+  const swatch = resolveSeatSwatch(theme, assignment.row, assignment.col, assignment.color);
   const students = await prisma.user.findMany({
     where: { role: "STUDENT", groupId },
     orderBy: [{ displayName: "asc" }, { listNumber: "asc" }],
@@ -569,14 +636,14 @@ export async function getStudentSeating(studentId: string, groupId: string, date
 
   return {
     date: formatClassDayIso(session.date),
-    theme: session.theme as SeatingTheme,
+    theme,
     seatNumber: seat.seatNumber,
     row: seat.row,
     col: seat.col,
     label: seat.label,
-    color: assignment.color,
-    colorName: colorNameForHex(assignment.color),
-    columnColorName: COLUMN_PALETTE[assignment.col - 1]?.name ?? colorNameForHex(assignment.color),
+    color: swatch.hex,
+    colorName: swatch.name,
+    columnColorName: COLUMN_PALETTE[assignment.col - 1]?.name ?? swatch.name,
     listPosition: listPosition > 0 ? listPosition : null,
     listNumber: assignment.student.listNumber,
     displayName: assignment.student.displayName,

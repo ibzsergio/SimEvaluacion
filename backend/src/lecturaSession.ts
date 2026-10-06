@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { todayClassDayDate } from "./classDayService.js";
-import { COLUMN_PALETTE, getSeatingPlan, type SeatingTheme } from "./seatingService.js";
+import { COLUMN_PALETTE, getSeatingPlan, colorNameForHex, type SeatingTheme } from "./seatingService.js";
 import { generateBloque, assignParagraphs, type GeneratedBloque } from "./lecturaGenerate.js";
 import { bloqueDesdeWidget, widgetTemaForTeam } from "./lecturaTemasTkinter.js";
 
@@ -106,11 +106,6 @@ export function exclusionForLectura(groupCode: string, displayName: string): Lec
   if (/\bjulieta\b/.test(n)) return "baja";
   if (/\bghetseman|\bgetseman/.test(n)) return "baja";
   return null;
-}
-
-function colorNameForHex(hex: string) {
-  const found = COLUMN_PALETTE.find((c) => c.hex.toLowerCase() === hex.toLowerCase());
-  return found?.name ?? "Equipo";
 }
 
 function teamKey(theme: SeatingTheme | null, col: number, row: number, colorName: string | null, color: string | null) {

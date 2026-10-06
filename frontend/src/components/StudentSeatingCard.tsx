@@ -1,5 +1,14 @@
 import type { StudentSeating } from "../lib/types";
 
+function isDarkHex(hex: string) {
+  const raw = hex.replace("#", "");
+  if (raw.length !== 6) return true;
+  const r = Number.parseInt(raw.slice(0, 2), 16);
+  const g = Number.parseInt(raw.slice(2, 4), 16);
+  const b = Number.parseInt(raw.slice(4, 6), 16);
+  return r * 0.299 + g * 0.587 + b * 0.114 < 160;
+}
+
 export default function StudentSeatingCard({ seating }: { seating: StudentSeating }) {
   return (
     <section
@@ -27,8 +36,11 @@ export default function StudentSeatingCard({ seating }: { seating: StudentSeatin
           </div>
           <div className="text-right">
             <span
-              className="inline-block rounded-2xl px-4 py-2 text-sm font-bold text-slate-950 shadow-lg"
-              style={{ backgroundColor: seating.color }}
+              className="inline-block rounded-2xl px-4 py-2 text-sm font-bold shadow-lg"
+              style={{
+                backgroundColor: seating.color,
+                color: isDarkHex(seating.color) ? "#f8fafc" : "#0f172a",
+              }}
             >
               {seating.theme === "column_colors"
                 ? `Columna ${seating.columnColorName}`

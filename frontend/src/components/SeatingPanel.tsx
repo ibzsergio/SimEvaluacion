@@ -6,6 +6,15 @@ import type { ClassGroup, SeatingCell, SeatingMode, SeatingPlan, SeatingTheme } 
 
 const COLUMN_LABELS = ["A", "B", "C", "D", "E", "F"];
 
+function isDarkHex(hex: string) {
+  const raw = hex.replace("#", "");
+  if (raw.length !== 6) return true;
+  const r = Number.parseInt(raw.slice(0, 2), 16);
+  const g = Number.parseInt(raw.slice(2, 4), 16);
+  const b = Number.parseInt(raw.slice(4, 6), 16);
+  return r * 0.299 + g * 0.587 + b * 0.114 < 160;
+}
+
 const MODE_OPTIONS: Array<{
   id: SeatingMode;
   label: string;
@@ -364,7 +373,8 @@ function SeatingGrid({
 function SeatCell({ cell }: { cell: SeatingCell }) {
   const filled = !cell.empty && cell.student;
   const border = filled && cell.color ? cell.color : "rgba(255,255,255,0.12)";
-  const bg = filled && cell.color ? `${cell.color}22` : "rgba(15,23,42,0.5)";
+  const bg = filled && cell.color ? `${cell.color}55` : "rgba(15,23,42,0.5)";
+  const badgeText = filled && cell.color && isDarkHex(cell.color) ? "#f8fafc" : "#0f172a";
 
   return (
     <div
@@ -375,10 +385,11 @@ function SeatCell({ cell }: { cell: SeatingCell }) {
         <span className="font-mono text-[10px] text-slate-500">#{cell.seatNumber}</span>
         {filled && cell.colorName ? (
           <span
-            className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-900"
-            style={{ backgroundColor: cell.color ?? "#94a3b8" }}
+            className="max-w-[4.5rem] truncate rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+            style={{ backgroundColor: cell.color ?? "#94a3b8", color: badgeText }}
+            title={cell.colorName}
           >
-            {cell.colorName.slice(0, 6)}
+            {cell.colorName}
           </span>
         ) : null}
       </div>
