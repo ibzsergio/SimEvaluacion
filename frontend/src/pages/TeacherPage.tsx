@@ -447,8 +447,8 @@ export default function TeacherPage() {
             <ClosePartialPanel groups={groups} selectedGroupId={selectedGroupId} />
           ) : null}
 
-          <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-            <section className="glass p-5">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(16rem,18.75rem)_minmax(0,1fr)]">
+            <section className="glass p-3 sm:p-5">
               <h2 className="mb-1 text-lg font-semibold text-white">
                 {editingActivityId ? "Editar actividad" : "Nueva actividad"}
               </h2>
@@ -578,7 +578,7 @@ export default function TeacherPage() {
 
               <div className="mt-6">
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Actividades del grupo</h3>
-                <div className="max-h-[70vh] min-h-[28rem] space-y-4 overflow-auto pr-1">
+                <div className="max-h-[40vh] min-h-0 space-y-4 overflow-auto pr-1 lg:max-h-[70vh] lg:min-h-[28rem]">
                   {activityPartialNumbers.map((partialNo, sectionIndex) => {
                     const items = activities.filter((a) => (a.partialNumber ?? 1) === partialNo);
                     const isCurrent = partialNo === currentPartial;
@@ -667,7 +667,7 @@ export default function TeacherPage() {
               </div>
             </section>
 
-            <section className="glass min-w-0 p-5">
+            <section className="glass min-w-0 p-3 sm:p-5">
               {selectedGroupId ? (
                 <GradesMatrixPanel
                   groupId={selectedGroupId}

@@ -171,7 +171,7 @@ export default function GradesMatrixPanel({
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-white">Calificar {partialLabel(partialNumber).toLowerCase()}</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 hidden text-sm text-slate-400 sm:block">
             Una fila por alumno y una columna por actividad. Escribe y pasa a la siguiente con Tab;
             al salir de la casilla se guarda. Ya no hace falta cambiar de actividad.
           </p>
@@ -206,9 +206,9 @@ export default function GradesMatrixPanel({
         placeholder="Buscar alumno..."
         className="mb-2 w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-sm text-white placeholder:text-slate-500"
       />
-      <p className="mb-4 text-xs text-slate-500">
-        Junto al nombre ves cuántas actividades lleva. Toca un alumno para marcar en rojo, arriba, las que
-        aún le faltan.
+      <p className="mb-3 text-xs text-slate-500 sm:mb-4">
+        Junto al nombre ves cuántas lleva. Toca un alumno para marcar en rojo las que le faltan. Al bajar
+        la lista, el nombre de cada actividad se queda fijo arriba.
       </p>
 
       {query.isLoading ? (
@@ -222,11 +222,13 @@ export default function GradesMatrixPanel({
           No hay alumnos en este grupo. Importa la lista en la pestaña Alumnos (Excel).
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/10">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-900/90 text-left text-xs uppercase tracking-wide text-slate-400">
+        <div className="max-h-[min(70dvh,36rem)] overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(72dvh,42rem)]">
+          <table className="min-w-full border-separate border-spacing-0 text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-slate-400">
               <tr>
-                <th className="sticky left-0 z-20 min-w-[180px] bg-slate-900 px-3 py-3">Alumno</th>
+                <th className="sticky top-0 left-0 z-30 min-w-[9.5rem] border-b border-white/10 bg-slate-900 px-2 py-2 shadow-[0_1px_0_0_rgba(255,255,255,0.08)] sm:min-w-[12.5rem] sm:px-3 sm:py-3">
+                  Alumno
+                </th>
                 {activities.map((activity, index) => {
                   const owed =
                     Boolean(selectedStudentId) && !hasActivityGrade(selectedStudentId!, activity.id);
@@ -234,17 +236,17 @@ export default function GradesMatrixPanel({
                   return (
                   <th
                     key={activity.id}
-                    className={`min-w-[108px] px-2 py-3 ${
+                    className={`sticky top-0 z-20 min-w-[5.75rem] border-b border-white/10 bg-slate-900 px-1.5 py-2 align-bottom shadow-[0_1px_0_0_rgba(255,255,255,0.08)] sm:min-w-[7.5rem] sm:px-2 sm:py-3 ${
                       owed
-                        ? "bg-rose-500/20 text-rose-100"
+                        ? "text-rose-100 shadow-[inset_0_0_0_1000px_rgba(244,63,94,0.22)]"
                         : highlighted
-                          ? "bg-cyan-500/15 text-cyan-100"
+                          ? "text-cyan-100 shadow-[inset_0_0_0_1000px_rgba(34,211,238,0.12)]"
                           : ""
                     }`}
                     title={
                       owed
-                        ? "Este alumno aún no tiene calificación en esta actividad"
-                        : undefined
+                        ? `${activity.name} — este alumno aún no tiene calificación`
+                        : activity.name
                     }
                   >
                     <p
@@ -255,7 +257,7 @@ export default function GradesMatrixPanel({
                       {getActivityKindLabel(index, activity.name)}
                     </p>
                     <p
-                      className={`mt-0.5 max-w-[140px] truncate font-normal normal-case tracking-normal ${
+                      className={`mt-0.5 hidden max-w-[140px] truncate font-normal normal-case tracking-normal sm:block ${
                         owed ? "text-rose-100" : "text-slate-300"
                       }`}
                     >
@@ -266,7 +268,8 @@ export default function GradesMatrixPanel({
                         owed ? "font-semibold text-rose-300" : "text-slate-500"
                       }`}
                     >
-                      {owed ? "Pendiente · " : ""}/ {activity.maxPoints} · {formatCalendarDate(activity.date)}
+                      {owed ? "Pendiente · " : ""}/ {activity.maxPoints}
+                      <span className="hidden sm:inline"> · {formatCalendarDate(activity.date)}</span>
                     </p>
                   </th>
                   );
@@ -282,7 +285,7 @@ export default function GradesMatrixPanel({
                   key={student.id}
                   className={`border-t border-white/5 ${selected ? "bg-white/[0.04]" : ""}`}
                 >
-                  <td className="sticky left-0 z-10 bg-slate-950/95 px-3 py-2">
+                  <td className="sticky left-0 z-10 max-w-[9.5rem] bg-slate-950 px-2 py-2 sm:max-w-none sm:px-3">
                     <button
                       type="button"
                       onClick={() =>
@@ -292,7 +295,7 @@ export default function GradesMatrixPanel({
                       title="Ver qué actividades le faltan"
                     >
                       <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-medium text-white">
-                        <span>{student.displayName}</span>
+                        <span className="line-clamp-2 break-words sm:line-clamp-none">{student.displayName}</span>
                         <span
                           className={`tabular-nums text-xs font-bold ${
                             progress.complete ? "text-emerald-400" : "text-rose-400"
@@ -347,7 +350,7 @@ export default function GradesMatrixPanel({
                               (e.target as HTMLInputElement).blur();
                             }
                           }}
-                          className={`w-20 rounded-lg border bg-slate-900/60 px-2 py-1 text-white placeholder:text-slate-600 ${
+                      className={`h-10 w-[3.75rem] min-w-[3.75rem] rounded-lg border bg-slate-900/80 px-1.5 text-base text-white placeholder:text-slate-600 sm:w-20 sm:px-2 ${
                             saved
                               ? "border-emerald-400/30"
                               : markOwed
