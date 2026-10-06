@@ -29,9 +29,13 @@ import {
 } from "../lib/api";
 import { formatGroupCodesPlus, formatTeacherGroupsSubtitle } from "../lib/groups";
 import {
+  ensurePracticaNumber,
+  extractPracticaNumber,
   formatCalendarDate,
   formatDateTime,
   getActivityKindLabel,
+  looksLikePractica,
+  nextPracticaNumber,
   partialLabel,
   todayLocalIso,
   toDateInputValue,
@@ -109,6 +113,22 @@ export default function TeacherPage() {
   }, [activities, currentPartial]);
   const currentActivities = activities.filter((a) => (a.partialNumber ?? 1) === currentPartial);
   const activeId = selectedId ?? currentActivities[0]?.id ?? null;
+  const nextPractica = useMemo(
+    () => nextPracticaNumber(activities.map((a) => a.name)),
+    [activities],
+  );
+  const practicaNumbers = useMemo(() => {
+    const nums = activities
+      .map((a) => extractPracticaNumber(a.name))
+      .filter((n): n is number => n != null);
+    return [...new Set(nums)].sort((a, b) => a - b);
+  }, [activities]);
+  const typedPractica = extractPracticaNumber(form.name);
+  const practicaDuplicada =
+    typedPractica != null &&
+    activities.some(
+      (a) => a.id !== editingActivityId && extractPracticaNumber(a.name) === typedPractica,
+    );
 
   const createMutation = useMutation({
     mutationFn: createActivity,
@@ -495,7 +515,7 @@ export default function TeacherPage() {
                   }
                   const payload = {
                     date: form.date,
-                    name: form.name.trim(),
+                    name: ensurePracticaNumber(form.name.trim(), nextPractica),
                     maxPoints: form.maxPoints,
                   };
                   if (editingActivityId) {
@@ -522,12 +542,37 @@ export default function TeacherPage() {
                   Nombre de la actividad
                   <input
                     value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        name: ensurePracticaNumber(e.target.value, nextPractica),
+                      }))
+                    }
                     className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-white"
-                    placeholder="Práctica 1 — Variables"
+                    placeholder={`Práctica ${nextPractica} — tema`}
                     required
                   />
                 </label>
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  {practicaNumbers.length
+                    ? `Ya hay práctica${practicaNumbers.length === 1 ? "" : "s"} ${practicaNumbers.join(", ")}. Al escribir «Práctica» se completa sola la ${nextPractica}.`
+                    : `Aún no hay prácticas. Al escribir «Práctica» se numera sola como ${nextPractica}.`}
+                </p>
+                {looksLikePractica(form.name) && typedPractica != null ? (
+                  <p
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold ${
+                      practicaDuplicada
+                        ? "border border-amber-400/30 bg-amber-500/10 text-amber-100"
+                        : "border border-cyan-400/20 bg-cyan-500/10 text-cyan-100"
+                    }`}
+                  >
+                    {practicaDuplicada
+                      ? `Ese número ya existe. La siguiente libre es la ${nextPractica}.`
+                      : editingActivityId
+                        ? `Es la Práctica ${typedPractica}.`
+                        : `Esta será la Práctica ${typedPractica}.`}
+                  </p>
+                ) : null}
                 <label className="block text-xs text-slate-400">
                   Valor máximo (puntos)
                   <input

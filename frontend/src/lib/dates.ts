@@ -49,7 +49,39 @@ export function formatDateTime(value: string) {
   });
 }
 
-/** Etiqueta corta: Práctica 3, Actividad 2, o #4 según el nombre o el orden. */
+/** Extrae el número si el nombre trae «Práctica 3», «PRACTICA #2», etc. */
+export function extractPracticaNumber(name: string): number | null {
+  const match = (name ?? "").match(/pr[aá]cti[cç]a\s*[#\-:]?\s*(\d+)/i);
+  if (!match) return null;
+  const n = Number(match[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export function looksLikePractica(name: string) {
+  return /pr[aá]cti[cç]a/i.test(name ?? "");
+}
+
+/** Siguiente número de práctica según las ya publicadas (1 si aún no hay). */
+export function nextPracticaNumber(names: string[]) {
+  let max = 0;
+  for (const name of names) {
+    const n = extractPracticaNumber(name);
+    if (n && n > max) max = n;
+  }
+  return max + 1;
+}
+
+/**
+ * Si el texto es una práctica sin número, inserta el que sigue.
+ * «PRÁCTICA» → «Práctica 4»; «PRÁCTICA DECISIÓN» → «Práctica 4 DECISIÓN».
+ */
+export function ensurePracticaNumber(name: string, nextNumber: number) {
+  const text = name ?? "";
+  if (!looksLikePractica(text) || extractPracticaNumber(text) != null) return text;
+  return text.replace(/(pr[aá]cti[cç]a)(\s*)/i, (_all, word: string, spaces: string) => {
+    return `${word} ${nextNumber}${spaces || " "}`;
+  });
+}
 export function getActivityKindLabel(index: number, name: string) {
   const text = name ?? "";
   const practica = text.match(/pr[aá]cti[cç]a\s*[#]?\s*(\d+)/i);
