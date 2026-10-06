@@ -6,6 +6,7 @@ import {
   startStudentLecturaTimer,
 } from "../lib/api";
 import {
+  colorDeEquipo,
   formatClock,
   LECTURA_MINUTOS,
   LECTURA_PROGRAMA,
@@ -26,7 +27,9 @@ export default function StudentColorReadingCard({ lectura }: { lectura: StudentL
 
   const [sessionNumber, setSessionNumber] = useState(lectura.sessionNumber);
   const shown = options.find((item) => item.sessionNumber === sessionNumber) ?? lectura;
-  const hex = shown.hex;
+  const paint = colorDeEquipo(shown.columna, shown.hex);
+  const hex = paint.hex;
+  const colorName = paint.name;
   const myName = shown.displayName || shown.teammates.find((m) => m.isMe)?.displayName || "Tu turno";
   const isLive = shown.sessionNumber === lectura.sessionNumber;
   const minutes = lectura.minutes || LECTURA_MINUTOS;
@@ -115,7 +118,7 @@ export default function StudentColorReadingCard({ lectura }: { lectura: StudentL
         : "Lean las instrucciones y elijan un líder.";
 
   return (
-    <section className="glass mb-6 overflow-hidden border-2 p-0" style={{ borderColor: `${hex}66` }}>
+    <section className="glass mb-6 overflow-hidden border-2 p-0" style={{ borderColor: hex }}>
       {options.length > 1 ? (
         <div className="px-5 pt-4 no-print">
           <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -139,12 +142,12 @@ export default function StudentColorReadingCard({ lectura }: { lectura: StudentL
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-start justify-between gap-3 px-5 py-4 text-left no-print"
-        style={{ backgroundColor: `${hex}22` }}
+        style={{ backgroundColor: `${hex}40` }}
         aria-expanded={open}
       >
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: hex }}>
-            {LECTURA_PROGRAMA} · {shown.colorName} · columna {shown.columna}
+            {LECTURA_PROGRAMA} · {colorName} · columna {shown.columna}
           </p>
           <p className="mt-1 text-xs text-slate-400">{shown.topic}</p>
           <h2 className="mt-1 text-lg font-bold text-white">{shown.titulo}</h2>
@@ -155,9 +158,9 @@ export default function StudentColorReadingCard({ lectura }: { lectura: StudentL
         </span>
       </button>
 
-      <div className="hidden px-5 py-4 print:block" style={{ backgroundColor: `${hex}22` }}>
+      <div className="hidden px-5 py-4 print:block" style={{ backgroundColor: `${hex}40` }}>
         <p className="text-xs font-bold uppercase tracking-widest" style={{ color: hex }}>
-          Solo tu equipo · {shown.colorName} · sesión {shown.sessionNumber}
+          Solo tu equipo · {colorName} · sesión {shown.sessionNumber}
         </p>
         <h2 className="mt-1 text-lg font-bold text-white">{shown.titulo}</h2>
       </div>
@@ -258,7 +261,7 @@ export default function StudentColorReadingCard({ lectura }: { lectura: StudentL
 
         {(!isLive || timerOn) ? (
           <>
-            <div className="border-t border-white/10 px-5 py-5" style={{ backgroundColor: `${hex}18` }}>
+            <div className="border-t border-white/10 px-5 py-5" style={{ backgroundColor: `${hex}40` }}>
               <p className="text-xs font-bold uppercase tracking-widest text-cyan-200">
                 Tú lees este párrafo en voz alta
               </p>

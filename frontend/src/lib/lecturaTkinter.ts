@@ -4,6 +4,24 @@ export const LECTURA_PROGRAMA = "Leer lo cambia todo";
 export const LECTURA_TEMA_301 = "Widgets de Tkinter: un widget por equipo";
 export const LECTURA_MINUTOS = 50;
 
+/** Misma paleta que las butacas (columnas A→F). */
+export const LECTURA_COLORES = [
+  { name: "Rojo", hex: "#e11d48", columna: "A" },
+  { name: "Azul", hex: "#2563eb", columna: "B" },
+  { name: "Amarillo", hex: "#ca8a04", columna: "C" },
+  { name: "Verde", hex: "#15803d", columna: "D" },
+  { name: "Morado", hex: "#6d28d9", columna: "E" },
+  { name: "Naranja", hex: "#ea580c", columna: "F" },
+] as const;
+
+export function colorDeEquipo(columna?: string | null, hex?: string | null) {
+  const byCol = LECTURA_COLORES.find((c) => c.columna === (columna ?? "").trim().toUpperCase());
+  if (byCol) return { name: byCol.name, hex: byCol.hex };
+  const byHex = LECTURA_COLORES.find((c) => c.hex.toLowerCase() === (hex ?? "").trim().toLowerCase());
+  if (byHex) return { name: byHex.name, hex: byHex.hex };
+  return LECTURA_COLORES[0];
+}
+
 export const LECTURA_WIDGETS = [
   "Frame",
   "Label",

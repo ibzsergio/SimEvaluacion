@@ -13,6 +13,7 @@ import {
   LECTURA_PROGRAMA,
   LECTURA_TEMA_301,
   LECTURA_WIDGETS,
+  colorDeEquipo,
   remainingSeconds,
   rutaLectura,
 } from "../lib/lecturaTkinter";
@@ -193,14 +194,15 @@ export default function ColorReadingPanel({
               const remain = remainingSeconds(team.startedAt, minutes);
               const running = Boolean(team.startedAt) && remain > 0;
               const done = Boolean(team.startedAt) && remain === 0;
+              const paint = colorDeEquipo(team.columna, team.hex);
               return (
                 <li
                   key={team.key ?? `${team.columna}-${team.readingIndex}`}
-                  className="rounded-2xl border p-4"
-                  style={{ borderColor: `${team.hex}88`, backgroundColor: `${team.hex}18` }}
+                  className="rounded-2xl border-2 p-4"
+                  style={{ borderColor: paint.hex, backgroundColor: `${paint.hex}55` }}
                 >
-                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-                    {team.colorName} · columna {team.columna}
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: paint.hex }}>
+                    {paint.name} · columna {team.columna}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-white">{team.titulo}</p>
                   <p className="mt-2 text-sm text-slate-200">
@@ -389,7 +391,7 @@ export default function ColorReadingPanel({
                       key={`${archive.sessionNumber}:${team.readingIndex}`}
                       value={`${archive.sessionNumber}:${team.readingIndex}`}
                     >
-                      {team.colorName} · {team.titulo}
+                      {colorDeEquipo(team.columna, team.hex).name} · {team.titulo}
                     </option>
                   ))}
                 </optgroup>
@@ -431,11 +433,12 @@ function ConsultedTeamCard({
   openParas: Record<string, boolean>;
   onTogglePara: (id: string) => void;
 }) {
+  const paint = colorDeEquipo(team.columna, team.hex);
   return (
-    <article className="overflow-hidden rounded-2xl border" style={{ borderColor: `${team.hex}88` }}>
-      <header className="px-5 py-3" style={{ backgroundColor: `${team.hex}33` }}>
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-          Sesión {archive.sessionNumber} · {team.colorName} · Columna {team.columna}
+    <article className="overflow-hidden rounded-2xl border-2" style={{ borderColor: paint.hex }}>
+      <header className="px-5 py-3" style={{ backgroundColor: `${paint.hex}55` }}>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: paint.hex }}>
+          Sesión {archive.sessionNumber} · {paint.name} · Columna {team.columna}
         </p>
         <h3 className="mt-1 text-lg font-bold text-white">{team.titulo}</h3>
         <p className="text-sm text-slate-300">{team.mision}</p>
@@ -455,7 +458,7 @@ function ConsultedTeamCard({
               <div
                 key={m.studentId}
                 className="rounded-xl border"
-                style={{ borderColor: `${team.hex}55`, backgroundColor: `${team.hex}14` }}
+                style={{ borderColor: `${paint.hex}88`, backgroundColor: `${paint.hex}22` }}
               >
                 <button
                   type="button"
@@ -463,14 +466,14 @@ function ConsultedTeamCard({
                   className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left no-print"
                   aria-expanded={paraOpen}
                 >
-                  <p className="text-xs font-bold uppercase tracking-wide" style={{ color: team.hex }}>
+                  <p className="text-xs font-bold uppercase tracking-wide" style={{ color: paint.hex }}>
                     {m.roleName} · lee {m.displayName}
                   </p>
                   <span className="text-xs font-semibold text-slate-400">{paraOpen ? "Ocultar" : "Ver"}</span>
                 </button>
                 <p
                   className="hidden px-4 pt-3 text-xs font-bold uppercase tracking-wide print:block"
-                  style={{ color: team.hex }}
+                  style={{ color: paint.hex }}
                 >
                   {m.roleName} · lee {m.displayName}
                 </p>

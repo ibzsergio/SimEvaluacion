@@ -1,7 +1,12 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { todayClassDayDate } from "./classDayService.js";
-import { COLUMN_PALETTE, getSeatingPlan, colorNameForHex, type SeatingTheme } from "./seatingService.js";
+import {
+  COLUMN_PALETTE,
+  getSeatingPlan,
+  resolveSeatSwatch,
+  type SeatingTheme,
+} from "./seatingService.js";
 import { generateBloque, assignParagraphs, type GeneratedBloque } from "./lecturaGenerate.js";
 import { bloqueDesdeWidget, widgetTemaForTeam } from "./lecturaTemasTkinter.js";
 
@@ -148,9 +153,10 @@ export async function loadSeatingBuckets(groupId: string, groupCode: string, tea
       skippedMap.set(cell.student.id, { displayName: cell.student.displayName, reason });
       continue;
     }
-    const hex = cell.color ?? COLUMN_PALETTE[(cell.col || 1) - 1]?.hex ?? "#94a3b8";
-    const colorName = cell.colorName ?? colorNameForHex(hex);
-    const key = teamKey(theme, cell.col, cell.row, colorName, cell.color);
+    const swatch = resolveSeatSwatch(theme ?? "column_colors", cell.row, cell.col, cell.color);
+    const hex = swatch.hex;
+    const colorName = swatch.name;
+    const key = teamKey(theme, cell.col, cell.row, colorName, hex);
     let bucket = buckets.get(key);
     if (!bucket) {
       bucket = { key, sortCol: cell.col, sortRow: cell.row, colorName, hex, members: [] };
@@ -212,12 +218,14 @@ function hydrateTeam(
     : false;
   const leaderId = leaderStillInTeam ? storedLeaderId : null;
   const leaderName = leaderId ? (members.find((m) => m.studentId === leaderId)?.displayName ?? null) : null;
+  const columna = COLUMN_LETTERS[bucket.sortCol - 1] ?? String(bucket.sortCol);
+  const painted = paintByColumn(columna, bucket.hex);
   return {
     key: bucket.key,
     readingIndex: index,
-    colorName: bucket.colorName,
-    hex: bucket.hex,
-    columna: COLUMN_LETTERS[bucket.sortCol - 1] ?? String(bucket.sortCol),
+    colorName: painted.name,
+    hex: painted.hex,
+    columna,
     titulo: fallback.titulo,
     mision: fallback.mision,
     texto: parrafos.join("\n\n") || fallback.texto,
@@ -239,15 +247,34 @@ function parsePayload(raw: unknown): StoredPayload | null {
   return p;
 }
 
+function paintByColumn(columna: string, storedHex?: string | null) {
+  const col = COLUMN_LETTERS.indexOf(columna as (typeof COLUMN_LETTERS)[number]) + 1;
+  if (col > 0) {
+    const swatch = COLUMN_PALETTE[col - 1] ?? COLUMN_PALETTE[0];
+    return { name: swatch.name, hex: swatch.hex };
+  }
+  return resolveSeatSwatch("column_colors", 1, 1, storedHex);
+}
+
+function paintLecturaTeam<T extends { columna: string; hex: string; colorName: string }>(team: T): T {
+  const painted = paintByColumn(team.columna, team.hex);
+  return { ...team, hex: painted.hex, colorName: painted.name };
+}
+
 function parseHistory(raw: StoredPayload | null): LecturaArchive[] {
   if (!raw || !Array.isArray(raw.history)) return [];
-  return raw.history.filter(
-    (item): item is LecturaArchive =>
-      Boolean(item) &&
-      typeof item.sessionNumber === "number" &&
-      typeof item.topic === "string" &&
-      Array.isArray(item.teams),
-  );
+  return raw.history
+    .filter(
+      (item): item is LecturaArchive =>
+        Boolean(item) &&
+        typeof item.sessionNumber === "number" &&
+        typeof item.topic === "string" &&
+        Array.isArray(item.teams),
+    )
+    .map((item) => ({
+      ...item,
+      teams: item.teams.map((team) => paintLecturaTeam(team)),
+    }));
 }
 
 function snapshotArchive(session: LecturaSession): LecturaArchive {
@@ -351,12 +378,14 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
           teamLabel: bucket.key,
           memberCount: bucket.members.length,
         });
+    const columna = COLUMN_LETTERS[bucket.sortCol - 1] ?? String(bucket.sortCol);
+    const painted = paintByColumn(columna, bucket.hex);
     return {
       key: bucket.key,
       readingIndex: teamIndex,
-      colorName: bucket.colorName,
-      hex: bucket.hex,
-      columna: COLUMN_LETTERS[bucket.sortCol - 1] ?? String(bucket.sortCol),
+      colorName: painted.name,
+      hex: painted.hex,
+      columna,
       bloque,
       leaderId: null,
       startedAt: null,
@@ -392,14 +421,15 @@ function assignmentFromTeam(
 ) {
   const me = team.members.find((m) => m.studentId === studentId);
   if (!me || !team.texto) return null;
+  const painted = paintByColumn(team.columna, team.hex);
   return {
     topic: sessionMeta.topic,
     sessionNumber: sessionMeta.sessionNumber,
     readingIndex: team.readingIndex,
     teamCount: sessionMeta.teamCount,
     minutes: sessionMeta.minutes ?? LECTURA_MINUTES,
-    colorName: team.colorName,
-    hex: team.hex,
+    colorName: painted.name,
+    hex: painted.hex,
     columna: team.columna,
     titulo: team.titulo,
     mision: team.mision,
