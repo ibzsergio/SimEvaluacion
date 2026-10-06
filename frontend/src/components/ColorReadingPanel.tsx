@@ -4,16 +4,20 @@ import {
   fetchLecturaSession,
   generateLecturaSession,
   getApiErrorMessage,
+  resetLecturaSession,
   updateGroupLecturaSettings,
 } from "../lib/api";
-import { LECTURA_MINUTOS, LECTURA_PROGRAMA, rutaLectura } from "../lib/lecturaTkinter";
+import {
+  formatClock,
+  LECTURA_MINUTOS,
+  LECTURA_PROGRAMA,
+  LECTURA_TEMA_301,
+  LECTURA_WIDGETS,
+  remainingSeconds,
+  rutaLectura,
+} from "../lib/lecturaTkinter";
 import type { ClassGroup, LecturaSession } from "../lib/types";
-
-function formatClock(totalSeconds: number) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
+import LecturaIndicacion from "./LecturaIndicacion";
 
 export default function ColorReadingPanel({
   groups,
@@ -26,17 +30,19 @@ export default function ColorReadingPanel({
 }) {
   const qc = useQueryClient();
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
-  const [seconds, setSeconds] = useState(LECTURA_MINUTOS * 60);
-  const [running, setRunning] = useState(false);
+  const is301 = selectedGroup?.code.trim() === "301";
   const [consultKey, setConsultKey] = useState("");
   const [topic, setTopic] = useState("");
   const [actionError, setActionError] = useState("");
   const [openParas, setOpenParas] = useState<Record<string, boolean>>({});
+  const [now, setNow] = useState(() => Date.now());
 
   const sessionQuery = useQuery({
     queryKey: ["lectura-session", selectedGroupId],
     queryFn: () => fetchLecturaSession(selectedGroupId),
     enabled: !!selectedGroupId,
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
   });
 
   const session = sessionQuery.data;
@@ -44,30 +50,27 @@ export default function ColorReadingPanel({
   const teamCount = session?.teamCount ?? 0;
   const released = session?.released ?? selectedGroup?.lecturaReleased ?? false;
   const hasContent = session?.hasContent ?? false;
+  const minutes = session?.minutes ?? LECTURA_MINUTOS;
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  void now;
 
   useEffect(() => {
     setConsultKey("");
     setActionError("");
     setOpenParas({});
-    if (session?.topic) setTopic(session.topic);
-  }, [selectedGroupId, session?.topic, teamCount]);
-
-  useEffect(() => {
-    if (!running) return;
-    const id = window.setInterval(() => {
-      setSeconds((prev) => {
-        if (prev <= 1) {
-          setRunning(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [running]);
+    if (is301) setTopic(session?.topic || LECTURA_TEMA_301);
+    else if (session?.topic) setTopic(session.topic);
+  }, [selectedGroupId, session?.topic, teamCount, is301]);
 
   const generateMutation = useMutation({
-    mutationFn: () => generateLecturaSession(selectedGroupId, { topic: topic.trim() }),
+    mutationFn: () =>
+      generateLecturaSession(selectedGroupId, {
+        topic: is301 ? topic.trim() || LECTURA_TEMA_301 : topic.trim(),
+      }),
     onSuccess: async () => {
       setActionError("");
       await qc.invalidateQueries({ queryKey: ["lectura-session", selectedGroupId] });
@@ -83,6 +86,14 @@ export default function ColorReadingPanel({
       await qc.invalidateQueries({ queryKey: ["groups"] });
       await qc.invalidateQueries({ queryKey: ["student-progress"] });
     },
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: () => resetLecturaSession(selectedGroupId),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["lectura-session", selectedGroupId] });
+    },
+    onError: (err) => setActionError(getApiErrorMessage(err)),
   });
 
   const consultArchives = useMemo(() => {
@@ -116,17 +127,26 @@ export default function ColorReadingPanel({
     consultOptions.find((o) => o.key === consultKey) ?? consultOptions[0] ?? null;
 
   const ruta = rutaLectura(teamCount || 1);
-  const elapsed = LECTURA_MINUTOS * 60 - seconds;
-  const phase = currentPhase(elapsed);
+  const withLeader = teams.filter((t) => t.leaderId).length;
+  const withTimer = teams.filter((t) => t.startedAt).length;
+  const canGenerate = is301 ? teamCount > 0 : teamCount > 0 && topic.trim().length >= 4;
 
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar la lectura para el grupo ${selectedGroup?.code}?\n\nCada alumno verá SOLO la lectura de su equipo, partida en párrafos. Cada integrante lee el suyo en voz alta. Nadie ve el texto de otro color.`,
+        `¿Liberar la lectura para el grupo ${selectedGroup?.code}?\n\nLos alumnos verán las instrucciones, eligirán un líder y solo el líder podrá arrancar los ${minutes} minutos. Cada uno ve SOLO la lectura de su color, partida en párrafos largos.`,
       );
       if (!ok) return;
     }
     releaseMutation.mutate(!released);
+  }
+
+  function handleReset() {
+    const ok = window.confirm(
+      "¿Reiniciar líderes y relojes de este grupo? Las lecturas se quedan; cada equipo vuelve a elegir líder.",
+    );
+    if (!ok) return;
+    resetMutation.mutate();
   }
 
   return (
@@ -149,45 +169,115 @@ export default function ColorReadingPanel({
       </div>
 
       <section className="glass mb-6 p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">En vivo</p>
+            <h2 className="mt-1 text-xl font-bold text-white">Líder y temporizador por equipo</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Se actualiza solo. Ves quién ya eligió líder y el reloj de {minutes} minutos de cada color.
+            </p>
+          </div>
+          <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            Líderes {withLeader}/{teams.length || 6} · Relojes {withTimer}/{teams.length || 6}
+          </p>
+        </div>
+        {sessionQuery.isLoading ? (
+          <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
+        ) : teams.length === 0 ? (
+          <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+            No hay equipos de butacas. Asigna lugares primero.
+          </p>
+        ) : (
+          <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {teams.map((team) => {
+              const remain = remainingSeconds(team.startedAt, minutes);
+              const running = Boolean(team.startedAt) && remain > 0;
+              const done = Boolean(team.startedAt) && remain === 0;
+              return (
+                <li
+                  key={team.key ?? `${team.columna}-${team.readingIndex}`}
+                  className="rounded-2xl border p-4"
+                  style={{ borderColor: `${team.hex}88`, backgroundColor: `${team.hex}18` }}
+                >
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
+                    {team.colorName} · columna {team.columna}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-white">{team.titulo}</p>
+                  <p className="mt-2 text-sm text-slate-200">
+                    {team.leaderName ? `Líder: ${team.leaderName}` : "Aún no eligen líder"}
+                  </p>
+                  <p
+                    className={`mt-2 font-mono text-3xl font-bold ${
+                      done ? "text-rose-200" : running ? "text-white" : "text-slate-500"
+                    }`}
+                  >
+                    {team.startedAt ? formatClock(remain) : `${minutes}:00`}
+                  </p>
+                  <p
+                    className={`mt-1 text-xs font-semibold ${
+                      done
+                        ? "text-rose-200"
+                        : running
+                          ? "text-emerald-200"
+                          : team.leaderName
+                            ? "text-amber-200"
+                            : "text-slate-400"
+                    }`}
+                  >
+                    {done
+                      ? "Tiempo agotado — manos arriba"
+                      : running
+                        ? "Reloj en curso"
+                        : team.leaderName
+                          ? "Líder listo · esperando activar"
+                          : "Sin líder"}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="glass mb-6 p-6">
         <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">{LECTURA_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">
-          {session?.topic ? session.topic : "Lectura de la semana"}
+          {session?.topic ? session.topic : is301 ? LECTURA_TEMA_301 : "Lectura de la semana"}
         </h2>
         <p className="mt-2 text-sm text-slate-300">
           Grupo {selectedGroup?.code} · {selectedGroup?.shift}
-          {session?.sessionNumber ? ` · Sesión ${session.sessionNumber}` : ""}. Cada 8 días (o cada semana)
-          escribes el tema, generas textos nuevos —aunque el tema se repita— y luego liberas. Cada equipo
-          recibe una lectura distinta, partida en un párrafo por integrante. Después arman un solo mapa en
-          Canva y lo exponen. Un alumno no ve la lectura de otro color.
+          {session?.sessionNumber ? ` · Sesión ${session.sessionNumber}` : ""}.{" "}
+          {is301
+            ? "Cada equipo lee un widget distinto (Frame, Label, Radiobutton, Checkbutton, Text, Entry): un párrafo largo por integrante. Eligen líder; el líder corre los 50 minutos."
+            : "Escribes el tema, generas textos y liberas. Cada equipo recibe una lectura distinta, partida en un párrafo por integrante. Eligen líder; el líder corre los 50 minutos."}
         </p>
 
+        {is301 ? (
+          <div className="mt-4 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-3">
+            <p className="text-sm font-semibold text-cyan-100">Temas por columna (301)</p>
+            <p className="mt-1 text-xs text-slate-300">
+              Al generar, el orden de butacas A→F recibe: {LECTURA_WIDGETS.join(" · ")}. Getsemaní queda
+              fuera (baja). Maya y Natali sí entran. Julieta sigue de baja.
+            </p>
+          </div>
+        ) : null}
+
         <label className="mt-4 block text-xs text-slate-400 no-print">
-          Tema principal de esta semana
+          {is301 ? "Título de esta sesión (el contenido ya va por widget)" : "Tema principal de esta semana"}
           <input
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="Ej. Frames y Radiobuttons en Tkinter"
+            placeholder={is301 ? LECTURA_TEMA_301 : "Ej. Frames y Radiobuttons en Tkinter"}
             className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white"
           />
         </label>
-        <p className="mt-1 text-[11px] text-slate-500 no-print">
-          Si la próxima semana siguen con el mismo tema, vuelve a generar: salen lecturas distintas (sesión{" "}
-          {(session?.sessionNumber ?? 0) + 1}).
-        </p>
 
         <div className="mt-4 flex flex-wrap items-end gap-3 no-print">
-          <div>
-            <p className="text-[11px] uppercase tracking-widest text-slate-500">Reloj de sesión</p>
-            <p className={`text-4xl font-extrabold tabular-nums ${seconds <= 120 ? "text-amber-300" : "text-white"}`}>
-              {formatClock(seconds)}
-            </p>
-            <p className="text-xs text-cyan-200">{phase}</p>
-          </div>
           <button
             type="button"
             onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending || topic.trim().length < 4 || teamCount === 0}
+            disabled={generateMutation.isPending || !canGenerate}
             className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
           >
             {generateMutation.isPending ? "Generando..." : "Generar lecturas de esta semana"}
@@ -210,20 +300,11 @@ export default function ColorReadingPanel({
           </button>
           <button
             type="button"
-            onClick={() => setRunning((v) => !v)}
-            className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400"
+            onClick={handleReset}
+            disabled={resetMutation.isPending || !hasContent}
+            className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-200 hover:bg-white/10 disabled:opacity-50"
           >
-            {running ? "Pausar" : "Iniciar 50 min"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setRunning(false);
-              setSeconds(LECTURA_MINUTOS * 60);
-            }}
-            className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-200 hover:bg-white/10"
-          >
-            Reiniciar
+            {resetMutation.isPending ? "Reiniciando..." : "Reiniciar líderes y relojes"}
           </button>
           <button
             type="button"
@@ -236,8 +317,8 @@ export default function ColorReadingPanel({
         {actionError ? <p className="mt-2 text-sm text-rose-300">{actionError}</p> : null}
         {released ? (
           <p className="mt-3 text-sm text-emerald-200">
-            Liberada. Cada alumno ve la lectura de su equipo, su párrafo destacado y los párrafos de sus
-            compañeros. No ve otros colores.
+            Liberada. Cada alumno ve las instrucciones, elige líder y, al arrancar el reloj, lee su párrafo.
+            No ve otros colores.
           </p>
         ) : (
           <p className="mt-3 text-sm text-slate-400">
@@ -247,7 +328,7 @@ export default function ColorReadingPanel({
         )}
         {!hasContent && teamCount > 0 ? (
           <p className="mt-2 text-sm text-amber-200">
-            Hay equipos, pero aún no hay textos de esta semana. Escribe el tema y pulsa Generar.
+            Hay equipos, pero aún no hay textos de esta semana. {is301 ? "Pulsa Generar." : "Escribe el tema y pulsa Generar."}
           </p>
         ) : null}
         {teamCount === 0 ? (
@@ -270,6 +351,10 @@ export default function ColorReadingPanel({
         </section>
       ) : null}
 
+      <section className="glass mb-6 p-6 no-print">
+        <LecturaIndicacion />
+      </section>
+
       <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 no-print">
         {ruta.map((step) => (
           <div key={step.min} className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -278,25 +363,6 @@ export default function ColorReadingPanel({
             <p className="mt-1 text-xs leading-relaxed text-slate-400">{step.detail}</p>
           </div>
         ))}
-      </section>
-
-      <section className="glass mb-6 p-6">
-        <h3 className="text-lg font-semibold text-white">Cómo se lee y qué se entrega</h3>
-        <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { n: "1", t: "Una lectura por equipo", d: "Texto distinto al de las otras columnas." },
-            { n: "2", t: "Un párrafo por persona", d: "Cada integrante lee EN VOZ ALTA el recuadro con su nombre." },
-            { n: "3", t: "Un solo producto", d: "Todo el equipo arma UN organizador o mapa cognitivo en Canva." },
-            { n: "4", t: "Exposición", d: "Proyectan esa lámina frente al grupo. No es un trabajo por persona." },
-          ].map((step) => (
-            <div key={step.n} className="rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2">
-              <p className="text-sm font-bold text-white">
-                {step.n}. {step.t}
-              </p>
-              <p className="text-xs text-slate-400">{step.d}</p>
-            </div>
-          ))}
-        </ol>
       </section>
 
       {consultOptions.length > 0 ? (
@@ -432,13 +498,3 @@ function ConsultedTeamCard({
     </article>
   );
 }
-
-function currentPhase(elapsed: number) {
-  if (elapsed < 2 * 60) return "Ahora: armado de equipos";
-  if (elapsed < 16 * 60) return "Ahora: cada integrante lee su párrafo";
-  if (elapsed < 32 * 60) return "Ahora: un mapa en Canva (todo el equipo)";
-  if (elapsed < 48 * 60) return "Ahora: exposición frente al grupo";
-  if (elapsed < 50 * 60) return "Ahora: cierre";
-  return "Sesión cerrada";
-}
-

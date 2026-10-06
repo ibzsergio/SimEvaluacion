@@ -139,6 +139,7 @@ export type StudentLectura = {
   sessionNumber: number;
   readingIndex: number;
   teamCount: number;
+  minutes?: number;
   colorName: string;
   hex: string;
   columna: string;
@@ -150,6 +151,10 @@ export type StudentLectura = {
   producto: string;
   organizador: Array<{ caja: string; hijos: string }>;
   displayName: string;
+  isLeader?: boolean;
+  leaderId?: string | null;
+  leaderName?: string | null;
+  startedAt?: string | null;
   roleName: string;
   roleTask: string;
   speakScript: string;
@@ -170,6 +175,7 @@ export type StudentLectura = {
     sessionNumber: number;
     readingIndex: number;
     teamCount: number;
+    minutes?: number;
     colorName: string;
     hex: string;
     columna: string;
@@ -181,6 +187,10 @@ export type StudentLectura = {
     producto: string;
     organizador: Array<{ caja: string; hijos: string }>;
     displayName: string;
+    isLeader?: boolean;
+    leaderId?: string | null;
+    leaderName?: string | null;
+    startedAt?: string | null;
     roleName: string;
     roleTask: string;
     speakScript: string;
@@ -245,9 +255,11 @@ export type LecturaSession = {
   releasedAt: string | null;
   theme: SeatingTheme | null;
   teamCount: number;
+  minutes?: number;
   skipped: Array<{ displayName: string; reason: "baja" | "incapacidad" }>;
   hasContent: boolean;
   teams: Array<{
+    key?: string;
     readingIndex: number;
     colorName: string;
     hex: string;
@@ -259,6 +271,9 @@ export type LecturaSession = {
     preguntaGuia: string;
     producto: string;
     organizador: Array<{ caja: string; hijos: string }>;
+    leaderId?: string | null;
+    leaderName?: string | null;
+    startedAt?: string | null;
     members: Array<{
       studentId: string;
       displayName: string;

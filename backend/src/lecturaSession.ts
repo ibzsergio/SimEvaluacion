@@ -1,7 +1,12 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { todayClassDayDate } from "./classDayService.js";
 import { COLUMN_PALETTE, getSeatingPlan, type SeatingTheme } from "./seatingService.js";
 import { generateBloque, assignParagraphs, type GeneratedBloque } from "./lecturaGenerate.js";
+import { bloqueDesdeWidget, widgetTemaForTeam } from "./lecturaTemasTkinter.js";
+
+export const LECTURA_MINUTES = 50;
+export const LECTURA_301_TOPIC = "Widgets de Tkinter: un widget por equipo";
 
 export const COLUMN_LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
 
@@ -19,6 +24,7 @@ export type LecturaMember = {
 };
 
 export type LecturaTeam = {
+  key: string;
   readingIndex: number;
   colorName: string;
   hex: string;
@@ -31,6 +37,9 @@ export type LecturaTeam = {
   producto: string;
   organizador: GeneratedBloque["organizador"];
   members: LecturaMember[];
+  leaderId: string | null;
+  leaderName: string | null;
+  startedAt: string | null;
 };
 
 export type LecturaSkipped = {
@@ -56,6 +65,7 @@ export type LecturaSession = {
   releasedAt: string | null;
   theme: SeatingTheme | null;
   teamCount: number;
+  minutes: number;
   skipped: LecturaSkipped[];
   teams: LecturaTeam[];
   hasContent: boolean;
@@ -69,6 +79,8 @@ type StoredTeam = {
   hex: string;
   columna: string;
   bloque: GeneratedBloque;
+  leaderId?: string | null;
+  startedAt?: string | null;
 };
 
 type StoredPayload = {
@@ -92,9 +104,7 @@ export function exclusionForLectura(groupCode: string, displayName: string): Lec
   if (groupCode.trim() !== "301") return null;
   const n = normalizePersonName(displayName);
   if (/\bjulieta\b/.test(n)) return "baja";
-  if (/\bgetseman/.test(n)) return "baja";
-  if (/\bmaya\b/.test(n)) return "incapacidad";
-  if (/\bnatalia\b/.test(n)) return "incapacidad";
+  if (/\bghetseman|\bgetseman/.test(n)) return "baja";
   return null;
 }
 
@@ -167,7 +177,13 @@ export async function loadSeatingBuckets(groupId: string, groupCode: string, tea
   return { theme, skipped: [...skippedMap.values()], buckets: sorted };
 }
 
-function hydrateTeam(bucket: RawBucket, index: number, bloque: GeneratedBloque | null): LecturaTeam {
+function hydrateTeam(
+  bucket: RawBucket,
+  index: number,
+  bloque: GeneratedBloque | null,
+  storedLeaderId: string | null = null,
+  storedStartedAt: string | null = null,
+): LecturaTeam {
   const fallback: GeneratedBloque = bloque ?? {
     titulo: "Falta generar la lectura de esta semana",
     mision: "El docente debe escribir el tema y pulsar Generar.",
@@ -196,7 +212,13 @@ function hydrateTeam(bucket: RawBucket, index: number, bloque: GeneratedBloque |
       paragraph,
     };
   });
+  const leaderStillInTeam = storedLeaderId
+    ? members.some((m) => m.studentId === storedLeaderId)
+    : false;
+  const leaderId = leaderStillInTeam ? storedLeaderId : null;
+  const leaderName = leaderId ? (members.find((m) => m.studentId === leaderId)?.displayName ?? null) : null;
   return {
+    key: bucket.key,
     readingIndex: index,
     colorName: bucket.colorName,
     hex: bucket.hex,
@@ -209,6 +231,9 @@ function hydrateTeam(bucket: RawBucket, index: number, bloque: GeneratedBloque |
     producto: fallback.producto || "",
     organizador: fallback.organizador ?? [],
     members,
+    leaderId,
+    leaderName,
+    startedAt: leaderId ? storedStartedAt : null,
   };
 }
 
@@ -262,7 +287,13 @@ export async function getLecturaSession(groupId: string): Promise<LecturaSession
 
   const teams = buckets.map((bucket, index) => {
     const saved = byKey.get(bucket.key);
-    return hydrateTeam(bucket, saved?.readingIndex ?? index, saved?.bloque ?? null);
+    return hydrateTeam(
+      bucket,
+      saved?.readingIndex ?? index,
+      saved?.bloque ?? null,
+      saved?.leaderId ?? null,
+      saved?.startedAt ?? null,
+    );
   });
 
   return {
@@ -276,6 +307,7 @@ export async function getLecturaSession(groupId: string): Promise<LecturaSession
     releasedAt: group.lecturaReleasedAt ? group.lecturaReleasedAt.toISOString() : null,
     theme,
     teamCount: teams.length,
+    minutes: LECTURA_MINUTES,
     skipped,
     teams,
     hasContent: Boolean(stored && stored.teams.length > 0),
@@ -296,7 +328,9 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
   });
   if (!group) return null;
 
-  const topic = topicRaw.replace(/\s+/g, " ").trim();
+  const is301 = group.code.trim() === "301";
+  let topic = topicRaw.replace(/\s+/g, " ").trim();
+  if (is301 && topic.length < 4) topic = LECTURA_301_TOPIC;
   if (topic.length < 4) throw new Error("topic_required");
 
   const { buckets } = await loadSeatingBuckets(groupId, group.code, group.teacherId);
@@ -312,14 +346,16 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
 
   const sessionNumber = (group.lecturaSessionNumber ?? 0) + 1;
   const storedTeams: StoredTeam[] = buckets.map((bucket, teamIndex) => {
-    const bloque = generateBloque({
-      topic,
-      teamIndex,
-      teamCount: buckets.length,
-      sessionNumber,
-      teamLabel: bucket.key,
-      memberCount: bucket.members.length,
-    });
+    const bloque = is301
+      ? bloqueDesdeWidget(widgetTemaForTeam(teamIndex), bucket.members.length)
+      : generateBloque({
+          topic,
+          teamIndex,
+          teamCount: buckets.length,
+          sessionNumber,
+          teamLabel: bucket.key,
+          memberCount: bucket.members.length,
+        });
     return {
       key: bucket.key,
       readingIndex: teamIndex,
@@ -327,6 +363,8 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
       hex: bucket.hex,
       columna: COLUMN_LETTERS[bucket.sortCol - 1] ?? String(bucket.sortCol),
       bloque,
+      leaderId: null,
+      startedAt: null,
     };
   });
 
@@ -353,7 +391,7 @@ export async function generateLecturaForGroup(groupId: string, topicRaw: string)
 }
 
 function assignmentFromTeam(
-  sessionMeta: { topic: string; sessionNumber: number; teamCount: number },
+  sessionMeta: { topic: string; sessionNumber: number; teamCount: number; minutes?: number },
   team: LecturaTeam,
   studentId: string,
 ) {
@@ -364,6 +402,7 @@ function assignmentFromTeam(
     sessionNumber: sessionMeta.sessionNumber,
     readingIndex: team.readingIndex,
     teamCount: sessionMeta.teamCount,
+    minutes: sessionMeta.minutes ?? LECTURA_MINUTES,
     colorName: team.colorName,
     hex: team.hex,
     columna: team.columna,
@@ -375,6 +414,10 @@ function assignmentFromTeam(
     producto: team.producto,
     organizador: team.organizador,
     displayName: me.displayName,
+    isLeader: team.leaderId === studentId,
+    leaderId: team.leaderId,
+    leaderName: team.leaderName,
+    startedAt: team.startedAt,
     roleName: me.roleName,
     roleTask: me.roleTask,
     speakScript: me.speakScript,
@@ -400,11 +443,18 @@ export function studentLecturaAssignment(session: LecturaSession, studentId: str
     .map((archive) => {
       const team = archive.teams.find((t) => t.members.some((m) => m.studentId === studentId));
       if (!team) return null;
-      return assignmentFromTeam(
-        { topic: archive.topic, sessionNumber: archive.sessionNumber, teamCount: archive.teams.length },
+      const assigned = assignmentFromTeam(
+        {
+          topic: archive.topic,
+          sessionNumber: archive.sessionNumber,
+          teamCount: archive.teams.length,
+          minutes: LECTURA_MINUTES,
+        },
         team,
         studentId,
       );
+      if (!assigned) return null;
+      return { ...assigned, isLeader: false, leaderId: null, leaderName: null, startedAt: null };
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
@@ -412,7 +462,12 @@ export function studentLecturaAssignment(session: LecturaSession, studentId: str
   const current =
     session.released && session.hasContent && currentTeam
       ? assignmentFromTeam(
-          { topic: session.topic, sessionNumber: session.sessionNumber, teamCount: session.teamCount },
+          {
+            topic: session.topic,
+            sessionNumber: session.sessionNumber,
+            teamCount: session.teamCount,
+            minutes: session.minutes,
+          },
           currentTeam,
           studentId,
         )
@@ -422,4 +477,93 @@ export function studentLecturaAssignment(session: LecturaSession, studentId: str
   if (!pastReadings.length) return null;
   const latest = pastReadings[0]!;
   return { ...latest, pastReadings };
+}
+
+async function persistLecturaLeaders(groupId: string, teams: LecturaTeam[]) {
+  const group = await prisma.classGroup.findUnique({
+    where: { id: groupId },
+    select: { lecturaPayload: true },
+  });
+  const stored = parsePayload(group?.lecturaPayload);
+  if (!stored) throw new Error("no_content");
+  const byKey = new Map(teams.map((t) => [t.key, t]));
+  const next: StoredPayload = {
+    ...stored,
+    teams: stored.teams.map((t) => {
+      const live = byKey.get(t.key);
+      return {
+        ...t,
+        leaderId: live ? live.leaderId : (t.leaderId ?? null),
+        startedAt: live ? live.startedAt : (t.startedAt ?? null),
+      };
+    }),
+  };
+  await prisma.classGroup.update({
+    where: { id: groupId },
+    data: { lecturaPayload: JSON.parse(JSON.stringify(next)) as Prisma.InputJsonValue },
+  });
+}
+
+export async function resetLecturaTimers(groupId: string) {
+  const session = await getLecturaSession(groupId);
+  if (!session?.hasContent) return null;
+  const teams = session.teams.map((t) => ({ ...t, leaderId: null, leaderName: null, startedAt: null }));
+  await persistLecturaLeaders(groupId, teams);
+  return getLecturaSession(groupId);
+}
+
+export async function chooseLecturaLeader(groupId: string, studentId: string, nomineeId: string) {
+  const session = await getLecturaSession(groupId);
+  if (!session?.released || !session.hasContent) throw new Error("not_released");
+  const team = session.teams.find((t) => t.members.some((m) => m.studentId === studentId));
+  if (!team) throw new Error("not_in_team");
+  if (team.startedAt) throw new Error("already_started");
+  if (!team.members.some((m) => m.studentId === nomineeId)) throw new Error("invalid_leader");
+  const teams = session.teams.map((t) =>
+    t.key === team.key
+      ? {
+          ...t,
+          leaderId: nomineeId,
+          leaderName: t.members.find((m) => m.studentId === nomineeId)?.displayName ?? null,
+        }
+      : t,
+  );
+  await persistLecturaLeaders(groupId, teams);
+  return getLecturaSession(groupId);
+}
+
+export async function startLecturaTimer(groupId: string, studentId: string) {
+  const session = await getLecturaSession(groupId);
+  if (!session?.released || !session.hasContent) throw new Error("not_released");
+  const team = session.teams.find((t) => t.members.some((m) => m.studentId === studentId));
+  if (!team) throw new Error("not_in_team");
+  if (team.leaderId !== studentId) throw new Error("not_leader");
+  if (team.startedAt) return session;
+  const startedAt = new Date().toISOString();
+  const teams = session.teams.map((t) => (t.key === team.key ? { ...t, startedAt } : t));
+  await persistLecturaLeaders(groupId, teams);
+  return getLecturaSession(groupId);
+}
+
+export function lecturaErrorHttp(msg: string) {
+  if (msg === "not_released" || msg === "not_in_team" || msg === "not_leader" || msg === "no_content") {
+    return { status: 403 as const, error: msg, message: lecturaErrorMessage(msg) };
+  }
+  if (msg === "already_started") {
+    return { status: 409 as const, error: msg, message: lecturaErrorMessage(msg) };
+  }
+  if (msg === "invalid_leader") {
+    return { status: 400 as const, error: msg, message: lecturaErrorMessage(msg) };
+  }
+  return { status: 500 as const, error: "lectura_failed", message: "No se pudo actualizar la lectura." };
+}
+
+function lecturaErrorMessage(msg: string) {
+  if (msg === "not_released") return "El docente aún no libera la lectura.";
+  if (msg === "not_in_team") return "No estás en un equipo de butacas para esta lectura.";
+  if (msg === "not_leader") return "Solo el líder del equipo puede activar el reloj.";
+  if (msg === "no_content") return "Aún no hay lecturas generadas para este grupo.";
+  if (msg === "already_started") return "El reloj ya está corriendo. Ya no se puede cambiar de líder.";
+  if (msg === "invalid_leader") return "Elige a alguien de tu mismo equipo.";
+  return "No se pudo actualizar la lectura.";
 }

@@ -31,7 +31,13 @@ import {
   getDiplomaGradeInfo,
 } from "./officeExam/officeExamRoutes.js";
 import { getGroupRanking, getOfficialGroupRanking, RANKING_RULE } from "./groupRanking.js";
-import { getLecturaSession, studentLecturaAssignment } from "./lecturaSession.js";
+import {
+  chooseLecturaLeader,
+  getLecturaSession,
+  lecturaErrorHttp,
+  startLecturaTimer,
+  studentLecturaAssignment,
+} from "./lecturaSession.js";
 import {
   chooseTorreLeader,
   getTorreSession,
@@ -651,6 +657,42 @@ app.post("/student/skill-survey", requireAuth, requireStudent, async (req: Authe
     }
     console.error("[skill-survey] student submit failed:", err);
     return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
+app.post("/student/lectura/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const me = await prisma.user.findUnique({
+    where: { id: req.auth!.userId },
+    select: { groupId: true, displayName: true },
+  });
+  if (!me?.groupId) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await chooseLecturaLeader(me.groupId, req.auth!.userId, body.data.leaderId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ lectura: studentLecturaAssignment(session, req.auth!.userId, me.displayName) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = lecturaErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+app.post("/student/lectura/start", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const me = await prisma.user.findUnique({
+    where: { id: req.auth!.userId },
+    select: { groupId: true, displayName: true },
+  });
+  if (!me?.groupId) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await startLecturaTimer(me.groupId, req.auth!.userId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ lectura: studentLecturaAssignment(session, req.auth!.userId, me.displayName) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = lecturaErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
   }
 });
 

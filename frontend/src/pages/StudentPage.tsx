@@ -31,7 +31,9 @@ export default function StudentPage() {
     refetchOnWindowFocus: true,
     refetchInterval: (query) => {
       const torre = query.state.data?.torre;
-      if (torre?.startedAt || torre?.pausedAt) return 5000;
+      const lectura = query.state.data?.lectura;
+      if (torre?.startedAt || torre?.pausedAt || lectura?.startedAt) return 5000;
+      if (lectura && !lectura.startedAt) return 8000;
       return 30_000;
     },
   });

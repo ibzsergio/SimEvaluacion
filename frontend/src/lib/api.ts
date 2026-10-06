@@ -23,6 +23,7 @@ import type {
   LecturaSession,
   TorreSession,
   StudentTorre,
+  StudentLectura,
 } from "./types";
 
 /** Normaliza VITE_API_URL (sin barra final ni sufijo /api de desarrollo). */
@@ -334,6 +335,21 @@ export async function generateLecturaSession(groupId: string, payload: { topic: 
 export async function updateGroupLecturaSettings(groupId: string, payload: { released: boolean }) {
   const { data } = await api.put<LecturaSession>(`/teacher/groups/${groupId}/lectura-settings`, payload);
   return data;
+}
+
+export async function resetLecturaSession(groupId: string) {
+  const { data } = await api.post<LecturaSession>(`/teacher/groups/${groupId}/lectura-reset`);
+  return data;
+}
+
+export async function chooseStudentLecturaLeader(leaderId: string) {
+  const { data } = await api.post<{ lectura: StudentLectura | null }>("/student/lectura/leader", { leaderId });
+  return data.lectura;
+}
+
+export async function startStudentLecturaTimer() {
+  const { data } = await api.post<{ lectura: StudentLectura | null }>("/student/lectura/start");
+  return data.lectura;
 }
 
 export async function fetchTorreSession(groupId: string) {

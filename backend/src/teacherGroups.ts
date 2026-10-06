@@ -29,7 +29,12 @@ import {
   todayClassDayDate,
 } from "./classDayService.js";
 import { getGroupDeliveryStatus } from "./deliveryStatusService.js";
-import { generateLecturaForGroup, getLecturaSession } from "./lecturaSession.js";
+import {
+  generateLecturaForGroup,
+  getLecturaSession,
+  LECTURA_301_TOPIC,
+  resetLecturaTimers,
+} from "./lecturaSession.js";
 import { getTorreSession, resetTorreSession, setTorrePaused, setTorreReleased } from "./torreChallenge.js";
 import {
   getSeatingPlan,
@@ -550,7 +555,7 @@ teacherGroupsRouter.get("/groups/:groupId/lectura-session", async (req: AuthedRe
 
 teacherGroupsRouter.post("/groups/:groupId/lectura-generate", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
-  const body = z.object({ topic: z.string().min(4).max(180) }).safeParse(req.body);
+  const body = z.object({ topic: z.string().max(180).optional() }).safeParse(req.body ?? {});
   if (!body.success) {
     return res.status(400).json({
       error: "topic_required",
@@ -560,12 +565,14 @@ teacherGroupsRouter.post("/groups/:groupId/lectura-generate", async (req: Authed
 
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId: req.auth!.userId },
-    select: { id: true },
+    select: { id: true, code: true },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
+  const topicRaw = (body.data.topic ?? "").trim() || (group.code.trim() === "301" ? LECTURA_301_TOPIC : "");
+
   try {
-    const session = await generateLecturaForGroup(groupId, body.data.topic);
+    const session = await generateLecturaForGroup(groupId, topicRaw);
     return res.json(session);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";
@@ -605,6 +612,18 @@ teacherGroupsRouter.put("/groups/:groupId/lectura-settings", async (req: AuthedR
   });
 
   const session = await getLecturaSession(groupId);
+  return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/lectura-reset", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await resetLecturaTimers(groupId);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
   return res.json(session);
 });
 
