@@ -23,6 +23,7 @@ export default function GradesMatrixPanel({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: ["grades-matrix", groupId, partialNumber],
@@ -35,6 +36,7 @@ export default function GradesMatrixPanel({
     setSearch("");
     setError("");
     setSuccess("");
+    setSelectedStudentId(null);
   }, [groupId, partialNumber]);
 
   const activities = query.data?.activities ?? [];
@@ -52,6 +54,12 @@ export default function GradesMatrixPanel({
     );
   }, [students, search]);
 
+  useEffect(() => {
+    if (filteredStudents.length === 1) {
+      setSelectedStudentId(filteredStudents[0]!.id);
+    }
+  }, [filteredStudents]);
+
   function savedPoints(studentId: string, activityId: string) {
     const grade = cells[studentId]?.[activityId];
     return grade ? String(grade.points) : "";
@@ -61,6 +69,16 @@ export default function GradesMatrixPanel({
     const key = cellKey(studentId, activityId);
     if (Object.prototype.hasOwnProperty.call(drafts, key)) return drafts[key] ?? "";
     return savedPoints(studentId, activityId);
+  }
+
+  function hasActivityGrade(studentId: string, activityId: string) {
+    return displayPoints(studentId, activityId).trim() !== "";
+  }
+
+  function studentProgress(studentId: string) {
+    const total = activities.length;
+    const done = activities.filter((a) => hasActivityGrade(studentId, a.id)).length;
+    return { done, total, complete: total > 0 && done === total };
   }
 
   function collectDirty(): Array<{ activityId: string; studentId: string; points: number }> | null {
@@ -186,8 +204,12 @@ export default function GradesMatrixPanel({
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Buscar alumno..."
-        className="mb-4 w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-sm text-white placeholder:text-slate-500"
+        className="mb-2 w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-sm text-white placeholder:text-slate-500"
       />
+      <p className="mb-4 text-xs text-slate-500">
+        Junto al nombre ves cuántas actividades lleva. Toca un alumno para marcar en rojo, arriba, las que
+        aún le faltan.
+      </p>
 
       {query.isLoading ? (
         <p className="text-slate-400">Cargando tabla de calificaciones...</p>
@@ -205,44 +227,102 @@ export default function GradesMatrixPanel({
             <thead className="bg-slate-900/90 text-left text-xs uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="sticky left-0 z-20 min-w-[180px] bg-slate-900 px-3 py-3">Alumno</th>
-                {activities.map((activity, index) => (
+                {activities.map((activity, index) => {
+                  const owed =
+                    Boolean(selectedStudentId) && !hasActivityGrade(selectedStudentId!, activity.id);
+                  const highlighted = activity.id === highlightActivityId && !owed;
+                  return (
                   <th
                     key={activity.id}
                     className={`min-w-[108px] px-2 py-3 ${
-                      activity.id === highlightActivityId ? "bg-cyan-500/15 text-cyan-100" : ""
+                      owed
+                        ? "bg-rose-500/20 text-rose-100"
+                        : highlighted
+                          ? "bg-cyan-500/15 text-cyan-100"
+                          : ""
                     }`}
+                    title={
+                      owed
+                        ? "Este alumno aún no tiene calificación en esta actividad"
+                        : undefined
+                    }
                   >
-                    <p className="font-bold normal-case tracking-normal text-cyan-300">
+                    <p
+                      className={`font-bold normal-case tracking-normal ${
+                        owed ? "text-rose-300" : "text-cyan-300"
+                      }`}
+                    >
                       {getActivityKindLabel(index, activity.name)}
                     </p>
-                    <p className="mt-0.5 max-w-[140px] truncate font-normal normal-case tracking-normal text-slate-300">
+                    <p
+                      className={`mt-0.5 max-w-[140px] truncate font-normal normal-case tracking-normal ${
+                        owed ? "text-rose-100" : "text-slate-300"
+                      }`}
+                    >
                       {activity.name}
                     </p>
-                    <p className="mt-0.5 font-normal normal-case tracking-normal text-[10px] text-slate-500">
-                      / {activity.maxPoints} · {formatCalendarDate(activity.date)}
+                    <p
+                      className={`mt-0.5 font-normal normal-case tracking-normal text-[10px] ${
+                        owed ? "font-semibold text-rose-300" : "text-slate-500"
+                      }`}
+                    >
+                      {owed ? "Pendiente · " : ""}/ {activity.maxPoints} · {formatCalendarDate(activity.date)}
                     </p>
                   </th>
-                ))}
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.map((student) => (
-                <tr key={student.id} className="border-t border-white/5">
+              {filteredStudents.map((student) => {
+                const progress = studentProgress(student.id);
+                const selected = student.id === selectedStudentId;
+                return (
+                <tr
+                  key={student.id}
+                  className={`border-t border-white/5 ${selected ? "bg-white/[0.04]" : ""}`}
+                >
                   <td className="sticky left-0 z-10 bg-slate-950/95 px-3 py-2">
-                    <p className="font-medium text-white">{student.displayName}</p>
-                    <p className="font-mono text-[11px] text-cyan-300/80">
-                      {student.controlNumber ?? "—"}
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedStudentId((prev) => (prev === student.id ? null : student.id))
+                      }
+                      className="w-full rounded-lg px-1 py-0.5 text-left hover:bg-white/5"
+                      title="Ver qué actividades le faltan"
+                    >
+                      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-medium text-white">
+                        <span>{student.displayName}</span>
+                        <span
+                          className={`tabular-nums text-xs font-bold ${
+                            progress.complete ? "text-emerald-400" : "text-rose-400"
+                          }`}
+                        >
+                          {progress.done}/{progress.total}
+                        </span>
+                      </p>
+                      <p className="font-mono text-[11px] text-cyan-300/80">
+                        {student.controlNumber ?? "—"}
+                      </p>
+                    </button>
                   </td>
                   {activities.map((activity) => {
                     const key = cellKey(student.id, activity.id);
                     const value = displayPoints(student.id, activity.id);
                     const saved = cells[student.id]?.[activity.id];
+                    const missing = !hasActivityGrade(student.id, activity.id);
                     const highlighted = activity.id === highlightActivityId;
+                    const markOwed = selected && missing;
                     return (
                       <td
                         key={activity.id}
-                        className={`px-2 py-2 ${highlighted ? "bg-cyan-500/5" : ""}`}
+                        className={`px-2 py-2 ${
+                          markOwed
+                            ? "bg-rose-500/10"
+                            : highlighted
+                              ? "bg-cyan-500/5"
+                              : ""
+                        }`}
                       >
                         <input
                           type="number"
@@ -270,9 +350,15 @@ export default function GradesMatrixPanel({
                           className={`w-20 rounded-lg border bg-slate-900/60 px-2 py-1 text-white placeholder:text-slate-600 ${
                             saved
                               ? "border-emerald-400/30"
-                              : "border-white/10"
+                              : markOwed
+                                ? "border-rose-400/50"
+                                : "border-white/10"
                           }`}
-                          title={saved ? `Guardado ${saved.points} / ${activity.maxPoints}` : "Sin calificar"}
+                          title={
+                            saved
+                              ? `Guardado ${saved.points} / ${activity.maxPoints}`
+                              : "Sin calificar"
+                          }
                         />
                         {savingKey === key ? (
                           <span className="ml-1 text-[10px] text-slate-500">...</span>
@@ -281,7 +367,8 @@ export default function GradesMatrixPanel({
                     );
                   })}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
