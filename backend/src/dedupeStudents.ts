@@ -49,10 +49,22 @@ async function mergeStudentData(keeperId: string, removeId: string) {
 
   const exams = await prisma.partialExamScore.findMany({ where: { studentId: removeId } });
   for (const e of exams) {
+    const partialNumber = e.partialNumber ?? 1;
     await prisma.partialExamScore.upsert({
-      where: { groupId_studentId: { groupId: e.groupId, studentId: keeperId } },
+      where: {
+        groupId_studentId_partialNumber: {
+          groupId: e.groupId,
+          studentId: keeperId,
+          partialNumber,
+        },
+      },
       update: { examScore4: e.examScore4 },
-      create: { groupId: e.groupId, studentId: keeperId, examScore4: e.examScore4 },
+      create: {
+        groupId: e.groupId,
+        studentId: keeperId,
+        partialNumber,
+        examScore4: e.examScore4,
+      },
     });
   }
   await prisma.partialExamScore.deleteMany({ where: { studentId: removeId } });

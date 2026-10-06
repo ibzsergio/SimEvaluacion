@@ -357,19 +357,22 @@ model ClassDayRecord {
 
 /// Calificación de examen del parcial (máximo 4). La escala vale 6; el total es 10.
 model PartialExamScore {
-  id         String   @id @default(cuid())
-  groupId    String
-  studentId  String
-  examScore4 Float
-  capturedAt DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            String   @id @default(cuid())
+  groupId       String
+  studentId     String
+  /// 1 = primer parcial, 2 = segundo, …
+  partialNumber Int      @default(1)
+  examScore4    Float
+  capturedAt    DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   group   ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   student User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@unique([groupId, studentId])
+  @@unique([groupId, studentId, partialNumber])
   @@index([groupId])
   @@index([studentId])
+  @@index([groupId, partialNumber])
 }
 
 /// Acomodo de butacas 6×6 por grupo y fecha de clase.

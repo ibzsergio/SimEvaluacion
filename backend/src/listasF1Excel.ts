@@ -302,7 +302,7 @@ async function getGroupScaleData(groupId: string, partialNumber: number): Promis
 
   const [examRows, rankingData] = await Promise.all([
     prisma.partialExamScore.findMany({
-      where: { groupId },
+      where: { groupId, partialNumber: scalePartial },
       select: { studentId: true, examScore4: true },
     }),
     getGroupRanking(groupId, scalePartial),
@@ -397,11 +397,10 @@ export async function getListasF1Preview(teacherId: string, groupId: string) {
   if (!owned) return null;
 
   const currentPartial = owned.currentPartial ?? 1;
-  const preview = await getGroupScaleData(groupId, LISTAS_F1_PARTIAL);
+  const preview = await getGroupScaleData(groupId, currentPartial);
   if (!preview) return null;
 
-  const livePreview =
-    currentPartial !== LISTAS_F1_PARTIAL ? await getGroupScaleData(groupId, currentPartial) : null;
+  const livePreview = preview;
 
   const workbook = await loadTemplateWorkbook();
   const expected = [...LISTAS_F1_EXPECTED_GROUPS];
@@ -432,7 +431,7 @@ export async function getListasF1Preview(teacherId: string, groupId: string) {
   return {
     ...preview,
     livePartial: currentPartial,
-    live: livePreview ? toLiveScale(livePreview) : toLiveScale(preview),
+    live: toLiveScale(livePreview),
     activityWeight: ACTIVITY_WEIGHT,
     participationWeight: PARTICIPATION_WEIGHT,
     excel: {
@@ -541,9 +540,10 @@ export async function saveGroupExamScores(
 ) {
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId },
-    select: { id: true },
+    select: { id: true, currentPartial: true },
   });
   if (!group) return null;
+  const partialNumber = Math.max(1, group.currentPartial ?? 1);
 
   const students = await prisma.user.findMany({
     where: { role: "STUDENT", groupId, id: { in: scores.map((s) => s.studentId) } },
@@ -557,16 +557,18 @@ export async function saveGroupExamScores(
     if (!allowed.has(item.studentId)) continue;
     if (item.examScore4 == null) {
       const deleted = await prisma.partialExamScore.deleteMany({
-        where: { groupId, studentId: item.studentId },
+        where: { groupId, studentId: item.studentId, partialNumber },
       });
       cleared += deleted.count;
       continue;
     }
     const value = clampExamScore4(item.examScore4);
     await prisma.partialExamScore.upsert({
-      where: { groupId_studentId: { groupId, studentId: item.studentId } },
+      where: {
+        groupId_studentId_partialNumber: { groupId, studentId: item.studentId, partialNumber },
+      },
       update: { examScore4: value },
-      create: { groupId, studentId: item.studentId, examScore4: value },
+      create: { groupId, studentId: item.studentId, partialNumber, examScore4: value },
     });
     saved += 1;
   }
