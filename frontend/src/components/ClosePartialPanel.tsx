@@ -303,38 +303,6 @@ export default function ClosePartialPanel({
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-indigo-400/25 bg-indigo-500/5 px-4 py-3 text-sm text-slate-300">
-        <p className="font-semibold text-indigo-100">Escala 6 + examen 4 = 10</p>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-400">
-          <li>
-            <strong className="text-slate-200">Escala (máx. 6)</strong> — mismos puntos del ranking. El 1°
-            obtiene 6.
-          </li>
-          <li>
-            <strong className="text-slate-200">Examen (máx. 4)</strong> — lo capturas tú, en orden
-            alfabético como en las actividades. La columna Prioridad marca quién entregó primero (prioridad
-            para el 4).
-          </li>
-          <li>
-            <strong className="text-slate-200">% asistencia</strong> — solo la falta (F) baja el porcentaje.
-          </li>
-          <li>
-            Puedes <strong className="text-slate-200">comenzar el siguiente parcial</strong> y publicar
-            actividades nuevas aunque el examen aún no esté capturado. El examen y LISTAS F1 se pueden
-            completar después.
-          </li>
-          <li>
-            Tras cerrar un parcial, esta tabla pasa al <strong className="text-slate-200">siguiente</strong>:
-            la escala se va llenando con actividades y prácticas; el examen queda vacío hasta que lo
-            apliques.
-          </li>
-          <li>
-            Cuando termines la captura, <strong className="text-slate-200">cierra el parcial</strong> y se
-            descarga LISTAS F1 con asistencia, escala, examen y calificación final.
-          </li>
-        </ul>
-      </div>
-
       {previewQuery.isLoading ? (
         <p className="mt-4 text-sm text-slate-400">Calculando escala, asistencia y prioridad de entrega...</p>
       ) : previewQuery.isError ? (
