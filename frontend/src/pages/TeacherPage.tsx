@@ -113,20 +113,28 @@ export default function TeacherPage() {
   }, [activities, currentPartial]);
   const currentActivities = activities.filter((a) => (a.partialNumber ?? 1) === currentPartial);
   const activeId = selectedId ?? currentActivities[0]?.id ?? null;
+  const editingActivity = editingActivityId
+    ? activities.find((a) => a.id === editingActivityId) ?? null
+    : null;
+  const numberingPartial = editingActivity?.partialNumber ?? currentPartial;
+  const numberingActivities = useMemo(
+    () => activities.filter((a) => (a.partialNumber ?? 1) === numberingPartial),
+    [activities, numberingPartial],
+  );
   const nextPractica = useMemo(
-    () => nextPracticaNumber(activities.map((a) => a.name)),
-    [activities],
+    () => nextPracticaNumber(numberingActivities.map((a) => a.name)),
+    [numberingActivities],
   );
   const practicaNumbers = useMemo(() => {
-    const nums = activities
+    const nums = numberingActivities
       .map((a) => extractPracticaNumber(a.name))
       .filter((n): n is number => n != null);
     return [...new Set(nums)].sort((a, b) => a - b);
-  }, [activities]);
+  }, [numberingActivities]);
   const typedPractica = extractPracticaNumber(form.name);
   const practicaDuplicada =
     typedPractica != null &&
-    activities.some(
+    numberingActivities.some(
       (a) => a.id !== editingActivityId && extractPracticaNumber(a.name) === typedPractica,
     );
 
@@ -559,8 +567,8 @@ export default function TeacherPage() {
                 </label>
                 <p className="text-[11px] leading-relaxed text-slate-500">
                   {practicaNumbers.length
-                    ? `Ya hay práctica${practicaNumbers.length === 1 ? "" : "s"} ${practicaNumbers.join(", ")}. Al escribir «Práctica» se completa sola la ${nextPractica}.`
-                    : `Aún no hay prácticas. Al escribir «Práctica» se numera sola como ${nextPractica}.`}
+                    ? `En ${partialLabel(numberingPartial).toLowerCase()} ya hay práctica${practicaNumbers.length === 1 ? "" : "s"} ${practicaNumbers.join(", ")}. Al escribir «Práctica» se completa sola la ${nextPractica}.`
+                    : `Aún no hay prácticas en ${partialLabel(numberingPartial).toLowerCase()}. Al escribir «Práctica» se numera sola como ${nextPractica}.`}
                 </p>
                 {looksLikePractica(form.name) && typedPractica != null ? (
                   <p
