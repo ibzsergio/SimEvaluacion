@@ -168,7 +168,7 @@ export default function GradesMatrixPanel({
   const dirtyCount = Object.entries(drafts).filter(([, v]) => v.trim() !== "").length;
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-white">Calificar {partialLabel(partialNumber).toLowerCase()}</h2>
@@ -223,7 +223,7 @@ export default function GradesMatrixPanel({
           No hay alumnos en este grupo. Importa la lista en la pestaña Alumnos (Excel).
         </p>
       ) : (
-        <div className="max-h-[min(70dvh,36rem)] overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(72dvh,42rem)]">
+        <div className="max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(72dvh,42rem)] lg:max-h-none">
           <table className="min-w-full border-separate border-spacing-0 text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-slate-400">
               <tr>

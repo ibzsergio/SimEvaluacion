@@ -263,55 +263,53 @@ export default function TeacherPage() {
       title="Panel del docente"
       subtitle={groupsSubtitle}
     >
-      <div className="mb-5 border-b border-white/10 pb-2 sm:mb-6">
-        <div className="-mx-3 overflow-x-auto overscroll-x-contain px-3 sm:mx-0 sm:overflow-visible sm:px-0">
-          <div className="flex w-max gap-1 sm:w-auto sm:flex-wrap sm:gap-2">
-            <TabButton active={tab === "alumnos"} onClick={() => setTab("alumnos")}>
-              Alumnos (Excel)
-            </TabButton>
-            <TabButton active={tab === "actividades"} onClick={() => setTab("actividades")}>
-              Actividades y calificaciones
-            </TabButton>
-            <TabButton active={tab === "entregas"} onClick={() => setTab("entregas")}>
-              Historial entregas
-            </TabButton>
-            <TabButton active={tab === "importar"} onClick={() => setTab("importar")}>
-              Importar Excel
-            </TabButton>
-            <TabButton active={tab === "ranking"} onClick={() => setTab("ranking")}>
-              Ranking del grupo
-            </TabButton>
-            <TabButton active={tab === "semanas"} onClick={() => setTab("semanas")}>
-              Semanas y parcial
-            </TabButton>
-            <TabButton active={tab === "comunicacion"} onClick={() => setTab("comunicacion")}>
-              Comunicación
-            </TabButton>
-            <TabButton active={tab === "semestre"} onClick={() => setTab("semestre")}>
-              Nuevo semestre
-            </TabButton>
-            <TabButton active={tab === "asistencia"} onClick={() => setTab("asistencia")}>
-              Asistencia
-            </TabButton>
-            <TabButton active={tab === "asientos"} onClick={() => setTab("asientos")}>
-              Butacas
-            </TabButton>
-            <TabButton active={tab === "equipos"} onClick={() => setTab("equipos")}>
-              Roles / Equipos
-            </TabButton>
-            <TabButton active={tab === "rompehielo"} onClick={() => setTab("rompehielo")}>
-              Ruleta rompehielo
-            </TabButton>
-            <TabButton active={tab === "lectura"} onClick={() => setTab("lectura")}>
-              Lectura por colores
-            </TabButton>
-            <TabButton active={tab === "torre"} onClick={() => setTab("torre")}>
-              Torre Tkinter
-            </TabButton>
-            <TabButton active={tab === "acceso"} onClick={() => setTab("acceso")}>
-              QR / Acceso
-            </TabButton>
-          </div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-2">
+        <div className="flex flex-wrap gap-2">
+          <TabButton active={tab === "alumnos"} onClick={() => setTab("alumnos")}>
+            Alumnos (Excel)
+          </TabButton>
+          <TabButton active={tab === "actividades"} onClick={() => setTab("actividades")}>
+            Actividades y calificaciones
+          </TabButton>
+          <TabButton active={tab === "entregas"} onClick={() => setTab("entregas")}>
+            Historial entregas
+          </TabButton>
+          <TabButton active={tab === "importar"} onClick={() => setTab("importar")}>
+            Importar Excel
+          </TabButton>
+          <TabButton active={tab === "ranking"} onClick={() => setTab("ranking")}>
+            Ranking del grupo
+          </TabButton>
+          <TabButton active={tab === "semanas"} onClick={() => setTab("semanas")}>
+            Semanas y parcial
+          </TabButton>
+          <TabButton active={tab === "comunicacion"} onClick={() => setTab("comunicacion")}>
+            Comunicación
+          </TabButton>
+          <TabButton active={tab === "semestre"} onClick={() => setTab("semestre")}>
+            Nuevo semestre
+          </TabButton>
+          <TabButton active={tab === "asistencia"} onClick={() => setTab("asistencia")}>
+            Asistencia
+          </TabButton>
+          <TabButton active={tab === "asientos"} onClick={() => setTab("asientos")}>
+            Butacas
+          </TabButton>
+          <TabButton active={tab === "equipos"} onClick={() => setTab("equipos")}>
+            Roles / Equipos
+          </TabButton>
+          <TabButton active={tab === "rompehielo"} onClick={() => setTab("rompehielo")}>
+            Ruleta rompehielo
+          </TabButton>
+          <TabButton active={tab === "lectura"} onClick={() => setTab("lectura")}>
+            Lectura por colores
+          </TabButton>
+          <TabButton active={tab === "torre"} onClick={() => setTab("torre")}>
+            Torre Tkinter
+          </TabButton>
+          <TabButton active={tab === "acceso"} onClick={() => setTab("acceso")}>
+            QR / Acceso
+          </TabButton>
         </div>
         <button
           type="button"
@@ -326,7 +324,7 @@ export default function TeacherPage() {
               setDownloadingExcel(false);
             }
           }}
-          className="mt-2 w-full rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60 sm:mt-3 sm:w-auto sm:px-4"
+          className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
         >
           {downloadingExcel ? "Generando Excel..." : `Descargar Excel ${groupsLabelPlus}`}
         </button>
@@ -481,7 +479,7 @@ export default function TeacherPage() {
             <ClosePartialPanel groups={groups} selectedGroupId={selectedGroupId} />
           ) : null}
 
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(16rem,18.75rem)_minmax(0,1fr)]">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(16rem,18.75rem)_minmax(0,1fr)] lg:items-stretch">
             <section className="glass p-3 sm:p-5">
               <h2 className="mb-1 text-lg font-semibold text-white">
                 {editingActivityId ? "Editar actividad" : "Nueva actividad"}
@@ -726,7 +724,7 @@ export default function TeacherPage() {
               </div>
             </section>
 
-            <section className="glass min-w-0 p-3 sm:p-5">
+            <section className="glass flex min-w-0 flex-col p-3 sm:p-5 lg:min-h-[calc(100dvh-15.5rem)]">
               {selectedGroupId ? (
                 <GradesMatrixPanel
                   groupId={selectedGroupId}
@@ -821,7 +819,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 whitespace-nowrap rounded-t-lg px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm ${
+      className={`rounded-t-lg px-4 py-2 text-sm font-semibold transition ${
         active ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
       }`}
     >

@@ -52,6 +52,7 @@ export default function ClosePartialPanel({
   const [actionSuccess, setActionSuccess] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
+  const [examOpen, setExamOpen] = useState(false);
 
   const previewQuery = useQuery({
     queryKey: ["listas-f1-preview", selectedGroupId],
@@ -245,8 +246,12 @@ export default function ClosePartialPanel({
   const missingSheets = sheets.filter((s) => !s.found).map((s) => s.code);
 
   return (
-    <section className="glass mb-6 p-3 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section className={`glass ${examOpen ? "mb-6 p-3 sm:p-5" : "mb-3 p-3 sm:px-4 sm:py-3"}`}>
+      <button
+        type="button"
+        onClick={() => setExamOpen((open) => !open)}
+        className="flex w-full items-start justify-between gap-3 text-left"
+      >
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-white sm:text-lg">Examen, cierre de parcial y LISTAS F1</h2>
           <p className="mt-1 text-xs text-slate-400 sm:text-sm">
@@ -257,9 +262,17 @@ export default function ClosePartialPanel({
                 ? " · Parcial cerrado"
                 : " · Parcial abierto"}
             {diplomaEnabled ? " · Diplomas activos" : partialClosed ? " · Diplomas pendientes de validar" : ""}
+            {preview ? ` · Examen ${capturedCount}/${examRows.length}` : ""}
           </p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+        <span className="mt-0.5 shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200">
+          {examOpen ? "Ocultar" : "Mostrar"}
+        </span>
+      </button>
+
+      {examOpen ? (
+      <>
+      <div className="mt-3 flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
           {currentPartial < 4 ? (
             <button
               type="button"
@@ -468,6 +481,8 @@ export default function ClosePartialPanel({
           )}
         </div>
       </div>
+      </>
+      ) : null}
 
       {actionError ? (
         <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
