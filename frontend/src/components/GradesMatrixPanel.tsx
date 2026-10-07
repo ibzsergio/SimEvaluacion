@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { fetchGradesMatrix, getApiErrorMessage, saveGradesBatch } from "../lib/api";
 import { formatCalendarDate, getActivityKindLabel, partialLabel } from "../lib/dates";
 import type { Activity } from "../lib/types";
@@ -24,6 +24,7 @@ export default function GradesMatrixPanel({
   const [success, setSuccess] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const query = useQuery({
     queryKey: ["grades-matrix", groupId, partialNumber],
@@ -167,12 +168,37 @@ export default function GradesMatrixPanel({
 
   const dirtyCount = Object.entries(drafts).filter(([, v]) => v.trim() !== "").length;
 
+  useLayoutEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+
+    const fitDesktopHeight = () => {
+      if (!window.matchMedia("(min-width: 1024px)").matches) {
+        el.style.maxHeight = "";
+        return;
+      }
+      const top = el.getBoundingClientRect().top;
+      const next = `${Math.max(320, Math.floor(window.innerHeight - top - 16))}px`;
+      if (el.style.maxHeight !== next) el.style.maxHeight = next;
+    };
+
+    fitDesktopHeight();
+    const raf = requestAnimationFrame(fitDesktopHeight);
+    window.addEventListener("resize", fitDesktopHeight);
+    window.visualViewport?.addEventListener("resize", fitDesktopHeight);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", fitDesktopHeight);
+      window.visualViewport?.removeEventListener("resize", fitDesktopHeight);
+    };
+  }, [activities.length, students.length, query.isLoading, search]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-white">Calificar {partialLabel(partialNumber).toLowerCase()}</h2>
-          <p className="mt-1 hidden text-sm text-slate-400 sm:block">
+          <h2 className="text-lg font-semibold text-white lg:text-xl">Calificar {partialLabel(partialNumber).toLowerCase()}</h2>
+          <p className="mt-1 hidden text-sm text-slate-400 sm:block lg:text-base">
             Una fila por alumno y una columna por actividad. Escribe y pasa a la siguiente con Tab;
             al salir de la casilla se guarda. Ya no hace falta cambiar de actividad.
           </p>
@@ -205,7 +231,7 @@ export default function GradesMatrixPanel({
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Buscar alumno..."
-        className="mb-2 w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-base text-white placeholder:text-slate-500 sm:text-sm"
+        className="mb-2 w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-base text-white placeholder:text-slate-500 sm:text-sm lg:text-base"
       />
       <p className="mb-3 text-xs text-slate-500 sm:mb-4">
         Junto al nombre ves cuántas lleva. Toca un alumno para marcar en rojo las que le faltan. Al bajar
@@ -223,11 +249,14 @@ export default function GradesMatrixPanel({
           No hay alumnos en este grupo. Importa la lista en la pestaña Alumnos (Excel).
         </p>
       ) : (
-        <div className="relative max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:max-h-none">
-          <table className="min-w-full border-separate border-spacing-0 text-sm">
-            <thead className="sticky top-0 z-20 bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-400">
+        <div
+          ref={tableScrollRef}
+          className="relative max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:max-h-[calc(100dvh-11rem)]"
+        >
+          <table className="min-w-full border-separate border-spacing-0 text-sm lg:text-base">
+            <thead className="sticky top-0 z-20 bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-400 lg:text-sm">
               <tr>
-                <th className="sticky top-0 left-0 z-30 min-w-[9.5rem] border-b border-white/10 bg-slate-900 px-2 py-2 shadow-[0_1px_0_0_rgba(255,255,255,0.12)] sm:min-w-[12.5rem] sm:px-3 sm:py-3">
+                <th className="sticky top-0 left-0 z-30 min-w-[9.5rem] border-b border-white/10 bg-slate-900 px-2 py-2 shadow-[0_1px_0_0_rgba(255,255,255,0.12)] sm:min-w-[12.5rem] sm:px-3 sm:py-3 lg:min-w-[16rem]">
                   Alumno
                 </th>
                 {activities.map((activity, index) => {
@@ -237,7 +266,7 @@ export default function GradesMatrixPanel({
                   return (
                   <th
                     key={activity.id}
-                    className={`sticky top-0 z-20 min-w-[5.75rem] border-b border-white/10 bg-slate-900 px-1.5 py-2 align-bottom shadow-[0_1px_0_0_rgba(255,255,255,0.12)] sm:min-w-[8rem] sm:px-2 sm:py-3 ${
+                    className={`sticky top-0 z-20 min-w-[5.75rem] border-b border-white/10 bg-slate-900 px-1.5 py-2 align-bottom shadow-[0_1px_0_0_rgba(255,255,255,0.12)] sm:min-w-[8rem] sm:px-2 sm:py-3 lg:min-w-[9.5rem] ${
                       owed
                         ? "text-rose-100 shadow-[inset_0_0_0_1000px_rgba(244,63,94,0.22)]"
                         : highlighted
@@ -251,21 +280,21 @@ export default function GradesMatrixPanel({
                     }
                   >
                     <p
-                      className={`font-bold normal-case tracking-normal ${
+                      className={`font-bold normal-case tracking-normal lg:text-base ${
                         owed ? "text-rose-300" : "text-cyan-300"
                       }`}
                     >
                       {getActivityKindLabel(index, activity.name)}
                     </p>
                     <p
-                      className={`mt-0.5 max-w-[9.5rem] font-normal normal-case leading-snug tracking-normal line-clamp-2 ${
+                      className={`mt-0.5 max-w-[9.5rem] font-normal normal-case leading-snug tracking-normal line-clamp-2 lg:max-w-[11rem] lg:text-sm ${
                         owed ? "text-rose-100" : "text-slate-300"
                       }`}
                     >
                       {activity.name}
                     </p>
                     <p
-                      className={`mt-0.5 font-normal normal-case tracking-normal text-[10px] ${
+                      className={`mt-0.5 font-normal normal-case tracking-normal text-[10px] lg:text-xs ${
                         owed ? "font-semibold text-rose-300" : "text-slate-500"
                       }`}
                     >
@@ -286,7 +315,7 @@ export default function GradesMatrixPanel({
                   key={student.id}
                   className={`border-t border-white/5 ${selected ? "bg-white/[0.04]" : ""}`}
                 >
-                  <td className="sticky left-0 z-10 max-w-[9.5rem] bg-slate-950 px-2 py-2 sm:max-w-none sm:px-3">
+                  <td className="sticky left-0 z-10 max-w-[9.5rem] bg-slate-950 px-2 py-2 sm:max-w-none sm:px-3 lg:py-2.5">
                     <button
                       type="button"
                       onClick={() =>
@@ -295,17 +324,17 @@ export default function GradesMatrixPanel({
                       className="w-full rounded-lg px-1 py-0.5 text-left hover:bg-white/5"
                       title="Ver qué actividades le faltan"
                     >
-                      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-medium text-white">
+                      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-medium text-white lg:text-lg">
                         <span className="line-clamp-2 break-words sm:line-clamp-none">{student.displayName}</span>
                         <span
-                          className={`tabular-nums text-xs font-bold ${
+                          className={`tabular-nums text-xs font-bold lg:text-sm ${
                             progress.complete ? "text-emerald-400" : "text-rose-400"
                           }`}
                         >
                           {progress.done}/{progress.total}
                         </span>
                       </p>
-                      <p className="font-mono text-[11px] text-cyan-300/80">
+                      <p className="font-mono text-[11px] text-cyan-300/80 lg:text-sm">
                         {student.controlNumber ?? "—"}
                       </p>
                     </button>
@@ -360,7 +389,7 @@ export default function GradesMatrixPanel({
                               (e.target as HTMLInputElement).blur();
                             }
                           }}
-                      className={`h-10 w-[3.75rem] min-w-[3.75rem] rounded-lg border bg-slate-900/80 px-1.5 text-base text-white placeholder:text-slate-600 sm:w-20 sm:px-2 ${
+                      className={`h-10 w-[3.75rem] min-w-[3.75rem] rounded-lg border bg-slate-900/80 px-1.5 text-base text-white placeholder:text-slate-600 sm:w-20 sm:px-2 lg:h-12 lg:w-[5.75rem] lg:min-w-[5.75rem] lg:px-2.5 lg:text-lg ${
                             saved
                               ? "border-emerald-400/30"
                               : markOwed
