@@ -2,6 +2,27 @@
 export const TKINTER_SHIM = String.raw`
 import sys, types
 from js import document, window
+from pyodide.ffi import create_proxy
+
+_proxies = []
+
+def _listen(el, event, fn):
+    def wrapped(evt=None):
+        try:
+            try:
+                fn(evt)
+            except TypeError:
+                fn()
+        except Exception as err:
+            print("Error en evento Tkinter:", err)
+            try:
+                import traceback
+                traceback.print_exc()
+            except Exception:
+                pass
+    proxy = create_proxy(wrapped)
+    _proxies.append(proxy)
+    el.addEventListener(event, proxy)
 
 N="n"; S="s"; W="w"; E="e"; NE="ne"; NW="nw"; SE="se"; SW="sw"
 NS="ns"; EW="ew"; NSEW="nsew"; CENTER="center"
@@ -158,7 +179,7 @@ class _Widget:
         def handler(js_ev):
             try: func(js_ev)
             except TypeError: func()
-        self._el.addEventListener(ev, handler)
+        _listen(self._el, ev, handler)
         return self
     def destroy(self):
         try: self._el.remove()
@@ -170,7 +191,11 @@ class _Widget:
     def update(self): pass
     def update_idletasks(self): pass
     def after(self, ms, fn=None):
-        if fn is not None: window.setTimeout(fn, int(ms or 0))
+        if fn is None:
+            return
+        proxy = create_proxy(lambda: fn())
+        _proxies.append(proxy)
+        window.setTimeout(proxy, int(ms or 0))
     def focus_set(self):
         try: self._el.focus()
         except Exception: pass
@@ -270,8 +295,11 @@ class Button(_Widget):
         btn.style.cssText = "cursor:pointer;border-radius:8px;border:1px solid rgba(15,23,42,0.2);padding:8px 12px;background:#f8fafc;color:#0f172a;font:inherit;min-height:40px;"
         _apply_opts(btn, kw)
         def on_click(_ev=None):
-            if self.command: self.command()
-        btn.addEventListener("click", on_click)
+            cmd = self.command
+            if not cmd:
+                return
+            cmd()
+        _listen(btn, "click", on_click)
         self._el.appendChild(btn)
         self._btn = btn
     def _set_text(self, text):
@@ -290,7 +318,7 @@ class Entry(_Widget):
             inp.value = str(self._var.get())
             def on_input(_ev=None):
                 self._var.set(inp.value)
-            inp.addEventListener("input", on_input)
+            _listen(inp, "input", on_input)
             def sync():
                 if inp.value != str(self._var.get()):
                     inp.value = str(self._var.get())
@@ -337,7 +365,7 @@ class Checkbutton(_Widget):
         def on_change(_ev=None):
             if var is not None: var.set(onv if inp.checked else offv)
             if self.command: self.command()
-        inp.addEventListener("change", on_change)
+        _listen(inp, "change", on_change)
         wrap.appendChild(inp)
         wrap.appendChild(lab)
         self._el.appendChild(wrap)
@@ -358,7 +386,7 @@ class Radiobutton(_Widget):
         def on_change(_ev=None):
             if var is not None: var.set(value)
             if self.command: self.command()
-        inp.addEventListener("change", on_change)
+        _listen(inp, "change", on_change)
         wrap.appendChild(inp)
         wrap.appendChild(lab)
         self._el.appendChild(wrap)
@@ -409,7 +437,7 @@ class Scale(_Widget):
                 try: var.set(int(inp.value))
                 except Exception: var.set(inp.value)
             if self.command: self.command(inp.value)
-        inp.addEventListener("input", on_input)
+        _listen(inp, "input", on_input)
         inp.style.width = "100%"
         self._el.appendChild(inp)
 
@@ -494,7 +522,7 @@ class Menu(_Widget):
         b.textContent = str(kw.get("label", "menú"))
         b.style.cssText = "border:0;background:transparent;color:#0f172a;padding:6px 8px;font:inherit;cursor:pointer;"
         cmd = kw.get("command")
-        if cmd: b.addEventListener("click", lambda _e=None: cmd())
+        if cmd: _listen(b, "click", lambda _e=None: cmd())
         self._el.appendChild(b)
     def add_separator(self):
         span = document.createElement("span")
@@ -509,25 +537,72 @@ def mainloop(n=0):
     if root is not None:
         root.mainloop()
 
+def _popup(title, message, cancel=False):
+    host = _host()
+    host.style.position = "relative"
+    overlay = document.createElement("div")
+    overlay.style.cssText = "position:absolute;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:80;padding:12px;"
+    box = document.createElement("div")
+    box.style.cssText = "background:#fff;color:#0f172a;border-radius:12px;padding:16px 18px;width:min(22rem,100%);box-shadow:0 16px 40px rgba(0,0,0,.28);"
+    h = document.createElement("p")
+    h.textContent = str(title)
+    h.style.cssText = "font-weight:800;font-size:15px;margin:0 0 8px;"
+    p = document.createElement("p")
+    p.textContent = str(message)
+    p.style.cssText = "margin:0 0 14px;font-size:14px;line-height:1.45;white-space:pre-wrap;"
+    row = document.createElement("div")
+    row.style.cssText = "display:flex;gap:8px;justify-content:flex-end;"
+    ok = document.createElement("button")
+    ok.type = "button"
+    ok.textContent = "Aceptar"
+    ok.style.cssText = "min-height:40px;padding:8px 14px;border-radius:8px;border:0;background:#4f46e5;color:#fff;font-weight:700;cursor:pointer;"
+    def close(_e=None):
+        overlay.remove()
+    _listen(ok, "click", close)
+    if cancel:
+        no = document.createElement("button")
+        no.type = "button"
+        no.textContent = "Cancelar"
+        no.style.cssText = "min-height:40px;padding:8px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#f8fafc;color:#0f172a;cursor:pointer;"
+        _listen(no, "click", close)
+        row.appendChild(no)
+    row.appendChild(ok)
+    box.appendChild(h)
+    box.appendChild(p)
+    box.appendChild(row)
+    overlay.appendChild(box)
+    host.appendChild(overlay)
+
 class _Msg:
     @staticmethod
     def showinfo(title, message, **kw):
-        window.alert(str(title) + "\n\n" + str(message)); return "ok"
+        _popup(title, message)
+        return "ok"
     @staticmethod
     def showwarning(title, message, **kw):
-        window.alert(str(title) + "\n\n" + str(message)); return "ok"
+        _popup(title, message)
+        return "ok"
     @staticmethod
     def showerror(title, message, **kw):
-        window.alert(str(title) + "\n\n" + str(message)); return "ok"
+        _popup(title, message)
+        return "ok"
     @staticmethod
     def askyesno(title, message, **kw):
-        return bool(window.confirm(str(title) + "\n\n" + str(message)))
+        try:
+            return bool(window.confirm(str(title) + "\n\n" + str(message)))
+        except Exception:
+            _popup(title, message, True)
+            return True
     @staticmethod
     def askokcancel(title, message, **kw):
-        return bool(window.confirm(str(title) + "\n\n" + str(message)))
+        try:
+            return bool(window.confirm(str(title) + "\n\n" + str(message)))
+        except Exception:
+            _popup(title, message, True)
+            return True
     @staticmethod
     def askquestion(title, message, **kw):
-        return "yes" if window.confirm(str(title) + "\n\n" + str(message)) else "no"
+        return "yes" if _Msg.askyesno(title, message) else "no"
 
 messagebox = _Msg()
 

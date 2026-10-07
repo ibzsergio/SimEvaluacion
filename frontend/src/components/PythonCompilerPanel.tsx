@@ -132,7 +132,7 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
           </p>
           <div
             ref={hostRef}
-            className="min-h-[16rem] rounded-xl border border-white/10 bg-slate-900/40 p-2 sm:min-h-[20rem]"
+            className="relative min-h-[16rem] overflow-hidden rounded-xl border border-white/10 bg-slate-900/40 p-2 sm:min-h-[20rem]"
           />
           <p className="mt-3 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Salida (print)

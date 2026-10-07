@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261007-python-teacher-only",
+        cacheId: "simeval-20261007-tk-click",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
