@@ -178,8 +178,8 @@ export default function GradesMatrixPanel({
         return;
       }
       const top = el.getBoundingClientRect().top;
-      const desktopZoom = 1.12;
-      const next = `${Math.max(320, Math.floor((window.innerHeight - top - 16) / desktopZoom))}px`;
+      const viewH = window.visualViewport?.height ?? window.innerHeight;
+      const next = `${Math.max(420, Math.floor(viewH - top - 24))}px`;
       if (el.style.maxHeight !== next) el.style.maxHeight = next;
     };
 
@@ -252,7 +252,7 @@ export default function GradesMatrixPanel({
       ) : (
         <div
           ref={tableScrollRef}
-          className="relative max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:max-h-[calc(100dvh-11rem)]"
+          className="relative max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:min-h-[28rem] lg:max-h-[calc(100dvh-11rem)]"
         >
           <table className="min-w-full border-separate border-spacing-0 text-sm lg:text-base">
             <thead className="sticky top-0 z-20 bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-400 lg:text-sm">
