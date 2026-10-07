@@ -639,7 +639,7 @@ export default function TeacherPage() {
 
               <div className="mt-6">
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Actividades del grupo</h3>
-                <div className="max-h-[40vh] min-h-0 space-y-4 overflow-auto pr-1 lg:max-h-none">
+                <div className="max-h-[40vh] min-h-0 space-y-4 overflow-auto pr-1 lg:min-h-[32rem] lg:max-h-[40rem]">
                   {activityPartialNumbers.map((partialNo, sectionIndex) => {
                     const items = activities.filter((a) => (a.partialNumber ?? 1) === partialNo);
                     const isCurrent = partialNo === currentPartial;
