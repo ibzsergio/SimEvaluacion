@@ -3,6 +3,7 @@ import { useState } from "react";
 import BadgeDisplay from "../components/BadgeDisplay";
 import Layout from "../components/Layout";
 import StudentCommunication from "../components/StudentCommunication";
+import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
@@ -85,6 +86,10 @@ export default function StudentPage() {
       footer={studentFooter}
     >
       <StudentMotivationCard motivation={motivation} />
+
+      <div className="mb-6">
+        <PythonCompilerPanel compact />
+      </div>
 
       <StudentSkillSurveyPanel />
 

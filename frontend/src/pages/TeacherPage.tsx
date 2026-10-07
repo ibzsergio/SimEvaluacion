@@ -16,6 +16,7 @@ import SemesterPanel from "../components/SemesterPanel";
 import TeacherCommsPanel from "../components/TeacherCommsPanel";
 import ClosePartialPanel from "../components/ClosePartialPanel";
 import WeeklyWinnersPanel from "../components/WeeklyWinnersPanel";
+import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Layout from "../components/Layout";
 import {
   createActivity,
@@ -60,6 +61,7 @@ export default function TeacherPage() {
     | "lectura"
     | "torre"
     | "acceso"
+    | "compilador"
   >("alumnos");
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -312,6 +314,9 @@ export default function TeacherPage() {
           <TabButton active={tab === "acceso"} onClick={() => setTab("acceso")}>
             QR / Acceso
           </TabButton>
+          <TabButton active={tab === "compilador"} onClick={() => setTab("compilador")}>
+            Compilador Python
+          </TabButton>
         </div>
         <button
           type="button"
@@ -408,6 +413,8 @@ export default function TeacherPage() {
         ) : null
       ) : tab === "acceso" ? (
         <AccessQrPanel />
+      ) : tab === "compilador" ? (
+        <PythonCompilerPanel />
       ) : tab === "semanas" ? (
         groupsQuery.isLoading ? (
           <p className="text-slate-400">Cargando grupos...</p>
