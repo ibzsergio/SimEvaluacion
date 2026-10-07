@@ -8,10 +8,24 @@ import { ThemeProvider } from "./lib/theme";
 import App from "./App";
 import "./index.css";
 
-registerSW({
+let swReloading = false;
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (swReloading) return;
+    swReloading = true;
+    window.location.reload();
+  });
+}
+
+const updateSW = registerSW({
   immediate: true,
+  onNeedRefresh() {
+    updateSW(true);
+  },
   onRegisteredSW(_url, registration) {
-    void registration?.update();
+    if (!registration) return;
+    void registration.update();
+    window.setInterval(() => void registration.update(), 30_000);
   },
 });
 
