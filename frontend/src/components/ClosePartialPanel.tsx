@@ -313,7 +313,6 @@ export default function ClosePartialPanel({
               </button>
             </>
           ) : null}
-        </div>
       </div>
 
       {previewQuery.isLoading ? (
