@@ -263,7 +263,8 @@ export default function TeacherPage() {
       title="Panel del docente"
       subtitle={groupsSubtitle}
     >
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-2">
+      <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      <div className="mb-6 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-2">
         <div className="flex flex-wrap gap-2">
           <TabButton active={tab === "alumnos"} onClick={() => setTab("alumnos")}>
             Alumnos (Excel)
@@ -447,8 +448,8 @@ export default function TeacherPage() {
           />
         ) : null
       ) : (
-        <>
-          <div className="mb-4 flex flex-wrap gap-2">
+        <div className="flex min-h-0 flex-1 flex-col max-lg:contents">
+          <div className="mb-4 flex shrink-0 flex-wrap gap-2">
             {groups.map((g) => (
               <button
                 key={g.id}
@@ -476,11 +477,13 @@ export default function TeacherPage() {
           </div>
 
           {selectedGroupId ? (
-            <ClosePartialPanel groups={groups} selectedGroupId={selectedGroupId} />
+            <div className="shrink-0">
+              <ClosePartialPanel groups={groups} selectedGroupId={selectedGroupId} />
+            </div>
           ) : null}
 
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(16rem,18.75rem)_minmax(0,1fr)] lg:items-stretch">
-            <section className="glass p-3 sm:p-5">
+          <div className="grid min-h-0 gap-4 sm:gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(16rem,18.75rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch lg:overflow-hidden">
+            <section className="glass p-3 sm:p-5 lg:min-h-0 lg:overflow-y-auto">
               <h2 className="mb-1 text-lg font-semibold text-white">
                 {editingActivityId ? "Editar actividad" : "Nueva actividad"}
               </h2>
@@ -635,7 +638,7 @@ export default function TeacherPage() {
 
               <div className="mt-6">
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Actividades del grupo</h3>
-                <div className="max-h-[40vh] min-h-0 space-y-4 overflow-auto pr-1 lg:max-h-[70vh] lg:min-h-[28rem]">
+                <div className="max-h-[40vh] min-h-0 space-y-4 overflow-auto pr-1 lg:max-h-none">
                   {activityPartialNumbers.map((partialNo, sectionIndex) => {
                     const items = activities.filter((a) => (a.partialNumber ?? 1) === partialNo);
                     const isCurrent = partialNo === currentPartial;
@@ -724,7 +727,7 @@ export default function TeacherPage() {
               </div>
             </section>
 
-            <section className="glass flex min-h-0 min-w-0 flex-col overflow-hidden p-3 sm:p-5 lg:h-[calc(100dvh-13.5rem)] lg:max-h-[calc(100dvh-13.5rem)]">
+            <section className="glass flex min-h-0 min-w-0 flex-col overflow-hidden p-3 sm:p-5">
               {selectedGroupId ? (
                 <GradesMatrixPanel
                   groupId={selectedGroupId}
@@ -736,8 +739,9 @@ export default function TeacherPage() {
               )}
             </section>
           </div>
-        </>
+        </div>
       )}
+      </div>
     </Layout>
   );
 }

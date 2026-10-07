@@ -223,7 +223,7 @@ export default function GradesMatrixPanel({
           No hay alumnos en este grupo. Importa la lista en la pestaña Alumnos (Excel).
         </p>
       ) : (
-        <div className="relative max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:max-h-[calc(100dvh-12.5rem)]">
+        <div className="relative max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:max-h-none">
           <table className="min-w-full border-separate border-spacing-0 text-sm">
             <thead className="sticky top-0 z-20 bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-400">
               <tr>
@@ -330,7 +330,7 @@ export default function GradesMatrixPanel({
                         }`}
                       >
                         <p
-                          className={`mb-0.5 max-w-[5.5rem] truncate text-[10px] font-semibold leading-none sm:max-w-[6.5rem] ${
+                          className={`mb-0.5 max-w-[5.5rem] truncate text-[10px] font-semibold leading-none sm:max-w-[6.5rem] lg:hidden ${
                             markOwed ? "text-rose-400" : "text-cyan-400/90"
                           }`}
                           title={activity.name}

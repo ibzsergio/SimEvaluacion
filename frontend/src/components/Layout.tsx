@@ -45,7 +45,7 @@ export default function Layout({
           </button>
         </div>
       </header>
-      <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-3 pb-10 sm:px-4 sm:pb-12">{children}</main>
+      <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-3 pb-10 sm:px-4 sm:pb-12 lg:flex lg:min-h-0 lg:flex-col lg:pb-4">{children}</main>
       {footer ? (
         <footer className="mx-auto w-full max-w-6xl border-t border-white/5 px-3 py-5 text-center sm:px-4 sm:py-6">
           {footer}
