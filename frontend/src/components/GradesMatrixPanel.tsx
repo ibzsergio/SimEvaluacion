@@ -223,11 +223,11 @@ export default function GradesMatrixPanel({
           No hay alumnos en este grupo. Importa la lista en la pestaña Alumnos (Excel).
         </p>
       ) : (
-        <div className="max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(72dvh,42rem)] lg:max-h-none">
+        <div className="relative max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:max-h-[calc(100dvh-12.5rem)]">
           <table className="min-w-full border-separate border-spacing-0 text-sm">
-            <thead className="text-left text-xs uppercase tracking-wide text-slate-400">
+            <thead className="sticky top-0 z-20 bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-400">
               <tr>
-                <th className="sticky top-0 left-0 z-30 min-w-[9.5rem] border-b border-white/10 bg-slate-900 px-2 py-2 shadow-[0_1px_0_0_rgba(255,255,255,0.08)] sm:min-w-[12.5rem] sm:px-3 sm:py-3">
+                <th className="sticky top-0 left-0 z-30 min-w-[9.5rem] border-b border-white/10 bg-slate-900 px-2 py-2 shadow-[0_1px_0_0_rgba(255,255,255,0.12)] sm:min-w-[12.5rem] sm:px-3 sm:py-3">
                   Alumno
                 </th>
                 {activities.map((activity, index) => {
@@ -237,7 +237,7 @@ export default function GradesMatrixPanel({
                   return (
                   <th
                     key={activity.id}
-                    className={`sticky top-0 z-20 min-w-[5.75rem] border-b border-white/10 bg-slate-900 px-1.5 py-2 align-bottom shadow-[0_1px_0_0_rgba(255,255,255,0.08)] sm:min-w-[7.5rem] sm:px-2 sm:py-3 ${
+                    className={`sticky top-0 z-20 min-w-[5.75rem] border-b border-white/10 bg-slate-900 px-1.5 py-2 align-bottom shadow-[0_1px_0_0_rgba(255,255,255,0.12)] sm:min-w-[8rem] sm:px-2 sm:py-3 ${
                       owed
                         ? "text-rose-100 shadow-[inset_0_0_0_1000px_rgba(244,63,94,0.22)]"
                         : highlighted
@@ -258,7 +258,7 @@ export default function GradesMatrixPanel({
                       {getActivityKindLabel(index, activity.name)}
                     </p>
                     <p
-                      className={`mt-0.5 hidden max-w-[140px] truncate font-normal normal-case tracking-normal sm:block ${
+                      className={`mt-0.5 max-w-[9.5rem] font-normal normal-case leading-snug tracking-normal line-clamp-2 ${
                         owed ? "text-rose-100" : "text-slate-300"
                       }`}
                     >
@@ -310,13 +310,14 @@ export default function GradesMatrixPanel({
                       </p>
                     </button>
                   </td>
-                  {activities.map((activity) => {
+                  {activities.map((activity, index) => {
                     const key = cellKey(student.id, activity.id);
                     const value = displayPoints(student.id, activity.id);
                     const saved = cells[student.id]?.[activity.id];
                     const missing = !hasActivityGrade(student.id, activity.id);
                     const highlighted = activity.id === highlightActivityId;
                     const markOwed = selected && missing;
+                    const kindLabel = getActivityKindLabel(index, activity.name);
                     return (
                       <td
                         key={activity.id}
@@ -328,6 +329,14 @@ export default function GradesMatrixPanel({
                               : ""
                         }`}
                       >
+                        <p
+                          className={`mb-0.5 max-w-[5.5rem] truncate text-[10px] font-semibold leading-none sm:max-w-[6.5rem] ${
+                            markOwed ? "text-rose-400" : "text-cyan-400/90"
+                          }`}
+                          title={activity.name}
+                        >
+                          {kindLabel}
+                        </p>
                         <input
                           type="number"
                           min={0}
@@ -360,9 +369,10 @@ export default function GradesMatrixPanel({
                           }`}
                           title={
                             saved
-                              ? `Guardado ${saved.points} / ${activity.maxPoints}`
-                              : "Sin calificar"
+                              ? `${kindLabel} · ${activity.name} — ${saved.points} / ${activity.maxPoints}`
+                              : `${kindLabel} · ${activity.name} — sin calificar`
                           }
+                          aria-label={`${student.displayName} · ${kindLabel} · ${activity.name}`}
                         />
                         {savingKey === key ? (
                           <span className="ml-1 text-[10px] text-slate-500">...</span>

@@ -724,7 +724,7 @@ export default function TeacherPage() {
               </div>
             </section>
 
-            <section className="glass flex min-w-0 flex-col p-3 sm:p-5 lg:min-h-[calc(100dvh-15.5rem)]">
+            <section className="glass flex min-h-0 min-w-0 flex-col overflow-hidden p-3 sm:p-5 lg:h-[calc(100dvh-13.5rem)] lg:max-h-[calc(100dvh-13.5rem)]">
               {selectedGroupId ? (
                 <GradesMatrixPanel
                   groupId={selectedGroupId}
