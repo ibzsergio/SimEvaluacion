@@ -17,7 +17,7 @@ export default function Layout({
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/40 via-slate-950 to-slate-950">
-      <header className="mx-auto flex w-full max-w-6xl items-start justify-between gap-3 px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:px-4 sm:py-6">
+      <header className="mx-auto flex w-full max-w-6xl items-start justify-between gap-3 px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:px-4 sm:py-6 lg:max-w-7xl">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80 sm:text-xs sm:tracking-[0.2em]">
             SimEvaluación
@@ -45,9 +45,9 @@ export default function Layout({
           </button>
         </div>
       </header>
-      <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-3 pb-10 sm:px-4 sm:pb-12 lg:flex lg:min-h-0 lg:flex-col lg:pb-4">{children}</main>
+      <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-3 pb-10 sm:px-4 sm:pb-12 lg:flex lg:max-w-7xl lg:min-h-0 lg:flex-col lg:pb-4">{children}</main>
       {footer ? (
-        <footer className="mx-auto w-full max-w-6xl border-t border-white/5 px-3 py-5 text-center sm:px-4 sm:py-6">
+        <footer className="mx-auto w-full max-w-6xl border-t border-white/5 px-3 py-5 text-center sm:px-4 sm:py-6 lg:max-w-7xl">
           {footer}
         </footer>
       ) : null}

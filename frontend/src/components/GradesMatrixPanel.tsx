@@ -178,7 +178,8 @@ export default function GradesMatrixPanel({
         return;
       }
       const top = el.getBoundingClientRect().top;
-      const next = `${Math.max(320, Math.floor(window.innerHeight - top - 16))}px`;
+      const desktopZoom = 1.12;
+      const next = `${Math.max(320, Math.floor((window.innerHeight - top - 16) / desktopZoom))}px`;
       if (el.style.maxHeight !== next) el.style.maxHeight = next;
     };
 
@@ -194,7 +195,7 @@ export default function GradesMatrixPanel({
   }, [activities.length, students.length, query.isLoading, search]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="teacher-grades-desktop flex min-h-0 flex-1 flex-col">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-white lg:text-xl">Calificar {partialLabel(partialNumber).toLowerCase()}</h2>

@@ -26,6 +26,13 @@ body {
   }
 }
 
+/* Computadora: agranda un poco el recuadro de calificaciones (letra, casillas y encabezados). */
+@media (min-width: 1024px) {
+  .teacher-grades-desktop {
+    zoom: 1.12;
+  }
+}
+
 html[data-theme="light"] {
   color-scheme: light;
   --color-white: #0f172a;
