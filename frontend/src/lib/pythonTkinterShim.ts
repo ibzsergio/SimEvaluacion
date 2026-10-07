@@ -51,6 +51,35 @@ def _host():
         raise RuntimeError("No hay panel Tkinter en la página.")
     return el
 
+def _as_int(value, default=0):
+    if value is None or value is False:
+        return default
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, (tuple, list)):
+        return _as_int(value[0], default) if len(value) else default
+    try:
+        return int(float(str(value).strip()))
+    except Exception:
+        return default
+
+def _as_pair(value, default=0):
+    if value is None:
+        return default, default
+    if isinstance(value, (tuple, list)):
+        a = _as_int(value[0], default) if len(value) > 0 else default
+        b = _as_int(value[1], a) if len(value) > 1 else a
+        return a, b
+    n = _as_int(value, default)
+    return n, n
+
+def _box_css(vert, horz):
+    top, bottom = _as_pair(vert, 0)
+    left, right = _as_pair(horz, 0)
+    return str(top) + "px " + str(right) + "px " + str(bottom) + "px " + str(left) + "px"
+
 def _font_css(font):
     if not font:
         return None
@@ -84,7 +113,7 @@ def _apply_opts(el, kw):
         el.style.borderRadius = "8px"
     padx, pady = kw.get("padx"), kw.get("pady")
     if padx is not None or pady is not None:
-        el.style.padding = str(int(pady or 4)) + "px " + str(int(padx or 6)) + "px"
+        el.style.padding = _box_css(pady if pady is not None else 4, padx if padx is not None else 6)
     if str(kw.get("state","")).lower() == "disabled":
         el.disabled = True
         el.style.opacity = "0.55"
@@ -190,25 +219,31 @@ class _Widget:
         var._bind(sync)
         sync()
     def pack(self, **opts):
-        parent = self._el.parentElement
-        if parent:
-            parent.style.display = "flex"
-            if not parent.getAttribute("data-tk-flex"):
-                parent.setAttribute("data-tk-flex", "1")
-                parent.style.flexDirection = "column"
-                parent.style.flexWrap = "nowrap"
-                parent.style.alignItems = "stretch"
-        fill = str(opts.get("fill", "")).lower()
-        if fill in ("x", "both"): self._el.style.width = "100%"
-        if fill in ("y", "both"): self._el.style.flex = "1"
-        if opts.get("expand"): self._el.style.flex = "1"
-        side = str(opts.get("side", "top")).lower()
-        if side in ("left", "right") and parent and parent.getAttribute("data-tk-flex") == "1":
-            parent.style.flexDirection = "row"
-            parent.setAttribute("data-tk-flex", "row")
-        self._el.style.margin = str(int(opts.get("pady") or 0)) + "px " + str(int(opts.get("padx") or 0)) + "px"
-        if str(opts.get("anchor", "")).lower() in ("center", "n"):
-            self._el.style.alignSelf = "center"
+        try:
+            parent = self._el.parentElement
+            if parent:
+                parent.style.display = "flex"
+                if not parent.getAttribute("data-tk-flex"):
+                    parent.setAttribute("data-tk-flex", "1")
+                    parent.style.flexDirection = "column"
+                    parent.style.flexWrap = "nowrap"
+                    parent.style.alignItems = "stretch"
+            fill = str(opts.get("fill", "")).lower()
+            if fill in ("x", "both"): self._el.style.width = "100%"
+            if fill in ("y", "both"): self._el.style.flex = "1"
+            if opts.get("expand"): self._el.style.flex = "1"
+            side = str(opts.get("side", "top")).lower()
+            if side in ("left", "right") and parent and parent.getAttribute("data-tk-flex") == "1":
+                parent.style.flexDirection = "row"
+                parent.setAttribute("data-tk-flex", "row")
+            self._el.style.margin = _box_css(opts.get("pady"), opts.get("padx"))
+            ipad = _box_css(opts.get("ipady"), opts.get("ipadx"))
+            if opts.get("ipady") is not None or opts.get("ipadx") is not None:
+                self._el.style.padding = ipad
+            if str(opts.get("anchor", "")).lower() in ("center", "n"):
+                self._el.style.alignSelf = "center"
+        except Exception as err:
+            print("pack:", err)
         return self
     def pack_forget(self):
         self._el.style.display = "none"
@@ -221,11 +256,11 @@ class _Widget:
             parent.style.display = "grid"
             parent.style.gap = "6px"
             parent.style.alignItems = "center"
-        r = int(opts.get("row") or 0) + 1
-        c = int(opts.get("column") or 0) + 1
-        self._el.style.gridRow = str(r) + " / span " + str(int(opts.get("rowspan") or 1))
-        self._el.style.gridColumn = str(c) + " / span " + str(int(opts.get("columnspan") or 1))
-        self._el.style.margin = str(int(opts.get("pady") or 0)) + "px " + str(int(opts.get("padx") or 0)) + "px"
+        r = _as_int(opts.get("row"), 0) + 1
+        c = _as_int(opts.get("column"), 0) + 1
+        self._el.style.gridRow = str(r) + " / span " + str(_as_int(opts.get("rowspan"), 1))
+        self._el.style.gridColumn = str(c) + " / span " + str(_as_int(opts.get("columnspan"), 1))
+        self._el.style.margin = _box_css(opts.get("pady"), opts.get("padx"))
         sticky = str(opts.get("sticky", "")).lower()
         if "ew" in sticky or sticky in ("ew", "nsew"): self._el.style.width = "100%"
         if "ns" in sticky or sticky == "nsew": self._el.style.height = "100%"
