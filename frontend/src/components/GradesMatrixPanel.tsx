@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchGradesMatrix, getApiErrorMessage, saveGradesBatch } from "../lib/api";
 import { formatCalendarDate, getActivityKindLabel, partialLabel } from "../lib/dates";
 import type { Activity } from "../lib/types";
@@ -91,7 +91,6 @@ export default function GradesMatrixPanel({
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
-  const gradesWrapRef = useRef<HTMLDivElement>(null);
 
   const query = useQuery({
     queryKey: ["grades-matrix", groupId, partialNumber],
@@ -235,32 +234,6 @@ export default function GradesMatrixPanel({
 
   const dirtyCount = Object.entries(drafts).filter(([, v]) => v.trim() !== "").length;
 
-  useLayoutEffect(() => {
-    const wrap = gradesWrapRef.current;
-    if (!wrap) return;
-
-    const fitDesktopHeight = () => {
-      if (!window.matchMedia("(min-width: 1024px)").matches) {
-        wrap.style.maxHeight = "";
-        return;
-      }
-      const viewH = window.visualViewport?.height ?? window.innerHeight;
-      const top = wrap.getBoundingClientRect().top;
-      const remaining = Math.floor(viewH - Math.max(top, 0) - 12);
-      wrap.style.maxHeight = `${Math.max(360, remaining)}px`;
-    };
-
-    fitDesktopHeight();
-    const raf = requestAnimationFrame(fitDesktopHeight);
-    window.addEventListener("resize", fitDesktopHeight);
-    window.visualViewport?.addEventListener("resize", fitDesktopHeight);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", fitDesktopHeight);
-      window.visualViewport?.removeEventListener("resize", fitDesktopHeight);
-    };
-  }, [activities.length, students.length, query.isLoading, search]);
-
   function syncHeaderScroll(from: "header" | "body") {
     const header = headerScrollRef.current;
     const body = tableScrollRef.current;
@@ -325,10 +298,7 @@ export default function GradesMatrixPanel({
           No hay alumnos en este grupo. Importa la lista en la pestaña Alumnos (Excel).
         </p>
       ) : (
-        <div
-          ref={gradesWrapRef}
-          className="relative flex max-h-[min(70dvh,36rem)] min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:max-h-[calc(100dvh-8rem)]"
-        >
+        <div className="relative flex max-h-[min(70dvh,36rem)] min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:h-[calc(100dvh-5rem)] lg:max-h-[calc(100dvh-5rem)] lg:min-h-[calc(100dvh-5rem)]">
           <div
             ref={headerScrollRef}
             className="hidden shrink-0 overflow-x-auto overflow-y-hidden bg-slate-900 lg:block [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -372,7 +342,7 @@ export default function GradesMatrixPanel({
                   key={student.id}
                   className={`border-t border-white/5 ${selected ? "bg-white/[0.04]" : ""}`}
                 >
-                  <td className="sticky left-0 z-10 max-w-[9.5rem] bg-slate-950 px-2 py-2 sm:max-w-none sm:px-3 lg:min-w-[16rem] lg:w-[16rem] lg:py-2.5">
+                  <td className="sticky left-0 z-10 max-w-[9.5rem] bg-slate-950 px-2 py-2 sm:max-w-none sm:px-3 lg:min-w-[16rem] lg:w-[16rem] lg:py-1">
                     <button
                       type="button"
                       onClick={() =>
@@ -382,7 +352,7 @@ export default function GradesMatrixPanel({
                       title="Ver qué actividades le faltan"
                     >
                       <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-medium text-white lg:text-lg">
-                        <span className="line-clamp-2 break-words sm:line-clamp-none">{student.displayName}</span>
+                        <span className="line-clamp-2 break-words sm:line-clamp-none lg:line-clamp-1">{student.displayName}</span>
                         <span
                           className={`tabular-nums text-xs font-bold lg:text-sm ${
                             progress.complete ? "text-emerald-400" : "text-rose-400"
@@ -407,7 +377,7 @@ export default function GradesMatrixPanel({
                     return (
                       <td
                         key={activity.id}
-                        className={`px-2 py-2 lg:min-w-[9.5rem] lg:w-[9.5rem] ${
+                        className={`px-2 py-2 lg:min-w-[9.5rem] lg:w-[9.5rem] lg:py-1 ${
                           markOwed
                             ? "bg-rose-500/10"
                             : highlighted
@@ -446,7 +416,7 @@ export default function GradesMatrixPanel({
                               (e.target as HTMLInputElement).blur();
                             }
                           }}
-                      className={`h-10 w-[3.75rem] min-w-[3.75rem] rounded-lg border bg-slate-900/80 px-1.5 text-base text-white placeholder:text-slate-600 sm:w-20 sm:px-2 lg:h-12 lg:w-[5.75rem] lg:min-w-[5.75rem] lg:px-2.5 lg:text-lg ${
+                      className={`h-10 w-[3.75rem] min-w-[3.75rem] rounded-lg border bg-slate-900/80 px-1.5 text-base text-white placeholder:text-slate-600 sm:w-20 sm:px-2 lg:h-10 lg:w-[5.75rem] lg:min-w-[5.75rem] lg:px-2.5 lg:text-lg ${
                             saved
                               ? "border-emerald-400/30"
                               : markOwed
