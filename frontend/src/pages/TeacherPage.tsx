@@ -263,53 +263,55 @@ export default function TeacherPage() {
       title="Panel del docente"
       subtitle={groupsSubtitle}
     >
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-2">
-        <div className="flex flex-wrap gap-2">
-        <TabButton active={tab === "alumnos"} onClick={() => setTab("alumnos")}>
-          Alumnos (Excel)
-        </TabButton>
-        <TabButton active={tab === "actividades"} onClick={() => setTab("actividades")}>
-          Actividades y calificaciones
-        </TabButton>
-        <TabButton active={tab === "entregas"} onClick={() => setTab("entregas")}>
-          Historial entregas
-        </TabButton>
-        <TabButton active={tab === "importar"} onClick={() => setTab("importar")}>
-          Importar Excel
-        </TabButton>
-        <TabButton active={tab === "ranking"} onClick={() => setTab("ranking")}>
-          Ranking del grupo
-        </TabButton>
-        <TabButton active={tab === "semanas"} onClick={() => setTab("semanas")}>
-          Semanas y parcial
-        </TabButton>
-        <TabButton active={tab === "comunicacion"} onClick={() => setTab("comunicacion")}>
-          Comunicación
-        </TabButton>
-        <TabButton active={tab === "semestre"} onClick={() => setTab("semestre")}>
-          Nuevo semestre
-        </TabButton>
-        <TabButton active={tab === "asistencia"} onClick={() => setTab("asistencia")}>
-          Asistencia
-        </TabButton>
-        <TabButton active={tab === "asientos"} onClick={() => setTab("asientos")}>
-          Butacas
-        </TabButton>
-        <TabButton active={tab === "equipos"} onClick={() => setTab("equipos")}>
-          Roles / Equipos
-        </TabButton>
-        <TabButton active={tab === "rompehielo"} onClick={() => setTab("rompehielo")}>
-          Ruleta rompehielo
-        </TabButton>
-        <TabButton active={tab === "lectura"} onClick={() => setTab("lectura")}>
-          Lectura por colores
-        </TabButton>
-        <TabButton active={tab === "torre"} onClick={() => setTab("torre")}>
-          Torre Tkinter
-        </TabButton>
-        <TabButton active={tab === "acceso"} onClick={() => setTab("acceso")}>
-          QR / Acceso
-        </TabButton>
+      <div className="mb-5 border-b border-white/10 pb-2 sm:mb-6">
+        <div className="-mx-3 overflow-x-auto overscroll-x-contain px-3 sm:mx-0 sm:overflow-visible sm:px-0">
+          <div className="flex w-max gap-1 sm:w-auto sm:flex-wrap sm:gap-2">
+            <TabButton active={tab === "alumnos"} onClick={() => setTab("alumnos")}>
+              Alumnos (Excel)
+            </TabButton>
+            <TabButton active={tab === "actividades"} onClick={() => setTab("actividades")}>
+              Actividades y calificaciones
+            </TabButton>
+            <TabButton active={tab === "entregas"} onClick={() => setTab("entregas")}>
+              Historial entregas
+            </TabButton>
+            <TabButton active={tab === "importar"} onClick={() => setTab("importar")}>
+              Importar Excel
+            </TabButton>
+            <TabButton active={tab === "ranking"} onClick={() => setTab("ranking")}>
+              Ranking del grupo
+            </TabButton>
+            <TabButton active={tab === "semanas"} onClick={() => setTab("semanas")}>
+              Semanas y parcial
+            </TabButton>
+            <TabButton active={tab === "comunicacion"} onClick={() => setTab("comunicacion")}>
+              Comunicación
+            </TabButton>
+            <TabButton active={tab === "semestre"} onClick={() => setTab("semestre")}>
+              Nuevo semestre
+            </TabButton>
+            <TabButton active={tab === "asistencia"} onClick={() => setTab("asistencia")}>
+              Asistencia
+            </TabButton>
+            <TabButton active={tab === "asientos"} onClick={() => setTab("asientos")}>
+              Butacas
+            </TabButton>
+            <TabButton active={tab === "equipos"} onClick={() => setTab("equipos")}>
+              Roles / Equipos
+            </TabButton>
+            <TabButton active={tab === "rompehielo"} onClick={() => setTab("rompehielo")}>
+              Ruleta rompehielo
+            </TabButton>
+            <TabButton active={tab === "lectura"} onClick={() => setTab("lectura")}>
+              Lectura por colores
+            </TabButton>
+            <TabButton active={tab === "torre"} onClick={() => setTab("torre")}>
+              Torre Tkinter
+            </TabButton>
+            <TabButton active={tab === "acceso"} onClick={() => setTab("acceso")}>
+              QR / Acceso
+            </TabButton>
+          </div>
         </div>
         <button
           type="button"
@@ -324,7 +326,7 @@ export default function TeacherPage() {
               setDownloadingExcel(false);
             }
           }}
-          className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
+          className="mt-2 w-full rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60 sm:mt-3 sm:w-auto sm:px-4"
         >
           {downloadingExcel ? "Generando Excel..." : `Descargar Excel ${groupsLabelPlus}`}
         </button>
@@ -543,7 +545,7 @@ export default function TeacherPage() {
                     type="date"
                     value={form.date}
                     onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-white"
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2.5 text-base text-white sm:py-2 sm:text-sm"
                     required
                   />
                 </label>
@@ -560,7 +562,7 @@ export default function TeacherPage() {
                         name: ensurePracticaNumber(e.target.value, nextPractica),
                       }))
                     }
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-white"
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2.5 text-base text-white sm:py-2 sm:text-sm"
                     placeholder={`Práctica ${nextPractica} — tema`}
                     required
                   />
@@ -592,7 +594,7 @@ export default function TeacherPage() {
                     min={1}
                     value={form.maxPoints}
                     onChange={(e) => setForm((f) => ({ ...f, maxPoints: Number(e.target.value) }))}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-white"
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2.5 text-base text-white sm:py-2 sm:text-sm"
                   />
                 </label>
                 <p className="text-xs text-slate-500">
@@ -612,7 +614,7 @@ export default function TeacherPage() {
                   <button
                     type="submit"
                     disabled={activityFormPending}
-                    className="flex-1 rounded-xl bg-indigo-500 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
+                    className="min-h-11 flex-1 rounded-xl bg-indigo-500 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
                   >
                     {activityFormPending
                       ? "Guardando..."
@@ -819,7 +821,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-t-lg px-4 py-2 text-sm font-semibold transition ${
+      className={`shrink-0 whitespace-nowrap rounded-t-lg px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm ${
         active ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
       }`}
     >

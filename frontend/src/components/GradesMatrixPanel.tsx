@@ -182,7 +182,7 @@ export default function GradesMatrixPanel({
             type="button"
             onClick={handleSaveAll}
             disabled={saveMutation.isPending || dirtyCount === 0}
-            className="rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-50"
+            className="min-h-11 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-50 sm:w-auto"
           >
             {savingKey === "all" ? "Guardando..." : `Guardar cambios (${dirtyCount})`}
           </button>
@@ -205,7 +205,7 @@ export default function GradesMatrixPanel({
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Buscar alumno..."
-        className="mb-2 w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-sm text-white placeholder:text-slate-500"
+        className="mb-2 w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-base text-white placeholder:text-slate-500 sm:text-sm"
       />
       <p className="mb-3 text-xs text-slate-500 sm:mb-4">
         Junto al nombre ves cuántas lleva. Toca un alumno para marcar en rojo las que le faltan. Al bajar
