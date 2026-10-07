@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261007-grades-rows",
+        cacheId: "simeval-20261007-grades-15",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
