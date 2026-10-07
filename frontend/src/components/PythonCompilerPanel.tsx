@@ -34,7 +34,11 @@ ventana.mainloop()
 const editorTheme = EditorView.theme({
   "&": { height: "100%", fontSize: "15px" },
   ".cm-content": { fontFamily: 'Consolas, "Cascadia Code", "Fira Code", ui-monospace, monospace' },
-  ".cm-scroller": { overflow: "auto", minHeight: "22rem" },
+  ".cm-scroller": {
+    height: "100%",
+    overflowX: "scroll",
+    overflowY: "scroll",
+  },
   "@media (max-width: 640px)": {
     "&": { fontSize: "16px" },
   },
@@ -155,7 +159,7 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">
             Código
           </span>
-          <div className="h-[22rem] overflow-hidden rounded-xl border border-white/10 sm:h-[28rem]">
+          <div className="python-code-editor h-[22rem] overflow-auto rounded-xl border border-white/10 sm:h-[28rem]">
             <CodeMirror
               value={code}
               height="100%"

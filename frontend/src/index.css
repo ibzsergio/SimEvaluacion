@@ -26,6 +26,26 @@ body {
   }
 }
 
+.python-code-editor .cm-editor,
+.python-code-editor .cm-scroller {
+  height: 100%;
+}
+.python-code-editor .cm-scroller {
+  overflow-x: scroll !important;
+  overflow-y: scroll !important;
+}
+.python-code-editor .cm-scroller::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.python-code-editor .cm-scroller::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 8px;
+}
+.python-code-editor .cm-scroller::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+
 /* Computadora: misma letra que la tabla de calificaciones, en todo el panel del docente. */
 @media (min-width: 1024px) {
   .teacher-grades-desktop {
