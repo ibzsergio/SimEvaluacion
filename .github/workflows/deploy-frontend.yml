@@ -1,0 +1,37 @@
+name: Deploy frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "netlify.toml"
+      - ".github/workflows/deploy-frontend.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build
+        working-directory: frontend
+        run: npm ci && npm run build
+        env:
+          VITE_API_URL: https://simevaluacion-production.up.railway.app
+      - name: Deploy to Netlify
+        working-directory: frontend
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "Faltan secrets NETLIFY_AUTH_TOKEN y NETLIFY_SITE_ID. El build quedó listo; publica desde Netlify → Trigger deploy."
+            exit 0
+          fi
+          npx netlify-cli deploy --prod --dir=dist --message "github ${GITHUB_SHA}"
