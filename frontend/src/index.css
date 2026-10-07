@@ -26,10 +26,14 @@ body {
   }
 }
 
-/* Computadora: agranda un poco el recuadro de calificaciones (letra, casillas y encabezados). */
+/* Computadora: misma letra que la tabla de calificaciones, en todo el panel del docente. */
 @media (min-width: 1024px) {
   .teacher-grades-desktop {
     zoom: 1.12;
+    height: calc(100dvh / 1.12);
+    max-height: calc(100dvh / 1.12);
+    min-height: calc(100dvh / 1.12);
+    overflow: hidden;
   }
 }
 

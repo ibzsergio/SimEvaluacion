@@ -262,6 +262,7 @@ export default function TeacherPage() {
     <Layout
       title="Panel del docente"
       subtitle={groupsSubtitle}
+      matchGradesType
     >
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       <div className="mb-6 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-2">
