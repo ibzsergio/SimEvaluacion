@@ -8,6 +8,71 @@ function cellKey(studentId: string, activityId: string) {
   return `${studentId}::${activityId}`;
 }
 
+function ActivityHeaderCells({
+  activities,
+  selectedStudentId,
+  highlightActivityId,
+  hasActivityGrade,
+}: {
+  activities: Activity[];
+  selectedStudentId: string | null;
+  highlightActivityId: string | null;
+  hasActivityGrade: (studentId: string, activityId: string) => boolean;
+}) {
+  return (
+    <>
+      <th className="sticky left-0 z-30 min-w-[9.5rem] border-b border-white/10 bg-slate-900 px-2 py-2 sm:min-w-[12.5rem] sm:px-3 sm:py-3 lg:static lg:min-w-[16rem] lg:w-[16rem]">
+        Alumno
+      </th>
+      {activities.map((activity, index) => {
+        const owed =
+          Boolean(selectedStudentId) && !hasActivityGrade(selectedStudentId!, activity.id);
+        const highlighted = activity.id === highlightActivityId && !owed;
+        return (
+          <th
+            key={activity.id}
+            className={`min-w-[5.75rem] border-b border-white/10 bg-slate-900 px-1.5 py-2 align-bottom sm:min-w-[8rem] sm:px-2 sm:py-3 lg:min-w-[9.5rem] lg:w-[9.5rem] ${
+              owed
+                ? "text-rose-100 shadow-[inset_0_0_0_1000px_rgba(244,63,94,0.22)]"
+                : highlighted
+                  ? "text-cyan-100 shadow-[inset_0_0_0_1000px_rgba(34,211,238,0.12)]"
+                  : ""
+            }`}
+            title={
+              owed
+                ? `${activity.name} — este alumno aún no tiene calificación`
+                : activity.name
+            }
+          >
+            <p
+              className={`font-bold normal-case tracking-normal lg:text-base ${
+                owed ? "text-rose-300" : "text-cyan-300"
+              }`}
+            >
+              {getActivityKindLabel(index, activity.name)}
+            </p>
+            <p
+              className={`mt-0.5 max-w-[9.5rem] font-normal normal-case leading-snug tracking-normal line-clamp-2 lg:max-w-[11rem] lg:text-sm ${
+                owed ? "text-rose-100" : "text-slate-300"
+              }`}
+            >
+              {activity.name}
+            </p>
+            <p
+              className={`mt-0.5 font-normal normal-case tracking-normal text-[10px] lg:text-xs ${
+                owed ? "font-semibold text-rose-300" : "text-slate-500"
+              }`}
+            >
+              {owed ? "Pendiente · " : ""}/ {activity.maxPoints}
+              <span className="hidden sm:inline"> · {formatCalendarDate(activity.date)}</span>
+            </p>
+          </th>
+        );
+      })}
+    </>
+  );
+}
+
 export default function GradesMatrixPanel({
   groupId,
   partialNumber,
@@ -25,6 +90,8 @@ export default function GradesMatrixPanel({
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const gradesWrapRef = useRef<HTMLDivElement>(null);
 
   const query = useQuery({
     queryKey: ["grades-matrix", groupId, partialNumber],
@@ -169,38 +236,38 @@ export default function GradesMatrixPanel({
   const dirtyCount = Object.entries(drafts).filter(([, v]) => v.trim() !== "").length;
 
   useLayoutEffect(() => {
-    const el = tableScrollRef.current;
-    if (!el) return;
+    const wrap = gradesWrapRef.current;
+    if (!wrap) return;
 
     const fitDesktopHeight = () => {
       if (!window.matchMedia("(min-width: 1024px)").matches) {
-        el.style.maxHeight = "";
-        el.style.minHeight = "";
+        wrap.style.maxHeight = "";
         return;
       }
       const viewH = window.visualViewport?.height ?? window.innerHeight;
-      const top = el.getBoundingClientRect().top;
-      const toBottom = Math.floor(viewH - top - 8);
-      const tall = Math.max(toBottom, Math.floor(viewH * 0.88));
-      const px = `${tall}px`;
-      if (el.style.maxHeight !== px) el.style.maxHeight = px;
-      if (el.style.minHeight !== px) el.style.minHeight = px;
+      const top = wrap.getBoundingClientRect().top;
+      const remaining = Math.floor(viewH - Math.max(top, 0) - 12);
+      wrap.style.maxHeight = `${Math.max(360, remaining)}px`;
     };
 
     fitDesktopHeight();
     const raf = requestAnimationFrame(fitDesktopHeight);
     window.addEventListener("resize", fitDesktopHeight);
-    window.addEventListener("scroll", fitDesktopHeight, { passive: true });
     window.visualViewport?.addEventListener("resize", fitDesktopHeight);
-    window.visualViewport?.addEventListener("scroll", fitDesktopHeight);
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", fitDesktopHeight);
-      window.removeEventListener("scroll", fitDesktopHeight);
       window.visualViewport?.removeEventListener("resize", fitDesktopHeight);
-      window.visualViewport?.removeEventListener("scroll", fitDesktopHeight);
     };
   }, [activities.length, students.length, query.isLoading, search]);
+
+  function syncHeaderScroll(from: "header" | "body") {
+    const header = headerScrollRef.current;
+    const body = tableScrollRef.current;
+    if (!header || !body) return;
+    if (from === "body") header.scrollLeft = body.scrollLeft;
+    else body.scrollLeft = header.scrollLeft;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -259,60 +326,41 @@ export default function GradesMatrixPanel({
         </p>
       ) : (
         <div
-          ref={tableScrollRef}
-          className="relative max-h-[min(70dvh,36rem)] min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:min-h-[88vh] lg:max-h-[calc(100dvh-3rem)]"
+          ref={gradesWrapRef}
+          className="relative flex max-h-[min(70dvh,36rem)] min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/10 sm:max-h-[min(80dvh,52rem)] lg:max-h-[calc(100dvh-8rem)]"
         >
-          <table className="min-w-full border-separate border-spacing-0 text-sm lg:text-base">
-            <thead className="sticky top-0 z-20 bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-400 lg:text-sm">
+          <div
+            ref={headerScrollRef}
+            className="hidden shrink-0 overflow-x-auto overflow-y-hidden bg-slate-900 lg:block [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            onScroll={() => syncHeaderScroll("header")}
+          >
+            <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-sm uppercase tracking-wide text-slate-400 lg:text-base">
+              <thead>
+                <tr>
+                  <ActivityHeaderCells
+                    activities={activities}
+                    selectedStudentId={selectedStudentId}
+                    highlightActivityId={highlightActivityId}
+                    hasActivityGrade={hasActivityGrade}
+                  />
+                </tr>
+              </thead>
+            </table>
+          </div>
+          <div
+            ref={tableScrollRef}
+            className="min-h-0 flex-1 overflow-auto overscroll-contain"
+            onScroll={() => syncHeaderScroll("body")}
+          >
+          <table className="min-w-full border-separate border-spacing-0 text-sm lg:table-fixed lg:text-base">
+            <thead className="sticky top-0 z-20 bg-slate-900 text-left text-xs uppercase tracking-wide text-slate-400 lg:hidden">
               <tr>
-                <th className="sticky top-0 left-0 z-30 min-w-[9.5rem] border-b border-white/10 bg-slate-900 px-2 py-2 shadow-[0_1px_0_0_rgba(255,255,255,0.12)] sm:min-w-[12.5rem] sm:px-3 sm:py-3 lg:min-w-[16rem]">
-                  Alumno
-                </th>
-                {activities.map((activity, index) => {
-                  const owed =
-                    Boolean(selectedStudentId) && !hasActivityGrade(selectedStudentId!, activity.id);
-                  const highlighted = activity.id === highlightActivityId && !owed;
-                  return (
-                  <th
-                    key={activity.id}
-                    className={`sticky top-0 z-20 min-w-[5.75rem] border-b border-white/10 bg-slate-900 px-1.5 py-2 align-bottom shadow-[0_1px_0_0_rgba(255,255,255,0.12)] sm:min-w-[8rem] sm:px-2 sm:py-3 lg:min-w-[9.5rem] ${
-                      owed
-                        ? "text-rose-100 shadow-[inset_0_0_0_1000px_rgba(244,63,94,0.22)]"
-                        : highlighted
-                          ? "text-cyan-100 shadow-[inset_0_0_0_1000px_rgba(34,211,238,0.12)]"
-                          : ""
-                    }`}
-                    title={
-                      owed
-                        ? `${activity.name} — este alumno aún no tiene calificación`
-                        : activity.name
-                    }
-                  >
-                    <p
-                      className={`font-bold normal-case tracking-normal lg:text-base ${
-                        owed ? "text-rose-300" : "text-cyan-300"
-                      }`}
-                    >
-                      {getActivityKindLabel(index, activity.name)}
-                    </p>
-                    <p
-                      className={`mt-0.5 max-w-[9.5rem] font-normal normal-case leading-snug tracking-normal line-clamp-2 lg:max-w-[11rem] lg:text-sm ${
-                        owed ? "text-rose-100" : "text-slate-300"
-                      }`}
-                    >
-                      {activity.name}
-                    </p>
-                    <p
-                      className={`mt-0.5 font-normal normal-case tracking-normal text-[10px] lg:text-xs ${
-                        owed ? "font-semibold text-rose-300" : "text-slate-500"
-                      }`}
-                    >
-                      {owed ? "Pendiente · " : ""}/ {activity.maxPoints}
-                      <span className="hidden sm:inline"> · {formatCalendarDate(activity.date)}</span>
-                    </p>
-                  </th>
-                  );
-                })}
+                <ActivityHeaderCells
+                  activities={activities}
+                  selectedStudentId={selectedStudentId}
+                  highlightActivityId={highlightActivityId}
+                  hasActivityGrade={hasActivityGrade}
+                />
               </tr>
             </thead>
             <tbody>
@@ -324,7 +372,7 @@ export default function GradesMatrixPanel({
                   key={student.id}
                   className={`border-t border-white/5 ${selected ? "bg-white/[0.04]" : ""}`}
                 >
-                  <td className="sticky left-0 z-10 max-w-[9.5rem] bg-slate-950 px-2 py-2 sm:max-w-none sm:px-3 lg:py-2.5">
+                  <td className="sticky left-0 z-10 max-w-[9.5rem] bg-slate-950 px-2 py-2 sm:max-w-none sm:px-3 lg:min-w-[16rem] lg:w-[16rem] lg:py-2.5">
                     <button
                       type="button"
                       onClick={() =>
@@ -359,7 +407,7 @@ export default function GradesMatrixPanel({
                     return (
                       <td
                         key={activity.id}
-                        className={`px-2 py-2 ${
+                        className={`px-2 py-2 lg:min-w-[9.5rem] lg:w-[9.5rem] ${
                           markOwed
                             ? "bg-rose-500/10"
                             : highlighted
@@ -423,6 +471,7 @@ export default function GradesMatrixPanel({
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
