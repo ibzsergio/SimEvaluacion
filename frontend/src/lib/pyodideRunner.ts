@@ -16,6 +16,7 @@ declare global {
 }
 
 let pyodidePromise: Promise<PyodideLike> | null = null;
+let pyodideReady: PyodideLike | null = null;
 
 function loadScript(src: string) {
   return new Promise<void>((resolve, reject) => {
@@ -42,6 +43,7 @@ export function getPyodide(): Promise<PyodideLike> {
       }
       const py = await window.loadPyodide({ indexURL: PYODIDE_INDEX });
       await py.runPythonAsync(TKINTER_SHIM);
+      pyodideReady = py;
       return py;
     })();
   }
@@ -60,4 +62,23 @@ export async function runPythonProgram(
   py.setStderr({ batched: onOutput });
   await py.runPythonAsync(TKINTER_SHIM);
   await py.runPythonAsync(code);
+}
+
+export async function checkPythonSyntax(code: string): Promise<{
+  line: number;
+  message: string;
+} | null> {
+  if (!pyodideReady) return null;
+  try {
+    await pyodideReady.runPythonAsync(`compile(${JSON.stringify(code)}, "<editor>", "exec")`);
+    return null;
+  } catch (err) {
+    const text = err instanceof Error ? err.message : String(err);
+    const lineMatch = text.match(/line (\d+)/i);
+    const msgMatch = text.match(/SyntaxError:\s*(.+)/);
+    return {
+      line: lineMatch ? Number(lineMatch[1]) : 1,
+      message: (msgMatch?.[1] ?? text.split("\n").pop() ?? "Error de sintaxis").trim(),
+    };
+  }
 }

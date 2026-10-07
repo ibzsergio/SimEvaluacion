@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { runPythonProgram } from "../lib/pyodideRunner";
+import { python } from "@codemirror/lang-python";
+import { linter, lintGutter, type Diagnostic } from "@codemirror/lint";
+import { EditorView } from "@codemirror/view";
+import CodeMirror from "@uiw/react-codemirror";
+import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { checkPythonSyntax, runPythonProgram } from "../lib/pyodideRunner";
+import { useTheme } from "../lib/theme";
 
 const STORAGE_KEY = "simeval_python_tk_code";
 
@@ -25,7 +31,27 @@ tk.Button(ventana, text="Saludar", command=saludar).pack(pady=10)
 ventana.mainloop()
 `;
 
+const editorTheme = EditorView.theme({
+  "&": { height: "100%", fontSize: "15px" },
+  ".cm-content": { fontFamily: 'Consolas, "Cascadia Code", "Fira Code", ui-monospace, monospace' },
+  ".cm-scroller": { overflow: "auto", minHeight: "22rem" },
+  "@media (max-width: 640px)": {
+    "&": { fontSize: "16px" },
+  },
+});
+
+function rangeForLine(code: string, line: number) {
+  const lines = code.split("\n");
+  const index = Math.max(1, Math.min(line, lines.length)) - 1;
+  let from = 0;
+  for (let i = 0; i < index; i++) from += (lines[i]?.length ?? 0) + 1;
+  const text = lines[index] ?? "";
+  const start = from + (text.match(/^\s*/)?.[0].length ?? 0);
+  return { from: start, to: Math.max(start + 1, from + text.length) };
+}
+
 export default function PythonCompilerPanel({ compact }: { compact?: boolean }) {
+  const { theme } = useTheme();
   const [code, setCode] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) || DEFAULT_CODE;
@@ -45,6 +71,32 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
       /* ignore */
     }
   }, [code]);
+
+  const extensions = useMemo(
+    () => [
+      python(),
+      lintGutter(),
+      editorTheme,
+      linter(
+        async (view) => {
+          const text = view.state.doc.toString();
+          const err = await checkPythonSyntax(text);
+          if (!err) return [] as Diagnostic[];
+          const range = rangeForLine(text, err.line);
+          return [
+            {
+              from: range.from,
+              to: range.to,
+              severity: "error" as const,
+              message: err.message,
+            },
+          ];
+        },
+        { delay: 700 },
+      ),
+    ],
+    [],
+  );
 
   async function run() {
     const host = hostRef.current;
@@ -99,18 +151,30 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
         {message}
       </p>
       <div className={`grid gap-3 ${compact ? "" : "lg:grid-cols-2"}`}>
-        <label className="block min-w-0">
+        <div className="block min-w-0">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">
             Código
           </span>
-          <textarea
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            spellCheck={false}
-            className="h-[22rem] w-full resize-y rounded-xl border border-white/10 bg-slate-950/70 p-3 font-mono text-base leading-relaxed text-cyan-50 outline-none sm:h-[28rem]"
-            aria-label="Código Python"
-          />
-        </label>
+          <div className="h-[22rem] overflow-hidden rounded-xl border border-white/10 sm:h-[28rem]">
+            <CodeMirror
+              value={code}
+              height="100%"
+              theme={theme === "light" ? vscodeLight : vscodeDark}
+              extensions={extensions}
+              onChange={setCode}
+              basicSetup={{
+                lineNumbers: true,
+                highlightActiveLine: true,
+                highlightActiveLineGutter: true,
+                foldGutter: true,
+                autocompletion: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                indentOnInput: true,
+              }}
+            />
+          </div>
+        </div>
         <div className="min-w-0">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Ventana Tkinter
