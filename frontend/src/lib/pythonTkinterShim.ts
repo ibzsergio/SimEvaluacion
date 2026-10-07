@@ -80,6 +80,79 @@ def _box_css(vert, horz):
     left, right = _as_pair(horz, 0)
     return str(top) + "px " + str(right) + "px " + str(bottom) + "px " + str(left) + "px"
 
+def _is_mid(el):
+    try:
+        return bool(el) and el.classList and el.classList.contains("simeval-tk-pack-mid")
+    except Exception:
+        return False
+
+def _packed_kids(parent):
+    out = []
+    if parent is None:
+        return out
+    for child in list(parent.children):
+        if _is_mid(child):
+            for inner in list(child.children):
+                if inner.getAttribute("data-tk-packed"):
+                    out.append(inner)
+        elif child.getAttribute and child.getAttribute("data-tk-packed"):
+            out.append(child)
+    return out
+
+def _pack_index(el):
+    try:
+        return int(el.getAttribute("data-tk-pack-i") or "0")
+    except Exception:
+        return 0
+
+def _make_mid():
+    mid = document.createElement("div")
+    mid.className = "simeval-tk-pack-mid"
+    mid.style.cssText = "display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-start;justify-content:center;gap:8px;width:100%;box-sizing:border-box;"
+    return mid
+
+def _relayout_pack(parent):
+    if parent is None:
+        return
+    packed = sorted(_packed_kids(parent), key=_pack_index)
+    old_mids = [child for child in list(parent.children) if _is_mid(child)]
+    parent.setAttribute("data-tk-layout", "pack")
+    if parent.style.display != "none":
+        parent.style.display = "flex"
+        parent.style.flexDirection = "column"
+        parent.style.flexWrap = "nowrap"
+        parent.style.alignItems = "center"
+    if not packed:
+        for mid in old_mids:
+            mid.remove()
+        return
+    rows = []
+    current = None
+    bottoms = []
+    for el in packed:
+        side = (el.getAttribute("data-tk-side") or "top").lower()
+        if side == "bottom":
+            current = None
+            bottoms.append(el)
+            continue
+        if side in ("left", "right"):
+            if current is None:
+                current = _make_mid()
+                rows.append(current)
+            if side == "right":
+                el.style.marginLeft = "auto"
+            current.appendChild(el)
+        else:
+            current = None
+            rows.append(el)
+    for item in rows:
+        parent.appendChild(item)
+    for el in bottoms:
+        parent.appendChild(el)
+    for mid in old_mids:
+        if mid.parentElement is None or not mid.children.length:
+            mid.remove()
+
 def _font_css(font):
     if not font:
         return None
@@ -103,10 +176,10 @@ def _apply_opts(el, kw):
     font = _font_css(kw.get("font"))
     if font: el.style.font = font
     if kw.get("width") is not None:
-        try: el.style.minWidth = str(int(kw["width"]) * 0.65) + "em"
+        try: el.style.minWidth = str(_as_int(kw["width"]) * 0.65) + "em"
         except Exception: pass
     if kw.get("height") is not None:
-        try: el.style.minHeight = str(int(kw["height"]) * 1.15) + "em"
+        try: el.style.minHeight = str(_as_int(kw["height"]) * 1.15) + "em"
         except Exception: pass
     if kw.get("relief") in ("solid","ridge","groove","sunken","raised"):
         el.style.border = "1px solid rgba(15,23,42,0.25)"
@@ -186,6 +259,8 @@ class _Widget:
         self.children = []
         self._el = document.createElement("div")
         self._el.className = "simeval-tk-widget"
+        self._el.style.display = "none"
+        self._natural_display = "block"
         self.command = kw.get("command")
         _apply_opts(self._el, kw)
         parent = self.master._el if self.master is not None and hasattr(self.master, "_el") else _host()
@@ -218,52 +293,97 @@ class _Widget:
                 self._set_text(str(var.get()))
         var._bind(sync)
         sync()
+    def _map_el(self):
+        layout = self._el.getAttribute("data-tk-layout")
+        if layout == "grid":
+            self._el.style.display = "grid"
+        elif layout == "pack":
+            self._el.style.display = "flex"
+            self._el.style.flexDirection = "column"
+            self._el.style.alignItems = "center"
+        else:
+            self._el.style.display = getattr(self, "_natural_display", "block")
     def pack(self, **opts):
         try:
-            parent = self._el.parentElement
-            if parent:
-                parent.style.display = "flex"
-                if not parent.getAttribute("data-tk-flex"):
-                    parent.setAttribute("data-tk-flex", "1")
-                    parent.style.flexDirection = "column"
-                    parent.style.flexWrap = "nowrap"
-                    parent.style.alignItems = "stretch"
+            self._map_el()
+            side = str(opts.get("side", "top") or "top").lower()
+            self._el.setAttribute("data-tk-packed", "1")
+            self._el.setAttribute("data-tk-side", side)
+            if not self._el.getAttribute("data-tk-pack-i"):
+                host = self._el.parentElement
+                if host and _is_mid(host):
+                    host = host.parentElement
+                n = _as_int(host.getAttribute("data-tk-pack-n") if host else None, 0) + 1
+                if host:
+                    host.setAttribute("data-tk-pack-n", str(n))
+                self._el.setAttribute("data-tk-pack-i", str(n))
             fill = str(opts.get("fill", "")).lower()
-            if fill in ("x", "both"): self._el.style.width = "100%"
-            if fill in ("y", "both"): self._el.style.flex = "1"
-            if opts.get("expand"): self._el.style.flex = "1"
-            side = str(opts.get("side", "top")).lower()
-            if side in ("left", "right") and parent and parent.getAttribute("data-tk-flex") == "1":
-                parent.style.flexDirection = "row"
-                parent.setAttribute("data-tk-flex", "row")
+            expand = bool(opts.get("expand"))
+            if fill in ("x", "both"):
+                self._el.style.width = "100%"
+                self._el.style.alignSelf = "stretch"
+            else:
+                self._el.style.width = "auto"
+            if fill in ("y", "both") or expand:
+                self._el.style.flex = "1"
+            anchor = str(opts.get("anchor", "center") or "center").lower()
+            if fill not in ("x", "both"):
+                if anchor in ("w", "nw", "sw", "left"):
+                    self._el.style.alignSelf = "flex-start"
+                elif anchor in ("e", "ne", "se", "right"):
+                    self._el.style.alignSelf = "flex-end"
+                else:
+                    self._el.style.alignSelf = "center"
             self._el.style.margin = _box_css(opts.get("pady"), opts.get("padx"))
-            ipad = _box_css(opts.get("ipady"), opts.get("ipadx"))
             if opts.get("ipady") is not None or opts.get("ipadx") is not None:
-                self._el.style.padding = ipad
-            if str(opts.get("anchor", "")).lower() in ("center", "n"):
-                self._el.style.alignSelf = "center"
+                self._el.style.padding = _box_css(opts.get("ipady"), opts.get("ipadx"))
+            host_parent = self._el.parentElement
+            if host_parent and _is_mid(host_parent):
+                host_parent = host_parent.parentElement
+            _relayout_pack(host_parent)
         except Exception as err:
             print("pack:", err)
         return self
     def pack_forget(self):
         self._el.style.display = "none"
+        self._el.removeAttribute("data-tk-packed")
+        host_parent = self._el.parentElement
+        if host_parent and _is_mid(host_parent):
+            host_parent = host_parent.parentElement
+        _relayout_pack(host_parent)
         return self
     def pack_info(self):
         return {}
     def grid(self, **opts):
-        parent = self._el.parentElement
-        if parent:
-            parent.style.display = "grid"
-            parent.style.gap = "6px"
-            parent.style.alignItems = "center"
-        r = _as_int(opts.get("row"), 0) + 1
-        c = _as_int(opts.get("column"), 0) + 1
-        self._el.style.gridRow = str(r) + " / span " + str(_as_int(opts.get("rowspan"), 1))
-        self._el.style.gridColumn = str(c) + " / span " + str(_as_int(opts.get("columnspan"), 1))
-        self._el.style.margin = _box_css(opts.get("pady"), opts.get("padx"))
-        sticky = str(opts.get("sticky", "")).lower()
-        if "ew" in sticky or sticky in ("ew", "nsew"): self._el.style.width = "100%"
-        if "ns" in sticky or sticky == "nsew": self._el.style.height = "100%"
+        try:
+            self._map_el()
+            parent = self._el.parentElement
+            if parent and _is_mid(parent):
+                parent = parent.parentElement
+                if parent:
+                    parent.appendChild(self._el)
+            if parent:
+                parent.setAttribute("data-tk-layout", "grid")
+                parent.style.gap = "8px"
+                parent.style.alignItems = "start"
+                parent.style.justifyItems = "stretch"
+                if parent.style.display != "none":
+                    parent.style.display = "grid"
+                c = _as_int(opts.get("column"), 0) + 1
+                maxc = _as_int(parent.getAttribute("data-tk-grid-cols"), 1)
+                if c > maxc:
+                    parent.setAttribute("data-tk-grid-cols", str(c))
+                    parent.style.gridTemplateColumns = "repeat(" + str(c) + ", minmax(9rem, 1fr))"
+            r = _as_int(opts.get("row"), 0) + 1
+            c = _as_int(opts.get("column"), 0) + 1
+            self._el.style.gridRow = str(r) + " / span " + str(_as_int(opts.get("rowspan"), 1))
+            self._el.style.gridColumn = str(c) + " / span " + str(_as_int(opts.get("columnspan"), 1))
+            self._el.style.margin = _box_css(opts.get("pady"), opts.get("padx"))
+            sticky = str(opts.get("sticky", "")).lower()
+            if "e" in sticky and "w" in sticky: self._el.style.width = "100%"
+            if "n" in sticky and "s" in sticky: self._el.style.height = "100%"
+        except Exception as err:
+            print("grid:", err)
         return self
     def grid_forget(self):
         self._el.style.display = "none"
@@ -273,11 +393,12 @@ class _Widget:
     def columnconfigure(self, *a, **k): return self
     def rowconfigure(self, *a, **k): return self
     def place(self, **opts):
+        self._map_el()
         parent = self._el.parentElement
         if parent: parent.style.position = "relative"
         self._el.style.position = "absolute"
-        if "x" in opts: self._el.style.left = str(int(opts["x"])) + "px"
-        if "y" in opts: self._el.style.top = str(int(opts["y"])) + "px"
+        if "x" in opts: self._el.style.left = str(_as_int(opts["x"])) + "px"
+        if "y" in opts: self._el.style.top = str(_as_int(opts["y"])) + "px"
         if "relx" in opts: self._el.style.left = str(float(opts["relx"]) * 100) + "%"
         if "rely" in opts: self._el.style.top = str(float(opts["rely"]) * 100) + "%"
         return self
@@ -374,7 +495,7 @@ class Tk(_Widget):
         host.style.position = "relative"
         self._el = document.createElement("div")
         self._el.className = "simeval-tk-root"
-        self._el.style.cssText = "box-sizing:border-box;width:100%;max-width:100%;min-height:16rem;background:#e5e7eb;color:#0f172a;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;overflow:auto;"
+        self._el.style.cssText = "box-sizing:border-box;width:100%;min-width:min-content;min-height:16rem;background:#f0f0f0;color:#0f172a;border-radius:12px;padding:12px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:4px;overflow:visible;"
         _apply_opts(self._el, kw)
         host.appendChild(self._el)
         sys.modules["tkinter"]._ROOT = self
@@ -396,6 +517,7 @@ class Tk(_Widget):
             h = "".join(ch for ch in h.split("+")[0] if ch.isdigit())
             if w:
                 self._el.style.width = "min(" + str(int(w)) + "px, 100%)"
+                self._el.style.minWidth = "min(" + str(int(w)) + "px, 100%)"
             if h:
                 self._el.style.minHeight = str(int(h)) + "px"
         except Exception:
@@ -438,9 +560,10 @@ class Toplevel(Tk):
 class Frame(_Widget):
     def __init__(self, master=None, **kw):
         super().__init__(master, **kw)
-        self._el.style.display = "flex"
+        self._natural_display = "flex"
         self._el.style.flexDirection = "column"
-        self._el.style.gap = "4px"
+        self._el.style.alignItems = "stretch"
+        self._el.style.gap = "2px"
         self._el.style.boxSizing = "border-box"
         if kw.get("bd") or kw.get("borderwidth") or kw.get("relief"):
             self._el.style.border = "1px solid rgba(15,23,42,0.18)"
@@ -464,7 +587,8 @@ class PanedWindow(Frame):
 class Label(_Widget):
     def __init__(self, master=None, **kw):
         super().__init__(master, **kw)
-        self._el.style.padding = "4px 2px"
+        self._el.style.padding = "2px 4px"
+        self._el.style.lineHeight = "1.35"
         self._set_text(kw.get("text", ""))
         if kw.get("textvariable"): self._bind_var(kw["textvariable"])
         if kw.get("wraplength"):
@@ -484,10 +608,12 @@ class Message(Label):
 class Button(_Widget):
     def __init__(self, master=None, **kw):
         super().__init__(master, **kw)
+        self._natural_display = "flex"
+        self._el.style.justifyContent = "center"
         btn = document.createElement("button")
         btn.type = "button"
         btn.textContent = str(kw.get("text", "Botón"))
-        btn.style.cssText = "cursor:pointer;border-radius:8px;border:1px solid rgba(15,23,42,0.2);padding:8px 12px;background:#f8fafc;color:#0f172a;font:inherit;min-height:40px;width:100%;box-sizing:border-box;"
+        btn.style.cssText = "cursor:pointer;border-radius:6px;border:1px solid rgba(15,23,42,0.25);padding:7px 22px;background:#f8fafc;color:#0f172a;font:inherit;min-height:36px;width:auto;box-sizing:border-box;"
         _apply_opts(btn, kw)
         def on_click(_ev=None):
             cmd = self.command
@@ -507,7 +633,8 @@ class Entry(_Widget):
         show = str(kw.get("show", ""))
         inp.type = "password" if show in ("*", "•") else "text"
         inp.value = str(kw.get("text", ""))
-        inp.style.cssText = "width:100%;max-width:100%;min-height:40px;border-radius:8px;border:1px solid #94a3b8;padding:8px 10px;font-size:16px;background:#fff;color:#0f172a;box-sizing:border-box;"
+        chars = _as_int(kw.get("width"), 20)
+        inp.style.cssText = "width:" + str(max(chars, 8)) + "ch;max-width:100%;min-height:32px;border-radius:4px;border:1px solid #94a3b8;padding:4px 8px;font-size:14px;background:#fff;color:#0f172a;box-sizing:border-box;"
         _apply_opts(inp, kw)
         self._var = kw.get("textvariable")
         if self._var is not None:
@@ -555,7 +682,7 @@ class Checkbutton(_Widget):
     def __init__(self, master=None, **kw):
         super().__init__(master, **kw)
         wrap = document.createElement("label")
-        wrap.style.cssText = "display:flex;align-items:center;gap:8px;min-height:40px;cursor:pointer;"
+        wrap.style.cssText = "display:flex;align-items:center;gap:6px;min-height:22px;cursor:pointer;font-size:13px;"
         inp = document.createElement("input")
         inp.type = "checkbox"
         lab = document.createElement("span")
@@ -586,7 +713,7 @@ class Radiobutton(_Widget):
     def __init__(self, master=None, **kw):
         super().__init__(master, **kw)
         wrap = document.createElement("label")
-        wrap.style.cssText = "display:flex;align-items:center;gap:8px;min-height:40px;cursor:pointer;"
+        wrap.style.cssText = "display:flex;align-items:flex-start;gap:6px;min-height:20px;cursor:pointer;font-size:13px;line-height:1.3;"
         inp = document.createElement("input")
         inp.type = "radio"
         self._var = kw.get("variable")

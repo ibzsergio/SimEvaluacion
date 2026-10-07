@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261007-tk-padx",
+        cacheId: "simeval-20261007-tk-layout",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

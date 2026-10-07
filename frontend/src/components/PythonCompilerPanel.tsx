@@ -115,7 +115,7 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
         setOutput((prev) => prev + chunk);
       });
       setStatus("ready");
-      setMessage("Listo. La ventana Tkinter está a la derecha (o abajo, en el teléfono).");
+      setMessage("Listo. La ventana Tkinter aparece debajo del código (puedes desplazarte si el programa es ancho).");
     } catch (err) {
       const text = err instanceof Error ? err.message : String(err);
       setStatus("error");
@@ -154,7 +154,7 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
       >
         {message}
       </p>
-      <div className={`grid gap-3 ${compact ? "" : "lg:grid-cols-2"}`}>
+      <div className="grid gap-3">
         <div className="block min-w-0">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">
             Código
@@ -185,7 +185,7 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
           </p>
           <div
             ref={hostRef}
-            className="relative min-h-[16rem] overflow-hidden rounded-xl border border-white/10 bg-slate-900/40 p-2 sm:min-h-[20rem]"
+            className="relative min-h-[22rem] max-h-[75vh] overflow-auto rounded-xl border border-white/10 bg-slate-200 p-2 sm:min-h-[28rem] lg:min-h-[36rem]"
           />
           <p className="mt-3 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Salida (print)
