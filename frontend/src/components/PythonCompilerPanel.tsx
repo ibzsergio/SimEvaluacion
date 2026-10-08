@@ -4,7 +4,14 @@ import { EditorView } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
 import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { checkPythonSyntax, isPythonEngineReady, preloadPythonEngine, runPythonProgram } from "../lib/pyodideRunner";
+import {
+  checkPythonSyntax,
+  formatPythonError,
+  isPythonEngineReady,
+  preloadPythonEngine,
+  runPythonProgram,
+  sanitizePythonSource,
+} from "../lib/pyodideRunner";
 import { useTheme } from "../lib/theme";
 
 const STORAGE_KEY = "simeval_python_tk_code";
@@ -172,23 +179,25 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
       setMessage("Ejecutando…");
     }
     try {
+      const clean = sanitizePythonSource(code);
+      if (clean !== code) setCode(clean);
       setStatus("running");
-      await runPythonProgram(code, host, (chunk) => {
+      await runPythonProgram(clean, host, (chunk) => {
         setOutput((prev) => prev + chunk);
       });
       setEngine("ready");
       setStatus("ready");
       setMessage("Listo. La ventana Tkinter aparece debajo del código (puedes desplazarte si el programa es ancho).");
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatPythonError(err);
       setStatus("error");
       setEngine(isPythonEngineReady() ? "ready" : "error");
       setMessage(
         isPythonEngineReady()
-          ? "Revisa el código. El error está en la salida de abajo."
+          ? text
           : "No se pudo preparar Python. Conéctate a WiFi y pulsa Reintentar. No hay que descargar nada de Play Store ni de python.org.",
       );
-      setOutput((prev) => (prev ? prev + "\n" : "") + text);
+      setOutput(text);
     }
   }
 
@@ -221,7 +230,7 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
     ev.target.value = "";
     if (!file) return;
     try {
-      const text = await file.text();
+      const text = sanitizePythonSource(await file.text());
       setTitle(titleFromFileName(file.name));
       setCode(text);
       setMessage(`Archivo abierto: ${file.name}`);
