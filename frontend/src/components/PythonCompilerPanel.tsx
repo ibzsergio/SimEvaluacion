@@ -17,27 +17,21 @@ import { useTheme } from "../lib/theme";
 const STORAGE_KEY = "simeval_python_tk_code";
 const TITLE_KEY = "simeval_python_tk_title";
 
-const DEFAULT_CODE = `import tkinter as tk
-from tkinter import messagebox
-
-ventana = tk.Tk()
-ventana.title("Práctica Tkinter")
-ventana.geometry("320x240")
-
-tk.Label(ventana, text="Hola, SimEvaluación", font=("Arial", 14, "bold")).pack(pady=10)
-
-nombre = tk.StringVar()
-tk.Label(ventana, text="Escribe tu nombre:").pack()
-tk.Entry(ventana, textvariable=nombre).pack(pady=6, padx=12, fill="x")
-
-def saludar():
-    n = nombre.get().strip() or "estudiante"
-    messagebox.showinfo("Saludo", f"Hola, {n}")
-
-tk.Button(ventana, text="Saludar", command=saludar).pack(pady=10)
-
-ventana.mainloop()
+const DEFAULT_CODE = `# Escribe o pega aqui tu codigo
 `;
+
+const OLD_EXAMPLE_MARKERS = ["Hola, SimEvaluación", 'ventana.title("Práctica Tkinter")'];
+
+function initialCode() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return DEFAULT_CODE;
+    if (OLD_EXAMPLE_MARKERS.every((m) => stored.includes(m))) return DEFAULT_CODE;
+    return stored;
+  } catch {
+    return DEFAULT_CODE;
+  }
+}
 
 const editorTheme = EditorView.theme({
   "&": { height: "100%", fontSize: "15px" },
@@ -81,13 +75,7 @@ function titleFromFileName(name: string) {
 
 export default function PythonCompilerPanel({ compact }: { compact?: boolean }) {
   const { theme } = useTheme();
-  const [code, setCode] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) || DEFAULT_CODE;
-    } catch {
-      return DEFAULT_CODE;
-    }
-  });
+  const [code, setCode] = useState(initialCode);
   const [title, setTitle] = useState(() => {
     try {
       return localStorage.getItem(TITLE_KEY) || "Práctica 1";
