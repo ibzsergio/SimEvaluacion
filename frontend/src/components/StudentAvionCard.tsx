@@ -93,7 +93,8 @@ export default function StudentAvionCard({ avion }: { avion: StudentAvion }) {
       >
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: hex }}>
-            {AVION_PROGRAMA} · {avion.preview ? "vista de prueba" : `${avion.colorName} · columna ${avion.columna}`}
+            {AVION_PROGRAMA}
+            {avion.preview ? " · vista de prueba" : ""}
           </p>
           <h2 className="mt-1 text-lg font-bold text-white">{AVION_TITULO}</h2>
           <p className="mt-1 text-sm text-slate-300">
@@ -103,7 +104,7 @@ export default function StudentAvionCard({ avion }: { avion: StudentAvion }) {
                 : "Pausado por el docente. El reloj aún no arranca."
               : avion.startedAt
                 ? done
-                  ? "Tiempo agotado — levanten las manos. No sigan plegando."
+                  ? "Tiempo agotado — levanten las manos. No sigan construyendo."
                   : `Reloj: ${formatClock(remain)}`
                 : avion.leaderName
                   ? `Líder: ${avion.leaderName}. Lean y activen cuando estén listos.`
@@ -210,7 +211,7 @@ export default function StudentAvionCard({ avion }: { avion: StudentAvion }) {
                     </p>
                   ) : done ? (
                     <p className="mt-2 text-sm font-semibold text-rose-100">
-                      Levanten las manos. No sigan plegando.
+                      Levanten las manos. No sigan construyendo.
                     </p>
                   ) : null}
                 </div>

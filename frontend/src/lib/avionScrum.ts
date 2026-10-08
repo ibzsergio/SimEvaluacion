@@ -7,60 +7,80 @@ export const AVION_ROLES = [
   {
     id: "product_owner",
     label: "Product Owner",
-    tarea: "Define qué cuenta como listo: debe volar, llegar entero y medirse en metros. Prioriza distancia, no adornos.",
+    tarea: "Escribe en una hoja la Definition of Done: vuelo válido, línea de lanzamiento, cómo se mide y qué descalifica. Prioriza distancia, no adornos.",
   },
   {
     id: "scrum_master",
     label: "Scrum Master",
-    tarea: "Cuida el tiempo, quita bloqueos y hace que el equipo hable. No construye el avión por los demás.",
+    tarea: "Parte los 30 minutos en sprints, anuncia el tiempo y quita bloqueos. No construye el avión por los demás.",
   },
   {
     id: "developer",
     label: "Desarrollador",
-    tarea: "Pliega y arma el prototipo. Integra los cambios de cada prueba sin romper lo que ya vuela.",
+    tarea: "Arma el prototipo mezclando materiales. Cada cambio sale de una hipótesis de QA, no de ocurrencias.",
   },
   {
     id: "ui_designer",
     label: "Diseño / UI",
-    tarea: "Identidad del equipo en alas o fuselaje, sin estorbar el vuelo. El avión debe reconocerse de lejos.",
+    tarea: "Nombre del avión, marcas de equipo y un flap o timón recortado. La identidad no puede romper el vuelo.",
   },
   {
     id: "qa_docs",
     label: "QA / Docs",
-    tarea: "Hace 3 vuelos de prueba, anota distancia y falla, y propone el ajuste. Mide el lanzamiento final.",
+    tarea: "Bitácora de 3 vuelos de prueba: hipótesis, material que movieron, distancia y qué falló. Mide el lanzamiento oficial.",
   },
 ] as const;
+
+export const AVION_MATERIALES = [
+  "Hojas bond (varias)",
+  "Cartulina o cartón delgado",
+  "Popotes",
+  "Palitos de madera (paleta)",
+  "Clips",
+  "Cinta adhesiva",
+  "Ligas",
+  "Plastilina o un peso chico (lastre)",
+  "Marcadores",
+  "Tijeras y regla",
+];
+
+export const AVION_REQUISITOS = [
+  "No vale un avión de solo hoja doblada: tienen que combinar al menos 3 materiales de la lista.",
+  "Debe llevar lastre movible (clip o plastilina) para experimentar el centro de gravedad.",
+  "Debe tener una superficie de control recortada (flap, alerón o timón) que puedan doblar entre pruebas.",
+  "El avión lleva nombre de prototipo escrito y visible.",
+  "QA entrega la bitácora de 3 pruebas; sin bitácora no entran a la medición oficial.",
+];
 
 export const AVION_SPRINTS = [
   {
     nivel: 1,
     nombre: "Sprint 0 — Definition of Done",
-    detalle: "Acuerden en 3 minutos: qué es un vuelo válido, desde dónde se lanza y cómo se mide.",
+    detalle: "Acuerden qué vuelo cuenta, la línea de lanzamiento y cómo miden. El PO lo escribe. Nadie construye todavía.",
   },
   {
     nivel: 2,
-    nombre: "Sprint 1 — prototipo",
-    detalle: "Primer avión que vuele. No busquen belleza todavía.",
+    nombre: "Sprint 1 — prototipo mixto",
+    detalle: "Primer modelo con papel + al menos otros dos materiales. Que vuele, aunque sea feo.",
   },
   {
     nivel: 3,
-    nombre: "Sprint 2 — pruebas",
-    detalle: "QA lanza, el equipo ajusta. Un cambio a la vez.",
+    nombre: "Sprint 2 — lastre y flap",
+    detalle: "Prueban mover el peso y el flap. Un cambio por vuelo. QA anota hipótesis y distancia.",
   },
   {
     nivel: 4,
     nombre: "Sprint 3 — release",
-    detalle: "Un solo avión final. Identidad visible. Listos para la medición grupal.",
+    detalle: "Un solo avión final, nombre visible, bitácora lista. Ese es el que miden al acabar el reloj.",
   },
 ] as const;
 
 export const AVION_PASOS = [
-  "Lean estas instrucciones en equipo. No empiecen a plegar hasta que el líder active el reloj.",
-  "Usen los mismos equipos de color de las butacas.",
+  "Lean estas instrucciones en equipo. No empiecen a construir hasta que el líder active el reloj.",
   "Cada integrante toma un rol Scrum (el de la encuesta, o el que les falte en el equipo).",
   "Elijan un líder. Cualquiera puede marcarlo; el líder es quien activa los 30 minutos.",
-  "Materiales: hojas, cinta y un marcador. Un avión por equipo para la medición final.",
-  "El Product Owner decide si un vuelo cuenta. QA mide. El Scrum Master vigila el tiempo.",
+  "Planeen 1 minuto: forma del ala, dónde va el lastre y qué material refuerza el fuselaje. Luego construyan.",
+  "El Product Owner decide si un vuelo cuenta. QA mide y llena la bitácora. El Scrum Master vigila el tiempo.",
   "Gana el avión que vuele más lejos en el lanzamiento oficial al terminar el reloj.",
 ];
 

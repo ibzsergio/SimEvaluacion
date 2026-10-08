@@ -208,8 +208,7 @@ export default function TeacherAvionPanel({
           <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
         ) : teams.length === 0 ? (
           <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-            No hay equipos de butacas. Asigna lugares primero (los mismos de la lectura). El alumno de
-            prueba igual puede ver la actividad.
+            Aún no hay equipos listos. El alumno de prueba igual puede ver la actividad.
           </p>
         ) : (
           <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -282,9 +281,10 @@ export default function TeacherAvionPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-sky-300">{AVION_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{AVION_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code} · {selectedGroup?.shift}. Mismos equipos de color. Construyen un avión
-          de papel que vuele lo más lejos posible y cada uno toma su rol Scrum. El líder activa {AVION_MINUTOS}{" "}
-          minutos. Gana el vuelo más largo: 1000 puntos por integrante.
+          Grupo {selectedGroup?.code} · {selectedGroup?.shift}. Construyen un avión con varios materiales
+          (papel, cartón, popotes, clips, lastre, flap) para que vuele lo más lejos posible. Cada uno toma su
+          rol Scrum. El líder activa {AVION_MINUTOS} minutos. Gana el vuelo más largo: 1000 puntos por
+          integrante.
         </p>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">

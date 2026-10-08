@@ -1,4 +1,11 @@
-import { AVION_PASOS, AVION_PUNTAJE, AVION_PUNTOS_MAX, AVION_ROLES } from "../lib/avionScrum";
+import {
+  AVION_MATERIALES,
+  AVION_PASOS,
+  AVION_PUNTAJE,
+  AVION_PUNTOS_MAX,
+  AVION_REQUISITOS,
+  AVION_ROLES,
+} from "../lib/avionScrum";
 
 export default function AvionIndicacion() {
   return (
@@ -10,6 +17,26 @@ export default function AvionIndicacion() {
             <li key={paso}>{paso}</li>
           ))}
         </ol>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-white">Materiales (usen varios, no solo papel)</h3>
+        <ul className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {AVION_MATERIALES.map((item) => (
+            <li key={item} className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-200">
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-white">Para que cuente el avión</h3>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
+          {AVION_REQUISITOS.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
       </div>
 
       <div>
@@ -27,8 +54,8 @@ export default function AvionIndicacion() {
       <div className="rounded-2xl border-2 border-rose-400/60 bg-rose-500/15 px-4 py-3">
         <p className="text-xs font-bold uppercase tracking-widest text-rose-200">Al terminar el tiempo</p>
         <p className="mt-1 text-sm font-semibold leading-relaxed text-white">
-          Levanten las manos y no sigan plegando ni pegando. El lanzamiento oficial se hace con el avión que
-          tengan en ese momento.
+          Levanten las manos y no sigan cortando, pegando ni moviendo lastre. El lanzamiento oficial se hace
+          con el avión y la bitácora que tengan en ese momento.
         </p>
       </div>
 

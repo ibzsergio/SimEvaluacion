@@ -250,7 +250,7 @@ export async function setAvionReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: "Nueva actividad: Sprint aéreo",
-          body: `Grupo ${group.code}: construyan un avión de papel que vuele lo más lejos posible. Cada integrante toma su rol Scrum (Product Owner, Scrum Master, desarrollo, UI y QA). Eligen líder, el líder activa 30 minutos. Al acabar: manos arriba, no sigan plegando. Gana el que vuele más lejos (1000 puntos por integrante).`,
+          body: `Grupo ${group.code}: construyan un avión con varios materiales (no solo papel) que vuele lo más lejos posible. Cada integrante toma su rol Scrum. Eligen líder; el líder activa 30 minutos. Al acabar: manos arriba, no sigan construyendo. Gana el que vuele más lejos (1000 puntos por integrante).`,
         },
       });
     }
@@ -365,7 +365,7 @@ export function avionErrorHttp(msg: string) {
 
 function avionErrorMessage(msg: string) {
   if (msg === "not_released") return "El docente aún no libera la actividad.";
-  if (msg === "not_in_team") return "No estás en un equipo de butacas para este reto.";
+  if (msg === "not_in_team") return "No estás en un equipo para este reto.";
   if (msg === "not_leader") return "Solo el líder del equipo puede activar el reloj.";
   if (msg === "paused") return "El docente pausó el reto. El reloj está congelado.";
   if (msg === "already_started") return "El reloj ya está corriendo. Ya no se puede cambiar de líder.";
