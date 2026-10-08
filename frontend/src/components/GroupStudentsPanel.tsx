@@ -179,13 +179,6 @@ export default function GroupStudentsPanel({
         </button>
       </section>
 
-      <section className="glass border-rose-400/20 p-4">
-        <p className="text-sm text-rose-200/95">
-          <strong>No subas aquí</strong> el Excel de calificaciones (CARATULA, P1 SUMA, etc.). Ese archivo va en la
-          pestaña <strong>Actividades y calificaciones</strong>.
-        </p>
-      </section>
-
       <section className="glass border-cyan-400/20 p-5">
         <h2 className="text-lg font-semibold text-white">
           Importar lista de alumnos ({groupsLabelPlus})
@@ -199,7 +192,7 @@ export default function GroupStudentsPanel({
           ref={workbookRef}
           type="file"
           accept=".xlsx,.xls"
-          className="mt-4 block w-full max-w-lg text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+          className="mt-4 block w-full max-w-lg text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#ffffff]"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
