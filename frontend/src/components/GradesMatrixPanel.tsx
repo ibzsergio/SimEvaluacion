@@ -247,10 +247,6 @@ export default function GradesMatrixPanel({
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-white lg:text-xl">Calificar {partialLabel(partialNumber).toLowerCase()}</h2>
-          <p className="mt-1 hidden text-sm text-slate-400 sm:block lg:text-base">
-            Una fila por alumno y una columna por actividad. Escribe y pasa a la siguiente con Tab;
-            al salir de la casilla se guarda. Ya no hace falta cambiar de actividad.
-          </p>
         </div>
         {activities.length > 0 && students.length > 0 ? (
           <button
@@ -280,12 +276,8 @@ export default function GradesMatrixPanel({
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Buscar alumno..."
-        className="mb-2 w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-base text-white placeholder:text-slate-500 sm:text-sm lg:text-base"
+        className="mb-3 w-full max-w-md rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-base text-white placeholder:text-slate-500 sm:text-sm lg:text-base"
       />
-      <p className="mb-3 text-xs text-slate-500 sm:mb-4">
-        Junto al nombre ves cuántas lleva. Toca un alumno para marcar en rojo las que le faltan. Al bajar
-        la lista, el nombre de cada actividad se queda fijo arriba.
-      </p>
 
       {query.isLoading ? (
         <p className="text-slate-400">Cargando tabla de calificaciones...</p>

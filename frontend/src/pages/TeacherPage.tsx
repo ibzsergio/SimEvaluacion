@@ -127,12 +127,6 @@ export default function TeacherPage() {
     () => nextPracticaNumber(numberingActivities.map((a) => a.name)),
     [numberingActivities],
   );
-  const practicaNumbers = useMemo(() => {
-    const nums = numberingActivities
-      .map((a) => extractPracticaNumber(a.name))
-      .filter((n): n is number => n != null);
-    return [...new Set(nums)].sort((a, b) => a - b);
-  }, [numberingActivities]);
   const typedPractica = extractPracticaNumber(form.name);
   const practicaDuplicada =
     typedPractica != null &&
@@ -558,9 +552,6 @@ export default function TeacherPage() {
                     required
                   />
                 </label>
-                <p className="text-xs text-slate-500">
-                  La fecha de publicación se registra al guardar la actividad.
-                </p>
                 <label className="block text-xs text-slate-400">
                   Nombre de la actividad
                   <input
@@ -576,11 +567,6 @@ export default function TeacherPage() {
                     required
                   />
                 </label>
-                <p className="text-[11px] leading-relaxed text-slate-500">
-                  {practicaNumbers.length
-                    ? `En ${partialLabel(numberingPartial).toLowerCase()} ya hay práctica${practicaNumbers.length === 1 ? "" : "s"} ${practicaNumbers.join(", ")}. Al escribir «Práctica» se completa sola la ${nextPractica}.`
-                    : `Aún no hay prácticas en ${partialLabel(numberingPartial).toLowerCase()}. Al escribir «Práctica» se numera sola como ${nextPractica}.`}
-                </p>
                 {looksLikePractica(form.name) && typedPractica != null ? (
                   <p
                     className={`rounded-lg px-3 py-2 text-xs font-semibold ${
@@ -606,9 +592,6 @@ export default function TeacherPage() {
                     className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2.5 text-base text-white sm:py-2 sm:text-sm"
                   />
                 </label>
-                <p className="text-xs text-slate-500">
-                  Al calificar, indicas cuántos puntos obtuvo cada alumno (de 0 a este valor).
-                </p>
                 {formError ? (
                   <p className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
                     {formError}
