@@ -14,24 +14,11 @@ import {
 } from "../lib/pyodideRunner";
 import { useTheme } from "../lib/theme";
 
-const STORAGE_KEY = "simeval_python_tk_code";
-const TITLE_KEY = "simeval_python_tk_title";
+const STORAGE_KEY = "simeval_python_tk_code_blank";
+const TITLE_KEY = "simeval_python_tk_title_blank";
 
 const DEFAULT_CODE = `# Escribe o pega aqui tu codigo
 `;
-
-const OLD_EXAMPLE_MARKERS = ["Hola, SimEvaluación", 'ventana.title("Práctica Tkinter")'];
-
-function initialCode() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return DEFAULT_CODE;
-    if (OLD_EXAMPLE_MARKERS.every((m) => stored.includes(m))) return DEFAULT_CODE;
-    return stored;
-  } catch {
-    return DEFAULT_CODE;
-  }
-}
 
 const editorTheme = EditorView.theme({
   "&": { height: "100%", fontSize: "15px" },
@@ -75,7 +62,13 @@ function titleFromFileName(name: string) {
 
 export default function PythonCompilerPanel({ compact }: { compact?: boolean }) {
   const { theme } = useTheme();
-  const [code, setCode] = useState(initialCode);
+  const [code, setCode] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) || DEFAULT_CODE;
+    } catch {
+      return DEFAULT_CODE;
+    }
+  });
   const [title, setTitle] = useState(() => {
     try {
       return localStorage.getItem(TITLE_KEY) || "Práctica 1";
