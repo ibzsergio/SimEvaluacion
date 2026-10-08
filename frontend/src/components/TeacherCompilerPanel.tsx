@@ -58,7 +58,8 @@ export default function TeacherCompilerPanel({
             <h2 className="mt-1 text-lg font-semibold text-white">Compilador en su pantalla</h2>
             <p className="mt-1 text-sm text-slate-400">
               Tú siempre lo ves aquí. Los alumnos de {codes || "tus grupos"} solo lo ven cuando lo
-              activas (prácticas en el aula).
+              activas. La primera vez, con internet, Python se prepara solo en la página: no instalan
+              nada.
             </p>
           </div>
           <button

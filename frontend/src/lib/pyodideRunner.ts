@@ -29,9 +29,18 @@ function loadScript(src: string) {
     s.src = src;
     s.async = true;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error("No se pudo cargar el motor de Python. Conéctate una vez a internet."));
+    s.onerror = () =>
+      reject(
+        new Error(
+          "No hay internet o el navegador bloqueó la carga. Conéctate a WiFi y vuelve a intentar. No instales Python en el teléfono.",
+        ),
+      );
     document.head.appendChild(s);
   });
+}
+
+export function isPythonEngineReady() {
+  return pyodideReady != null;
 }
 
 export function getPyodide(): Promise<PyodideLike> {
@@ -39,15 +48,22 @@ export function getPyodide(): Promise<PyodideLike> {
     pyodidePromise = (async () => {
       await loadScript(`${PYODIDE_INDEX}pyodide.js`);
       if (!window.loadPyodide) {
-        throw new Error("El motor de Python no está disponible en este navegador.");
+        throw new Error("Este navegador no pudo preparar Python. Prueba Chrome o Safari.");
       }
       const py = await window.loadPyodide({ indexURL: PYODIDE_INDEX });
       await py.runPythonAsync(TKINTER_SHIM);
       pyodideReady = py;
       return py;
-    })();
+    })().catch((err) => {
+      pyodidePromise = null;
+      throw err;
+    });
   }
   return pyodidePromise;
+}
+
+export function preloadPythonEngine() {
+  return getPyodide();
 }
 
 export async function runPythonProgram(

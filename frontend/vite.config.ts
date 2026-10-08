@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261008-compiler-toggle",
+        cacheId: "simeval-20261008-python-preload",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

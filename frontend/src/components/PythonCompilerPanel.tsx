@@ -4,7 +4,7 @@ import { EditorView } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
 import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { checkPythonSyntax, runPythonProgram } from "../lib/pyodideRunner";
+import { checkPythonSyntax, isPythonEngineReady, preloadPythonEngine, runPythonProgram } from "../lib/pyodideRunner";
 import { useTheme } from "../lib/theme";
 
 const STORAGE_KEY = "simeval_python_tk_code";
@@ -90,8 +90,13 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
   });
   const [output, setOutput] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "running" | "ready" | "error">("idle");
+  const [engine, setEngine] = useState<"loading" | "ready" | "error">(() =>
+    isPythonEngineReady() ? "ready" : "loading",
+  );
   const [message, setMessage] = useState(
-    "El código de ahora se queda en este teléfono o computadora. Para llevarlo a otro lado, guarda el .py y ábrelo aquí.",
+    isPythonEngineReady()
+      ? "Python ya está listo en este teléfono. Pulsa Ejecutar."
+      : "Preparando Python aquí, en la página. No instales ningún programa ni busques un archivo: espera con internet (puede tardar 10 a 40 segundos la primera vez).",
   );
   const hostRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -104,6 +109,30 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
       /* ignore */
     }
   }, [code, title]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (isPythonEngineReady()) {
+      setEngine("ready");
+      return;
+    }
+    setEngine("loading");
+    void preloadPythonEngine()
+      .then(() => {
+        if (cancelled) return;
+        setEngine("ready");
+        setMessage("Python listo. Pulsa Ejecutar. La próxima vez, en este mismo teléfono, ya no espera.");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setEngine("error");
+        const text = err instanceof Error ? err.message : String(err);
+        setMessage(text);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const extensions = useMemo(
     () => [
@@ -136,19 +165,29 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
     if (!host) return;
     setOutput("");
     setStatus("loading");
-    setMessage("Cargando Python…");
+    if (engine !== "ready") {
+      setEngine("loading");
+      setMessage("Preparando Python en esta página. No instales nada: espera con internet.");
+    } else {
+      setMessage("Ejecutando…");
+    }
     try {
       setStatus("running");
-      setMessage("Ejecutando…");
       await runPythonProgram(code, host, (chunk) => {
         setOutput((prev) => prev + chunk);
       });
+      setEngine("ready");
       setStatus("ready");
       setMessage("Listo. La ventana Tkinter aparece debajo del código (puedes desplazarte si el programa es ancho).");
     } catch (err) {
       const text = err instanceof Error ? err.message : String(err);
       setStatus("error");
-      setMessage("Revisa el código. Si es la primera vez, conecta internet para descargar Python.");
+      setEngine(isPythonEngineReady() ? "ready" : "error");
+      setMessage(
+        isPythonEngineReady()
+          ? "Revisa el código. El error está en la salida de abajo."
+          : "No se pudo preparar Python. Conéctate a WiFi y pulsa Reintentar. No hay que descargar nada de Play Store ni de python.org.",
+      );
       setOutput((prev) => (prev ? prev + "\n" : "") + text);
     }
   }
@@ -198,20 +237,49 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
           <h2 className="text-lg font-semibold text-white">Compilador Python + Tkinter</h2>
           {!compact ? (
             <p className="mt-1 text-sm text-slate-400">
-              Escribe y ejecuta Python aquí. El borrador se queda en este dispositivo. Para otra
-              computadora o teléfono, usa <span className="font-semibold text-cyan-200">.py</span>:
-              “Guardar en el teléfono” y luego “Abrir del teléfono”.
+              Python corre <span className="font-semibold text-cyan-200">dentro de esta página</span>.
+              No lo busques en Play Store ni lo instales. La primera vez espera con internet; después
+              funciona en este teléfono aunque no haya red. El código se guarda aquí; para llevarlo a
+              otro lado usa el archivo .py.
             </p>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={() => void run()}
-          disabled={status === "loading" || status === "running"}
-          className="min-h-11 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-[#ffffff] shadow-lg hover:bg-emerald-500 disabled:opacity-60"
-        >
-          {status === "loading" || status === "running" ? "Ejecutando…" : "Ejecutar"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {engine === "error" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEngine("loading");
+                setMessage("Preparando Python en esta página. Espera con internet…");
+                void preloadPythonEngine()
+                  .then(() => {
+                    setEngine("ready");
+                    setMessage("Python listo. Pulsa Ejecutar.");
+                  })
+                  .catch((err) => {
+                    setEngine("error");
+                    setMessage(err instanceof Error ? err.message : String(err));
+                  });
+              }}
+              className="min-h-11 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500"
+            >
+              Reintentar
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void run()}
+              disabled={status === "loading" || status === "running" || engine === "loading"}
+              className="min-h-11 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-[#ffffff] shadow-lg hover:bg-emerald-500 disabled:opacity-60"
+            >
+              {engine === "loading"
+                ? "Preparando Python…"
+                : status === "loading" || status === "running"
+                  ? "Ejecutando…"
+                  : "Ejecutar"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-3 rounded-xl border border-white/10 bg-slate-950/30 p-3">
@@ -242,9 +310,19 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
         />
       </div>
 
+      {engine === "loading" ? (
+        <p className="mb-3 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100">
+          Descargando el motor en el navegador (no es una app). Deja el teléfono con internet y espera;
+          no cierres esta pestaña.
+        </p>
+      ) : null}
       <p
         className={`mb-3 text-xs ${
-          status === "error" ? "text-rose-300" : status === "ready" ? "text-emerald-300" : "text-slate-500"
+          status === "error" || engine === "error"
+            ? "text-rose-300"
+            : status === "ready" || engine === "ready"
+              ? "text-emerald-300"
+              : "text-slate-500"
         }`}
       >
         {message}
