@@ -116,7 +116,7 @@ export default function GroupRankingPanel({
                 updateMutation.mutate({ plannedActivities: trimmed === "" ? null : Number(trimmed) });
               }}
               disabled={updateMutation.isPending}
-              className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
+              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60"
             >
               Guardar meta
             </button>

@@ -192,7 +192,7 @@ export default function TeacherCommsPanel() {
             <button
               type="submit"
               disabled={calendarMutation.isPending}
-              className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
+              className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60"
             >
               {calendarMutation.isPending ? "Subiendo..." : "Publicar calendario"}
             </button>
@@ -252,7 +252,7 @@ export default function TeacherCommsPanel() {
           <button
             type="submit"
             disabled={announcementMutation.isPending}
-            className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60"
           >
             {announcementMutation.isPending ? "Publicando..." : "Publicar aviso"}
           </button>
@@ -355,7 +355,7 @@ export default function TeacherCommsPanel() {
           <button
             type="submit"
             disabled={taskMutation.isPending}
-            className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60"
           >
             {taskMutation.isPending ? "Publicando..." : "Publicar tarea"}
           </button>

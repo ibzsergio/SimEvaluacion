@@ -223,7 +223,7 @@ export default function GroupStudentsPanel({
             ref={fileRef}
             type="file"
             accept=".xlsx,.xls,.csv"
-            className="block w-full max-w-md text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+            className="block w-full max-w-md text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#ffffff]"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (!file) return;

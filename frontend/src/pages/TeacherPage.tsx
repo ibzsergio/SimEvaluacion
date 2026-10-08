@@ -623,7 +623,7 @@ export default function TeacherPage() {
                   <button
                     type="submit"
                     disabled={activityFormPending}
-                    className="min-h-11 flex-1 rounded-xl bg-indigo-500 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
+                    className="min-h-11 flex-1 rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60"
                   >
                     {activityFormPending
                       ? "Guardando..."

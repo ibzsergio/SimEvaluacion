@@ -208,7 +208,7 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
           type="button"
           onClick={() => void run()}
           disabled={status === "loading" || status === "running"}
-          className="min-h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg disabled:opacity-60"
+          className="min-h-11 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-[#ffffff] shadow-lg hover:bg-emerald-500 disabled:opacity-60"
         >
           {status === "loading" || status === "running" ? "Ejecutando…" : "Ejecutar"}
         </button>

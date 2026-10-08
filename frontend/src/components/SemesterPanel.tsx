@@ -207,7 +207,7 @@ export default function SemesterPanel() {
             <button
               type="submit"
               disabled={createGroupMutation.isPending}
-              className="w-full rounded-xl bg-indigo-500 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
+              className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60"
             >
               {createGroupMutation.isPending ? "Creando..." : "Agregar grupo"}
             </button>

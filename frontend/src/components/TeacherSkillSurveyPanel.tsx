@@ -183,7 +183,7 @@ export default function TeacherSkillSurveyPanel({
                   <button
                     type="button"
                     onClick={() => void saveSuggestedTeam(team)}
-                    className="rounded-lg bg-indigo-500 px-3 py-1 text-xs font-bold text-white"
+                    className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-[#ffffff] hover:bg-emerald-500"
                   >
                     Guardar equipo
                   </button>
@@ -306,7 +306,7 @@ export default function TeacherSkillSurveyPanel({
                   members: draftMembers,
                 })
               }
-              className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-50"
             >
               Guardar equipo ({draftMembers.length}/5)
             </button>

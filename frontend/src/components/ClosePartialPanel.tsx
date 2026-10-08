@@ -375,7 +375,7 @@ export default function ClosePartialPanel({
               type="button"
               onClick={() => saveExamMutation.mutate()}
               disabled={saveExamMutation.isPending || invalidCount > 0 || !examRows.length}
-              className="min-h-11 w-full shrink-0 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60 sm:w-auto"
+              className="min-h-11 w-full shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60 sm:w-auto"
             >
               {saveExamMutation.isPending ? "Guardando..." : "Guardar calificaciones de examen"}
             </button>
