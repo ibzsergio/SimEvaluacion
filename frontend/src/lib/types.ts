@@ -53,6 +53,7 @@ export type ExemptionStatus = {
 };
 
 export type StudentProgress = {
+  preview?: boolean;
   group: ClassGroup | null;
   summary: {
     total: number;

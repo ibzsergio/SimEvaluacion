@@ -71,6 +71,12 @@ export function getApiErrorMessage(error: unknown): string {
       return "Sesión expirada. Vuelve a iniciar sesión.";
     }
     if (code === "invalid_credentials") return "Usuario o contraseña incorrectos.";
+    if (code === "preview_readonly") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "La cuenta de prueba solo sirve para ver la plataforma."
+      );
+    }
     if (code === "student_not_found") {
       return (
         (error.response.data as { message?: string })?.message ??
@@ -379,6 +385,16 @@ export async function devSeed() {
 export async function fetchGroups() {
   const { data } = await api.get<{ groups: ClassGroup[] }>("/teacher/groups");
   return data.groups;
+}
+
+export async function fetchPreviewStudent() {
+  const { data } = await api.get<{
+    controlNumber: string;
+    password: string;
+    displayName: string;
+    groupCode: string;
+  }>("/teacher/preview-student");
+  return data;
 }
 
 export async function updateGroupProgressSettings(

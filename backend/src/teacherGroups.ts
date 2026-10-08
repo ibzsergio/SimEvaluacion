@@ -69,6 +69,7 @@ import {
   setCompilerReleased,
 } from "./ensureCompilerSchema.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
+import { ensurePreviewStudent, isPreviewControlNumber } from "./previewStudent.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -350,7 +351,18 @@ function sendPdf(
   doc.end();
 }
 
+teacherGroupsRouter.get("/preview-student", async (req: AuthedRequest, res) => {
+  const preview = await ensurePreviewStudent(req.auth!.userId);
+  return res.json({
+    controlNumber: preview.controlNumber,
+    password: preview.password,
+    displayName: preview.displayName,
+    groupCode: preview.groupCode,
+  });
+});
+
 teacherGroupsRouter.get("/groups", async (req: AuthedRequest, res) => {
+  await ensurePreviewStudent(req.auth!.userId);
   const groups = await listTeacherGroups(req.auth!.userId);
   const groupIds = groups.map((g) => g.id);
   const [studentCounts, activityCounts] = await Promise.all([
@@ -720,6 +732,12 @@ teacherGroupsRouter.post("/groups/:groupId/students", async (req: AuthedRequest,
   if (!group) return res.status(404).json({ error: "group_not_found" });
 
   const controlNumber = normalizeControlNumber(body.data.controlNumber);
+  if (isPreviewControlNumber(controlNumber)) {
+    return res.status(400).json({
+      error: "reserved_control_number",
+      message: "PRUEBA está reservado para la cuenta de vista previa.",
+    });
+  }
   const unsetHash = await placeholderPasswordHash();
   try {
     const created = await prisma.user.create({
@@ -791,6 +809,12 @@ teacherGroupsRouter.put("/groups/:groupId/students/:studentId", async (req: Auth
 
   const nextControl =
     body.data.controlNumber === undefined ? undefined : normalizeControlNumber(body.data.controlNumber);
+  if (nextControl && isPreviewControlNumber(nextControl)) {
+    return res.status(400).json({
+      error: "reserved_control_number",
+      message: "PRUEBA está reservado para la cuenta de vista previa.",
+    });
+  }
 
   try {
     const updated = await prisma.user.update({

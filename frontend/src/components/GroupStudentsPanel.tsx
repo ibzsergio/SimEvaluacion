@@ -4,6 +4,7 @@ import {
   deleteGroupStudent,
   downloadStudentsTemplate,
   fetchGroupStudents,
+  fetchPreviewStudent,
   getApiErrorMessage,
   dedupeStudents,
   importStudentsExcel,
@@ -37,6 +38,11 @@ export default function GroupStudentsPanel({
     queryKey: ["group-students", selectedGroupId],
     queryFn: () => fetchGroupStudents(selectedGroupId),
     enabled: !!selectedGroupId,
+  });
+
+  const previewQuery = useQuery({
+    queryKey: ["preview-student"],
+    queryFn: fetchPreviewStudent,
   });
 
   const workbookMutation = useMutation({
@@ -159,6 +165,20 @@ export default function GroupStudentsPanel({
           </button>
         ))}
       </div>
+
+      {previewQuery.data ? (
+        <section className="glass border-white/10 p-4">
+          <h2 className="text-sm font-semibold text-white">Alumno de prueba</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            No aparece en listas, ranking, asistencia ni Excel. Sirve solo para ver la plataforma como
+            alumno del grupo {previewQuery.data.groupCode}. Abre una ventana de incógnito para no cerrar
+            tu sesión de docente.
+          </p>
+          <p className="mt-3 font-mono text-sm text-cyan-100">
+            Control: {previewQuery.data.controlNumber} · Contraseña: {previewQuery.data.password}
+          </p>
+        </section>
+      ) : null}
 
       <section className="glass border-amber-400/20 p-5">
         <h2 className="text-lg font-semibold text-white">Limpiar lista de alumnos</h2>

@@ -1,6 +1,7 @@
 import type { ClassGroup, User } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { isLikelyRowIndexControl, normalizePersonName } from "./excel.js";
+import { isPreviewControlNumber } from "./previewConstants.js";
 import type { ParsedStudentRow } from "./excel.js";
 
 export type ImportSummary = {
@@ -56,9 +57,17 @@ export async function importStudentRows(
   let skipped = 0;
 
   for (const row of rows) {
+    if (isPreviewControlNumber(row.controlNumber)) {
+      skipped++;
+      continue;
+    }
     const existing = await resolveExistingStudent(group, row);
 
     if (existing) {
+      if (isPreviewControlNumber(existing.controlNumber)) {
+        skipped++;
+        continue;
+      }
       const hasRealControl = row.controlNumber && !isLikelyRowIndexControl(row.controlNumber);
       await prisma.user.update({
         where: { id: existing.id },

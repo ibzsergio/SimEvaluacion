@@ -6,6 +6,15 @@ import { z } from "zod";
 import { prisma } from "./prisma.js";
 import { signAuthToken, verifyAuthTokenForRefresh } from "./auth.js";
 import { requireAuth, requireTeacher, requireStudent, type AuthedRequest } from "./middleware.js";
+import {
+  ensurePreviewStudent,
+  ensurePreviewStudentForAnyTeacher,
+  getPreviewViewGroup,
+  isPreviewControlNumber,
+  loadStudentViewContext,
+  PREVIEW_CONTROL_NUMBER,
+  requireNotPreviewStudent,
+} from "./previewStudent.js";
 import { ensureTeacherGroups } from "./groups.js";
 import { removeJunkStudentsForGroup } from "./dedupeStudents.js";
 import { teacherGroupsRouter, upsertStudentActivityGrade } from "./teacherGroups.js";
@@ -137,6 +146,7 @@ app.post("/auth/login/teacher", async (req, res) => {
   const ok = await bcrypt.compare(body.data.password, user.passwordHash);
   if (!ok) return res.status(401).json({ error: "invalid_credentials" });
 
+  await ensurePreviewStudent(user.id);
   const token = signAuthToken({ sub: user.id, role: user.role });
   return res.json({ token, user: userPayload(user) });
 });
@@ -153,7 +163,11 @@ app.post("/auth/login/student", async (req, res) => {
     .safeParse(req.body);
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
 
-  const controlNumber = body.data.controlNumber.replace(/\s/g, "");
+  let controlNumber = body.data.controlNumber.replace(/\s/g, "");
+  if (isPreviewControlNumber(controlNumber)) {
+    controlNumber = PREVIEW_CONTROL_NUMBER;
+    await ensurePreviewStudentForAnyTeacher();
+  }
   const user = await prisma.user.findFirst({
     where: { controlNumber, role: "STUDENT" },
     include: { group: { select: { id: true, code: true, shift: true } } },
@@ -183,7 +197,18 @@ app.post("/auth/login/student", async (req, res) => {
   if (!ok) return res.status(401).json({ error: "invalid_credentials" });
 
   const token = signAuthToken({ sub: user.id, role: user.role });
-  return res.json({ token, user: userPayload(user) });
+  const payloadUser = { ...user };
+  if (isPreviewControlNumber(user.controlNumber) && user.group) {
+    const teacherId = (
+      await prisma.classGroup.findUnique({
+        where: { id: user.group.id },
+        select: { teacherId: true },
+      })
+    )?.teacherId;
+    const viewGroup = teacherId ? await getPreviewViewGroup(teacherId) : null;
+    if (viewGroup) payloadUser.group = viewGroup;
+  }
+  return res.json({ token, user: userPayload(payloadUser) });
 });
 
 app.post("/auth/refresh", async (req, res) => {
@@ -197,7 +222,18 @@ app.post("/auth/refresh", async (req, res) => {
     });
     if (!user) return res.status(401).json({ error: "invalid_token" });
     const token = signAuthToken({ sub: user.id, role: user.role });
-    return res.json({ token, user: userPayload(user) });
+    const payloadUser = { ...user };
+    if (isPreviewControlNumber(user.controlNumber) && user.group) {
+      const teacherId = (
+        await prisma.classGroup.findUnique({
+          where: { id: user.group.id },
+          select: { teacherId: true },
+        })
+      )?.teacherId;
+      const viewGroup = teacherId ? await getPreviewViewGroup(teacherId) : null;
+      if (viewGroup) payloadUser.group = viewGroup;
+    }
+    return res.json({ token, user: userPayload(payloadUser) });
   } catch {
     return res.status(401).json({ error: "invalid_token" });
   }
@@ -473,13 +509,12 @@ app.put(
 app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
 
-  const me = await prisma.user.findUnique({
-    where: { id: req.auth!.userId },
-    select: { groupId: true, displayName: true, listNumber: true },
-  });
-  if (!me?.groupId) {
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) {
     return res.status(400).json({ error: "student_without_group" });
   }
+  const me = { groupId: ctx.groupId, displayName: ctx.me.displayName, listNumber: ctx.me.listNumber };
+  const preview = ctx.preview;
 
   const myGroup = await prisma.classGroup.findUnique({
     where: { id: me.groupId },
@@ -590,10 +625,12 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     myGroup?.currentPartial ?? 1,
   );
   let seating = null;
-  try {
-    seating = await getStudentSeating(req.auth!.userId, me.groupId, todayClassDayDate());
-  } catch (err) {
-    console.warn("[student/progress] seating lookup failed:", err);
+  if (!preview) {
+    try {
+      seating = await getStudentSeating(req.auth!.userId, me.groupId, todayClassDayDate());
+    } catch (err) {
+      console.warn("[student/progress] seating lookup failed:", err);
+    }
   }
 
   const lecturaSession = await getLecturaSession(me.groupId);
@@ -605,6 +642,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   const compilerReleased = myGroup ? await getCompilerReleasedForGroup(myGroup.id) : false;
 
   return res.json({
+    preview,
     group: myGroup ? { ...myGroup, compilerReleased } : myGroup,
     my: {
       score: myScore,
@@ -655,7 +693,7 @@ app.get("/student/skill-survey", requireAuth, requireStudent, async (req: Authed
   }
 });
 
-app.post("/student/skill-survey", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+app.post("/student/skill-survey", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   const answersSchema = z.record(z.string(), z.number().int().min(1).max(5));
   const body = z.object({ answers: answersSchema }).safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
@@ -680,7 +718,7 @@ app.post("/student/skill-survey", requireAuth, requireStudent, async (req: Authe
   }
 });
 
-app.post("/student/lectura/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+app.post("/student/lectura/leader", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
   const me = await prisma.user.findUnique({
@@ -699,7 +737,7 @@ app.post("/student/lectura/leader", requireAuth, requireStudent, async (req: Aut
   }
 });
 
-app.post("/student/lectura/start", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+app.post("/student/lectura/start", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   const me = await prisma.user.findUnique({
     where: { id: req.auth!.userId },
     select: { groupId: true, displayName: true },
@@ -716,7 +754,7 @@ app.post("/student/lectura/start", requireAuth, requireStudent, async (req: Auth
   }
 });
 
-app.post("/student/torre/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+app.post("/student/torre/leader", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
   const me = await prisma.user.findUnique({
@@ -735,7 +773,7 @@ app.post("/student/torre/leader", requireAuth, requireStudent, async (req: Authe
   }
 });
 
-app.post("/student/torre/start", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+app.post("/student/torre/start", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   const me = await prisma.user.findUnique({
     where: { id: req.auth!.userId },
     select: { groupId: true },
@@ -752,7 +790,7 @@ app.post("/student/torre/start", requireAuth, requireStudent, async (req: Authed
   }
 });
 
-app.get("/student/diploma.pdf", requireAuth, async (req: AuthedRequest, res) => {
+app.get("/student/diploma.pdf", requireAuth, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
 
   const me = await prisma.user.findUnique({
@@ -832,7 +870,7 @@ app.get("/student/office-exam", requireAuth, async (req: AuthedRequest, res) => 
   return res.json(state);
 });
 
-app.post("/student/office-exam/start", requireAuth, async (req: AuthedRequest, res) => {
+app.post("/student/office-exam/start", requireAuth, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
   try {
     const state = await startStudentExam(req.auth!.userId);
@@ -845,7 +883,7 @@ app.post("/student/office-exam/start", requireAuth, async (req: AuthedRequest, r
   }
 });
 
-app.put("/student/office-exam/answers", requireAuth, async (req: AuthedRequest, res) => {
+app.put("/student/office-exam/answers", requireAuth, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
   const body = z.object({ answers: z.record(z.string(), z.string()) }).safeParse(req.body);
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
@@ -859,7 +897,7 @@ app.put("/student/office-exam/answers", requireAuth, async (req: AuthedRequest, 
   }
 });
 
-app.post("/student/office-exam/submit", requireAuth, async (req: AuthedRequest, res) => {
+app.post("/student/office-exam/submit", requireAuth, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
   const body = z.object({ answers: z.record(z.string(), z.string()) }).safeParse(req.body);
   if (!body.success) return res.status(400).json({ error: "invalid_body" });

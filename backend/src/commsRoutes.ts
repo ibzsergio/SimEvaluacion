@@ -9,6 +9,8 @@ import {
   resetSemesterForTeacher,
   SEMESTER_RESET_PHRASE,
 } from "./semesterService.js";
+import { PREVIEW_GROUP_CODE } from "./previewConstants.js";
+import { loadStudentViewContext } from "./previewStudent.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -53,7 +55,7 @@ commsTeacherRouter.get("/", async (req: AuthedRequest, res) => {
     }),
     prisma.schoolCalendar.findUnique({ where: { teacherId } }),
     prisma.classGroup.findMany({
-      where: { teacherId },
+      where: { teacherId, NOT: { code: PREVIEW_GROUP_CODE } },
       orderBy: { code: "asc" },
       select: { id: true, code: true, shift: true },
     }),
@@ -268,16 +270,13 @@ commsTeacherRouter.delete("/groups/:groupId", async (req: AuthedRequest, res) =>
 });
 
 export async function getStudentComms(userId: string) {
-  const student = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { groupId: true, group: { select: { teacherId: true } } },
-  });
-  if (!student?.groupId || !student.group?.teacherId) {
+  const ctx = await loadStudentViewContext(userId);
+  if (!ctx) {
     return { announcements: [], tasks: [], calendar: null };
   }
 
-  const teacherId = student.group.teacherId;
-  const groupId = student.groupId;
+  const teacherId = ctx.teacherId;
+  const groupId = ctx.groupId;
 
   const [announcements, tasks, calendar] = await Promise.all([
     prisma.announcement.findMany({

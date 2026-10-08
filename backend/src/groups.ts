@@ -1,5 +1,6 @@
 import type { ClassGroup } from "@prisma/client";
 import { prisma } from "./prisma.js";
+import { PREVIEW_GROUP_CODE } from "./previewConstants.js";
 
 const DEFAULT_GROUPS = [
   { code: "301", shift: "matutino" },
@@ -40,7 +41,7 @@ export async function ensureTeacherGroups(teacherId: string): Promise<ClassGroup
 export async function listTeacherGroups(teacherId: string): Promise<ClassGroup[]> {
   await ensureTeacherGroups(teacherId);
   return prisma.classGroup.findMany({
-    where: { teacherId },
+    where: { teacherId, NOT: { code: PREVIEW_GROUP_CODE } },
     orderBy: [{ code: "asc" }, { shift: "asc" }],
   });
 }

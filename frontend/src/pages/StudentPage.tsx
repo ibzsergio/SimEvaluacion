@@ -85,6 +85,15 @@ export default function StudentPage() {
       }
       footer={studentFooter}
     >
+      {data.preview || user?.controlNumber?.toUpperCase() === "PRUEBA" ? (
+        <section className="glass mb-6 border-cyan-400/20 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-cyan-300/80">Vista de prueba</p>
+          <p className="mt-1 text-sm text-slate-300">
+            Estás viendo la plataforma como alumno. Esta cuenta no aparece en listas, ranking ni
+            calificaciones del docente.
+          </p>
+        </section>
+      ) : null}
       <StudentMotivationCard motivation={motivation} />
 
       <StudentSkillSurveyPanel />

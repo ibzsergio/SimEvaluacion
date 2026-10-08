@@ -1,5 +1,7 @@
 import { prisma } from "./prisma.js";
 import { deleteStudentAndRelated } from "./dedupeStudents.js";
+import { isPreviewControlNumber } from "./previewConstants.js";
+import { ensurePreviewStudent } from "./previewStudent.js";
 
 export const SEMESTER_RESET_PHRASE = "NUEVO SEMESTRE";
 
@@ -19,10 +21,11 @@ export async function resetSemesterForTeacher(
 
   const students = await prisma.user.findMany({
     where: { role: "STUDENT", groupId: { in: groupIds } },
-    select: { id: true },
+    select: { id: true, controlNumber: true },
   });
 
   for (const student of students) {
+    if (isPreviewControlNumber(student.controlNumber)) continue;
     await deleteStudentAndRelated(student.id);
   }
 
@@ -73,9 +76,11 @@ export async function resetSemesterForTeacher(
     await prisma.schoolCalendar.deleteMany({ where: { teacherId } });
   }
 
+  await ensurePreviewStudent(teacherId);
+
   return {
     groupsReset: groups.length,
-    studentsRemoved: students.length,
+    studentsRemoved: students.filter((s) => !isPreviewControlNumber(s.controlNumber)).length,
     examAttemptsRemoved,
   };
 }
