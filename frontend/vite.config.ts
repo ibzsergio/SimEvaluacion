@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261008-blank-editor-2",
+        cacheId: "simeval-20261008-name-stack",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
