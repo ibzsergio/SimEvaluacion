@@ -18,6 +18,8 @@ export type ClassGroup = {
   lecturaReleasedAt?: string | null;
   torreReleased?: boolean;
   torreReleasedAt?: string | null;
+  compilerReleased?: boolean;
+  compilerReleasedAt?: string | null;
 };
 
 export type User = {

@@ -64,6 +64,10 @@ import {
 } from "./skillSurveyService.js";
 import { SKILL_ROLE_LABELS, TEAM_ROLE_ORDER } from "./skillSurvey.js";
 
+import {
+  getCompilerReleasedByGroupIds,
+  setCompilerReleased,
+} from "./ensureCompilerSchema.js";
 import { requireAuth, requireTeacher, type AuthedRequest } from "./middleware.js";
 
 const upload = multer({
@@ -365,6 +369,7 @@ teacherGroupsRouter.get("/groups", async (req: AuthedRequest, res) => {
   const activitiesByGroupPartial = new Map(
     activityCounts.map((c) => [`${c.groupId}:${c.partialNumber ?? 1}`, c._count._all]),
   );
+  const compilerByGroup = await getCompilerReleasedByGroupIds(groupIds);
 
   return res.json({
     groups: groups.map((g) => ({
@@ -372,6 +377,7 @@ teacherGroupsRouter.get("/groups", async (req: AuthedRequest, res) => {
       studentCount: studentsByGroup.get(g.id) ?? 0,
       activityCount:
         activitiesByGroupPartial.get(`${g.id}:${g.currentPartial ?? 1}`) ?? 0,
+      compilerReleased: compilerByGroup.get(g.id) ?? false,
     })),
   });
 });
@@ -637,6 +643,21 @@ teacherGroupsRouter.get("/groups/:groupId/torre-session", async (req: AuthedRequ
   const session = await getTorreSession(groupId);
   if (!session) return res.status(404).json({ error: "group_not_found" });
   return res.json(session);
+});
+
+teacherGroupsRouter.put("/groups/:groupId/compiler-settings", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ released: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true, code: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  await setCompilerReleased(groupId, body.data.released);
+  return res.json({ groupId, code: group.code, compilerReleased: body.data.released });
 });
 
 teacherGroupsRouter.put("/groups/:groupId/torre-settings", async (req: AuthedRequest, res) => {

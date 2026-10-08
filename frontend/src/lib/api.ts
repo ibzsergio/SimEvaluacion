@@ -357,6 +357,14 @@ export async function fetchTorreSession(groupId: string) {
   return data;
 }
 
+export async function updateGroupCompilerSettings(groupId: string, payload: { released: boolean }) {
+  const { data } = await api.put<{ groupId: string; code: string; compilerReleased: boolean }>(
+    `/teacher/groups/${groupId}/compiler-settings`,
+    payload,
+  );
+  return data;
+}
+
 export async function updateGroupTorreSettings(groupId: string, payload: { released: boolean }) {
   const { data } = await api.put<TorreSession>(`/teacher/groups/${groupId}/torre-settings`, payload);
   return data;

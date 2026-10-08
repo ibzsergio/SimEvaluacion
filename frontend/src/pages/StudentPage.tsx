@@ -107,9 +107,11 @@ export default function StudentPage() {
 
       <StudentCommunication />
 
-      <div className="mb-6">
-        <PythonCompilerPanel />
-      </div>
+      {data.group?.compilerReleased ? (
+        <div className="mb-6">
+          <PythonCompilerPanel />
+        </div>
+      ) : null}
 
       {partialClosed && !diplomaEnabled ? (
         <section className="glass mb-6 border border-amber-400/30 bg-amber-500/10 p-6">

@@ -56,6 +56,7 @@ import { ensureDiplomaSchema } from "./ensureDiplomaSchema.js";
 import { ensureLecturaSchema } from "./ensureLecturaSchema.js";
 import { ensureTorreSchema } from "./ensureTorreSchema.js";
 import { dropPythonPracticeSchema } from "./ensurePythonPracticeSchema.js";
+import { ensureCompilerSchema, getCompilerReleasedForGroup } from "./ensureCompilerSchema.js";
 import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
@@ -584,9 +585,10 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     : null;
   const torreSession = await getTorreSession(me.groupId);
   const torre = torreSession ? studentTorreAssignment(torreSession, req.auth!.userId) : null;
+  const compilerReleased = myGroup ? await getCompilerReleasedForGroup(myGroup.id) : false;
 
   return res.json({
-    group: myGroup,
+    group: myGroup ? { ...myGroup, compilerReleased } : myGroup,
     my: {
       score: myScore,
       place: myPlace,
@@ -908,6 +910,7 @@ void (async () => {
     await ensureLecturaSchema();
     await ensureTorreSchema();
     await dropPythonPracticeSchema();
+    await ensureCompilerSchema();
   } catch (err) {
     console.error("[startup] Startup schema failed:", err);
     process.exit(1);

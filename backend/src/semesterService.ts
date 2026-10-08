@@ -45,6 +45,15 @@ export async function resetSemesterForTeacher(
         diplomaEnabledAt: null,
       },
     });
+    for (const id of groupIds) {
+      try {
+        await prisma.$executeRaw`
+          UPDATE ClassGroup SET compilerReleased = 0, compilerReleasedAt = NULL WHERE id = ${id}
+        `;
+      } catch {
+        /* columna puede no existir aún */
+      }
+    }
   }
 
   const exam = await prisma.officeExam.findUnique({ where: { teacherId } });

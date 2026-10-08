@@ -16,7 +16,7 @@ import SemesterPanel from "../components/SemesterPanel";
 import TeacherCommsPanel from "../components/TeacherCommsPanel";
 import ClosePartialPanel from "../components/ClosePartialPanel";
 import WeeklyWinnersPanel from "../components/WeeklyWinnersPanel";
-import PythonCompilerPanel from "../components/PythonCompilerPanel";
+import TeacherCompilerPanel from "../components/TeacherCompilerPanel";
 import Layout from "../components/Layout";
 import {
   createActivity,
@@ -408,7 +408,15 @@ export default function TeacherPage() {
       ) : tab === "acceso" ? (
         <AccessQrPanel />
       ) : tab === "compilador" ? (
-        <PythonCompilerPanel />
+        groupsQuery.isLoading ? (
+          <p className="text-slate-400">Cargando grupos...</p>
+        ) : selectedGroupId ? (
+          <TeacherCompilerPanel
+            groups={groups}
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={(id) => setSelectedGroupId(id)}
+          />
+        ) : null
       ) : tab === "semanas" ? (
         groupsQuery.isLoading ? (
           <p className="text-slate-400">Cargando grupos...</p>
