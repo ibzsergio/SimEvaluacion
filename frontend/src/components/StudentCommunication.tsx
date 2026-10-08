@@ -58,7 +58,7 @@ export default function StudentCommunication() {
                 setDownloading(false);
               }
             }}
-            className="mt-4 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-60"
+            className="mt-4 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60"
           >
             {downloading ? "Descargando..." : "Descargar calendario"}
           </button>

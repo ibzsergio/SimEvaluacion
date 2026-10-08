@@ -139,7 +139,7 @@ export default function StudentPage() {
                 setDownloadingDiploma(false);
               }
             }}
-            className="mt-4 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-6 py-3 text-sm font-bold text-white shadow-lg hover:from-indigo-400 hover:to-cyan-400 disabled:opacity-60"
+            className="mt-4 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-[#ffffff] shadow-lg hover:bg-emerald-500 disabled:opacity-60"
           >
             {downloadingDiploma ? "Generando PDF..." : "Descargar / Imprimir diploma (PDF)"}
           </button>
