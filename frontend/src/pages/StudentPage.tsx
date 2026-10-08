@@ -8,6 +8,7 @@ import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentTorreCard from "../components/StudentTorreCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
+import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
 import { formatCalendarDate, formatDateTime, partialLabel } from "../lib/dates";
@@ -105,6 +106,10 @@ export default function StudentPage() {
       {data.torre ? <StudentTorreCard torre={data.torre} /> : null}
 
       <StudentCommunication />
+
+      <div className="mb-6">
+        <PythonCompilerPanel />
+      </div>
 
       {partialClosed && !diplomaEnabled ? (
         <section className="glass mb-6 border border-amber-400/30 bg-amber-500/10 p-6">

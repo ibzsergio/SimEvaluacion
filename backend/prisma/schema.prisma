@@ -107,6 +107,7 @@ model User {
   projectTeamMemberships ProjectTeamMember[]
   projectTeamsCreated    ProjectTeam[]        @relation("ProjectTeamCreatedBy")
   partialExamScores      PartialExamScore[]
+  pythonPractices        PythonPractice[]
 
   @@index([groupId])
   @@index([role])
@@ -458,4 +459,18 @@ model ProjectTeamMember {
   student User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([teamId])
+}
+
+/// Prácticas de Python + Tkinter guardadas por el alumno o el docente.
+model PythonPractice {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @db.VarChar(120)
+  code      String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
 }
