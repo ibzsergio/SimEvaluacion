@@ -343,8 +343,8 @@ export default function GradesMatrixPanel({
                       className="w-full rounded-lg px-1 py-0.5 text-left hover:bg-white/5"
                       title="Ver qué actividades le faltan"
                     >
-                      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-medium text-white lg:text-lg">
-                        <span className="line-clamp-2 break-words sm:line-clamp-none lg:line-clamp-1">{student.displayName}</span>
+                      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-medium text-white">
+                        <span className="line-clamp-2 break-words text-sm leading-snug sm:line-clamp-none lg:line-clamp-1 lg:text-[13px] lg:leading-tight">{student.displayName}</span>
                         <span
                           className={`tabular-nums text-xs font-bold lg:text-sm ${
                             progress.complete ? "text-emerald-400" : "text-rose-400"
