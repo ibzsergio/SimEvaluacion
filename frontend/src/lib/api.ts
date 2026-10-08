@@ -234,9 +234,96 @@ export function getApiErrorMessage(error: unknown): string {
 
 export const api = axios.create({ baseURL });
 
+const AUTH_STORAGE_KEY = "simeval_auth";
+
+function tokenFromStorage(): string | null {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { token?: string };
+    return parsed.token?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export function setAuthToken(token: string | null) {
   if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
   else delete api.defaults.headers.common.Authorization;
+}
+
+api.interceptors.request.use((config) => {
+  const header = config.headers.Authorization;
+  if (!header) {
+    const token = tokenFromStorage();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+function persistAuthToken(token: string, user?: User) {
+  setAuthToken(token);
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    const prev = raw ? (JSON.parse(raw) as { token?: string; user?: User }) : {};
+    localStorage.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify({ token, user: user ?? prev.user }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+function renewAuthToken(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = api
+      .post<{ token: string; user: User }>("/auth/refresh")
+      .then(({ data }) => {
+        persistAuthToken(data.token, data.user);
+        return data.token;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: unknown) => {
+    if (!axios.isAxiosError(error) || !error.config) return Promise.reject(error);
+    const original = error.config as typeof error.config & { _retry?: boolean };
+    if (error.response?.status !== 401) return Promise.reject(error);
+    if (original._retry) return Promise.reject(error);
+    if (original.url?.includes("/auth/refresh") || original.url?.includes("/auth/login")) {
+      return Promise.reject(error);
+    }
+    original._retry = true;
+    const stored = tokenFromStorage();
+    if (stored) {
+      original.headers = original.headers ?? {};
+      original.headers.Authorization = `Bearer ${stored}`;
+      setAuthToken(stored);
+    }
+    const renewed = await renewAuthToken();
+    if (renewed) {
+      original.headers = original.headers ?? {};
+      original.headers.Authorization = `Bearer ${renewed}`;
+      return api.request(original);
+    }
+    if (stored) return api.request(original);
+    return Promise.reject(error);
+  },
+);
+
+export async function refreshAuthSession() {
+  const { data } = await api.post<{ token: string; user: User }>("/auth/refresh");
+  return data;
 }
 
 export async function loginTeacher(email: string, password: string) {

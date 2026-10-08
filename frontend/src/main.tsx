@@ -12,6 +12,7 @@ let swReloading = false;
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (swReloading) return;
+    if (window.location.pathname.startsWith("/docente")) return;
     swReloading = true;
     window.location.reload();
   });

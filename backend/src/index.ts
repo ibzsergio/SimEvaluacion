@@ -4,7 +4,7 @@ import cors from "cors";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { prisma } from "./prisma.js";
-import { signAuthToken } from "./auth.js";
+import { signAuthToken, verifyAuthTokenForRefresh } from "./auth.js";
 import { requireAuth, requireTeacher, requireStudent, type AuthedRequest } from "./middleware.js";
 import { ensureTeacherGroups } from "./groups.js";
 import { removeJunkStudentsForGroup } from "./dedupeStudents.js";
@@ -184,6 +184,23 @@ app.post("/auth/login/student", async (req, res) => {
 
   const token = signAuthToken({ sub: user.id, role: user.role });
   return res.json({ token, user: userPayload(user) });
+});
+
+app.post("/auth/refresh", async (req, res) => {
+  const header = req.header("authorization");
+  if (!header?.startsWith("Bearer ")) return res.status(401).json({ error: "missing_token" });
+  try {
+    const payload = verifyAuthTokenForRefresh(header.slice("Bearer ".length));
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      include: { group: { select: { id: true, code: true, shift: true } } },
+    });
+    if (!user) return res.status(401).json({ error: "invalid_token" });
+    const token = signAuthToken({ sub: user.id, role: user.role });
+    return res.json({ token, user: userPayload(user) });
+  } catch {
+    return res.status(401).json({ error: "invalid_token" });
+  }
 });
 
 app.post("/auth/student/create-password", async (req, res) => {

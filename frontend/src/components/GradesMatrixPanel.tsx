@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchGradesMatrix, getApiErrorMessage, saveGradesBatch } from "../lib/api";
 import { formatCalendarDate, getActivityKindLabel, partialLabel } from "../lib/dates";
-import type { Activity } from "../lib/types";
+import type { Activity, GradesMatrix } from "../lib/types";
 
 function cellKey(studentId: string, activityId: string) {
   return `${studentId}::${activityId}`;
@@ -176,20 +176,34 @@ export default function GradesMatrixPanel({
   const saveMutation = useMutation({
     mutationFn: (grades: Array<{ activityId: string; studentId: string; points: number }>) =>
       saveGradesBatch(groupId, grades),
-    onSuccess: async (result, variables) => {
+    onSuccess: (result, variables) => {
       setError("");
       setSuccess(
         result.saved === 1 ? "Calificación guardada." : `Guardadas ${result.saved} calificaciones.`,
+      );
+      const now = new Date().toISOString();
+      qc.setQueryData(
+        ["grades-matrix", groupId, partialNumber],
+        (old: GradesMatrix | undefined) => {
+          if (!old) return old;
+          const cells = { ...old.cells };
+          for (const g of variables) {
+            cells[g.studentId] = {
+              ...cells[g.studentId],
+              [g.activityId]: { points: g.points, gradedAt: now },
+            };
+          }
+          return { ...old, cells };
+        },
       );
       setDrafts((prev) => {
         const next = { ...prev };
         for (const g of variables) delete next[cellKey(g.studentId, g.activityId)];
         return next;
       });
-      await qc.invalidateQueries({ queryKey: ["grades-matrix", groupId, partialNumber] });
-      await qc.invalidateQueries({ queryKey: ["group-ranking", groupId] });
-      await qc.invalidateQueries({ queryKey: ["delivery-status", groupId] });
-      await qc.invalidateQueries({ queryKey: ["listas-f1-preview", groupId] });
+      void qc.invalidateQueries({ queryKey: ["group-ranking", groupId] });
+      void qc.invalidateQueries({ queryKey: ["delivery-status", groupId] });
+      void qc.invalidateQueries({ queryKey: ["listas-f1-preview", groupId] });
     },
     onError: (err) => setError(getApiErrorMessage(err)),
     onSettled: () => setSavingKey(null),
@@ -386,15 +400,18 @@ export default function GradesMatrixPanel({
                           {kindLabel}
                         </p>
                         <input
-                          type="number"
-                          min={0}
-                          max={activity.maxPoints}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          autoComplete="off"
                           value={value}
                           placeholder="—"
+                          onWheel={(e) => e.currentTarget.blur()}
                           onChange={(e) => {
+                            const next = e.target.value.replace(/[^\d]/g, "");
                             setError("");
                             setSuccess("");
-                            setDrafts((prev) => ({ ...prev, [key]: e.target.value }));
+                            setDrafts((prev) => ({ ...prev, [key]: next }));
                           }}
                           onBlur={(e) => {
                             if (!(key in drafts) && e.target.value === savedPoints(student.id, activity.id)) {
@@ -406,6 +423,9 @@ export default function GradesMatrixPanel({
                             if (e.key === "Enter") {
                               e.preventDefault();
                               (e.target as HTMLInputElement).blur();
+                            }
+                            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                              e.preventDefault();
                             }
                           }}
                       className={`h-10 w-[3.75rem] min-w-[3.75rem] rounded-lg border bg-slate-900/80 px-1.5 text-base text-white placeholder:text-slate-600 sm:w-20 sm:px-2 lg:h-10 lg:w-[5.75rem] lg:min-w-[5.75rem] lg:px-2.5 lg:text-lg ${
