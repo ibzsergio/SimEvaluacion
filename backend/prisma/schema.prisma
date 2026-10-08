@@ -61,6 +61,10 @@ model ClassGroup {
   torreReleased Boolean @default(false)
   torreReleasedAt DateTime?
   torrePayload Json?
+  /// Sprint aéreo (avión de papel): el docente libera, el líder arranca 30 min.
+  avionReleased Boolean @default(false)
+  avionReleasedAt DateTime?
+  avionPayload Json?
   /// El docente activa el compilador Python para que los alumnos lo vean.
   compilerReleased Boolean @default(false)
   compilerReleasedAt DateTime?

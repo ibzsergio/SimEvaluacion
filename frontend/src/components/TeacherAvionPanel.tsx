@@ -1,45 +1,50 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  fetchTorreSession,
+  fetchAvionSession,
   getApiErrorMessage,
-  resetTorreSession,
-  setTorrePaused,
-  updateGroupTorreSettings,
+  resetAvionSession,
+  setAvionPaused,
+  updateGroupAvionSettings,
 } from "../lib/api";
-import { formatClock, remainingSeconds, TORRE_MINUTOS, TORRE_NIVELES, TORRE_PROGRAMA, TORRE_TITULO } from "../lib/torreTkinter";
+import {
+  AVION_MINUTOS,
+  AVION_PROGRAMA,
+  AVION_SPRINTS,
+  AVION_TITULO,
+  formatClock,
+  remainingSeconds,
+} from "../lib/avionScrum";
 import type { ClassGroup } from "../lib/types";
-import TorreIllustration from "./TorreIllustration";
-import TorreIndicacion from "./TorreIndicacion";
+import AvionIllustration from "./AvionIllustration";
+import AvionIndicacion from "./AvionIndicacion";
 
-function torrePauseKey(groupId: string) {
-  return `simeval-torre-pausedAt:${groupId}`;
+function avionPauseKey(groupId: string) {
+  return `simeval-avion-pausedAt:${groupId}`;
 }
 
-export default function TeacherTorrePanel({
+export default function TeacherAvionPanel({
   groups,
   selectedGroupId,
   onSelectGroup,
-  concluded = false,
   hideGroupPicker = false,
 }: {
   groups: ClassGroup[];
   selectedGroupId: string;
   onSelectGroup: (id: string) => void;
-  concluded?: boolean;
   hideGroupPicker?: boolean;
 }) {
   const qc = useQueryClient();
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const [now, setNow] = useState(() => Date.now());
   const [localPausedAt, setLocalPausedAt] = useState<string | null>(() =>
-    selectedGroupId ? localStorage.getItem(torrePauseKey(selectedGroupId)) : null,
+    selectedGroupId ? localStorage.getItem(avionPauseKey(selectedGroupId)) : null,
   );
   const [pauseError, setPauseError] = useState("");
 
   const sessionQuery = useQuery({
-    queryKey: ["torre-session", selectedGroupId],
-    queryFn: () => fetchTorreSession(selectedGroupId),
+    queryKey: ["avion-session", selectedGroupId],
+    queryFn: () => fetchAvionSession(selectedGroupId),
     enabled: !!selectedGroupId,
     refetchInterval: 3000,
     refetchOnWindowFocus: true,
@@ -47,7 +52,7 @@ export default function TeacherTorrePanel({
 
   const session = sessionQuery.data;
   const teams = session?.teams ?? [];
-  const released = session?.released ?? selectedGroup?.torreReleased ?? false;
+  const released = session?.released ?? false;
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -55,18 +60,18 @@ export default function TeacherTorrePanel({
   }, []);
 
   const releaseMutation = useMutation({
-    mutationFn: (next: boolean) => updateGroupTorreSettings(selectedGroupId, { released: next }),
+    mutationFn: (next: boolean) => updateGroupAvionSettings(selectedGroupId, { released: next }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["torre-session", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["avion-session", selectedGroupId] });
       await qc.invalidateQueries({ queryKey: ["groups"] });
       await qc.invalidateQueries({ queryKey: ["teacher-comms"] });
     },
   });
 
   const resetMutation = useMutation({
-    mutationFn: () => resetTorreSession(selectedGroupId),
+    mutationFn: () => resetAvionSession(selectedGroupId),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["torre-session", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["avion-session", selectedGroupId] });
     },
   });
 
@@ -74,7 +79,7 @@ export default function TeacherTorrePanel({
     mutationFn: async (paused: boolean) => {
       let selectedSession = null;
       for (const group of groups) {
-        const next = await setTorrePaused(group.id, paused);
+        const next = await setAvionPaused(group.id, paused);
         if (group.id === selectedGroupId) selectedSession = next;
       }
       return selectedSession;
@@ -83,14 +88,14 @@ export default function TeacherTorrePanel({
       setPauseError("");
       if (paused) {
         const at = data?.pausedAt ?? localPausedAt ?? new Date().toISOString();
-        for (const group of groups) localStorage.setItem(torrePauseKey(group.id), at);
+        for (const group of groups) localStorage.setItem(avionPauseKey(group.id), at);
         setLocalPausedAt(at);
       } else {
-        for (const group of groups) localStorage.removeItem(torrePauseKey(group.id));
+        for (const group of groups) localStorage.removeItem(avionPauseKey(group.id));
         setLocalPausedAt(null);
       }
-      if (data) qc.setQueryData(["torre-session", selectedGroupId], data);
-      await qc.invalidateQueries({ queryKey: ["torre-session"] });
+      if (data) qc.setQueryData(["avion-session", selectedGroupId], data);
+      await qc.invalidateQueries({ queryKey: ["avion-session"] });
     },
     onError: (err, paused) => {
       setPauseError(getApiErrorMessage(err));
@@ -101,7 +106,7 @@ export default function TeacherTorrePanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar la Torre Tkinter para el grupo ${selectedGroup?.code}?\n\nLos alumnos verán las instrucciones, eligirán un líder (mismo equipo de la lectura) y solo el líder podrá arrancar los 45 minutos. También se publica un aviso en Comunicación.`,
+        `¿Liberar Sprint aéreo para el grupo ${selectedGroup?.code}?\n\nLos alumnos reales verán las instrucciones, elegirán líder y el líder arrancará 30 minutos. El alumno de prueba ya puede verla. También se publica un aviso en Comunicación.`,
       );
       if (!ok) return;
     }
@@ -110,7 +115,7 @@ export default function TeacherTorrePanel({
 
   function handleReset() {
     const ok = window.confirm(
-      "¿Reiniciar líderes y relojes de este grupo? La actividad sigue liberada, pero cada equipo vuelve a elegir líder.",
+      "¿Reiniciar líderes y relojes de este grupo? La actividad sigue en el mismo estado de liberación, pero cada equipo vuelve a elegir líder.",
     );
     if (!ok) return;
     resetMutation.mutate();
@@ -118,53 +123,50 @@ export default function TeacherTorrePanel({
 
   const withLeader = teams.filter((t) => t.leaderId).length;
   const withTimer = teams.filter((t) => t.startedAt).length;
-  const minutes = session?.minutes ?? TORRE_MINUTOS;
+  const minutes = session?.minutes ?? AVION_MINUTOS;
   const pausedAt = localPausedAt ?? session?.pausedAt ?? null;
   const paused = Boolean(pausedAt);
   void now;
 
   useEffect(() => {
-    setLocalPausedAt(selectedGroupId ? localStorage.getItem(torrePauseKey(selectedGroupId)) : null);
+    setLocalPausedAt(selectedGroupId ? localStorage.getItem(avionPauseKey(selectedGroupId)) : null);
     setPauseError("");
   }, [selectedGroupId]);
 
   return (
     <div>
       {hideGroupPicker ? null : (
-      <div className="mb-4 flex flex-wrap gap-2 no-print">
-        {groups.map((g) => (
-          <button
-            key={g.id}
-            type="button"
-            onClick={() => onSelectGroup(g.id)}
-            className={`rounded-xl border px-4 py-2 text-sm font-semibold ${
-              g.id === selectedGroupId
-                ? "border-indigo-400/50 bg-indigo-500/15 text-indigo-100"
-                : "border-white/10 bg-white/5 text-slate-300"
-            }`}
-          >
-            Grupo {g.code}
-          </button>
-        ))}
-      </div>
+        <div className="mb-4 flex flex-wrap gap-2 no-print">
+          {groups.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => onSelectGroup(g.id)}
+              className={`rounded-xl border px-4 py-2 text-sm font-semibold ${
+                g.id === selectedGroupId
+                  ? "border-sky-400/50 bg-sky-500/15 text-sky-100"
+                  : "border-white/10 bg-white/5 text-slate-300"
+              }`}
+            >
+              Grupo {g.code}
+            </button>
+          ))}
+        </div>
       )}
 
       <section className="glass mb-6 p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">
-              {concluded ? "Registro" : "En vivo"}
-            </p>
+            <p className="text-xs font-bold uppercase tracking-widest text-sky-300">En vivo</p>
             <h2 className="mt-1 text-xl font-bold text-white">Líder y temporizador por equipo</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Se actualiza solo. Ves quién ya eligió líder y el reloj de 45 minutos de cada color.
+              El alumno de prueba ya ve esta actividad. Los alumnos reales solo cuando pulses Liberar.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
               Líderes {withLeader}/{teams.length || 6} · Relojes {withTimer}/{teams.length || 6}
             </p>
-            {concluded ? null : (
             <button
               type="button"
               onClick={() => {
@@ -174,7 +176,7 @@ export default function TeacherTorrePanel({
                   );
                   if (!ok) return;
                   const at = new Date().toISOString();
-                  for (const group of groups) localStorage.setItem(torrePauseKey(group.id), at);
+                  for (const group of groups) localStorage.setItem(avionPauseKey(group.id), at);
                   setLocalPausedAt(at);
                   pauseMutation.mutate(true);
                   return;
@@ -184,19 +186,17 @@ export default function TeacherTorrePanel({
               disabled={pauseMutation.isPending || groups.length === 0}
               className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 ${
                 paused
-                  ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                  ? "bg-emerald-600 text-[#ffffff] hover:bg-emerald-500"
                   : "bg-amber-500 text-slate-950 hover:bg-amber-400"
               }`}
             >
               {pauseMutation.isPending ? "Guardando..." : paused ? "Reanudar" : "Pausar"}
             </button>
-            )}
           </div>
         </div>
         {paused ? (
           <p className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-sm font-semibold text-amber-100">
-            Pausado. Los relojes están congelados (el tiempo ya corrido no se pierde). Pulsa Reanudar cuando
-            terminen la otra actividad.
+            Pausado. Los relojes están congelados. Pulsa Reanudar cuando terminen la otra actividad.
           </p>
         ) : null}
         {pauseError ? (
@@ -208,7 +208,8 @@ export default function TeacherTorrePanel({
           <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
         ) : teams.length === 0 ? (
           <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-            No hay equipos de butacas. Asigna lugares primero (los mismos de la lectura).
+            No hay equipos de butacas. Asigna lugares primero (los mismos de la lectura). El alumno de
+            prueba igual puede ver la actividad.
           </p>
         ) : (
           <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -223,7 +224,7 @@ export default function TeacherTorrePanel({
                   style={{ borderColor: `${team.hex}88`, backgroundColor: `${team.hex}18` }}
                 >
                   <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-                    {team.colorName} · columna {team.columna}
+                    {team.preview ? "Alumno de prueba" : `${team.colorName} · columna ${team.columna}`}
                   </p>
                   <p className="mt-2 text-sm font-semibold text-white">
                     {team.leaderName ? `Líder: ${team.leaderName}` : "Aún no eligen líder"}
@@ -278,54 +279,44 @@ export default function TeacherTorrePanel({
       </section>
 
       <section className="glass mb-6 p-6">
-        <p className="text-xs font-bold uppercase tracking-widest text-amber-300">{TORRE_PROGRAMA}</p>
-        <h2 className="mt-1 text-2xl font-bold text-white">{TORRE_TITULO}</h2>
+        <p className="text-xs font-bold uppercase tracking-widest text-sky-300">{AVION_PROGRAMA}</p>
+        <h2 className="mt-1 text-2xl font-bold text-white">{AVION_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code} · {selectedGroup?.shift}. Mismos equipos de color que la lectura. Tú
-          revisas la indicación y, cuando esté listo el material, liberas. Los alumnos leen, eligen líder y el
-          líder activa un reloj de {TORRE_MINUTOS} minutos. Al acabar: manos arriba, no siguen construyendo.
-          En la cima debe ir una bandera que diga Tkinter. El ganador (la más alta) vale 1000 puntos por
-          integrante.
+          Grupo {selectedGroup?.code} · {selectedGroup?.shift}. Mismos equipos de color. Construyen un avión
+          de papel que vuele lo más lejos posible y cada uno toma su rol Scrum. El líder activa {AVION_MINUTOS}{" "}
+          minutos. Gana el vuelo más largo: 1000 puntos por integrante.
         </p>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div>
-            <TorreIndicacion />
+            <AvionIndicacion />
             <div className="mt-4 space-y-2">
-              {TORRE_NIVELES.map((nivel) => (
-                <div key={nivel.nivel} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-amber-200">
-                    Fase {nivel.nivel} · {nivel.nombre}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-200">{nivel.palabras.join(" · ")}</p>
+              {AVION_SPRINTS.map((sprint) => (
+                <div key={sprint.nivel} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-sky-200">{sprint.nombre}</p>
+                  <p className="mt-1 text-sm text-slate-200">{sprint.detalle}</p>
                 </div>
               ))}
             </div>
           </div>
-          <TorreIllustration compact />
+          <AvionIllustration compact />
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3 no-print">
-          {concluded ? (
-            <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-100">
-              Concluido — ya no se muestra a los alumnos
-            </p>
-          ) : (
-            <>
           <button
             type="button"
             onClick={toggleRelease}
-            disabled={releaseMutation.isPending || !selectedGroupId || teams.length === 0}
-            className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 ${
+            disabled={releaseMutation.isPending || !selectedGroupId}
+            className={`rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60 ${
               released
                 ? "border border-amber-400/40 bg-amber-500/20 text-amber-100"
-                : "bg-emerald-600 hover:bg-emerald-500"
+                : "bg-emerald-600 text-[#ffffff] hover:bg-emerald-500"
             }`}
           >
             {releaseMutation.isPending
               ? "Guardando..."
               : released
-                ? "Ocultar a los alumnos"
+                ? "Ocultar a los alumnos reales"
                 : "Liberar actividad"}
           </button>
           <button
@@ -338,11 +329,9 @@ export default function TeacherTorrePanel({
           </button>
           <p className="text-xs text-slate-400">
             {released
-              ? "Liberada: los alumnos ya ven instrucciones, aviso y el botón del líder."
-              : "Todavía no la ven los alumnos. Revisa la torre de ejemplo y luego libera."}
+              ? "Liberada: ya la ven los alumnos reales (y el de prueba)."
+              : "Solo la ve el alumno de prueba (PRUEBA). Los grupos 301 y 302 no la ven hasta que liberes."}
           </p>
-            </>
-          )}
         </div>
         {sessionQuery.isError ? (
           <p className="mt-3 text-sm text-rose-300">{getApiErrorMessage(sessionQuery.error)}</p>

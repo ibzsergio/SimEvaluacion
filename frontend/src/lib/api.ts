@@ -22,7 +22,9 @@ import type {
   ListasF1Preview,
   LecturaSession,
   TorreSession,
+  AvionSession,
   StudentTorre,
+  StudentAvion,
   StudentLectura,
 } from "./types";
 
@@ -491,6 +493,36 @@ export async function chooseStudentTorreLeader(leaderId: string) {
 export async function startStudentTorreTimer() {
   const { data } = await api.post<{ torre: StudentTorre | null }>("/student/torre/start");
   return data.torre;
+}
+
+export async function fetchAvionSession(groupId: string) {
+  const { data } = await api.get<AvionSession>(`/teacher/groups/${groupId}/avion-session`);
+  return data;
+}
+
+export async function updateGroupAvionSettings(groupId: string, payload: { released: boolean }) {
+  const { data } = await api.put<AvionSession>(`/teacher/groups/${groupId}/avion-settings`, payload);
+  return data;
+}
+
+export async function resetAvionSession(groupId: string) {
+  const { data } = await api.post<AvionSession>(`/teacher/groups/${groupId}/avion-reset`);
+  return data;
+}
+
+export async function setAvionPaused(groupId: string, paused: boolean) {
+  const { data } = await api.post<AvionSession>(`/teacher/groups/${groupId}/avion-pause`, { paused });
+  return data;
+}
+
+export async function chooseStudentAvionLeader(leaderId: string) {
+  const { data } = await api.post<{ avion: StudentAvion | null }>("/student/avion/leader", { leaderId });
+  return data.avion;
+}
+
+export async function startStudentAvionTimer() {
+  const { data } = await api.post<{ avion: StudentAvion | null }>("/student/avion/start");
+  return data.avion;
 }
 
 export async function fetchListasF1Preview(groupId: string) {

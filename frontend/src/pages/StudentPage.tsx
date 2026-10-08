@@ -6,7 +6,7 @@ import StudentCommunication from "../components/StudentCommunication";
 import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
-import StudentTorreCard from "../components/StudentTorreCard";
+import StudentAvionCard from "../components/StudentAvionCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Top10Ranking from "../components/Top10Ranking";
@@ -31,9 +31,9 @@ export default function StudentPage() {
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     refetchInterval: (query) => {
-      const torre = query.state.data?.torre;
+      const avion = query.state.data?.avion;
       const lectura = query.state.data?.lectura;
-      if (torre?.startedAt || torre?.pausedAt || lectura?.startedAt) return 5000;
+      if (avion?.startedAt || avion?.pausedAt || lectura?.startedAt) return 5000;
       if (lectura && !lectura.startedAt) return 8000;
       return 30_000;
     },
@@ -112,7 +112,7 @@ export default function StudentPage() {
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
-      {data.torre ? <StudentTorreCard torre={data.torre} /> : null}
+      {data.avion ? <StudentAvionCard avion={data.avion} /> : null}
 
       <StudentCommunication />
 

@@ -120,6 +120,7 @@ export type StudentProgress = {
   seating?: StudentSeating | null;
   lectura?: StudentLectura | null;
   torre?: StudentTorre | null;
+  avion?: StudentAvion | null;
 };
 
 export type StudentSeating = {
@@ -221,6 +222,8 @@ export type StudentTorre = {
   }>;
 };
 
+export type StudentAvion = StudentTorre & { preview?: boolean };
+
 export type TorreSession = {
   groupId: string;
   groupCode: string;
@@ -244,8 +247,11 @@ export type TorreSession = {
     leaderId: string | null;
     leaderName: string | null;
     startedAt: string | null;
+    preview?: boolean;
   }>;
 };
+
+export type AvionSession = TorreSession;
 
 export type LecturaSession = {
   groupId: string;

@@ -51,9 +51,16 @@ import {
   chooseTorreLeader,
   getTorreSession,
   startTorreTimer,
-  studentTorreAssignment,
+    studentTorreAssignment,
   torreErrorHttp,
 } from "./torreChallenge.js";
+import {
+  avionErrorHttp,
+  chooseAvionLeader,
+  getAvionSession,
+  startAvionTimer,
+  studentAvionAssignment,
+} from "./avionChallenge.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
 import { getStudentSeating } from "./seatingService.js";
 import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSchema.js";
@@ -64,6 +71,7 @@ import { ensurePartialCutSchema } from "./ensurePartialCutSchema.js";
 import { ensureDiplomaSchema } from "./ensureDiplomaSchema.js";
 import { ensureLecturaSchema } from "./ensureLecturaSchema.js";
 import { ensureTorreSchema } from "./ensureTorreSchema.js";
+import { ensureAvionSchema } from "./ensureAvionSchema.js";
 import { dropPythonPracticeSchema } from "./ensurePythonPracticeSchema.js";
 import { ensureCompilerSchema, getCompilerReleasedForGroup } from "./ensureCompilerSchema.js";
 import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
@@ -637,8 +645,10 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   const lectura = lecturaSession
     ? studentLecturaAssignment(lecturaSession, req.auth!.userId, me.displayName)
     : null;
-  const torreSession = await getTorreSession(me.groupId);
-  const torre = torreSession ? studentTorreAssignment(torreSession, req.auth!.userId) : null;
+  const avionSession = await getAvionSession(me.groupId);
+  const avion = avionSession
+    ? studentAvionAssignment(avionSession, req.auth!.userId, preview)
+    : null;
   const compilerReleased = myGroup ? await getCompilerReleasedForGroup(myGroup.id) : false;
 
   return res.json({
@@ -662,7 +672,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     },
     seating,
     lectura,
-    torre,
+    avion,
     motivation,
     summary,
     top10,
@@ -769,6 +779,36 @@ app.post("/student/torre/leader", requireAuth, requireStudent, requireNotPreview
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";
     const mapped = torreErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+app.post("/student/avion/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await chooseAvionLeader(ctx.groupId, req.auth!.userId, body.data.leaderId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ avion: studentAvionAssignment(session, req.auth!.userId, ctx.preview) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = avionErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+app.post("/student/avion/start", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await startAvionTimer(ctx.groupId, req.auth!.userId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ avion: studentAvionAssignment(session, req.auth!.userId, ctx.preview) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = avionErrorHttp(msg);
     return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
   }
 });
@@ -964,6 +1004,7 @@ void (async () => {
     await ensureDiplomaSchema();
     await ensureLecturaSchema();
     await ensureTorreSchema();
+    await ensureAvionSchema();
     await dropPythonPracticeSchema();
     await ensureCompilerSchema();
   } catch (err) {

@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261008-survey-collapse",
+        cacheId: "simeval-20261008-scrum-avion",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

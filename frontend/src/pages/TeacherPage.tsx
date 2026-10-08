@@ -8,7 +8,7 @@ import GroupGradesImportPanel from "../components/GroupGradesImportPanel";
 import GroupRankingPanel from "../components/GroupRankingPanel";
 import GroupStudentsPanel from "../components/GroupStudentsPanel";
 import ColorReadingPanel from "../components/ColorReadingPanel";
-import TeacherTorrePanel from "../components/TeacherTorrePanel";
+import TeacherScrumActivitiesPanel from "../components/TeacherScrumActivitiesPanel";
 import IcebreakerRoulettePanel from "../components/IcebreakerRoulettePanel";
 import SeatingPanel from "../components/SeatingPanel";
 import TeacherSkillSurveyPanel from "../components/TeacherSkillSurveyPanel";
@@ -59,7 +59,7 @@ export default function TeacherPage() {
     | "equipos"
     | "rompehielo"
     | "lectura"
-    | "torre"
+    | "scrum"
     | "acceso"
     | "compilador"
   >("alumnos");
@@ -302,8 +302,8 @@ export default function TeacherPage() {
           <TabButton active={tab === "lectura"} onClick={() => setTab("lectura")}>
             Lectura por colores
           </TabButton>
-          <TabButton active={tab === "torre"} onClick={() => setTab("torre")}>
-            Torre Tkinter
+          <TabButton active={tab === "scrum"} onClick={() => setTab("scrum")}>
+            Actividades — Scrum
           </TabButton>
           <TabButton active={tab === "acceso"} onClick={() => setTab("acceso")}>
             QR / Acceso
@@ -395,11 +395,11 @@ export default function TeacherPage() {
             onSelectGroup={(id) => setSelectedGroupId(id)}
           />
         ) : null
-      ) : tab === "torre" ? (
+      ) : tab === "scrum" ? (
         groupsQuery.isLoading ? (
           <p className="text-slate-400">Cargando grupos...</p>
         ) : selectedGroupId ? (
-          <TeacherTorrePanel
+          <TeacherScrumActivitiesPanel
             groups={groups}
             selectedGroupId={selectedGroupId}
             onSelectGroup={(id) => setSelectedGroupId(id)}
