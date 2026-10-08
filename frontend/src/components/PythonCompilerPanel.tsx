@@ -1,23 +1,14 @@
 import { python } from "@codemirror/lang-python";
 import { linter, lintGutter, type Diagnostic } from "@codemirror/lint";
 import { EditorView } from "@codemirror/view";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import CodeMirror from "@uiw/react-codemirror";
 import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import {
-  createPythonPractice,
-  deletePythonPractice,
-  fetchPythonPractice,
-  fetchPythonPractices,
-  getApiErrorMessage,
-  updatePythonPractice,
-} from "../lib/api";
 import { checkPythonSyntax, runPythonProgram } from "../lib/pyodideRunner";
 import { useTheme } from "../lib/theme";
 
 const STORAGE_KEY = "simeval_python_tk_code";
-const META_KEY = "simeval_python_tk_meta";
+const TITLE_KEY = "simeval_python_tk_title";
 
 const DEFAULT_CODE = `import tkinter as tk
 from tkinter import messagebox
@@ -67,17 +58,6 @@ function rangeForLine(code: string, line: number) {
   return { from: start, to: Math.max(start + 1, from + text.length) };
 }
 
-function readMeta() {
-  try {
-    const raw = localStorage.getItem(META_KEY);
-    if (!raw) return { id: "", title: "Práctica 1" };
-    const parsed = JSON.parse(raw) as { id?: string; title?: string };
-    return { id: parsed.id ?? "", title: parsed.title?.trim() || "Práctica 1" };
-  } catch {
-    return { id: "", title: "Práctica 1" };
-  }
-}
-
 function fileNameFromTitle(title: string) {
   const base = title
     .normalize("NFD")
@@ -94,8 +74,6 @@ function titleFromFileName(name: string) {
 
 export default function PythonCompilerPanel({ compact }: { compact?: boolean }) {
   const { theme } = useTheme();
-  const qc = useQueryClient();
-  const meta0 = readMeta();
   const [code, setCode] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) || DEFAULT_CODE;
@@ -103,36 +81,29 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
       return DEFAULT_CODE;
     }
   });
-  const [title, setTitle] = useState(meta0.title);
-  const [currentId, setCurrentId] = useState(meta0.id);
-  const [savedCode, setSavedCode] = useState(code);
-  const [savedTitle, setSavedTitle] = useState(meta0.title);
-  const [busy, setBusy] = useState<"save" | "load" | "delete" | "file" | null>(null);
+  const [title, setTitle] = useState(() => {
+    try {
+      return localStorage.getItem(TITLE_KEY) || "Práctica 1";
+    } catch {
+      return "Práctica 1";
+    }
+  });
   const [output, setOutput] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "running" | "ready" | "error">("idle");
   const [message, setMessage] = useState(
-    "Guarda en la plataforma para no perder el trabajo, o baja el .py a tu teléfono y ábrelo después aquí.",
+    "El código de ahora se queda en este teléfono o computadora. Para llevarlo a otro lado, guarda el .py y ábrelo aquí.",
   );
   const hostRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const practicesQuery = useQuery({
-    queryKey: ["python-practices"],
-    queryFn: fetchPythonPractices,
-    staleTime: 15_000,
-    retry: 1,
-  });
-
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, code);
-      localStorage.setItem(META_KEY, JSON.stringify({ id: currentId, title }));
+      localStorage.setItem(TITLE_KEY, title);
     } catch {
       /* ignore */
     }
-  }, [code, currentId, title]);
-
-  const dirty = code !== savedCode || title.trim() !== savedTitle.trim();
+  }, [code, title]);
 
   const extensions = useMemo(
     () => [
@@ -160,19 +131,6 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
     [],
   );
 
-  function confirmDiscard() {
-    if (!dirty) return true;
-    return window.confirm("Hay cambios sin guardar. ¿Descartarlos y continuar?");
-  }
-
-  function applyLoaded(next: { id: string; title: string; code: string }) {
-    setCurrentId(next.id);
-    setTitle(next.title);
-    setCode(next.code);
-    setSavedCode(next.code);
-    setSavedTitle(next.title);
-  }
-
   async function run() {
     const host = hostRef.current;
     if (!host) return;
@@ -192,66 +150,6 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
       setStatus("error");
       setMessage("Revisa el código. Si es la primera vez, conecta internet para descargar Python.");
       setOutput((prev) => (prev ? prev + "\n" : "") + text);
-    }
-  }
-
-  async function saveToPlatform() {
-    const name = title.trim() || "Práctica";
-    setBusy("save");
-    try {
-      if (currentId) {
-        const saved = await updatePythonPractice(currentId, name, code);
-        applyLoaded(saved);
-      } else {
-        const saved = await createPythonPractice(name, code);
-        applyLoaded(saved);
-      }
-      await qc.invalidateQueries({ queryKey: ["python-practices"] });
-      setMessage("Práctica guardada en tu cuenta. La puedes abrir en esta computadora o en tu teléfono.");
-    } catch (err) {
-      setMessage(getApiErrorMessage(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function openFromPlatform(id: string) {
-    if (!id) return;
-    if (id === currentId) return;
-    if (!confirmDiscard()) return;
-    setBusy("load");
-    try {
-      const item = await fetchPythonPractice(id);
-      applyLoaded(item);
-      setMessage(`Abierta: ${item.title}`);
-    } catch (err) {
-      setMessage(getApiErrorMessage(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  function newPractice() {
-    if (!confirmDiscard()) return;
-    applyLoaded({ id: "", title: "Nueva práctica", code: DEFAULT_CODE });
-    setMessage("Nueva práctica. Recuerda guardarla en la plataforma o en tu teléfono.");
-  }
-
-  async function removePractice() {
-    if (!currentId) return;
-    if (!window.confirm("¿Eliminar esta práctica de la plataforma? El archivo en tu teléfono no se borra.")) {
-      return;
-    }
-    setBusy("delete");
-    try {
-      await deletePythonPractice(currentId);
-      await qc.invalidateQueries({ queryKey: ["python-practices"] });
-      applyLoaded({ id: "", title: "Nueva práctica", code: DEFAULT_CODE });
-      setMessage("Práctica eliminada de la plataforma.");
-    } catch (err) {
-      setMessage(getApiErrorMessage(err));
-    } finally {
-      setBusy(null);
     }
   }
 
@@ -283,21 +181,15 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
     const file = ev.target.files?.[0];
     ev.target.value = "";
     if (!file) return;
-    if (!confirmDiscard()) return;
-    setBusy("file");
     try {
       const text = await file.text();
-      applyLoaded({ id: "", title: titleFromFileName(file.name), code: text });
-      setMessage(`Archivo abierto: ${file.name}. Guárdalo en la plataforma si quieres tenerlo en tu cuenta.`);
+      setTitle(titleFromFileName(file.name));
+      setCode(text);
+      setMessage(`Archivo abierto: ${file.name}`);
     } catch {
       setMessage("No se pudo leer ese archivo. Prueba con un .py o .txt.");
-    } finally {
-      setBusy(null);
     }
   }
-
-  const items = practicesQuery.data?.items ?? [];
-  const busyNow = busy !== null || status === "loading" || status === "running";
 
   return (
     <section className="glass p-3 sm:p-5">
@@ -306,9 +198,9 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
           <h2 className="text-lg font-semibold text-white">Compilador Python + Tkinter</h2>
           {!compact ? (
             <p className="mt-1 text-sm text-slate-400">
-              Escribe y ejecuta Python aquí. Guarda la práctica en tu cuenta para abrirla en cualquier
-              dispositivo, o baja el archivo <span className="font-semibold text-cyan-200">.py</span> al
-              teléfono y ábrelo después con “Abrir del teléfono”.
+              Escribe y ejecuta Python aquí. El borrador se queda en este dispositivo. Para otra
+              computadora o teléfono, usa <span className="font-semibold text-cyan-200">.py</span>:
+              “Guardar en el teléfono” y luego “Abrir del teléfono”.
             </p>
           ) : null}
         </div>
@@ -323,69 +215,22 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
       </div>
 
       <div className="mb-3 rounded-xl border border-white/10 bg-slate-950/30 p-3">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Tus prácticas
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="block min-w-0 text-sm text-slate-300">
-            <span className="mb-1 block text-xs text-slate-500">Guardadas en la plataforma</span>
-            <select
-              value={currentId}
-              disabled={busyNow}
-              onChange={(e) => {
-                const id = e.target.value;
-                if (!id) {
-                  newPractice();
-                  return;
-                }
-                void openFromPlatform(id);
-              }}
-              className="min-h-11 w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 text-sm text-white"
-            >
-              <option value="">{currentId ? "— Nueva práctica —" : "— Sin guardar aún —"}</option>
-              {items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block min-w-0 text-sm text-slate-300">
-            <span className="mb-1 block text-xs text-slate-500">Nombre de esta práctica</span>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={120}
-              placeholder="Ej. Cuestionario ENHYPEN"
-              className="min-h-11 w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 text-sm text-white"
-            />
-          </label>
-        </div>
+        <label className="block min-w-0 text-sm text-slate-300">
+          <span className="mb-1 block text-xs text-slate-500">Nombre del archivo</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={80}
+            placeholder="Ej. Cuestionario ENHYPEN"
+            className="min-h-11 w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 text-sm text-white"
+          />
+        </label>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" disabled={busyNow} onClick={() => void saveToPlatform()} className={secondaryBtn}>
-            {busy === "save" ? "Guardando…" : currentId ? "Guardar cambios" : "Guardar en la plataforma"}
-          </button>
-          <button type="button" disabled={busyNow} onClick={newPractice} className={secondaryBtn}>
-            Nueva
-          </button>
-          <button
-            type="button"
-            disabled={busyNow}
-            onClick={() => fileRef.current?.click()}
-            className={secondaryBtn}
-          >
+          <button type="button" onClick={() => fileRef.current?.click()} className={secondaryBtn}>
             Abrir del teléfono
           </button>
-          <button type="button" disabled={busyNow} onClick={() => void saveToPhone()} className={secondaryBtn}>
+          <button type="button" onClick={() => void saveToPhone()} className={secondaryBtn}>
             Guardar en el teléfono
-          </button>
-          <button
-            type="button"
-            disabled={busyNow || !currentId}
-            onClick={() => void removePractice()}
-            className={`${secondaryBtn} border-rose-400/30 text-rose-100`}
-          >
-            {busy === "delete" ? "Eliminando…" : "Eliminar"}
           </button>
         </div>
         <input
@@ -395,15 +240,6 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
           className="hidden"
           onChange={(e) => void onPickFile(e)}
         />
-        <p className="mt-2 text-xs text-slate-500">
-          {practicesQuery.isError
-            ? "No se pudieron cargar las prácticas (hace falta internet). Aun así puedes abrir o bajar un .py."
-            : dirty
-              ? "Hay cambios sin guardar en la plataforma."
-              : items.length
-                ? `${items.length} práctica${items.length === 1 ? "" : "s"} en tu cuenta.`
-                : "Aún no hay prácticas en tu cuenta."}
-        </p>
       </div>
 
       <p

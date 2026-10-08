@@ -192,18 +192,6 @@ export function getApiErrorMessage(error: unknown): string {
         "Elige a alguien de tu mismo equipo."
       );
     }
-    if (code === "practice_not_found") {
-      return "No se encontró esa práctica. Recarga la lista e inténtalo de nuevo.";
-    }
-    if (code === "practice_limit") {
-      return (
-        (error.response.data as { message?: string })?.message ??
-        "Ya tienes el máximo de prácticas guardadas. Elimina una para hacer espacio."
-      );
-    }
-    if (code === "code_too_large") {
-      return "El código es demasiado largo para guardarlo (máximo 80 000 caracteres).";
-    }
     if (code === "not_released") {
       return (
         (error.response.data as { message?: string })?.message ??
@@ -1123,39 +1111,5 @@ export async function updateTeacherProjectTeam(
 
 export async function deleteTeacherProjectTeam(groupId: string, teamId: string) {
   const { data } = await api.delete(`/teacher/groups/${groupId}/project-teams/${teamId}`);
-  return data;
-}
-
-export type PythonPracticeItem = {
-  id: string;
-  title: string;
-  updatedAt: string;
-  createdAt: string;
-};
-
-export type PythonPractice = PythonPracticeItem & { code: string };
-
-export async function fetchPythonPractices() {
-  const { data } = await api.get<{ items: PythonPracticeItem[]; limit: number }>("/python-practices");
-  return data;
-}
-
-export async function fetchPythonPractice(id: string) {
-  const { data } = await api.get<PythonPractice>(`/python-practices/${id}`);
-  return data;
-}
-
-export async function createPythonPractice(title: string, code: string) {
-  const { data } = await api.post<PythonPractice>("/python-practices", { title, code });
-  return data;
-}
-
-export async function updatePythonPractice(id: string, title: string, code: string) {
-  const { data } = await api.put<PythonPractice>(`/python-practices/${id}`, { title, code });
-  return data;
-}
-
-export async function deletePythonPractice(id: string) {
-  const { data } = await api.delete<{ ok: boolean; deletedId: string }>(`/python-practices/${id}`);
   return data;
 }

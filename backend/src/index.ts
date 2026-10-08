@@ -55,8 +55,7 @@ import { ensurePartialCutSchema } from "./ensurePartialCutSchema.js";
 import { ensureDiplomaSchema } from "./ensureDiplomaSchema.js";
 import { ensureLecturaSchema } from "./ensureLecturaSchema.js";
 import { ensureTorreSchema } from "./ensureTorreSchema.js";
-import { ensurePythonPracticeSchema } from "./ensurePythonPracticeSchema.js";
-import { pythonPracticeRouter } from "./pythonPracticeRoutes.js";
+import { dropPythonPracticeSchema } from "./ensurePythonPracticeSchema.js";
 import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
@@ -263,7 +262,6 @@ app.post("/auth/dev-seed", async (_req, res) => {
 app.use("/teacher", teacherGroupsRouter);
 app.use("/teacher/office-exam", officeExamTeacherRouter);
 app.use("/teacher/comms", commsTeacherRouter);
-app.use("/python-practices", pythonPracticeRouter);
 
 // Teacher: create/list activities
 app.get("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedRequest, res) => {
@@ -909,7 +907,7 @@ void (async () => {
     await ensureDiplomaSchema();
     await ensureLecturaSchema();
     await ensureTorreSchema();
-    await ensurePythonPracticeSchema();
+    await dropPythonPracticeSchema();
   } catch (err) {
     console.error("[startup] Startup schema failed:", err);
     process.exit(1);
