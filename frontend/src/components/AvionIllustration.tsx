@@ -54,7 +54,7 @@ export default function AvionIllustration({ compact = false }: { compact?: boole
         src="/avion/valido-1.jpg"
         title="Sí cuenta — cascarón, palos y silicón"
         ok
-        alt="Avión de palos de paleta y papel cascarón que sí cuenta"
+        alt="Avión de palos de paleta y cascarón verde con el nombre Cecytem que sí cuenta"
       />
       <ExampleCard
         src="/avion/valido-2.jpg"
