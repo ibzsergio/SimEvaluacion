@@ -2,7 +2,7 @@ import { prisma } from "./prisma.js";
 import { COLUMN_LETTERS, loadSeatingBuckets } from "./lecturaSession.js";
 import { PREVIEW_CONTROL_NUMBER } from "./previewConstants.js";
 
-export const AVION_MINUTES = 30;
+export const AVION_MINUTES = 45;
 export const PREVIEW_TEAM_KEY = "preview";
 
 export type AvionMember = {
@@ -250,7 +250,7 @@ export async function setAvionReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: "Nueva actividad: Sprint aéreo",
-          body: `Grupo ${group.code}: construyan un avión con varios materiales (no solo papel) que vuele lo más lejos posible. Cada integrante toma su rol Scrum. Eligen líder; el líder activa 30 minutos. Al acabar: manos arriba, no sigan construyendo. Gana el que vuele más lejos (1000 puntos por integrante).`,
+          body: `Grupo ${group.code}: construyan un avión fuerte (cascarón o ilustración, palillos, palos de paleta y silicón frío) que vuele lo más lejos posible y no se desarme. Elijan un nombre de equipo y pónganlo en el avión. Cada integrante toma su rol Scrum, pero todos construyen. El líder activa 45 minutos. Al acabar: manos arriba. Se califica distancia, resistencia, nombre y diseño.`,
         },
       });
     }

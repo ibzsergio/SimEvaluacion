@@ -102,8 +102,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Actividad Scrum</p>
               <h3 className="mt-1 text-xl font-bold text-white">Sprint aéreo</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Avión mixto (papel, cartón, popotes, clips, lastre) que vuele lo más lejos. Cada alumno toma
-                su rol Scrum. 30 minutos, líder y reloj.
+                Avión de cascarón, palillos y palos de paleta que vuele lejos y no se desarme. Nombre del
+                equipo, diseño y 45 minutos. Todos construyen.
               </p>
             </div>
             <span

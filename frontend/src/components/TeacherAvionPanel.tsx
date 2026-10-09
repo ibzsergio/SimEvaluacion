@@ -106,7 +106,7 @@ export default function TeacherAvionPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar Sprint aéreo para el grupo ${selectedGroup?.code}?\n\nLos alumnos reales verán las instrucciones, elegirán líder y el líder arrancará 30 minutos. El alumno de prueba ya puede verla. También se publica un aviso en Comunicación.`,
+        `¿Liberar Sprint aéreo para el grupo ${selectedGroup?.code}?\n\nLos alumnos reales verán las instrucciones, elegirán líder y el líder arrancará 45 minutos. El alumno de prueba ya puede verla. También se publica un aviso en Comunicación.`,
       );
       if (!ok) return;
     }
@@ -281,13 +281,13 @@ export default function TeacherAvionPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-sky-300">{AVION_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{AVION_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code} · {selectedGroup?.shift}. Construyen un avión con varios materiales
-          (papel, cartón, popotes, clips, lastre, flap) para que vuele lo más lejos posible. Cada uno toma su
-          rol Scrum. El líder activa {AVION_MINUTOS} minutos. Gana el vuelo más largo: 1000 puntos por
-          integrante.
+          Grupo {selectedGroup?.code} · {selectedGroup?.shift}. Construyen un avión con cascarón o
+          ilustración, palillos, palos de paleta y silicón frío para que vuele lejos y no se desarme. Elijan
+          un nombre de equipo. Todos construyen (no solo el desarrollador). El líder activa {AVION_MINUTOS}{" "}
+          minutos. Se califica distancia, resistencia, nombre y diseño.
         </p>
 
-        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)]">
           <div>
             <AvionIndicacion />
             <div className="mt-4 space-y-2">

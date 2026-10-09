@@ -145,7 +145,8 @@ export default function StudentAvionCard({ avion }: { avion: StudentAvion }) {
             <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
               <h3 className="text-sm font-semibold text-white">Equipo</h3>
               <p className="mt-1 text-xs text-slate-400">
-                Cada quien su rol Scrum. Elijan al líder; el botón de activar solo le aparece a esa persona.
+                Cada quien su rol, pero todos construyen. Elijan al líder; el botón de activar solo le
+                aparece a esa persona.
               </p>
               <ul className="mt-3 space-y-2">
                 {avion.members.map((m) => (
