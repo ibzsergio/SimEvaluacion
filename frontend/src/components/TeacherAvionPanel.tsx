@@ -287,7 +287,7 @@ export default function TeacherAvionPanel({
           minutos. Se califica distancia, resistencia, nombre y diseño.
         </p>
 
-        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)]">
+        <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,380px)]">
           <div>
             <AvionIndicacion />
             <div className="mt-4 space-y-2">
@@ -299,7 +299,7 @@ export default function TeacherAvionPanel({
               ))}
             </div>
           </div>
-          <AvionIllustration compact />
+          <AvionIllustration />
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3 no-print">

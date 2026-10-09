@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261009-avion-cascaron",
+        cacheId: "simeval-20261009-avion-fotos",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
@@ -26,7 +26,15 @@ export default defineConfig({
           },
         ],
       },
-      includeAssets: ["favicon.svg", "icons.svg", "manifest.webmanifest", "manifest-docente.webmanifest"],
+      includeAssets: [
+        "favicon.svg",
+        "icons.svg",
+        "manifest.webmanifest",
+        "manifest-docente.webmanifest",
+        "avion/invalido-papel.jpg",
+        "avion/valido-1.jpg",
+        "avion/valido-2.jpg",
+      ],
       manifest: {
         name: "SimEvaluación",
         short_name: "SimEval",
