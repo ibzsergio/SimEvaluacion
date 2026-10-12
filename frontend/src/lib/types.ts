@@ -222,9 +222,17 @@ export type StudentTorre = {
   }>;
 };
 
+export type AvionMarchaSide = {
+  key: string;
+  colorName: string;
+  hex: string;
+  leaderName?: string | null;
+  columna?: string | null;
+};
+
 export type AvionMarchaPair = {
-  a: { key: string; colorName: string; hex: string; leaderName?: string | null };
-  b: { key: string; colorName: string; hex: string; leaderName?: string | null };
+  a: AvionMarchaSide;
+  b: AvionMarchaSide;
 };
 
 export type StudentAvion = StudentTorre & {
@@ -232,7 +240,7 @@ export type StudentAvion = StudentTorre & {
   marcha?: {
     released: boolean;
     pairs: AvionMarchaPair[];
-    rival?: { colorName: string; hex: string; leaderName?: string | null } | null;
+    rival?: AvionMarchaSide | null;
   } | null;
 };
 
@@ -282,7 +290,7 @@ export type AvionSession = TorreSession & {
   marchaReleasedAt?: string | null;
   marchaReady?: boolean;
   marchaDoneCount?: number;
-  marchaPending?: Array<{ key: string; colorName: string; leaderName?: string | null }>;
+  marchaPending?: Array<{ key: string; colorName: string; leaderName?: string | null; columna?: string }>;
   marchaPairs?: AvionMarchaPair[];
 };
 

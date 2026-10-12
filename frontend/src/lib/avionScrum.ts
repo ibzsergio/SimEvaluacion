@@ -125,8 +125,16 @@ export const AVION_CRITERIOS = [
 
 export const AVION_MARCHA_TITULO = "Puesta en marcha";
 
-export function avionTeamLabel(colorName: string, leaderName?: string | null) {
-  return leaderName ? `${colorName} · ${leaderName}` : `${colorName} · sin líder`;
+export function avionTeamLabel(team: {
+  leaderName?: string | null;
+  columna?: string | null;
+  colorName?: string | null;
+}) {
+  const leader = team.leaderName?.trim();
+  if (leader) return leader;
+  if (team.columna) return `Columna ${team.columna} · sin líder`;
+  if (team.colorName) return `${team.colorName} · sin líder`;
+  return "Sin líder";
 }
 
 export const AVION_MARCHA_PASOS = [

@@ -6,14 +6,14 @@ import {
   AVION_MATERIALES,
   avionTeamLabel,
 } from "../lib/avionScrum";
-import type { AvionMarchaPair } from "../lib/types";
+import type { AvionMarchaPair, AvionMarchaSide } from "../lib/types";
 
 export default function AvionMarchaIndicacion({
   pairs = [],
   rival = null,
 }: {
   pairs?: AvionMarchaPair[];
-  rival?: { colorName: string; hex: string; leaderName?: string | null } | null;
+  rival?: AvionMarchaSide | null;
 }) {
   return (
     <div className="space-y-4">
@@ -49,7 +49,9 @@ export default function AvionMarchaIndicacion({
         {rival ? (
           <p className="mt-2 rounded-xl border px-3 py-2 text-sm font-semibold text-white" style={{ borderColor: `${rival.hex}88` }}>
             Tu rival:{" "}
-            <span style={{ color: rival.hex }}>{avionTeamLabel(rival.colorName, rival.leaderName)}</span>
+            <span style={{ color: rival.hex }}>
+              {avionTeamLabel({ leaderName: rival.leaderName, columna: rival.columna })}
+            </span>
           </p>
         ) : null}
         {pairs.length ? (
@@ -60,11 +62,11 @@ export default function AvionMarchaIndicacion({
                 className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200"
               >
                 <span className="font-semibold" style={{ color: pair.a.hex }}>
-                  {avionTeamLabel(pair.a.colorName, pair.a.leaderName)}
+                  {avionTeamLabel({ leaderName: pair.a.leaderName, columna: pair.a.columna })}
                 </span>
                 {" vs "}
                 <span className="font-semibold" style={{ color: pair.b.hex }}>
-                  {avionTeamLabel(pair.b.colorName, pair.b.leaderName)}
+                  {avionTeamLabel({ leaderName: pair.b.leaderName, columna: pair.b.columna })}
                 </span>
               </li>
             ))}

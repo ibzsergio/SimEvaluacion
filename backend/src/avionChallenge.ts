@@ -52,13 +52,13 @@ export type AvionSession = {
   marchaReleasedAt: string | null;
   marchaReady: boolean;
   marchaDoneCount: number;
-  marchaPending: Array<{ key: string; colorName: string; leaderName: string | null }>;
+  marchaPending: Array<{ key: string; colorName: string; leaderName: string | null; columna: string }>;
   marchaPairs: AvionMarchaPair[];
 };
 
 export type AvionMarchaPair = {
-  a: { key: string; colorName: string; hex: string; leaderName: string | null };
-  b: { key: string; colorName: string; hex: string; leaderName: string | null };
+  a: { key: string; colorName: string; hex: string; leaderName: string | null; columna: string };
+  b: { key: string; colorName: string; hex: string; leaderName: string | null; columna: string };
 };
 
 type StoredTeamState = {
@@ -217,7 +217,7 @@ function realTeams(teams: AvionTeam[]) {
 function marchaProgress(teams: AvionTeam[], minutes: number, pausedAt: string | null) {
   const pending = realTeams(teams)
     .filter((t) => !t.startedAt || remainingAvionSeconds(t.startedAt, minutes, pausedAt) > 0)
-    .map((t) => ({ key: t.key, colorName: t.colorName, leaderName: t.leaderName }));
+    .map((t) => ({ key: t.key, colorName: t.colorName, leaderName: t.leaderName, columna: t.columna }));
   const total = realTeams(teams).length;
   return {
     ready: total > 0 && pending.length === 0,
@@ -239,8 +239,8 @@ function resolveMarchaPairs(teams: AvionTeam[], pairs: Array<{ a: string; b: str
     used.add(a.key);
     used.add(b.key);
     out.push({
-      a: { key: a.key, colorName: a.colorName, hex: a.hex, leaderName: a.leaderName },
-      b: { key: b.key, colorName: b.colorName, hex: b.hex, leaderName: b.leaderName },
+      a: { key: a.key, colorName: a.colorName, hex: a.hex, leaderName: a.leaderName, columna: a.columna },
+      b: { key: b.key, colorName: b.colorName, hex: b.hex, leaderName: b.leaderName, columna: b.columna },
     });
   }
   return out;
@@ -649,7 +649,13 @@ export function studentAvionAssignment(session: AvionSession, studentId: string,
           released: true,
           pairs: session.marchaPairs,
           rival: rival
-            ? { colorName: rival.colorName, hex: rival.hex, leaderName: rival.leaderName }
+            ? {
+                key: rival.key,
+                colorName: rival.colorName,
+                hex: rival.hex,
+                leaderName: rival.leaderName,
+                columna: rival.columna,
+              }
             : null,
         }
       : null,

@@ -131,7 +131,12 @@ export default function TeacherAvionMarchaPanel({
         <p className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-sm text-amber-100">
           Faltan:{" "}
           {pending
-            .map((t) => avionTeamLabel(t.colorName, t.leaderName ?? realTeams.find((x) => x.key === t.key)?.leaderName))
+            .map((t) =>
+              avionTeamLabel({
+                leaderName: t.leaderName ?? realTeams.find((x) => x.key === t.key)?.leaderName,
+                columna: t.columna ?? realTeams.find((x) => x.key === t.key)?.columna,
+              }),
+            )
             .join(", ")}
           .
         </p>
@@ -172,34 +177,33 @@ export default function TeacherAvionMarchaPanel({
           <div>
             <h3 className="text-sm font-semibold text-white">Ronda 2 — quién contra quién</h3>
             <p className="mt-1 text-xs text-slate-400">
-              Tú designas los enfrentamientos. Si queda un equipo sin rival, espera tu indicación.
+              Los enfrentamientos van por líder, no por color. Si queda un equipo sin rival, espera tu
+              indicación.
             </p>
             <ul className="mt-3 grid gap-2 md:grid-cols-2">
               {realTeams.map((team) => (
                 <li
                   key={team.key}
-                  className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2"
+                  className="flex flex-col gap-2 rounded-xl border px-3 py-3"
                   style={{ borderColor: `${team.hex}66` }}
                 >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold" style={{ color: team.hex }}>
-                      {team.colorName}
-                    </span>
-                    <span className="block truncate text-xs text-slate-300">
-                      Líder: {team.leaderName ?? "aún no eligen"}
-                    </span>
-                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold leading-snug text-white">
+                      {avionTeamLabel({ leaderName: team.leaderName, columna: team.columna })}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-400">Columna {team.columna}</p>
+                  </div>
                   <select
                     value={draft[team.key] ?? ""}
                     onChange={(e) => setRival(team.key, e.target.value)}
-                    className="max-w-[55%] rounded-lg border border-white/15 bg-slate-950/70 px-2 py-1 text-xs text-slate-100"
+                    className="w-full rounded-lg border border-white/15 bg-slate-950/70 px-2 py-2 text-sm text-slate-100"
                   >
                     <option value="">Sin rival aún</option>
                     {realTeams
                       .filter((other) => other.key !== team.key)
                       .map((other) => (
                         <option key={other.key} value={other.key}>
-                          vs {avionTeamLabel(other.colorName, other.leaderName)}
+                          vs {avionTeamLabel({ leaderName: other.leaderName, columna: other.columna })}
                         </option>
                       ))}
                   </select>
