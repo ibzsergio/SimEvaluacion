@@ -251,7 +251,22 @@ export type TorreSession = {
   }>;
 };
 
-export type AvionSession = TorreSession;
+export type AvionSession = TorreSession & {
+  rosterMode?: "custom" | "seating";
+  slots?: Array<{
+    key: string;
+    colorName: string;
+    hex: string;
+    columna: string;
+  }>;
+  assignments?: Array<{
+    studentId: string;
+    displayName: string;
+    listNumber: number | null;
+    teamKey: string;
+  }>;
+  skipped?: Array<{ displayName: string; reason: "baja" | "incapacidad" }>;
+};
 
 export type LecturaSession = {
   groupId: string;

@@ -515,6 +515,19 @@ export async function setAvionPaused(groupId: string, paused: boolean) {
   return data;
 }
 
+export async function saveAvionTeams(
+  groupId: string,
+  teams: Array<{ key: string; memberIds: string[] }>,
+) {
+  const { data } = await api.put<AvionSession>(`/teacher/groups/${groupId}/avion-teams`, { teams });
+  return data;
+}
+
+export async function resetAvionTeamsToSeating(groupId: string) {
+  const { data } = await api.post<AvionSession>(`/teacher/groups/${groupId}/avion-teams/seating`);
+  return data;
+}
+
 export async function chooseStudentAvionLeader(leaderId: string) {
   const { data } = await api.post<{ avion: StudentAvion | null }>("/student/avion/leader", { leaderId });
   return data.avion;

@@ -18,6 +18,7 @@ import {
 import type { ClassGroup } from "../lib/types";
 import AvionIllustration from "./AvionIllustration";
 import AvionIndicacion from "./AvionIndicacion";
+import TeacherAvionTeamsEditor from "./TeacherAvionTeamsEditor";
 
 function avionPauseKey(groupId: string) {
   return `simeval-avion-pausedAt:${groupId}`;
@@ -153,6 +154,10 @@ export default function TeacherAvionPanel({
           ))}
         </div>
       )}
+
+      {session && selectedGroup?.code.trim() === "301" ? (
+        <TeacherAvionTeamsEditor groupId={selectedGroupId} session={session} />
+      ) : null}
 
       <section className="glass mb-6 p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
