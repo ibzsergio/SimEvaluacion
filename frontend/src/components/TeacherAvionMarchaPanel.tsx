@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getApiErrorMessage, saveAvionMarchaPairs, setAvionMarcha } from "../lib/api";
-import { AVION_MARCHA_TITULO } from "../lib/avionScrum";
+import { AVION_MARCHA_TITULO, avionTeamLabel } from "../lib/avionScrum";
 import type { AvionSession } from "../lib/types";
 import AvionMarchaIndicacion from "./AvionMarchaIndicacion";
 
@@ -129,7 +129,11 @@ export default function TeacherAvionMarchaPanel({
         </p>
       ) : pending.length ? (
         <p className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-sm text-amber-100">
-          Faltan: {pending.map((t) => t.colorName).join(", ")}.
+          Faltan:{" "}
+          {pending
+            .map((t) => avionTeamLabel(t.colorName, t.leaderName ?? realTeams.find((x) => x.key === t.key)?.leaderName))
+            .join(", ")}
+          .
         </p>
       ) : (
         <p className="mt-3 rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-sm text-emerald-100">
@@ -177,8 +181,13 @@ export default function TeacherAvionMarchaPanel({
                   className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2"
                   style={{ borderColor: `${team.hex}66` }}
                 >
-                  <span className="text-sm font-semibold" style={{ color: team.hex }}>
-                    {team.colorName}
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold" style={{ color: team.hex }}>
+                      {team.colorName}
+                    </span>
+                    <span className="block truncate text-xs text-slate-300">
+                      Líder: {team.leaderName ?? "aún no eligen"}
+                    </span>
                   </span>
                   <select
                     value={draft[team.key] ?? ""}
@@ -190,7 +199,7 @@ export default function TeacherAvionMarchaPanel({
                       .filter((other) => other.key !== team.key)
                       .map((other) => (
                         <option key={other.key} value={other.key}>
-                          vs {other.colorName}
+                          vs {avionTeamLabel(other.colorName, other.leaderName)}
                         </option>
                       ))}
                   </select>

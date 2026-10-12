@@ -11,6 +11,8 @@ import {
   AVION_PROGRAMA,
   AVION_SPRINTS,
   AVION_TITULO,
+  avionTeamLabel,
+}
   formatClock,
   remainingSeconds,
 } from "../lib/avionScrum";
@@ -107,7 +109,7 @@ export default function StudentAvionCard({ avion }: { avion: StudentAvion }) {
           <p className="mt-1 text-sm text-slate-300">
             {marcha
               ? avion.marcha?.rival
-                ? `Puesta en marcha · ronda 2 contra ${avion.marcha.rival.colorName}. QA anota distancia y errores.`
+                ? `Puesta en marcha · ronda 2 contra ${avionTeamLabel(avion.marcha.rival.colorName, avion.marcha.rival.leaderName)}. QA anota distancia y errores.`
                 : "Puesta en marcha: competencia por eliminación. QA anota distancia y qué falló."
               : paused
                 ? avion.startedAt

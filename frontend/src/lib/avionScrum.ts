@@ -125,6 +125,10 @@ export const AVION_CRITERIOS = [
 
 export const AVION_MARCHA_TITULO = "Puesta en marcha";
 
+export function avionTeamLabel(colorName: string, leaderName?: string | null) {
+  return leaderName ? `${colorName} · ${leaderName}` : `${colorName} · sin líder`;
+}
+
 export const AVION_MARCHA_PASOS = [
   "Es eliminación directa: el que pierde el vuelo queda fuera. El QA de cada equipo anota los resultados.",
   "Ronda 1 — todos a la vez: a la cuenta del docente, todos los equipos lanzan en el mismo momento. QA anota distancia y qué falló.",

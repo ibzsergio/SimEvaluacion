@@ -52,13 +52,13 @@ export type AvionSession = {
   marchaReleasedAt: string | null;
   marchaReady: boolean;
   marchaDoneCount: number;
-  marchaPending: Array<{ key: string; colorName: string }>;
+  marchaPending: Array<{ key: string; colorName: string; leaderName: string | null }>;
   marchaPairs: AvionMarchaPair[];
 };
 
 export type AvionMarchaPair = {
-  a: { key: string; colorName: string; hex: string };
-  b: { key: string; colorName: string; hex: string };
+  a: { key: string; colorName: string; hex: string; leaderName: string | null };
+  b: { key: string; colorName: string; hex: string; leaderName: string | null };
 };
 
 type StoredTeamState = {
@@ -217,7 +217,7 @@ function realTeams(teams: AvionTeam[]) {
 function marchaProgress(teams: AvionTeam[], minutes: number, pausedAt: string | null) {
   const pending = realTeams(teams)
     .filter((t) => !t.startedAt || remainingAvionSeconds(t.startedAt, minutes, pausedAt) > 0)
-    .map((t) => ({ key: t.key, colorName: t.colorName }));
+    .map((t) => ({ key: t.key, colorName: t.colorName, leaderName: t.leaderName }));
   const total = realTeams(teams).length;
   return {
     ready: total > 0 && pending.length === 0,
@@ -239,8 +239,8 @@ function resolveMarchaPairs(teams: AvionTeam[], pairs: Array<{ a: string; b: str
     used.add(a.key);
     used.add(b.key);
     out.push({
-      a: { key: a.key, colorName: a.colorName, hex: a.hex },
-      b: { key: b.key, colorName: b.colorName, hex: b.hex },
+      a: { key: a.key, colorName: a.colorName, hex: a.hex, leaderName: a.leaderName },
+      b: { key: b.key, colorName: b.colorName, hex: b.hex, leaderName: b.leaderName },
     });
   }
   return out;
@@ -648,7 +648,9 @@ export function studentAvionAssignment(session: AvionSession, studentId: string,
       ? {
           released: true,
           pairs: session.marchaPairs,
-          rival: rival ? { colorName: rival.colorName, hex: rival.hex } : null,
+          rival: rival
+            ? { colorName: rival.colorName, hex: rival.hex, leaderName: rival.leaderName }
+            : null,
         }
       : null,
   };
