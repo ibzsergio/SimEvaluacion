@@ -75,7 +75,7 @@ export default function AvionIndicacion() {
           ))}
         </ul>
         <div className="mt-3 overflow-x-auto rounded-xl border border-white/10">
-          <table className="w-full min-w-[520px] text-left text-xs sm:text-sm">
+          <table className="w-full min-w-[640px] text-left text-xs sm:text-sm">
             <thead className="bg-white/5 text-[11px] uppercase tracking-wide text-slate-400">
               <tr>
                 {AVION_QA_COLUMNAS.map((col) => (
@@ -92,6 +92,7 @@ export default function AvionIndicacion() {
                   <td className="px-2 py-2 text-slate-500">____________</td>
                   <td className="px-2 py-2 text-slate-500">____ m</td>
                   <td className="px-2 py-2 text-slate-500">Sí / No</td>
+                  <td className="px-2 py-2 text-slate-500">qué se aflojó / qué no voló</td>
                   <td className="px-2 py-2 text-slate-500">recto / giro / picada</td>
                   <td className="px-2 py-2 text-slate-500">____________</td>
                 </tr>

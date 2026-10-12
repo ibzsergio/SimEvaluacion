@@ -88,6 +88,7 @@ export const AVION_QA_PARAMETROS = [
   "Quién lanzó cada prueba.",
   "Distancia en metros (cinta o pasos medidos desde la línea).",
   "Resistencia: ¿se desarmó? ¿se aflojó un ala, un palo o el silicón?",
+  "Qué falló o qué errores notaron (además de la distancia).",
   "Estabilidad: recto, giro, picada o pérdida de altura.",
   "Cambio que hicieron después de esa prueba (un solo cambio).",
 ];
@@ -97,6 +98,7 @@ export const AVION_QA_COLUMNAS = [
   "Quién lanzó",
   "Distancia (m)",
   "¿Se desarmó?",
+  "Qué falló / errores",
   "Estabilidad",
   "Cambio para la siguiente",
 ] as const;
@@ -118,7 +120,28 @@ export const AVION_CRITERIOS = [
   { criterio: "Nombre del equipo visible", peso: "Obligatorio" },
   { criterio: "Diseño y creatividad", peso: "Cuenta" },
   { criterio: "Tabla de QA completa", peso: "Obligatorio" },
+  { criterio: "Materiales pedidos (si gana y no los trae = descalificado)", peso: "Obligatorio" },
 ] as const;
+
+export const AVION_MARCHA_TITULO = "Puesta en marcha";
+
+export const AVION_MARCHA_PASOS = [
+  "Es eliminación directa: el que pierde el vuelo queda fuera. El QA de cada equipo anota los resultados.",
+  "Ronda 1 — todos a la vez: a la cuenta del docente, todos los equipos lanzan en el mismo momento. QA anota distancia y qué falló.",
+  "Ronda 2 — mano a mano: el docente dice quién contra quién. Solo esos equipos lanzan. QA vuelve a anotar distancia y errores.",
+  "En el reporte, además de la distancia, QA escribe qué falló o qué errores notó: ala suelta, se desarma, giro, no despega, silicón flojo, etc.",
+  "Si un avión gana cualquier ronda y no cumple los materiales del inicio (cascarón o ilustración, palillos, palos de paleta y silicón frío), o es solo papel doblado, queda descalificado automáticamente.",
+];
+
+export const AVION_MARCHA_QA_COLUMNAS = [
+  "Ronda",
+  "Rival / todos",
+  "Distancia (m)",
+  "Qué falló / errores",
+  "¿Pasa o queda fuera?",
+] as const;
+
+export const AVION_MARCHA_QA_FILAS = ["1 · todos a la vez", "2 · mano a mano"] as const;
 
 export function remainingSeconds(
   startedAt: string | null | undefined,

@@ -6,6 +6,7 @@ import {
   startStudentAvionTimer,
 } from "../lib/api";
 import {
+  AVION_MARCHA_TITULO,
   AVION_MINUTOS,
   AVION_PROGRAMA,
   AVION_SPRINTS,
@@ -16,6 +17,7 @@ import {
 import type { StudentAvion } from "../lib/types";
 import AvionIllustration from "./AvionIllustration";
 import AvionIndicacion from "./AvionIndicacion";
+import AvionMarchaIndicacion from "./AvionMarchaIndicacion";
 
 const READ_KEY = "simeval-avion-read-v1";
 
@@ -34,6 +36,10 @@ export default function StudentAvionCard({ avion }: { avion: StudentAvion }) {
   }, [avion.leaderId, onlyMember]);
 
   useEffect(() => {
+    if (avion.marcha?.released) setOpen(true);
+  }, [avion.marcha?.released]);
+
+  useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
@@ -41,6 +47,7 @@ export default function StudentAvionCard({ avion }: { avion: StudentAvion }) {
   const remain = remainingSeconds(avion.startedAt, avion.minutes || AVION_MINUTOS, avion.pausedAt);
   const paused = Boolean(avion.pausedAt);
   const done = Boolean(avion.startedAt) && remain === 0 && !paused;
+  const marcha = avion.marcha?.released ? avion.marcha : null;
   void now;
 
   const leaderMutation = useMutation({
@@ -98,17 +105,21 @@ export default function StudentAvionCard({ avion }: { avion: StudentAvion }) {
           </p>
           <h2 className="mt-1 text-lg font-bold text-white">{AVION_TITULO}</h2>
           <p className="mt-1 text-sm text-slate-300">
-            {paused
-              ? avion.startedAt
-                ? `Pausado por el docente · ${formatClock(remain)}`
-                : "Pausado por el docente. El reloj aún no arranca."
-              : avion.startedAt
-                ? done
-                  ? "Tiempo agotado — levanten las manos. No sigan construyendo."
-                  : `Reloj: ${formatClock(remain)}`
-                : avion.leaderName
-                  ? `Líder: ${avion.leaderName}. Lean y activen cuando estén listos.`
-                  : "Lean las instrucciones, tomen su rol Scrum y elijan un líder."}
+            {marcha
+              ? avion.marcha?.rival
+                ? `Puesta en marcha · ronda 2 contra ${avion.marcha.rival.colorName}. QA anota distancia y errores.`
+                : "Puesta en marcha: competencia por eliminación. QA anota distancia y qué falló."
+              : paused
+                ? avion.startedAt
+                  ? `Pausado por el docente · ${formatClock(remain)}`
+                  : "Pausado por el docente. El reloj aún no arranca."
+                : avion.startedAt
+                  ? done
+                    ? "Tiempo agotado — levanten las manos. No sigan construyendo."
+                    : `Reloj: ${formatClock(remain)}`
+                  : avion.leaderName
+                    ? `Líder: ${avion.leaderName}. Lean y activen cuando estén listos.`
+                    : "Lean las instrucciones, tomen su rol Scrum y elijan un líder."}
           </p>
         </div>
         <span className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200">
@@ -118,6 +129,12 @@ export default function StudentAvionCard({ avion }: { avion: StudentAvion }) {
 
       {open ? (
         <div className="space-y-5 px-5 pb-5 pt-2">
+          {marcha ? (
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-white">{AVION_MARCHA_TITULO}</h3>
+              <AvionMarchaIndicacion pairs={marcha.pairs} rival={marcha.rival ?? null} />
+            </div>
+          ) : null}
           <AvionIllustration compact />
           <AvionIndicacion />
 

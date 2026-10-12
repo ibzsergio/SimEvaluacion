@@ -33,7 +33,7 @@ export default function StudentPage() {
     refetchInterval: (query) => {
       const avion = query.state.data?.avion;
       const lectura = query.state.data?.lectura;
-      if (avion?.startedAt || avion?.pausedAt || lectura?.startedAt) return 5000;
+      if (avion?.startedAt || avion?.pausedAt || avion?.marcha?.released || lectura?.startedAt) return 5000;
       if (lectura && !lectura.startedAt) return 8000;
       return 30_000;
     },

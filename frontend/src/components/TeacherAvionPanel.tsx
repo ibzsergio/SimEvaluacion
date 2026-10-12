@@ -18,6 +18,7 @@ import {
 import type { ClassGroup } from "../lib/types";
 import AvionIllustration from "./AvionIllustration";
 import AvionIndicacion from "./AvionIndicacion";
+import TeacherAvionMarchaPanel from "./TeacherAvionMarchaPanel";
 import TeacherAvionTeamsEditor from "./TeacherAvionTeamsEditor";
 
 function avionPauseKey(groupId: string) {
@@ -342,6 +343,8 @@ export default function TeacherAvionPanel({
           <p className="mt-3 text-sm text-rose-300">{getApiErrorMessage(sessionQuery.error)}</p>
         ) : null}
       </section>
+
+      {session ? <TeacherAvionMarchaPanel groupId={selectedGroupId} session={session} /> : null}
     </div>
   );
 }

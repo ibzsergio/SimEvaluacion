@@ -206,6 +206,12 @@ export function getApiErrorMessage(error: unknown): string {
         "El docente aún no libera la actividad."
       );
     }
+    if (code === "not_ready") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "Todavía no terminan el reloj todos los equipos."
+      );
+    }
     if (code === "topic_required") {
       return (
         (error.response.data as { message?: string })?.message ??
@@ -525,6 +531,19 @@ export async function saveAvionTeams(
 
 export async function resetAvionTeamsToSeating(groupId: string) {
   const { data } = await api.post<AvionSession>(`/teacher/groups/${groupId}/avion-teams/seating`);
+  return data;
+}
+
+export async function setAvionMarcha(groupId: string, released: boolean) {
+  const { data } = await api.post<AvionSession>(`/teacher/groups/${groupId}/avion-marcha`, { released });
+  return data;
+}
+
+export async function saveAvionMarchaPairs(
+  groupId: string,
+  pairs: Array<{ a: string; b: string }>,
+) {
+  const { data } = await api.put<AvionSession>(`/teacher/groups/${groupId}/avion-marcha-pairs`, { pairs });
   return data;
 }
 

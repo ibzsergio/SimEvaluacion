@@ -48,6 +48,17 @@ export type AvionSession = {
   slots: typeof AVION_SLOTS;
   assignments: AvionAssignment[];
   skipped: Array<{ displayName: string; reason: "baja" | "incapacidad" }>;
+  marchaReleased: boolean;
+  marchaReleasedAt: string | null;
+  marchaReady: boolean;
+  marchaDoneCount: number;
+  marchaPending: Array<{ key: string; colorName: string }>;
+  marchaPairs: AvionMarchaPair[];
+};
+
+export type AvionMarchaPair = {
+  a: { key: string; colorName: string; hex: string };
+  b: { key: string; colorName: string; hex: string };
 };
 
 type StoredTeamState = {
@@ -61,14 +72,40 @@ type StoredCustomTeam = {
   memberIds: string[];
 };
 
+type StoredMarcha = {
+  released: boolean;
+  releasedAt: string | null;
+  pairs: Array<{ a: string; b: string }>;
+};
+
 type StoredPayload = {
   teams: StoredTeamState[];
   pausedAt: string | null;
   customTeams: StoredCustomTeam[] | null;
+  marcha: StoredMarcha;
 };
 
+function emptyMarcha(): StoredMarcha {
+  return { released: false, releasedAt: null, pairs: [] };
+}
+
+function parseMarcha(raw: unknown): StoredMarcha {
+  if (!raw || typeof raw !== "object") return emptyMarcha();
+  const data = raw as StoredMarcha;
+  const pairs = Array.isArray(data.pairs)
+    ? data.pairs
+        .map((p) => ({ a: String(p?.a ?? ""), b: String(p?.b ?? "") }))
+        .filter((p) => p.a && p.b && p.a !== p.b)
+    : [];
+  return {
+    released: Boolean(data.released),
+    releasedAt: typeof data.releasedAt === "string" && data.releasedAt ? data.releasedAt : null,
+    pairs,
+  };
+}
+
 function parsePayload(raw: unknown): StoredPayload {
-  if (!raw || typeof raw !== "object") return { teams: [], pausedAt: null, customTeams: null };
+  if (!raw || typeof raw !== "object") return { teams: [], pausedAt: null, customTeams: null, marcha: emptyMarcha() };
   const data = raw as StoredPayload;
   const teams = data.teams;
   const pausedAt = typeof data.pausedAt === "string" && data.pausedAt ? data.pausedAt : null;
@@ -81,10 +118,12 @@ function parsePayload(raw: unknown): StoredPayload {
         }))
         .filter((t) => t.key)
     : null;
-  if (!Array.isArray(teams)) return { teams: [], pausedAt, customTeams };
+  const marcha = parseMarcha((data as { marcha?: unknown }).marcha);
+  if (!Array.isArray(teams)) return { teams: [], pausedAt, customTeams, marcha };
   return {
     pausedAt,
     customTeams,
+    marcha,
     teams: teams.map((t) => ({
       key: String(t.key ?? ""),
       leaderId: t.leaderId ?? null,
@@ -150,16 +189,61 @@ function toPayload(
   teams: AvionTeam[],
   pausedAt: string | null,
   customTeams: StoredCustomTeam[] | null,
+  marcha: StoredMarcha,
 ): StoredPayload {
   return {
     pausedAt,
     customTeams,
+    marcha,
     teams: teams.map((t) => ({
       key: t.key,
       leaderId: t.leaderId,
       startedAt: t.startedAt,
     })),
   };
+}
+
+function remainingAvionSeconds(startedAt: string | null, minutes: number, pausedAt: string | null) {
+  if (!startedAt) return minutes * 60;
+  const frozenAt = pausedAt ? new Date(pausedAt).getTime() : Date.now();
+  const elapsed = Math.max(0, Math.floor((frozenAt - new Date(startedAt).getTime()) / 1000));
+  return Math.max(0, minutes * 60 - elapsed);
+}
+
+function realTeams(teams: AvionTeam[]) {
+  return teams.filter((t) => !t.preview && t.members.length > 0);
+}
+
+function marchaProgress(teams: AvionTeam[], minutes: number, pausedAt: string | null) {
+  const pending = realTeams(teams)
+    .filter((t) => !t.startedAt || remainingAvionSeconds(t.startedAt, minutes, pausedAt) > 0)
+    .map((t) => ({ key: t.key, colorName: t.colorName }));
+  const total = realTeams(teams).length;
+  return {
+    ready: total > 0 && pending.length === 0,
+    doneCount: Math.max(0, total - pending.length),
+    teamCount: total,
+    pending,
+  };
+}
+
+function resolveMarchaPairs(teams: AvionTeam[], pairs: Array<{ a: string; b: string }>): AvionMarchaPair[] {
+  const byKey = new Map(realTeams(teams).map((t) => [t.key, t]));
+  const used = new Set<string>();
+  const out: AvionMarchaPair[] = [];
+  for (const pair of pairs) {
+    const a = byKey.get(pair.a);
+    const b = byKey.get(pair.b);
+    if (!a || !b || a.key === b.key) continue;
+    if (used.has(a.key) || used.has(b.key)) continue;
+    used.add(a.key);
+    used.add(b.key);
+    out.push({
+      a: { key: a.key, colorName: a.colorName, hex: a.hex },
+      b: { key: b.key, colorName: b.colorName, hex: b.hex },
+    });
+  }
+  return out;
 }
 
 async function persist(
@@ -170,6 +254,7 @@ async function persist(
     avionReleasedAt?: Date | null;
     pausedAt?: string | null;
     customTeams?: StoredCustomTeam[] | null;
+    marcha?: StoredMarcha;
   } = {},
 ) {
   const rows = await prisma.$queryRaw<Array<{ avionPayload: unknown }>>`
@@ -178,7 +263,8 @@ async function persist(
   const current = parsePayload(rows[0]?.avionPayload);
   const pausedAt = extra.pausedAt === undefined ? current.pausedAt : extra.pausedAt;
   const customTeams = extra.customTeams === undefined ? current.customTeams : extra.customTeams;
-  const payload = JSON.stringify(toPayload(teams, pausedAt ?? null, customTeams));
+  const marcha = extra.marcha === undefined ? current.marcha : extra.marcha;
+  const payload = JSON.stringify(toPayload(teams, pausedAt ?? null, customTeams, marcha));
   if (extra.avionReleased !== undefined) {
     const releasedAt = extra.avionReleasedAt ?? (extra.avionReleased ? new Date() : null);
     await prisma.$executeRawUnsafe(
@@ -323,6 +409,7 @@ export async function getAvionSession(groupId: string): Promise<AvionSession | n
       : group.avionReleasedAt
         ? String(group.avionReleasedAt)
         : null;
+  const progress = marchaProgress(teams, AVION_MINUTES, stored.pausedAt);
   return {
     groupId: group.id,
     groupCode: group.code,
@@ -337,6 +424,12 @@ export async function getAvionSession(groupId: string): Promise<AvionSession | n
     slots: AVION_SLOTS,
     assignments: buildAssignments(assignable, teams),
     skipped,
+    marchaReleased: stored.marcha.released,
+    marchaReleasedAt: stored.marcha.releasedAt,
+    marchaReady: progress.ready,
+    marchaDoneCount: progress.doneCount,
+    marchaPending: progress.pending,
+    marchaPairs: resolveMarchaPairs(teams, stored.marcha.pairs),
   };
 }
 
@@ -375,7 +468,67 @@ export async function resetAvionSession(groupId: string) {
   const session = await getAvionSession(groupId);
   if (!session) return null;
   const teams = session.teams.map((t) => ({ ...t, leaderId: null, leaderName: null, startedAt: null }));
-  await persist(groupId, teams, { pausedAt: null });
+  await persist(groupId, teams, { pausedAt: null, marcha: emptyMarcha() });
+  return getAvionSession(groupId);
+}
+
+export async function setAvionMarcha(groupId: string, released: boolean) {
+  const session = await getAvionSession(groupId);
+  if (!session) return null;
+  if (released) {
+    const progress = marchaProgress(session.teams, session.minutes, session.pausedAt);
+    if (!progress.ready) throw new Error("not_ready");
+  }
+  const rows = await prisma.$queryRaw<Array<{ avionPayload: unknown; teacherId: string; code: string }>>`
+    SELECT avionPayload, teacherId, code FROM ClassGroup WHERE id = ${groupId}
+  `;
+  const current = parsePayload(rows[0]?.avionPayload);
+  const marcha: StoredMarcha = {
+    released,
+    releasedAt: released ? new Date().toISOString() : null,
+    pairs: current.marcha.pairs,
+  };
+  await persist(groupId, session.teams, { marcha, pausedAt: session.pausedAt });
+  if (released && rows[0]) {
+    const existing = await prisma.announcement.findFirst({
+      where: { teacherId: rows[0].teacherId, title: "Puesta en marcha: Sprint aéreo" },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!existing || Date.now() - existing.createdAt.getTime() > 6 * 60 * 60 * 1000) {
+      await prisma.announcement.create({
+        data: {
+          teacherId: rows[0].teacherId,
+          groupId,
+          title: "Puesta en marcha: Sprint aéreo",
+          body: `Grupo ${rows[0].code}: competencia por eliminación directa. Ronda 1: todos lanzan al mismo tiempo. Ronda 2: el docente dice quién contra quién. QA anota distancia y qué falló. Si un ganador no trae los materiales pedidos (cascarón o ilustración, palillos, palos de paleta y silicón frío) queda descalificado.`,
+        },
+      });
+    }
+  }
+  return getAvionSession(groupId);
+}
+
+export async function setAvionMarchaPairs(groupId: string, pairs: Array<{ a: string; b: string }>) {
+  const session = await getAvionSession(groupId);
+  if (!session) return null;
+  const allowed = new Set(realTeams(session.teams).map((t) => t.key));
+  const used = new Set<string>();
+  const clean: Array<{ a: string; b: string }> = [];
+  for (const pair of pairs) {
+    if (!allowed.has(pair.a) || !allowed.has(pair.b) || pair.a === pair.b) throw new Error("invalid_team");
+    if (used.has(pair.a) || used.has(pair.b)) throw new Error("already_paired");
+    used.add(pair.a);
+    used.add(pair.b);
+    clean.push({ a: pair.a, b: pair.b });
+  }
+  const rows = await prisma.$queryRaw<Array<{ avionPayload: unknown }>>`
+    SELECT avionPayload FROM ClassGroup WHERE id = ${groupId}
+  `;
+  const current = parsePayload(rows[0]?.avionPayload);
+  await persist(groupId, session.teams, {
+    pausedAt: session.pausedAt,
+    marcha: { ...current.marcha, pairs: clean },
+  });
   return getAvionSession(groupId);
 }
 
@@ -470,6 +623,14 @@ export function studentAvionAssignment(session: AvionSession, studentId: string,
   if (!team) return null;
   const me = team.members.find((m) => m.studentId === studentId);
   if (!me) return null;
+  const rivalPair = session.marchaReleased
+    ? session.marchaPairs.find((p) => p.a.key === team.key || p.b.key === team.key)
+    : null;
+  const rival = rivalPair
+    ? rivalPair.a.key === team.key
+      ? rivalPair.b
+      : rivalPair.a
+    : null;
   return {
     minutes: session.minutes,
     colorName: team.colorName,
@@ -483,6 +644,13 @@ export function studentAvionAssignment(session: AvionSession, studentId: string,
     pausedAt: session.pausedAt,
     members: team.members,
     preview: Boolean(team.preview),
+    marcha: session.marchaReleased
+      ? {
+          released: true,
+          pairs: session.marchaPairs,
+          rival: rival ? { colorName: rival.colorName, hex: rival.hex } : null,
+        }
+      : null,
   };
 }
 
@@ -527,7 +695,7 @@ export async function startAvionTimer(groupId: string, studentId: string) {
 }
 
 export function avionErrorHttp(msg: string) {
-  if (msg === "not_released" || msg === "not_in_team" || msg === "not_leader" || msg === "paused") {
+  if (msg === "not_released" || msg === "not_in_team" || msg === "not_leader" || msg === "paused" || msg === "not_ready") {
     return { status: 403 as const, error: msg, message: avionErrorMessage(msg) };
   }
   if (msg === "already_started") {
@@ -537,7 +705,8 @@ export function avionErrorHttp(msg: string) {
     msg === "invalid_leader" ||
     msg === "invalid_team" ||
     msg === "invalid_students" ||
-    msg === "student_already_in_team"
+    msg === "student_already_in_team" ||
+    msg === "already_paired"
   ) {
     return { status: 400 as const, error: msg, message: avionErrorMessage(msg) };
   }
@@ -557,6 +726,8 @@ function avionErrorMessage(msg: string) {
   if (msg === "invalid_team") return "Ese color de equipo no es válido.";
   if (msg === "invalid_students") return "Uno o más alumnos no pertenecen a este grupo.";
   if (msg === "student_already_in_team") return "Un alumno no puede estar en dos equipos.";
+  if (msg === "already_paired") return "Un equipo no puede estar en dos enfrentamientos a la vez.";
   if (msg === "group_not_found") return "No se encontró el grupo.";
+  if (msg === "not_ready") return "Todavía no terminan el reloj todos los equipos.";
   return "No se pudo actualizar el Sprint aéreo.";
 }

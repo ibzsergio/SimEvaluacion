@@ -42,6 +42,8 @@ import {
   getAvionSession,
   resetAvionSession,
   setAvionCustomTeams,
+  setAvionMarcha,
+  setAvionMarchaPairs,
   setAvionPaused,
   setAvionReleased,
 } from "./avionChallenge.js";
@@ -798,6 +800,52 @@ teacherGroupsRouter.put("/groups/:groupId/avion-teams", async (req: AuthedReques
   if (!group) return res.status(404).json({ error: "group_not_found" });
   try {
     const session = await setAvionCustomTeams(groupId, body.data.teams);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "avion_failed";
+    const mapped = avionErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/avion-marcha", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ released: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await setAvionMarcha(groupId, body.data.released);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "avion_failed";
+    const mapped = avionErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.put("/groups/:groupId/avion-marcha-pairs", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      pairs: z
+        .array(z.object({ a: z.string().min(1).max(40), b: z.string().min(1).max(40) }))
+        .max(6),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await setAvionMarchaPairs(groupId, body.data.pairs);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
     return res.json(session);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "avion_failed";
