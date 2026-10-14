@@ -164,10 +164,11 @@ export default function TeacherSkillSurveyPanel({
       <section className="glass p-6">
         <h2 className="text-lg font-semibold text-white">Roles y equipos del proyecto</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Tú asignas el rol de cada alumno y formas los equipos. Quienes no contestaron encuesta también
-          entran, mezclados, con el rol que les pongas: no van en un equipo aparte. En 301 son{" "}
-          <strong className="text-slate-300">6 equipos de 5</strong>. El alumno solo ve su rol, su equipo
-          y puede elegir líder (de preferencia el Scrum Master).
+          En 301, a quienes no contestaron encuesta ya se les asignó el rol que marcaste (Landon Scrum
+          Master, Malillany Diseño/UI, Natalia QA/Docs, Brandon Product Owner, Uriel Desarrollador). No
+          forman un equipo aparte: pulsa <strong className="text-slate-300">Sugerir equipos equilibrados</strong>{" "}
+          para armar <strong className="text-slate-300">6 equipos de 5</strong> mezclados. El alumno ve su
+          rol, su equipo y puede elegir líder (de preferencia el Scrum Master).
         </p>
         {query.data ? (
           <p className="mt-3 text-sm text-cyan-200">
@@ -215,10 +216,16 @@ export default function TeacherSkillSurveyPanel({
                 className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-900/40 px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-white">{row.student.displayName}</p>
+                  <p className="font-medium text-white">
+                    {row.student.displayName}
+                    {row.hasSurvey === false ? (
+                      <span className="ml-2 text-xs font-normal text-indigo-300">(sin encuesta)</span>
+                    ) : null}
+                  </p>
                   <p className="text-xs text-slate-500">
                     Lista #{row.student.listPosition}
                     {row.team ? ` · ${row.team.teamName}` : " · sin equipo"}
+                    {row.assignedRoleLabel ? ` · ${row.assignedRoleLabel}` : ""}
                   </p>
                 </div>
                 <select
@@ -267,7 +274,7 @@ export default function TeacherSkillSurveyPanel({
             >
               {replaceMutation.isPending
                 ? "Guardando..."
-                : query.data?.group.code.trim() === "301"
+                : query.data?.group?.code.trim() === "301"
                   ? "Guardar los 6 equipos (reemplaza los anteriores)"
                   : "Guardar todos los equipos (reemplaza los anteriores)"}
             </button>
@@ -277,7 +284,7 @@ export default function TeacherSkillSurveyPanel({
               <div key={team.name} className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-white">{team.name}</p>
-                  {query.data?.group.code.trim() === "301" ? (
+                  {query.data?.group?.code.trim() === "301" ? (
                     <span className="text-xs text-slate-500">{team.members.length} integrantes</span>
                   ) : (
                     <button
@@ -348,9 +355,10 @@ export default function TeacherSkillSurveyPanel({
         </section>
       ) : null}
 
+      {query.data?.group?.code.trim() === "301" ? null : (
       <section className="glass p-6">
         <h3 className="text-base font-semibold text-white">Armar equipo manual (4 o 5)</h3>
-        <p className="mt-1 text-xs text-slate-500">Elige alumnos sin equipo, ajusta roles y guarda.</p>
+        <p className="mt-1 text-xs text-slate-500">Elige alumnos sin equipo, ajusta roles y guarda. Eso no asigna el rol del alumno: usa Asignar roles arriba.</p>
         <input
           value={draftName}
           onChange={(e) => setDraftName(e.target.value)}
@@ -372,6 +380,7 @@ export default function TeacherSkillSurveyPanel({
                 }`}
               >
                 {r.student.displayName}
+                {r.hasSurvey === false ? " (sin encuesta)" : ""}
                 {r.assignedRoleLabel ? ` · ${r.assignedRoleLabel}` : ""}
               </button>
             );
@@ -419,6 +428,7 @@ export default function TeacherSkillSurveyPanel({
           </div>
         ) : null}
       </section>
+      )}
     </div>
   );
 }

@@ -733,6 +733,7 @@ export type TeacherSkillSurveyBoard = {
       listPosition: number;
     };
     completed: boolean;
+    hasSurvey?: boolean;
     assignedRole?: SkillRole | null;
     assignedRoleLabel?: string | null;
     profile: SkillSurveyProfile | null;

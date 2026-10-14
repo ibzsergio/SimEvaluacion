@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { ensure301MarkedRoles } from "./skillSurveyService.js";
 
 async function tableExists(name: string) {
   const rows = await prisma.$queryRaw<Array<{ cnt: bigint }>>`
@@ -52,6 +53,11 @@ export async function ensureSkillSurveySchema() {
   const hasMember = await tableExists("ProjectTeamMember");
   if (hasSurvey && hasTeam && hasMember) {
     await ensureProjectRoleColumns();
+    try {
+      await ensure301MarkedRoles();
+    } catch (err) {
+      console.warn("[startup] 301 marked roles skipped:", err);
+    }
     console.log("[startup] Skill survey schema already ready.");
     return;
   }
@@ -129,5 +135,10 @@ export async function ensureSkillSurveySchema() {
   `);
 
   await ensureProjectRoleColumns();
+  try {
+    await ensure301MarkedRoles();
+  } catch (err) {
+    console.warn("[startup] 301 marked roles skipped:", err);
+  }
   console.log("[startup] Skill survey schema ready.");
 }

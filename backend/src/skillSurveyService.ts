@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { exclusionForLectura } from "./lecturaSession.js";
+import { findBestNameMatch, normalizePersonName } from "./excel.js";
 import { isPreviewControlNumber } from "./previewConstants.js";
 import {
   SKILL_ROLE_LABELS,
@@ -12,6 +13,15 @@ import {
   type SkillRole,
   type SkillScores,
 } from "./skillSurvey.js";
+
+/** Roles que el docente marcó para quienes no contestaron encuesta en 301. No son un equipo. */
+const MARKED_NO_SURVEY_ROLES_301: Array<{ name: string; needles: string[]; role: SkillRole }> = [
+  { name: "Martinez Cañas Landon Oswaldo", needles: ["landon", "oswaldo"], role: "scrum_master" },
+  { name: "Gutierrez Rivero Malillany Chantal", needles: ["malillany"], role: "ui_designer" },
+  { name: "Muciño Encino Natalia Isabella", needles: ["natalia", "isabella"], role: "qa_docs" },
+  { name: "Santiago Emeterio Brandon Yael", needles: ["brandon", "yael"], role: "product_owner" },
+  { name: "Vazquez Velez Uriel", needles: ["uriel"], role: "developer" },
+];
 
 function isSkillRole(value: string | null | undefined): value is SkillRole {
   return TEAM_ROLE_ORDER.includes(value as SkillRole);
@@ -38,6 +48,88 @@ function asScores(value: unknown): SkillScores {
     uiDesigner: Number(raw.uiDesigner) || 0,
     qaDocs: Number(raw.qaDocs) || 0,
   };
+}
+
+function hasSurveyAnswers(value: unknown): boolean {
+  return Object.keys(asAnswers(value)).length > 0;
+}
+
+function findMarkedNoSurveyStudent<T extends { displayName: string }>(
+  students: T[],
+  spec: (typeof MARKED_NO_SURVEY_ROLES_301)[number],
+): T | undefined {
+  const byName = findBestNameMatch(students, spec.name);
+  if (byName) return byName;
+  return students.find((s) => {
+    const n = normalizePersonName(s.displayName);
+    return spec.needles.every((needle) => n.includes(needle));
+  });
+}
+
+async function persistAssignedRole(studentId: string, groupId: string, role: SkillRole) {
+  await prisma.skillSurveyResponse.upsert({
+    where: { studentId },
+    create: {
+      studentId,
+      groupId,
+      answers: {},
+      scores: emptyScores(),
+      suggestedRole: role,
+      assignedRole: role,
+    },
+    update: {
+      groupId,
+      assignedRole: role,
+    },
+  });
+}
+
+/** Guarda los roles marcados y deshace el equipo que formaban solo ellos. */
+async function applyMarkedNoSurveyRoles301(
+  groupId: string,
+  students: Array<{ id: string; displayName: string }>,
+): Promise<boolean> {
+  const matched: Array<{ studentId: string; role: SkillRole }> = [];
+  for (const spec of MARKED_NO_SURVEY_ROLES_301) {
+    const student = findMarkedNoSurveyStudent(students, spec);
+    if (student) matched.push({ studentId: student.id, role: spec.role });
+  }
+  if (!matched.length) return false;
+
+  for (const m of matched) {
+    await persistAssignedRole(m.studentId, groupId, m.role);
+    await prisma.projectTeamMember.updateMany({
+      where: { studentId: m.studentId },
+      data: { role: m.role },
+    });
+  }
+
+  const matchedIds = new Set(matched.map((m) => m.studentId));
+  const leftover = await prisma.projectTeam.findMany({
+    where: { groupId },
+    select: { id: true, members: { select: { studentId: true } } },
+  });
+  let dissolved = false;
+  for (const team of leftover) {
+    if (team.members.length > 0 && team.members.every((m) => matchedIds.has(m.studentId))) {
+      await prisma.projectTeam.delete({ where: { id: team.id } });
+      dissolved = true;
+    }
+  }
+  return dissolved || matched.length > 0;
+}
+
+export async function ensure301MarkedRoles() {
+  const group = await prisma.classGroup.findFirst({
+    where: { code: "301" },
+    select: { id: true },
+  });
+  if (!group) return;
+  const students = await prisma.user.findMany({
+    where: { role: "STUDENT", groupId: group.id },
+    select: { id: true, displayName: true },
+  });
+  await applyMarkedNoSurveyRoles301(group.id, students);
 }
 
 function asAnswers(value: unknown): Record<string, number> {
@@ -160,21 +252,7 @@ export async function assignStudentRole(teacherId: string, groupId: string, stud
   if (!student || isPreviewControlNumber(student.controlNumber)) throw new Error("invalid_students");
   if (exclusionForLectura(group.code, student.displayName)) throw new Error("invalid_students");
 
-  await prisma.skillSurveyResponse.upsert({
-    where: { studentId },
-    create: {
-      studentId,
-      groupId,
-      answers: {},
-      scores: emptyScores(),
-      suggestedRole: role,
-      assignedRole: role,
-    },
-    update: {
-      groupId,
-      assignedRole: role,
-    },
-  });
+  await persistAssignedRole(studentId, groupId, role);
 
   const membership = await prisma.projectTeamMember.findUnique({
     where: { studentId },
@@ -262,6 +340,10 @@ export async function getTeacherSurveyBoard(teacherId: string, groupId: string) 
     select: { id: true, displayName: true, listNumber: true, controlNumber: true },
   });
 
+  if (group.code.trim() === "301") {
+    await applyMarkedNoSurveyRoles301(group.id, students);
+  }
+
   const responses = await prisma.skillSurveyResponse.findMany({
     where: { groupId },
   });
@@ -306,12 +388,15 @@ export async function getTeacherSurveyBoard(teacherId: string, groupId: string) 
   const rows = eligible.map((s, index) => {
     const resp = byStudent.get(s.id);
     const teamInfo = memberTeamByStudent.get(s.id) ?? null;
-    const assignedRole = assignedRoleOf(resp ?? null);
+    const teamRole = teamInfo && isSkillRole(teamInfo.role) ? teamInfo.role : null;
+    const assignedRole = assignedRoleOf(resp ?? null) ?? teamRole;
     const scores = resp ? asScores(resp.scores) : emptyScores();
     const answers = resp ? asAnswers(resp.answers) : {};
+    const hasSurvey = hasSurveyAnswers(resp?.answers);
     return {
       student: { ...s, listPosition: index + 1 },
-      completed: Boolean(assignedRole),
+      completed: hasSurvey,
+      hasSurvey,
       assignedRole,
       assignedRoleLabel: assignedRole ? roleLabel(assignedRole) : null,
       profile: assignedRole ? buildProfilePayload(answers, scores, assignedRole) : null,
@@ -394,6 +479,10 @@ export async function createProjectTeam(
     select: { studentId: true },
   });
   if (already.length) throw new Error("student_already_in_team");
+
+  for (const m of members) {
+    if (isSkillRole(m.role)) await persistAssignedRole(m.studentId, groupId, m.role);
+  }
 
   const team = await prisma.projectTeam.create({
     data: {
@@ -498,6 +587,12 @@ export async function replaceAllProjectTeams(
   }
   const allIds = teams.flatMap((t) => t.members.map((m) => m.studentId));
   if (new Set(allIds).size !== allIds.length) throw new Error("duplicate_members");
+
+  for (const team of teams) {
+    for (const m of team.members) {
+      if (isSkillRole(m.role)) await persistAssignedRole(m.studentId, groupId, m.role);
+    }
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.projectTeam.deleteMany({ where: { groupId } });
