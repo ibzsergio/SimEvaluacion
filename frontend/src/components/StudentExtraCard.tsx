@@ -10,6 +10,7 @@ import {
   EXTRA_PROGRAMA,
   EXTRA_SECCIONES,
   EXTRA_TITULO,
+  extraRoleLabel,
   formatClock,
   remainingSeconds,
 } from "../lib/extraScrum";
@@ -92,7 +93,7 @@ export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
       >
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: hex }}>
-            {EXTRA_PROGRAMA} · {extra.colorName} · columna {extra.columna}
+            {EXTRA_PROGRAMA} · {extra.teamName ?? extra.columna ?? extra.colorName}
           </p>
           <h2 className="mt-1 text-lg font-bold text-white">{EXTRA_TITULO}</h2>
           <p className="mt-1 text-sm text-slate-300">
@@ -141,10 +142,13 @@ export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
             </button>
           ) : (
             <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
-              <h3 className="text-sm font-semibold text-white">Equipo de butacas</h3>
+              <h3 className="text-sm font-semibold text-white">
+                {extra.rosterMode === "project" ? "Equipo de proyecto" : "Equipo"}
+              </h3>
               <p className="mt-1 text-xs text-slate-400">
-                Mismo color que en el salón. Elijan al líder (de preferencia Scrum Master); el reloj solo lo
-                activa esa persona.
+                {extra.rosterMode === "project"
+                  ? "El mismo de Roles / Equipos. Elijan al líder (de preferencia Scrum Master); el reloj solo lo activa esa persona."
+                  : "Elijan al líder (de preferencia Scrum Master); el reloj solo lo activa esa persona."}
               </p>
               <ul className="mt-3 space-y-2">
                 {extra.members.map((m) => (
@@ -160,6 +164,7 @@ export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
                       />
                       <span>
                         {m.displayName}
+                        {m.role ? ` · ${extraRoleLabel(m.role)}` : ""}
                         {m.studentId === extra.leaderId ? " · líder actual" : ""}
                       </span>
                     </label>

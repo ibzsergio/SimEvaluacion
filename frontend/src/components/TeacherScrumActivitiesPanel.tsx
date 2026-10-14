@@ -85,8 +85,8 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Nueva: ¡EXTRA, EXTRA! con equipos de butacas. Torre Tkinter y Sprint aéreo quedan como registro
-              (los alumnos ya no las ven).
+              Nueva: ¡EXTRA, EXTRA! En 301 usa los equipos de Roles / Equipos. Torre Tkinter y Sprint aéreo
+              quedan como registro (los alumnos ya no las ven).
             </p>
           </section>
 
@@ -99,8 +99,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-rose-300">Actividad Scrum</p>
               <h3 className="mt-1 text-xl font-bold text-white">¡EXTRA, EXTRA!</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Portada de periódico o revista que anuncia su producto. Cartulina, hojas de color, pegamento,
-                diurex, periódico y/o revistas. Mismos equipos de butacas. 45 minutos.
+                Portada de periódico o revista. En 301 usa los equipos de Roles / Equipos. Cartulina, hojas
+                de color, pegamento, diurex, periódico y/o revistas. 45 minutos.
               </p>
             </div>
             <span

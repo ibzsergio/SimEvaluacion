@@ -12,7 +12,6 @@ import {
   AVION_SPRINTS,
   AVION_TITULO,
   avionTeamLabel,
-}
   formatClock,
   remainingSeconds,
 } from "../lib/avionScrum";

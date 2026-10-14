@@ -12,6 +12,7 @@ import {
   EXTRA_PROGRAMA,
   EXTRA_SECCIONES,
   EXTRA_TITULO,
+  extraRoleLabel,
   formatClock,
   remainingSeconds,
 } from "../lib/extraScrum";
@@ -106,7 +107,7 @@ export default function TeacherExtraPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar ¡EXTRA, EXTRA! para el grupo ${selectedGroup?.code}?\n\nLos alumnos verán las instrucciones, eligirán líder (mismos equipos de butacas) y el líder arrancará 45 minutos. También se publica un aviso.`,
+        `¿Liberar ¡EXTRA, EXTRA! para el grupo ${selectedGroup?.code}?\n\nLos alumnos verán las instrucciones con sus equipos de proyecto (Roles / Equipos en 301). Eligen líder y el líder arranca 45 minutos.`,
       );
       if (!ok) return;
     }
@@ -160,7 +161,9 @@ export default function TeacherExtraPanel({
             <p className="text-xs font-bold uppercase tracking-widest text-rose-300">En vivo</p>
             <h2 className="mt-1 text-xl font-bold text-white">Líder y temporizador por equipo</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Mismos colores de butacas. Ves quién ya eligió líder y el reloj de 45 minutos.
+              {session?.rosterMode === "project"
+                ? "Equipos de proyecto (Roles / Equipos). Ves líder y el reloj de 45 minutos."
+                : "Equipos de butacas. Ves quién ya eligió líder y el reloj de 45 minutos."}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -208,7 +211,9 @@ export default function TeacherExtraPanel({
           <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
         ) : teams.length === 0 ? (
           <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-            No hay equipos de butacas. Asigna lugares primero.
+            {selectedGroup?.code.trim() === "301"
+              ? "No hay equipos de proyecto. Ármalos en Roles / Equipos y vuelve aquí."
+              : "No hay equipos. En 301 deben ser los de Roles / Equipos; en otros grupos, butacas o proyecto."}
           </p>
         ) : (
           <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -223,7 +228,7 @@ export default function TeacherExtraPanel({
                   style={{ borderColor: `${team.hex}88`, backgroundColor: `${team.hex}18` }}
                 >
                   <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-                    {team.colorName} · columna {team.columna}
+                    {team.name ?? team.columna ?? team.colorName}
                   </p>
                   <p className="mt-2 text-sm font-semibold text-white">
                     {team.leaderName ? `Líder: ${team.leaderName}` : "Aún no eligen líder"}
@@ -256,6 +261,7 @@ export default function TeacherExtraPanel({
                     {team.members.map((m) => (
                       <li key={m.studentId}>
                         {m.displayName}
+                        {m.role ? ` · ${extraRoleLabel(m.role)}` : ""}
                         {m.studentId === team.leaderId ? " · líder" : ""}
                       </li>
                     ))}
@@ -271,9 +277,9 @@ export default function TeacherExtraPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-rose-300">{EXTRA_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{EXTRA_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code}. En 45 minutos cada equipo de butacas arma la portada de un periódico
-          o revista que anuncia su producto. Cartulina, hojas de color, pegamento, diurex, periódico y/o
-          revistas. Al acabar: manos arriba. Gana la más clara, creativa y que no se desarme.
+          Grupo {selectedGroup?.code}. En 45 minutos cada equipo de proyecto arma la portada de un periódico
+          o revista que anuncia su producto. En 301 se respetan los equipos de Roles / Equipos. Cartulina,
+          hojas de color, pegamento, diurex, periódico y/o revistas. Al acabar: manos arriba.
         </p>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">

@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { COLUMN_LETTERS, loadSeatingBuckets } from "./lecturaSession.js";
+import { COLUMN_PALETTE } from "./seatingService.js";
 
 export const EXTRA_MINUTES = 45;
 export const EXTRA_ANNOUNCEMENT_TITLE = "Nueva actividad: ¡EXTRA, EXTRA!";
@@ -8,6 +9,7 @@ export type ExtraMember = {
   studentId: string;
   displayName: string;
   listNumber: number | null;
+  role?: string | null;
 };
 
 export type ExtraTeam = {
@@ -16,6 +18,7 @@ export type ExtraTeam = {
   colorName: string;
   hex: string;
   columna: string;
+  name: string;
   members: ExtraMember[];
   leaderId: string | null;
   leaderName: string | null;
@@ -25,6 +28,7 @@ export type ExtraTeam = {
 export type ExtraSession = {
   groupId: string;
   groupCode: string;
+  rosterMode: "project" | "seating";
   released: boolean;
   releasedAt: string | null;
   paused: boolean;
@@ -61,7 +65,21 @@ function parsePayload(raw: unknown): StoredPayload {
   };
 }
 
-function hydrateTeams(
+function resolveLeader(
+  members: ExtraMember[],
+  storedLeaderId: string | null | undefined,
+  fallbackLeaderId: string | null | undefined,
+) {
+  const pick =
+    (storedLeaderId && members.some((m) => m.studentId === storedLeaderId) ? storedLeaderId : null) ??
+    (fallbackLeaderId && members.some((m) => m.studentId === fallbackLeaderId) ? fallbackLeaderId : null);
+  return {
+    leaderId: pick,
+    leaderName: pick ? (members.find((m) => m.studentId === pick)?.displayName ?? null) : null,
+  };
+}
+
+function hydrateSeatingTeams(
   buckets: Awaited<ReturnType<typeof loadSeatingBuckets>>["buckets"],
   stored: StoredPayload,
 ): ExtraTeam[] {
@@ -75,22 +93,74 @@ function hydrateTeams(
         displayName: m.displayName,
         listNumber: m.listNumber,
       }));
-    const leaderStillInTeam = prev?.leaderId
-      ? members.some((m) => m.studentId === prev.leaderId)
-      : false;
-    const leaderId = leaderStillInTeam ? prev!.leaderId : null;
-    const leaderName = leaderId ? (members.find((m) => m.studentId === leaderId)?.displayName ?? null) : null;
+    const { leaderId, leaderName } = resolveLeader(members, prev?.leaderId, null);
+    const letter = COLUMN_LETTERS[bucket.sortCol - 1] ?? String(bucket.sortCol);
     return {
       key: bucket.key,
       readingIndex: index,
       colorName: bucket.colorName,
       hex: bucket.hex,
-      columna: COLUMN_LETTERS[bucket.sortCol - 1] ?? String(bucket.sortCol),
+      columna: letter,
+      name: `${bucket.colorName} · ${letter}`,
       members,
       leaderId,
       leaderName,
       startedAt: leaderId ? prev?.startedAt ?? null : null,
     };
+  });
+}
+
+function hydrateProjectTeams(
+  projectTeams: Array<{
+    id: string;
+    name: string;
+    leaderId: string | null;
+    members: Array<{
+      studentId: string;
+      role: string;
+      student: { displayName: string; listNumber: number | null };
+    }>;
+  }>,
+  stored: StoredPayload,
+): ExtraTeam[] {
+  const byKey = new Map(stored.teams.map((t) => [t.key, t]));
+  return projectTeams.map((team, index) => {
+    const key = `project:${team.id}`;
+    const prev = byKey.get(key);
+    const swatch = COLUMN_PALETTE[index % COLUMN_PALETTE.length]!;
+    const members = team.members.map((m) => ({
+      studentId: m.studentId,
+      displayName: m.student.displayName,
+      listNumber: m.student.listNumber,
+      role: m.role,
+    }));
+    const { leaderId, leaderName } = resolveLeader(members, prev?.leaderId, team.leaderId);
+    return {
+      key,
+      readingIndex: index,
+      colorName: swatch.name,
+      hex: swatch.hex,
+      columna: team.name,
+      name: team.name,
+      members,
+      leaderId,
+      leaderName,
+      startedAt: leaderId ? prev?.startedAt ?? null : null,
+    };
+  });
+}
+
+async function loadProjectTeams(groupId: string) {
+  return prisma.projectTeam.findMany({
+    where: { groupId },
+    orderBy: [{ name: "asc" }, { createdAt: "asc" }],
+    include: {
+      members: {
+        include: {
+          student: { select: { displayName: true, listNumber: true } },
+        },
+      },
+    },
   });
 }
 
@@ -154,9 +224,19 @@ export async function getExtraSession(groupId: string): Promise<ExtraSession | n
   `;
   const group = rows[0];
   if (!group) return null;
-  const { buckets } = await loadSeatingBuckets(groupId, group.code, group.teacherId);
   const stored = parsePayload(group.extraPayload);
-  const teams = hydrateTeams(buckets, stored);
+  const projectTeams = await loadProjectTeams(groupId);
+  const code = group.code.trim();
+  const useProject = code === "301" || projectTeams.length > 0;
+  let teams: ExtraTeam[] = [];
+  let rosterMode: ExtraSession["rosterMode"] = "seating";
+  if (useProject) {
+    rosterMode = "project";
+    teams = hydrateProjectTeams(projectTeams, stored);
+  } else {
+    const { buckets } = await loadSeatingBuckets(groupId, group.code, group.teacherId);
+    teams = hydrateSeatingTeams(buckets, stored);
+  }
   const releasedAt =
     group.extraReleasedAt instanceof Date
       ? group.extraReleasedAt.toISOString()
@@ -166,6 +246,7 @@ export async function getExtraSession(groupId: string): Promise<ExtraSession | n
   return {
     groupId: group.id,
     groupCode: group.code,
+    rosterMode,
     released: Boolean(group.extraReleased),
     releasedAt,
     paused: Boolean(stored.pausedAt),
@@ -199,7 +280,7 @@ export async function setExtraReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: EXTRA_ANNOUNCEMENT_TITLE,
-          body: `Grupo ${group.code}: en 45 minutos armen la portada de un periódico o revista que anuncie el lanzamiento de su producto. Usen cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. Mismos equipos de butacas. Eligen líder; el líder arranca el reloj. Al acabar: manos arriba, no sigan pegando. Gana la portada más clara, creativa y que no se desarme.`,
+          body: `Grupo ${group.code}: en 45 minutos armen la portada de un periódico o revista que anuncie el lanzamiento de su producto. Usen cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. En 301 usan los equipos de proyecto (Roles / Equipos). Eligen líder; el líder arranca el reloj. Al acabar: manos arriba, no sigan pegando. Gana la portada más clara, creativa y que no se desarme.`,
         },
       });
     }
@@ -241,6 +322,8 @@ export function studentExtraAssignment(session: ExtraSession, studentId: string)
   const me = team.members.find((m) => m.studentId === studentId)!;
   return {
     minutes: session.minutes,
+    rosterMode: session.rosterMode,
+    teamName: team.name,
     colorName: team.colorName,
     hex: team.hex,
     columna: team.columna,
@@ -303,7 +386,7 @@ export function extraErrorHttp(msg: string) {
 
 function extraErrorMessage(msg: string) {
   if (msg === "not_released") return "El docente aún no libera la actividad.";
-  if (msg === "not_in_team") return "No estás en un equipo de butacas para este reto.";
+  if (msg === "not_in_team") return "No estás en un equipo de este reto (proyecto en 301).";
   if (msg === "not_leader") return "Solo el líder del equipo puede activar el reloj.";
   if (msg === "paused") return "El docente pausó el reto. El reloj está congelado.";
   if (msg === "already_started") return "El reloj ya está corriendo. Ya no se puede cambiar de líder.";

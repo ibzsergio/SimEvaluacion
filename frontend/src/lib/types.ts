@@ -209,6 +209,8 @@ export type StudentLectura = {
 
 export type StudentExtra = {
   minutes: number;
+  rosterMode?: "project" | "seating";
+  teamName?: string;
   colorName: string;
   hex: string;
   columna: string;
@@ -222,10 +224,21 @@ export type StudentExtra = {
     studentId: string;
     displayName: string;
     listNumber: number | null;
+    role?: string | null;
   }>;
 };
 
-export type ExtraSession = TorreSession;
+export type ExtraSession = Omit<TorreSession, "teams"> & {
+  rosterMode?: "project" | "seating";
+  teams: Array<
+    Omit<TorreSession["teams"][number], "members"> & {
+      name?: string;
+      members: Array<
+        TorreSession["teams"][number]["members"][number] & { role?: string | null }
+      >;
+    }
+  >;
+};
 
 export type StudentTorre = {
   minutes: number;
