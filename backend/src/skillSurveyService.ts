@@ -214,7 +214,8 @@ async function applyMarkedNoSurveyRoles301(
   return dissolved || matched.length > 0;
 }
 
-async function writeLockedTeams301(
+/** Crea o corrige solo Equipo 5 y 6. Nunca borra Equipo 1–4 si ya existen. */
+async function fillMissingLockedTeams301(
   teacherId: string,
   groupId: string,
   students: Array<{ id: string; displayName: string }>,
@@ -224,43 +225,57 @@ async function writeLockedTeams301(
     console.warn("[skill-survey] 301: no se armaron los 6 equipos fijos (faltó algún nombre)");
     return false;
   }
+
   const existing = await prisma.projectTeam.findMany({
     where: { groupId },
-    include: { members: { select: { role: true } } },
+    include: { members: { select: { studentId: true, role: true } } },
   });
-  const designerHeavy = existing.some(
-    (t) => t.members.filter((m) => m.role === "ui_designer").length >= 3,
-  );
-  if (existing.length === 6 && existing.every((t) => t.members.length === 5) && !designerHeavy) {
-    return false;
-  }
 
-  for (const team of locked) {
-    for (const m of team.members) {
+  let changed = false;
+  for (const lockedTeam of locked) {
+    const isFrontFour = /^equipo [1-4]$/i.test(lockedTeam.name.trim());
+    const current = existing.find(
+      (t) => t.name.trim().toLowerCase() === lockedTeam.name.trim().toLowerCase(),
+    );
+    if (isFrontFour && current && current.members.length >= 4) continue;
+
+    const samePeople =
+      current &&
+      current.members.length === lockedTeam.members.length &&
+      lockedTeam.members.every((m) => current.members.some((e) => e.studentId === m.studentId));
+    const designerHeavy = (current?.members.filter((m) => m.role === "ui_designer").length ?? 0) >= 3;
+    if (samePeople && !designerHeavy) continue;
+
+    const ids = lockedTeam.members.map((m) => m.studentId);
+    if (current) {
+      await prisma.projectTeam.delete({ where: { id: current.id } });
+    }
+    await prisma.projectTeamMember.deleteMany({ where: { studentId: { in: ids } } });
+    await prisma.projectTeam.deleteMany({
+      where: { groupId, members: { none: {} } },
+    });
+
+    for (const m of lockedTeam.members) {
       await persistAssignedRole(m.studentId, groupId, m.role);
     }
-  }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.projectTeam.deleteMany({ where: { groupId } });
-    for (const team of locked) {
-      await tx.projectTeam.create({
-        data: {
-          groupId,
-          name: team.name,
-          createdById: teacherId,
-          leaderId: team.members.find((m) => m.role === "scrum_master")?.studentId ?? null,
-          members: {
-            create: team.members.map((m) => ({
-              studentId: m.studentId,
-              role: m.role,
-            })),
-          },
+    await prisma.projectTeam.create({
+      data: {
+        groupId,
+        name: lockedTeam.name,
+        createdById: teacherId,
+        leaderId: lockedTeam.members.find((m) => m.role === "scrum_master")?.studentId ?? null,
+        members: {
+          create: lockedTeam.members.map((m) => ({
+            studentId: m.studentId,
+            role: m.role,
+          })),
         },
-      });
-    }
-  });
-  return true;
+      },
+    });
+    changed = true;
+  }
+  return changed;
 }
 
 export async function ensure301MarkedRoles() {
@@ -274,7 +289,7 @@ export async function ensure301MarkedRoles() {
     select: { id: true, displayName: true },
   });
   await applyMarkedNoSurveyRoles301(group.id, students);
-  await writeLockedTeams301(group.teacherId, group.id, students);
+  await fillMissingLockedTeams301(group.teacherId, group.id, students);
 }
 
 function asAnswers(value: unknown): Record<string, number> {
@@ -486,8 +501,12 @@ export async function getTeacherSurveyBoard(teacherId: string, groupId: string) 
   });
 
   if (group.code.trim() === "301") {
-    await applyMarkedNoSurveyRoles301(group.id, students);
-    await writeLockedTeams301(teacherId, group.id, students);
+    try {
+      await applyMarkedNoSurveyRoles301(group.id, students);
+      await fillMissingLockedTeams301(teacherId, group.id, students);
+    } catch (err) {
+      console.warn("[skill-survey] 301 fill teams skipped:", err);
+    }
   }
 
   const responses = await prisma.skillSurveyResponse.findMany({

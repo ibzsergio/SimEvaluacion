@@ -169,9 +169,15 @@ export default function TeacherSkillSurveyPanel({
           <strong className="text-slate-300">Guardar los 6 equipos</strong> para registrarlos. El alumno
           ve su rol, su equipo y puede elegir líder (de preferencia el Scrum Master).
         </p>
+        {query.isError ? (
+          <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+            No se pudieron cargar los equipos. Recarga la página. {getApiErrorMessage(query.error)}
+          </p>
+        ) : null}
         {query.data ? (
           <p className="mt-3 text-sm text-cyan-200">
             Roles asignados: {assignedCount} / {query.data.totalStudents}
+            {query.data.teams.length ? ` · Equipos guardados: ${query.data.teams.length}` : ""}
           </p>
         ) : null}
         {query.data?.skipped?.length ? (
