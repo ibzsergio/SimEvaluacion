@@ -47,20 +47,6 @@ import {
   startLecturaTimer,
   studentLecturaAssignment,
 } from "./lecturaSession.js";
-import {
-  chooseTorreLeader,
-  getTorreSession,
-  startTorreTimer,
-    studentTorreAssignment,
-  torreErrorHttp,
-} from "./torreChallenge.js";
-import {
-  avionErrorHttp,
-  chooseAvionLeader,
-  getAvionSession,
-  startAvionTimer,
-  studentAvionAssignment,
-} from "./avionChallenge.js";
 import { buildStudentMotivation } from "./studentMotivation.js";
 import { getStudentSeating } from "./seatingService.js";
 import { ensureSeatingSchema, getSeatingSchemaStatus } from "./ensureSeatingSchema.js";
@@ -644,10 +630,6 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   const lectura = lecturaSession
     ? studentLecturaAssignment(lecturaSession, req.auth!.userId, me.displayName)
     : null;
-  const avionSession = await getAvionSession(me.groupId);
-  const avion = avionSession
-    ? studentAvionAssignment(avionSession, req.auth!.userId, preview)
-    : null;
   const compilerReleased = myGroup ? await getCompilerReleasedForGroup(myGroup.id) : false;
 
   return res.json({
@@ -671,7 +653,8 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     },
     seating,
     lectura,
-    avion,
+    torre: null,
+    avion: null,
     motivation,
     summary,
     top10,
@@ -768,71 +751,14 @@ app.post("/student/lectura/start", requireAuth, requireStudent, requireNotPrevie
   }
 });
 
-app.post("/student/torre/leader", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
-  const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
-  if (!body.success) return res.status(400).json({ error: "invalid_body" });
-  const me = await prisma.user.findUnique({
-    where: { id: req.auth!.userId },
-    select: { groupId: true },
-  });
-  if (!me?.groupId) return res.status(400).json({ error: "student_without_group" });
-  try {
-    const session = await chooseTorreLeader(me.groupId, req.auth!.userId, body.data.leaderId);
-    if (!session) return res.status(404).json({ error: "group_not_found" });
-    return res.json({ torre: studentTorreAssignment(session, req.auth!.userId) });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "error";
-    const mapped = torreErrorHttp(msg);
-    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
-  }
-});
+function studentScrumHidden(_req: AuthedRequest, res: import("express").Response) {
+  return res.status(403).json({ error: "activity_hidden", message: "Esta actividad ya no está disponible." });
+}
 
-app.post("/student/avion/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
-  const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
-  if (!body.success) return res.status(400).json({ error: "invalid_body" });
-  const ctx = await loadStudentViewContext(req.auth!.userId);
-  if (!ctx) return res.status(400).json({ error: "student_without_group" });
-  try {
-    const session = await chooseAvionLeader(ctx.groupId, req.auth!.userId, body.data.leaderId);
-    if (!session) return res.status(404).json({ error: "group_not_found" });
-    return res.json({ avion: studentAvionAssignment(session, req.auth!.userId, ctx.preview) });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "error";
-    const mapped = avionErrorHttp(msg);
-    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
-  }
-});
-
-app.post("/student/avion/start", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
-  const ctx = await loadStudentViewContext(req.auth!.userId);
-  if (!ctx) return res.status(400).json({ error: "student_without_group" });
-  try {
-    const session = await startAvionTimer(ctx.groupId, req.auth!.userId);
-    if (!session) return res.status(404).json({ error: "group_not_found" });
-    return res.json({ avion: studentAvionAssignment(session, req.auth!.userId, ctx.preview) });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "error";
-    const mapped = avionErrorHttp(msg);
-    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
-  }
-});
-
-app.post("/student/torre/start", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
-  const me = await prisma.user.findUnique({
-    where: { id: req.auth!.userId },
-    select: { groupId: true },
-  });
-  if (!me?.groupId) return res.status(400).json({ error: "student_without_group" });
-  try {
-    const session = await startTorreTimer(me.groupId, req.auth!.userId);
-    if (!session) return res.status(404).json({ error: "group_not_found" });
-    return res.json({ torre: studentTorreAssignment(session, req.auth!.userId) });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "error";
-    const mapped = torreErrorHttp(msg);
-    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
-  }
-});
+app.post("/student/torre/leader", requireAuth, requireStudent, studentScrumHidden);
+app.post("/student/torre/start", requireAuth, requireStudent, studentScrumHidden);
+app.post("/student/avion/leader", requireAuth, requireStudent, studentScrumHidden);
+app.post("/student/avion/start", requireAuth, requireStudent, studentScrumHidden);
 
 app.get("/student/diploma.pdf", requireAuth, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });

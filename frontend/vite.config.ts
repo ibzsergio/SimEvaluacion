@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261014-302-equipos-5y6",
+        cacheId: "simeval-20261014-ocultar-scrum-alumnos",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

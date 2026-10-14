@@ -71,8 +71,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Retos en equipo para practicar roles. Publica una a la vez: el alumno de prueba las ve antes;
-              los grupos reales solo cuando pulses Liberar actividad.
+              Registro docente. Los alumnos ya no ven Torre Tkinter ni Sprint aéreo en su tablero.
             </p>
           </section>
 

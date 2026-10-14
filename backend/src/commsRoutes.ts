@@ -315,7 +315,12 @@ export async function getStudentComms(userId: string) {
     }),
   ]);
 
-  return { announcements, tasks, calendar };
+  const hiddenScrum = /sprint a[eé]reo|torre tkinter|puesta en marcha/i;
+  return {
+    announcements: announcements.filter((a) => !hiddenScrum.test(a.title)),
+    tasks,
+    calendar,
+  };
 }
 
 export async function getStudentCalendarFile(userId: string) {
