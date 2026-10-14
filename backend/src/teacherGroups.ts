@@ -2422,7 +2422,7 @@ teacherGroupsRouter.post("/groups/:groupId/project-teams/replace", async (req: A
         .array(
           z.object({
             name: z.string().trim().min(1).max(80),
-            members: z.array(teamMemberSchema).min(4).max(5),
+            members: z.array(teamMemberSchema).min(4).max(6),
           }),
         )
         .min(1)
@@ -2449,7 +2449,7 @@ teacherGroupsRouter.post("/groups/:groupId/project-teams", async (req: AuthedReq
   const body = z
     .object({
       name: z.string().trim().min(1).max(80),
-      members: z.array(teamMemberSchema).min(4).max(5),
+      members: z.array(teamMemberSchema).min(4).max(6),
     })
     .safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
@@ -2489,7 +2489,7 @@ teacherGroupsRouter.post("/groups/:groupId/project-teams", async (req: AuthedReq
           msg === "student_already_in_team"
             ? "Uno o más alumnos ya están en otro equipo."
             : msg === "invalid_team_size"
-              ? "Cada equipo debe tener 4 o 5 integrantes."
+              ? "Cada equipo debe tener 4 a 6 integrantes. En 302: de 5, y un equipo de 6."
               : undefined,
       });
     }
@@ -2504,7 +2504,7 @@ teacherGroupsRouter.put("/groups/:groupId/project-teams/:teamId", async (req: Au
   const body = z
     .object({
       name: z.string().trim().min(1).max(80),
-      members: z.array(teamMemberSchema).min(4).max(5),
+      members: z.array(teamMemberSchema).min(4).max(6),
     })
     .safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });

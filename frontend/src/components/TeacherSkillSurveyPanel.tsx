@@ -112,7 +112,8 @@ export default function TeacherSkillSurveyPanel({
       if (prev.some((m) => m.studentId === studentId)) {
         return prev.filter((m) => m.studentId !== studentId);
       }
-      if (prev.length >= 5) return prev;
+      const maxMembers = query.data?.group?.code.trim() === "302" ? 6 : 5;
+      if (prev.length >= maxMembers) return prev;
       const row = query.data?.rows.find((r) => r.student.id === studentId);
       const role = (row?.assignedRole ?? row?.profile?.suggestedRole ?? "developer") as SkillRole;
       return [...prev, { studentId, role }];
@@ -164,10 +165,9 @@ export default function TeacherSkillSurveyPanel({
       <section className="glass p-6">
         <h2 className="text-lg font-semibold text-white">Roles y equipos del proyecto</h2>
         <p className="mt-1 text-sm text-slate-400">
-          En 301 los equipos 1 a 4 se quedan como los armamos. En 5 y 6 cada integrante tiene un rol
-          distinto (Scrum Master, Product Owner, Desarrollador, Diseño/UI y QA). Pulsa{" "}
-          <strong className="text-slate-300">Guardar los 6 equipos</strong> para registrarlos. El alumno
-          ve su rol, su equipo y puede elegir líder (de preferencia el Scrum Master).
+          En 301 son 6 equipos de 5. En 302 son equipos de 5 y <strong className="text-slate-300">un
+          equipo de 6</strong>. El alumno ve su rol, su equipo y puede elegir líder (de preferencia el
+          Scrum Master).
         </p>
         {query.isError ? (
           <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
@@ -263,7 +263,7 @@ export default function TeacherSkillSurveyPanel({
             <p className="mt-2 text-xs text-amber-200">{suggestion.note}</p>
           ) : null}
           {suggestion.suggested.length > 0 &&
-          suggestion.suggested.every((t) => t.members.length >= 4 && t.members.length <= 5) ? (
+          suggestion.suggested.every((t) => t.members.length >= 4 && t.members.length <= 6) ? (
             <button
               type="button"
               disabled={replaceMutation.isPending}
@@ -281,7 +281,9 @@ export default function TeacherSkillSurveyPanel({
                 ? "Guardando..."
                 : query.data?.group?.code.trim() === "301"
                   ? "Guardar los 6 equipos (reemplaza los anteriores)"
-                  : "Guardar todos los equipos (reemplaza los anteriores)"}
+                  : query.data?.group?.code.trim() === "302"
+                    ? "Guardar equipos de 302 (5 y un equipo de 6)"
+                    : "Guardar todos los equipos (reemplaza los anteriores)"}
             </button>
           ) : null}
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -358,7 +360,9 @@ export default function TeacherSkillSurveyPanel({
 
       {query.data?.group?.code.trim() === "301" ? null : (
       <section className="glass p-6">
-        <h3 className="text-base font-semibold text-white">Armar equipo manual (4 o 5)</h3>
+        <h3 className="text-base font-semibold text-white">
+          {query.data?.group?.code.trim() === "302" ? "Armar equipo manual (5 o 6)" : "Armar equipo manual (4 o 5)"}
+        </h3>
         <p className="mt-1 text-xs text-slate-500">Elige alumnos sin equipo, ajusta roles y guarda. Eso no asigna el rol del alumno: usa Asignar roles arriba.</p>
         <input
           value={draftName}
@@ -414,7 +418,9 @@ export default function TeacherSkillSurveyPanel({
             <button
               type="button"
               disabled={
-                createMutation.isPending || draftMembers.length < 4 || draftMembers.length > 5
+                createMutation.isPending ||
+                draftMembers.length < 4 ||
+                draftMembers.length > (query.data?.group?.code.trim() === "302" ? 6 : 5)
               }
               onClick={() =>
                 createMutation.mutate({
@@ -424,7 +430,7 @@ export default function TeacherSkillSurveyPanel({
               }
               className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-50"
             >
-              Guardar equipo ({draftMembers.length}/5)
+              Guardar equipo ({draftMembers.length}/{query.data?.group?.code.trim() === "302" ? 6 : 5})
             </button>
           </div>
         ) : null}

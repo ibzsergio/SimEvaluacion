@@ -609,7 +609,7 @@ export async function getTeacherSurveyBoard(teacherId: string, groupId: string) 
 type TeamMemberInput = { studentId: string; role: string };
 
 function validateTeamSize(members: TeamMemberInput[]) {
-  if (members.length < 4 || members.length > 5) {
+  if (members.length < 4 || members.length > 6) {
     throw new Error("invalid_team_size");
   }
 }
@@ -816,7 +816,13 @@ function shufflePool<T>(items: T[]): T[] {
 }
 
 function planTeamSizes(n: number, groupCode: string): number[] {
-  if (groupCode.trim() === "301") return Array.from({ length: 6 }, () => 5);
+  const code = groupCode.trim();
+  if (code === "301") return Array.from({ length: 6 }, () => 5);
+  if (code === "302") {
+    if (n < 6) return n >= 5 ? [5] : n >= 4 ? [4] : [];
+    const fives = Math.floor((n - 6) / 5);
+    return [...Array(fives).fill(5), 6];
+  }
   for (let fives = Math.floor(n / 5); fives >= 0; fives--) {
     const rem = n - fives * 5;
     if (rem % 4 === 0) {
@@ -834,7 +840,7 @@ function planTeamSizes(n: number, groupCode: string): number[] {
  * En 301: siempre 6 equipos de 5; quienes no contestaron encuesta se mezclan, no van juntos.
  */
 function fillMissingRoles(team: PoolStudent[]) {
-  const needed = TEAM_ROLE_ORDER.slice(0, team.length);
+  const needed = TEAM_ROLE_ORDER.slice(0, Math.min(team.length, TEAM_ROLE_ORDER.length));
   const taken = new Set<SkillRole>();
   const reassign: PoolStudent[] = [];
   for (const member of team) {
@@ -848,12 +854,14 @@ function fillMissingRoles(team: PoolStudent[]) {
   for (const member of reassign) {
     const next = missing.shift();
     if (next) member.role = next;
+    else if (team.length >= 6) member.role = "developer";
   }
 }
 
 export async function suggestProjectTeams(teacherId: string, groupId: string) {
   const board = await getTeacherSurveyBoard(teacherId, groupId);
   const is301 = board.group.code.trim() === "301";
+  const is302 = board.group.code.trim() === "302";
   if (is301) {
     const locked = resolveLockedTeams301(board.rows.map((r) => r.student));
     if (locked) {
@@ -874,7 +882,7 @@ export async function suggestProjectTeams(teacherId: string, groupId: string) {
       };
     }
   }
-  const assigned = board.rows.filter((r) => r.assignedRole && (is301 || !r.team)) as Array<{
+  const assigned = board.rows.filter((r) => r.assignedRole && (is301 || is302 || !r.team)) as Array<{
     student: { id: string; displayName: string };
     assignedRole: SkillRole;
   }>;
@@ -962,9 +970,15 @@ export async function suggestProjectTeams(teacherId: string, groupId: string) {
     }));
 
   const shortTeams = suggested.filter((t) => t.members.length < 5).length;
+  const sixes = suggested.filter((t) => t.members.length === 6).length;
   let note: string | null = null;
   if (is301 && (suggested.length !== 6 || shortTeams > 0 || unassigned.length > 0)) {
     note = `En 301 van 6 equipos de 5. Hay ${pool.length} alumnos con rol. Asigna rol a quienes falten y vuelve a sugerir. Quienes no contestaron encuesta se mezclan; no forman un equipo aparte.`;
+  } else if (is302) {
+    note =
+      sixes === 1 && shortTeams === 0
+        ? "En 302: equipos de 5 y un equipo de 6. El sexto integrante del equipo grande es un rol extra (de preferencia Desarrollador)."
+        : `En 302 van equipos de 5 y un solo equipo de 6. Hay ${pool.length} alumnos con rol. Asigna rol a quienes falten y vuelve a sugerir.`;
   } else if (unassigned.length > 0) {
     note = `${unassigned.length} alumno(s) no cupieron; asígnalos a un equipo que tenga menos de 5.`;
   }

@@ -154,7 +154,7 @@ export function getApiErrorMessage(error: unknown): string {
       );
     }
     if (code === "invalid_team_size") {
-      return "Cada equipo debe tener 4 o 5 integrantes.";
+      return "Cada equipo debe tener 4 a 6 integrantes. En 302: de 5, y un equipo de 6.";
     }
     if (code === "student_already_in_team") {
       return "Uno o más alumnos ya están en otro equipo.";
