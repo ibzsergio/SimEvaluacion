@@ -111,7 +111,7 @@ export default function TeacherExtraPanel({
           selectedGroup?.code.trim() === "301"
             ? "Los alumnos trabajan con los equipos de Roles / Equipos."
             : "Los alumnos trabajan por columna de butacas (como están sentados)."
-        } Eligen líder y el líder arranca 45 minutos.`,
+        } Eligen líder y el líder arranca 50 minutos.`,
       );
       if (!ok) return;
     }
@@ -166,8 +166,8 @@ export default function TeacherExtraPanel({
             <h2 className="mt-1 text-xl font-bold text-white">Líder y temporizador por equipo</h2>
             <p className="mt-1 text-sm text-slate-400">
               {session?.rosterMode === "project"
-                ? "301: equipos de proyecto (Roles / Equipos). Ves líder y el reloj de 45 minutos."
-                : "302: columnas de butacas. Ves quién ya eligió líder y el reloj de 45 minutos."}
+                ? "301: equipos de proyecto (Roles / Equipos). Ves líder y el reloj de 50 minutos."
+                : "302: columnas de butacas. Ves quién ya eligió líder y el reloj de 50 minutos."}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -281,11 +281,11 @@ export default function TeacherExtraPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-rose-300">{EXTRA_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{EXTRA_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code}. En 45 minutos cada equipo arma la portada de un periódico o revista
-          que anuncia su producto.{" "}
+          Grupo {selectedGroup?.code}. En 50 minutos cada equipo arma la portada que anuncia el lanzamiento
+          de su aplicación de escritorio en Python + Tkinter (nombre, quién la usa, qué problema resuelve).{" "}
           {selectedGroup?.code.trim() === "301"
-            ? "Este grupo usa los equipos de Roles / Equipos."
-            : "Este grupo usa las columnas de butacas (como están sentados)."}{" "}
+            ? "Cada equipo de Roles / Equipos anuncia SU app del semestre."
+            : "Cada columna de butacas se pone de acuerdo en UNA sola app Tkinter."}{" "}
           Cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. Al acabar: manos arriba.
         </p>
 

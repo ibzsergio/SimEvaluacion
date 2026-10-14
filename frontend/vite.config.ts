@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261014-extra-301-proy-302-butacas",
+        cacheId: "simeval-20261014-extra-tkinter-50",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

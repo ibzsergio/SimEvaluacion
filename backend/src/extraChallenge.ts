@@ -2,7 +2,7 @@ import { prisma } from "./prisma.js";
 import { COLUMN_LETTERS, loadSeatingBuckets } from "./lecturaSession.js";
 import { COLUMN_PALETTE } from "./seatingService.js";
 
-export const EXTRA_MINUTES = 45;
+export const EXTRA_MINUTES = 50;
 export const EXTRA_ANNOUNCEMENT_TITLE = "Nueva actividad: ¡EXTRA, EXTRA!";
 
 export type ExtraMember = {
@@ -280,7 +280,7 @@ export async function setExtraReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: EXTRA_ANNOUNCEMENT_TITLE,
-          body: `Grupo ${group.code}: en 45 minutos armen la portada de un periódico o revista que anuncie el lanzamiento de su producto. Usen cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. ${group.code.trim() === "301" ? "Usan los equipos de proyecto (Roles / Equipos)." : "Usan los equipos de su columna de butacas."} Eligen líder; el líder arranca el reloj. Al acabar: manos arriba, no sigan pegando. Gana la portada más clara, creativa y que no se desarme.`,
+          body: `Grupo ${group.code}: en 50 minutos armen la portada de un periódico o revista que anuncie el LANZAMIENTO de su aplicación de escritorio en Python + Tkinter (nombre de la app, quién la usa y qué problema del plantel o de la vida diaria resuelve). No es una app de celular ni un objeto. Usen cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. ${group.code.trim() === "301" ? "Usan los equipos de proyecto (Roles / Equipos): cada equipo anuncia SU app del semestre." : "Usan su columna de butacas: se ponen de acuerdo en UNA sola app Tkinter."} Eligen líder; el líder arranca el reloj. Al acabar: manos arriba, no sigan pegando. Gana la portada más clara, creativa y que no se desarme.`,
         },
       });
     }

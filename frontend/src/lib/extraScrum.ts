@@ -11,10 +11,24 @@ export function extraRoleLabel(role?: string | null) {
   return ROLE_SHORT[role] ?? role;
 }
 
-export const EXTRA_MINUTOS = 45;
+export const EXTRA_MINUTOS = 50;
 export const EXTRA_TITULO = "¡EXTRA, EXTRA!";
-export const EXTRA_PROGRAMA = "El periódico del producto";
+export const EXTRA_PROGRAMA = "Lanzan su app Tkinter";
 export const EXTRA_PUNTOS_MAX = 1000;
+
+/** Qué anuncian: no es un objeto genérico ni una app de celular. */
+export const EXTRA_PRODUCTO =
+  "Una aplicación de escritorio en Python + Tkinter: una ventana con botones, cajas de texto y menús que resuelve un problema real del plantel o de la vida diaria (pase de lista, calificaciones, cafetería, biblioteca, horarios, inventario del taller, registro de incidencias, etc.).";
+
+export const EXTRA_PRODUCTO_NO =
+  "No anuncian perfume, ropa, un juego sin ventana ni una app de celular. Es el sistema que van a programar con Tkinter.";
+
+export const EXTRA_PRODUCTO_DEBE = [
+  "Nombre corto de la app (inventado por el equipo)",
+  "Quién la usa (alumno, docente, prefecto, cafetería…)",
+  "El problema que resuelve, en una frase que se lea desde lejos",
+  "3 funciones de la ventana (qué hace el usuario y qué responde el programa)",
+];
 
 export const EXTRA_MATERIALES = [
   "Cartulina (la página de la portada)",
@@ -28,31 +42,34 @@ export const EXTRA_SECCIONES = [
     id: "titular",
     rol: "Product Owner",
     titulo: "El titular que vende",
-    detalle: "Nombre del producto + una promesa en una frase (qué problema resuelve). Que se lea desde lejos.",
+    detalle:
+      "Nombre de la app Tkinter + promesa: para quién es y qué problema del plantel o de la vida diaria resuelve. Que se lea desde lejos.",
   },
   {
     id: "collage",
     rol: "Diseño / UI",
-    titulo: "La foto de portada",
-    detalle: "Collage con recortes de revista/periódico y hojas de color. Que se vea de revista, no de recado.",
+    titulo: "La “pantalla” de portada",
+    detalle:
+      "Collage que se vea como la ventana del programa (marco, botones, cajas). Recortes de revista/periódico y hojas de color. Que se vea de revista, no de recado.",
   },
   {
     id: "como",
     rol: "Desarrollador",
     titulo: "Cómo funciona",
-    detalle: "Un recuadro con 3 viñetas simples: qué hace el sistema por dentro, sin párrafos largos.",
+    detalle:
+      "Recuadro con 3 viñetas: qué escribe o elige el usuario, qué hace Python, qué muestra la ventana. Sin párrafos largos.",
   },
   {
     id: "sello",
     rol: "QA / Docs",
     titulo: "Sello de calidad",
-    detalle: "Caja “Revisado”: créditos del equipo, que no falte nada y que no se despegue al levantarla.",
+    detalle: "Caja “Revisado”: créditos del equipo, que no falte nombre de la app ni las 3 funciones, y que no se despegue.",
   },
   {
     id: "cierre",
     rol: "Scrum Master",
     titulo: "Cierre a tiempo",
-    detalle: "Reparte zonas en la cartulina, vigila el reloj y que todos peguen. De preferencia es el líder.",
+    detalle: "Reparte zonas en la cartulina, vigila el reloj de 50 minutos y que todos peguen. De preferencia es el líder.",
   },
   {
     id: "reportero",
@@ -64,10 +81,10 @@ export const EXTRA_SECCIONES = [
 
 export const EXTRA_PASOS = [
   "Lean en equipo. No recorten ni peguen hasta que el líder active el reloj.",
-  "En 301: equipos de proyecto de Roles / Equipos. En 302: la columna de butacas donde están sentados.",
-  "Elijan un líder (de preferencia el Scrum Master). Esa persona arranca los 45 minutos.",
-  "En una cartulina armen la portada de un periódico o revista que anuncie el LANZAMIENTO de su producto.",
-  "Tienen que verse las 4 zonas: titular, collage, “cómo funciona” y sello de calidad.",
+  "En 301: equipos de proyecto de Roles / Equipos (su app del semestre). En 302: la columna de butacas se pone de acuerdo en UNA sola app Tkinter.",
+  "Elijan un líder (de preferencia el Scrum Master). Esa persona arranca los 50 minutos.",
+  "En una cartulina armen la portada de un periódico o revista que anuncie el LANZAMIENTO de su aplicación de escritorio en Python + Tkinter (nombre, usuario y problema).",
+  "Tienen que verse las 4 zonas: titular, collage de la ventana, “cómo funciona” (3 funciones) y sello de calidad.",
   "Al acabarse el tiempo: manos arriba. No sigan pegando. La portada se tiene que sostener sola (que no se desarme).",
   "Cada equipo presenta su titular en 20 segundos. Gana la más clara, creativa y firme.",
 ];

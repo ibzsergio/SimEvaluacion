@@ -99,8 +99,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-rose-300">Actividad Scrum</p>
               <h3 className="mt-1 text-xl font-bold text-white">¡EXTRA, EXTRA!</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Portada de periódico o revista. 301: equipos de Roles / Equipos. 302: columnas de butacas.
-                Cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. 45 minutos.
+                Portada que lanza su app de escritorio Python + Tkinter. 301: equipos de Roles / Equipos.
+                302: columnas de butacas. Cartulina, hojas, pegamento, diurex, periódico/revistas. 50 minutos.
               </p>
             </div>
             <span

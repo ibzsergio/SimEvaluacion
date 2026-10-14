@@ -15,7 +15,7 @@ export default function ExtraIllustration({ compact = false }: { compact?: boole
           ¡EXTRA, EXTRA!
         </text>
         <text x="180" y="98" textAnchor="middle" fill="#1c1917" fontSize="13" fontWeight="700">
-          LANZAN SU APP Y EL SALÓN ENLOQUECE
+          LANZAN SU APP TKINTER EN EL PLANTEL
         </text>
         <rect x="40" y="112" width="168" height="130" rx="4" fill="#fb7185" />
         <rect x="52" y="128" width="60" height="44" fill="#fde68a" />
@@ -44,7 +44,7 @@ export default function ExtraIllustration({ compact = false }: { compact?: boole
         </text>
         <rect x="184" y="326" width="136" height="48" rx="4" fill="#dcfce7" />
         <text x="252" y="354" textAnchor="middle" fill="#14532d" fontSize="10" fontWeight="700">
-          Scrum en 45 min
+          Scrum en 50 min
         </text>
       </svg>
     </div>

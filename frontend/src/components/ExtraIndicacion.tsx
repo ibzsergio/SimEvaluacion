@@ -1,8 +1,26 @@
-import { EXTRA_MATERIALES, EXTRA_PASOS, EXTRA_PUNTAJE, EXTRA_PUNTOS_MAX } from "../lib/extraScrum";
+import {
+  EXTRA_MATERIALES,
+  EXTRA_PASOS,
+  EXTRA_PRODUCTO,
+  EXTRA_PRODUCTO_DEBE,
+  EXTRA_PRODUCTO_NO,
+  EXTRA_PUNTAJE,
+  EXTRA_PUNTOS_MAX,
+} from "../lib/extraScrum";
 
 export default function ExtraIndicacion() {
   return (
     <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-white">Qué producto anuncian</h3>
+        <p className="mt-2 text-sm text-slate-300">{EXTRA_PRODUCTO}</p>
+        <p className="mt-2 text-sm text-amber-100">{EXTRA_PRODUCTO_NO}</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
+          {EXTRA_PRODUCTO_DEBE.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
       <div>
         <h3 className="text-sm font-semibold text-white">Material (el que trajeron)</h3>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
