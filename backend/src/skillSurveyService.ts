@@ -480,6 +480,48 @@ export async function updateProjectTeam(
   });
 }
 
+export async function replaceAllProjectTeams(
+  teacherId: string,
+  groupId: string,
+  teams: Array<{ name: string; members: TeamMemberInput[] }>,
+) {
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId },
+    select: { id: true },
+  });
+  if (!group) throw new Error("group_not_found");
+  for (const team of teams) {
+    validateTeamSize(team.members);
+    const ids = team.members.map((m) => m.studentId);
+    if (new Set(ids).size !== ids.length) throw new Error("duplicate_members");
+    await assertStudentsInGroup(groupId, ids);
+  }
+  const allIds = teams.flatMap((t) => t.members.map((m) => m.studentId));
+  if (new Set(allIds).size !== allIds.length) throw new Error("duplicate_members");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.projectTeam.deleteMany({ where: { groupId } });
+    for (const team of teams) {
+      await tx.projectTeam.create({
+        data: {
+          groupId,
+          name: team.name.trim() || "Equipo",
+          createdById: teacherId,
+          leaderId: team.members.find((m) => m.role === "scrum_master")?.studentId ?? null,
+          members: {
+            create: team.members.map((m) => ({
+              studentId: m.studentId,
+              role: m.role,
+            })),
+          },
+        },
+      });
+    }
+  });
+
+  return getTeacherSurveyBoard(teacherId, groupId);
+}
+
 export async function deleteProjectTeam(teacherId: string, groupId: string, teamId: string) {
   const team = await prisma.projectTeam.findFirst({
     where: { id: teamId, groupId, group: { teacherId } },
@@ -490,122 +532,142 @@ export async function deleteProjectTeam(teacherId: string, groupId: string, team
   return { ok: true };
 }
 
-type ScoredStudent = {
+type PoolStudent = {
   id: string;
   displayName: string;
-  scores: SkillScores;
-  suggestedRole: SkillRole;
+  role: SkillRole;
 };
 
+function shufflePool<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = arr[i]!;
+    arr[i] = arr[j]!;
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+function planTeamSizes(n: number, groupCode: string): number[] {
+  if (groupCode.trim() === "301") return Array.from({ length: 6 }, () => 5);
+  for (let fives = Math.floor(n / 5); fives >= 0; fives--) {
+    const rem = n - fives * 5;
+    if (rem % 4 === 0) {
+      return [...Array(fives).fill(5), ...Array(rem / 4).fill(4)];
+    }
+  }
+  const fives = Math.floor(n / 5);
+  const rem = n - fives * 5;
+  if (rem >= 4) return [...Array(fives).fill(5), 4];
+  return Array(fives).fill(5);
+}
+
 /**
- * Sugiere equipos de 4–5 equilibrados por el rol que asignó el docente.
- * No guarda: el docente confirma.
+ * Sugiere equipos equilibrados con el rol que asignó el docente.
+ * En 301: siempre 6 equipos de 5; quienes no contestaron encuesta se mezclan, no van juntos.
  */
 export async function suggestProjectTeams(teacherId: string, groupId: string) {
   const board = await getTeacherSurveyBoard(teacherId, groupId);
-  const assigned = board.rows.filter((r) => r.assignedRole && !r.team) as Array<{
+  const is301 = board.group.code.trim() === "301";
+  const assigned = board.rows.filter((r) => r.assignedRole && (is301 || !r.team)) as Array<{
     student: { id: string; displayName: string };
     assignedRole: SkillRole;
-    profile: { suggestedRole: SkillRole; scores: SkillScores } | null;
   }>;
 
   if (assigned.length < 4) throw new Error("not_enough_completed");
 
-  const pool: ScoredStudent[] = assigned.map((r) => ({
-    id: r.student.id,
-    displayName: r.student.displayName,
-    scores: r.profile?.scores ?? emptyScores(),
-    suggestedRole: r.assignedRole,
-  }));
+  const pool: PoolStudent[] = shufflePool(
+    assigned.map((r) => ({
+      id: r.student.id,
+      displayName: r.student.displayName,
+      role: r.assignedRole,
+    })),
+  );
 
-  function planTeamSizes(n: number): number[] {
-    for (let fives = Math.floor(n / 5); fives >= 0; fives--) {
-      const rem = n - fives * 5;
-      if (rem % 4 === 0) {
-        return [...Array(fives).fill(5), ...Array(rem / 4).fill(4)];
-      }
-    }
-    const fives = Math.floor(n / 5);
-    const rem = n - fives * 5;
-    if (rem >= 4) return [...Array(fives).fill(5), 4];
-    return Array(fives).fill(5);
+  const sizes = planTeamSizes(pool.length, board.group.code);
+  const teams: PoolStudent[][] = sizes.map(() => []);
+
+  const byRole = new Map<SkillRole, PoolStudent[]>();
+  for (const role of TEAM_ROLE_ORDER) byRole.set(role, []);
+  for (const student of pool) {
+    const list = byRole.get(student.role) ?? [];
+    list.push(student);
+    byRole.set(student.role, list);
+  }
+  for (const role of TEAM_ROLE_ORDER) {
+    byRole.set(role, shufflePool(byRole.get(role) ?? []));
   }
 
-  const validSizes = planTeamSizes(pool.length);
-  const usedForTeams = validSizes.reduce((a: number, b: number) => a + b, 0);
-
-  const unused = [...pool].sort((a, b) => {
-    const maxA = Math.max(...Object.values(a.scores));
-    const maxB = Math.max(...Object.values(b.scores));
-    return maxB - maxA;
-  });
-
-  const suggested: Array<{
-    name: string;
-    members: Array<{ studentId: string; displayName: string; role: SkillRole; roleLabel: string }>;
-  }> = [];
-
-  let teamIndex = 1;
-  for (const size of validSizes) {
-    const roles = TEAM_ROLE_ORDER.slice(0, size);
-    const members: Array<{ studentId: string; displayName: string; role: SkillRole; roleLabel: string }> =
-      [];
-
-    for (const role of roles) {
-      const dimKey =
-        role === "scrum_master"
-          ? "scrumMaster"
-          : role === "product_owner"
-            ? "productOwner"
-            : role === "developer"
-              ? "developer"
-              : role === "ui_designer"
-                ? "uiDesigner"
-                : "qaDocs";
-
-      let bestIdx = 0;
-      let bestScore = -1;
-      for (let i = 0; i < unused.length; i++) {
-        const s = unused[i]!;
-        const score = s.scores[dimKey];
-        const bonus = s.suggestedRole === role ? 5 : 0;
-        const total = score + bonus;
-        if (total > bestScore) {
-          bestScore = total;
-          bestIdx = i;
+  const overflow: PoolStudent[] = [];
+  for (const role of TEAM_ROLE_ORDER) {
+    const bucket = byRole.get(role) ?? [];
+    let teamIndex = 0;
+    for (const student of bucket) {
+      let placed = false;
+      for (let step = 0; step < teams.length; step++) {
+        const idx = (teamIndex + step) % teams.length;
+        const team = teams[idx]!;
+        const hasRole = team.some((m) => m.role === role);
+        if (team.length < (sizes[idx] ?? 5) && !hasRole) {
+          team.push(student);
+          teamIndex = idx + 1;
+          placed = true;
+          break;
         }
       }
-      const chosen = unused.splice(bestIdx, 1)[0]!;
-      members.push({
-        studentId: chosen.id,
-        displayName: chosen.displayName,
-        role,
-        roleLabel: SKILL_ROLE_LABELS[role],
-      });
+      if (!placed) overflow.push(student);
     }
-
-    suggested.push({
-      name: `Equipo ${teamIndex}`,
-      members,
-    });
-    teamIndex++;
   }
 
-  const unassigned = unused.map((s) => ({
-    studentId: s.id,
-    displayName: s.displayName,
-    suggestedRole: s.suggestedRole,
-    suggestedRoleLabel: SKILL_ROLE_LABELS[s.suggestedRole],
-  }));
+  let fillIndex = 0;
+  for (const student of shufflePool(overflow)) {
+    for (let step = 0; step < teams.length; step++) {
+      const idx = (fillIndex + step) % teams.length;
+      const team = teams[idx]!;
+      if (team.length < (sizes[idx] ?? 5)) {
+        team.push(student);
+        fillIndex = idx + 1;
+        break;
+      }
+    }
+  }
+
+  const placedIds = new Set(teams.flatMap((t) => t.map((m) => m.id)));
+  const unassigned = pool
+    .filter((s) => !placedIds.has(s.id))
+    .map((s) => ({
+      studentId: s.id,
+      displayName: s.displayName,
+      suggestedRole: s.role,
+      suggestedRoleLabel: SKILL_ROLE_LABELS[s.role],
+    }));
+
+  const suggested = teams
+    .filter((members) => members.length > 0)
+    .map((members, index) => ({
+      name: `Equipo ${index + 1}`,
+      members: members.map((m) => ({
+        studentId: m.id,
+        displayName: m.displayName,
+        role: m.role,
+        roleLabel: SKILL_ROLE_LABELS[m.role],
+      })),
+    }));
+
+  const shortTeams = suggested.filter((t) => t.members.length < 5).length;
+  let note: string | null = null;
+  if (is301 && (suggested.length !== 6 || shortTeams > 0 || unassigned.length > 0)) {
+    note = `En 301 van 6 equipos de 5. Hay ${pool.length} alumnos con rol. Asigna rol a quienes falten y vuelve a sugerir. Quienes no contestaron encuesta se mezclan; no forman un equipo aparte.`;
+  } else if (unassigned.length > 0) {
+    note = `${unassigned.length} alumno(s) no cupieron; asígnalos a un equipo que tenga menos de 5.`;
+  }
 
   return {
-    teamSizes: validSizes,
-    assignedCount: usedForTeams,
+    teamSizes: suggested.map((t) => t.members.length),
+    assignedCount: placedIds.size,
     suggested,
     unassigned,
-    note:
-      unassigned.length > 0
-        ? `${unassigned.length} alumno(s) quedaron sin equipo en la sugerencia; asígnalos manualmente (equipos solo de 4 o 5).`
-        : null,
+    note,
   };
 }

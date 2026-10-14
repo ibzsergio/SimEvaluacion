@@ -1270,6 +1270,17 @@ export async function suggestTeacherProjectTeams(groupId: string) {
   return data;
 }
 
+export async function replaceTeacherProjectTeams(
+  groupId: string,
+  teams: Array<{ name: string; members: Array<{ studentId: string; role: string }> }>,
+) {
+  const { data } = await api.post<import("./types").TeacherSkillSurveyBoard>(
+    `/teacher/groups/${groupId}/project-teams/replace`,
+    { teams },
+  );
+  return data;
+}
+
 export async function createTeacherProjectTeam(
   groupId: string,
   name: string,

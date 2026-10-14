@@ -73,6 +73,7 @@ import {
   suggestProjectTeams,
   updateProjectTeam,
   assignStudentRole,
+  replaceAllProjectTeams,
 } from "./skillSurveyService.js";
 import { SKILL_ROLE_LABELS, TEAM_ROLE_ORDER } from "./skillSurvey.js";
 
@@ -2405,10 +2406,40 @@ teacherGroupsRouter.post("/groups/:groupId/project-teams/suggest", async (req: A
     if (msg === "not_enough_completed") {
       return res.status(400).json({
         error: msg,
-        message: "Asigna rol a por lo menos 4 alumnos (sin equipo) para sugerir equipos equilibrados.",
+        message: "Asigna rol a todos los alumnos que deban entrar (también a quienes no contestaron encuesta). En 301 hacen falta 30 para 6 equipos de 5.",
       });
     }
     console.error("[skill-survey] suggest failed:", err);
+    return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/project-teams/replace", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      teams: z
+        .array(
+          z.object({
+            name: z.string().trim().min(1).max(80),
+            members: z.array(teamMemberSchema).min(4).max(5),
+          }),
+        )
+        .min(1)
+        .max(8),
+    })
+    .safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  try {
+    const board = await replaceAllProjectTeams(req.auth!.userId, groupId, body.data.teams);
+    return res.json(board);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    if (msg === "group_not_found") return res.status(404).json({ error: msg });
+    if (msg === "invalid_team_size" || msg === "duplicate_members" || msg === "invalid_students") {
+      return res.status(400).json({ error: msg });
+    }
+    console.error("[skill-survey] replace teams failed:", err);
     return res.status(500).json({ error: "skill_survey_failed" });
   }
 });

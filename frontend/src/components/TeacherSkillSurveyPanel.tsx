@@ -4,6 +4,7 @@ import {
   assignTeacherStudentRole,
   createTeacherProjectTeam,
   deleteTeacherProjectTeam,
+  replaceTeacherProjectTeams,
   fetchTeacherSkillSurvey,
   getApiErrorMessage,
   suggestTeacherProjectTeams,
@@ -65,7 +66,7 @@ export default function TeacherSkillSurveyPanel({
     onSuccess: (data) => {
       setSuggestion(data);
       setError("");
-      setSuccess("Sugerencia lista. Revisa y guarda cada equipo.");
+      setSuccess("Sugerencia lista. Quienes no contestaron encuesta van mezclados. En 301 guarda los 6 equipos de una vez.");
     },
     onError: (err) => setError(getApiErrorMessage(err)),
   });
@@ -81,6 +82,18 @@ export default function TeacherSkillSurveyPanel({
       setDraftMembers([]);
       setSuggestion(null);
       await qc.invalidateQueries({ queryKey: ["teacher-skill-survey", selectedGroupId] });
+    },
+    onError: (err) => setError(getApiErrorMessage(err)),
+  });
+
+  const replaceMutation = useMutation({
+    mutationFn: (teams: Array<{ name: string; members: Array<{ studentId: string; role: string }> }>) =>
+      replaceTeacherProjectTeams(selectedGroupId, teams),
+    onSuccess: async (data) => {
+      setSuccess("Se guardaron los 6 equipos. Quienes no contestaron encuesta quedaron mezclados.");
+      setError("");
+      setSuggestion(null);
+      qc.setQueryData(["teacher-skill-survey", selectedGroupId], data);
     },
     onError: (err) => setError(getApiErrorMessage(err)),
   });
@@ -151,9 +164,10 @@ export default function TeacherSkillSurveyPanel({
       <section className="glass p-6">
         <h2 className="text-lg font-semibold text-white">Roles y equipos del proyecto</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Tú asignas el rol de cada alumno y formas equipos de 4 o 5, equilibrados. El alumno ya no
-          contesta encuesta: solo ve su rol, su equipo y puede elegir líder (de preferencia el Scrum
-          Master).
+          Tú asignas el rol de cada alumno y formas los equipos. Quienes no contestaron encuesta también
+          entran, mezclados, con el rol que les pongas: no van en un equipo aparte. En 301 son{" "}
+          <strong className="text-slate-300">6 equipos de 5</strong>. El alumno solo ve su rol, su equipo
+          y puede elegir líder (de preferencia el Scrum Master).
         </p>
         {query.data ? (
           <p className="mt-3 text-sm text-cyan-200">
@@ -236,18 +250,44 @@ export default function TeacherSkillSurveyPanel({
           {suggestion.note ? (
             <p className="mt-2 text-xs text-amber-200">{suggestion.note}</p>
           ) : null}
+          {suggestion.suggested.length > 0 &&
+          suggestion.suggested.every((t) => t.members.length >= 4 && t.members.length <= 5) ? (
+            <button
+              type="button"
+              disabled={replaceMutation.isPending}
+              onClick={() =>
+                replaceMutation.mutate(
+                  suggestion.suggested.map((team) => ({
+                    name: team.name,
+                    members: team.members.map((m) => ({ studentId: m.studentId, role: m.role })),
+                  })),
+                )
+              }
+              className="mt-4 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60"
+            >
+              {replaceMutation.isPending
+                ? "Guardando..."
+                : query.data?.group.code.trim() === "301"
+                  ? "Guardar los 6 equipos (reemplaza los anteriores)"
+                  : "Guardar todos los equipos (reemplaza los anteriores)"}
+            </button>
+          ) : null}
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             {suggestion.suggested.map((team) => (
               <div key={team.name} className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-white">{team.name}</p>
-                  <button
-                    type="button"
-                    onClick={() => void saveSuggestedTeam(team)}
-                    className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-[#ffffff] hover:bg-emerald-500"
-                  >
-                    Guardar equipo
-                  </button>
+                  {query.data?.group.code.trim() === "301" ? (
+                    <span className="text-xs text-slate-500">{team.members.length} integrantes</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void saveSuggestedTeam(team)}
+                      className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-[#ffffff] hover:bg-emerald-500"
+                    >
+                      Guardar equipo
+                    </button>
+                  )}
                 </div>
                 <ul className="mt-2 space-y-1 text-sm text-slate-300">
                   {team.members.map((m) => (
