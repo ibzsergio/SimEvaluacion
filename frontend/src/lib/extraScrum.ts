@@ -64,7 +64,7 @@ export const EXTRA_SECCIONES = [
 
 export const EXTRA_PASOS = [
   "Lean en equipo. No recorten ni peguen hasta que el líder active el reloj.",
-  "En 301 usan los equipos de proyecto de Roles / Equipos (no los de butacas).",
+  "En 301: equipos de proyecto de Roles / Equipos. En 302: la columna de butacas donde están sentados.",
   "Elijan un líder (de preferencia el Scrum Master). Esa persona arranca los 45 minutos.",
   "En una cartulina armen la portada de un periódico o revista que anuncie el LANZAMIENTO de su producto.",
   "Tienen que verse las 4 zonas: titular, collage, “cómo funciona” y sello de calidad.",

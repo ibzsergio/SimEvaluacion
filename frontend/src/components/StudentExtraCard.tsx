@@ -143,12 +143,12 @@ export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
           ) : (
             <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
               <h3 className="text-sm font-semibold text-white">
-                {extra.rosterMode === "project" ? "Equipo de proyecto" : "Equipo"}
+                {extra.rosterMode === "project" ? "Equipo de proyecto" : "Equipo de butacas"}
               </h3>
               <p className="mt-1 text-xs text-slate-400">
                 {extra.rosterMode === "project"
                   ? "El mismo de Roles / Equipos. Elijan al líder (de preferencia Scrum Master); el reloj solo lo activa esa persona."
-                  : "Elijan al líder (de preferencia Scrum Master); el reloj solo lo activa esa persona."}
+                  : "Tu columna de butacas. Elijan al líder (de preferencia Scrum Master); el reloj solo lo activa esa persona."}
               </p>
               <ul className="mt-3 space-y-2">
                 {extra.members.map((m) => (

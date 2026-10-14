@@ -225,13 +225,13 @@ export async function getExtraSession(groupId: string): Promise<ExtraSession | n
   const group = rows[0];
   if (!group) return null;
   const stored = parsePayload(group.extraPayload);
-  const projectTeams = await loadProjectTeams(groupId);
   const code = group.code.trim();
-  const useProject = code === "301" || projectTeams.length > 0;
+  const useProject = code === "301";
   let teams: ExtraTeam[] = [];
   let rosterMode: ExtraSession["rosterMode"] = "seating";
   if (useProject) {
     rosterMode = "project";
+    const projectTeams = await loadProjectTeams(groupId);
     teams = hydrateProjectTeams(projectTeams, stored);
   } else {
     const { buckets } = await loadSeatingBuckets(groupId, group.code, group.teacherId);
@@ -280,7 +280,7 @@ export async function setExtraReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: EXTRA_ANNOUNCEMENT_TITLE,
-          body: `Grupo ${group.code}: en 45 minutos armen la portada de un periódico o revista que anuncie el lanzamiento de su producto. Usen cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. En 301 usan los equipos de proyecto (Roles / Equipos). Eligen líder; el líder arranca el reloj. Al acabar: manos arriba, no sigan pegando. Gana la portada más clara, creativa y que no se desarme.`,
+          body: `Grupo ${group.code}: en 45 minutos armen la portada de un periódico o revista que anuncie el lanzamiento de su producto. Usen cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. ${group.code.trim() === "301" ? "Usan los equipos de proyecto (Roles / Equipos)." : "Usan los equipos de su columna de butacas."} Eligen líder; el líder arranca el reloj. Al acabar: manos arriba, no sigan pegando. Gana la portada más clara, creativa y que no se desarme.`,
         },
       });
     }
@@ -386,7 +386,7 @@ export function extraErrorHttp(msg: string) {
 
 function extraErrorMessage(msg: string) {
   if (msg === "not_released") return "El docente aún no libera la actividad.";
-  if (msg === "not_in_team") return "No estás en un equipo de este reto (proyecto en 301).";
+  if (msg === "not_in_team") return "No estás en un equipo de este reto (proyecto en 301, columna de butacas en 302).";
   if (msg === "not_leader") return "Solo el líder del equipo puede activar el reloj.";
   if (msg === "paused") return "El docente pausó el reto. El reloj está congelado.";
   if (msg === "already_started") return "El reloj ya está corriendo. Ya no se puede cambiar de líder.";

@@ -107,7 +107,11 @@ export default function TeacherExtraPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar ¡EXTRA, EXTRA! para el grupo ${selectedGroup?.code}?\n\nLos alumnos verán las instrucciones con sus equipos de proyecto (Roles / Equipos en 301). Eligen líder y el líder arranca 45 minutos.`,
+        `¿Liberar ¡EXTRA, EXTRA! para el grupo ${selectedGroup?.code}?\n\n${
+          selectedGroup?.code.trim() === "301"
+            ? "Los alumnos trabajan con los equipos de Roles / Equipos."
+            : "Los alumnos trabajan por columna de butacas (como están sentados)."
+        } Eligen líder y el líder arranca 45 minutos.`,
       );
       if (!ok) return;
     }
@@ -162,8 +166,8 @@ export default function TeacherExtraPanel({
             <h2 className="mt-1 text-xl font-bold text-white">Líder y temporizador por equipo</h2>
             <p className="mt-1 text-sm text-slate-400">
               {session?.rosterMode === "project"
-                ? "Equipos de proyecto (Roles / Equipos). Ves líder y el reloj de 45 minutos."
-                : "Equipos de butacas. Ves quién ya eligió líder y el reloj de 45 minutos."}
+                ? "301: equipos de proyecto (Roles / Equipos). Ves líder y el reloj de 45 minutos."
+                : "302: columnas de butacas. Ves quién ya eligió líder y el reloj de 45 minutos."}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -213,7 +217,7 @@ export default function TeacherExtraPanel({
           <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
             {selectedGroup?.code.trim() === "301"
               ? "No hay equipos de proyecto. Ármalos en Roles / Equipos y vuelve aquí."
-              : "No hay equipos. En 301 deben ser los de Roles / Equipos; en otros grupos, butacas o proyecto."}
+              : "No hay equipos de butacas. Asigna lugares (columnas) primero."}
           </p>
         ) : (
           <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -277,9 +281,12 @@ export default function TeacherExtraPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-rose-300">{EXTRA_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{EXTRA_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code}. En 45 minutos cada equipo de proyecto arma la portada de un periódico
-          o revista que anuncia su producto. En 301 se respetan los equipos de Roles / Equipos. Cartulina,
-          hojas de color, pegamento, diurex, periódico y/o revistas. Al acabar: manos arriba.
+          Grupo {selectedGroup?.code}. En 45 minutos cada equipo arma la portada de un periódico o revista
+          que anuncia su producto.{" "}
+          {selectedGroup?.code.trim() === "301"
+            ? "Este grupo usa los equipos de Roles / Equipos."
+            : "Este grupo usa las columnas de butacas (como están sentados)."}{" "}
+          Cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. Al acabar: manos arriba.
         </p>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
