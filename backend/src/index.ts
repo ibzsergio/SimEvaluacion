@@ -74,10 +74,9 @@ import { ensureTorreSchema } from "./ensureTorreSchema.js";
 import { ensureAvionSchema } from "./ensureAvionSchema.js";
 import { dropPythonPracticeSchema } from "./ensurePythonPracticeSchema.js";
 import { ensureCompilerSchema, getCompilerReleasedForGroup } from "./ensureCompilerSchema.js";
-import { getStudentSurveyState, submitStudentSurvey } from "./skillSurveyService.js";
+import { chooseProjectTeamLeader, getStudentSurveyState } from "./skillSurveyService.js";
 import { runMigrationsWithRecovery } from "./runMigrations.js";
 import { streamDiplomaPdf } from "./diplomaPdf.js";
-import { SKILL_SURVEY_QUESTIONS } from "./skillSurvey.js";
 
 const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:5173")
   .split(",")
@@ -693,7 +692,9 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
 
 app.get("/student/skill-survey", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
   try {
-    const state = await getStudentSurveyState(req.auth!.userId);
+    const ctx = await loadStudentViewContext(req.auth!.userId);
+    if (!ctx) return res.status(400).json({ error: "student_without_group" });
+    const state = await getStudentSurveyState(req.auth!.userId, ctx.groupId);
     return res.json(state);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";
@@ -703,27 +704,30 @@ app.get("/student/skill-survey", requireAuth, requireStudent, async (req: Authed
   }
 });
 
-app.post("/student/skill-survey", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
-  const answersSchema = z.record(z.string(), z.number().int().min(1).max(5));
-  const body = z.object({ answers: answersSchema }).safeParse(req.body ?? {});
+app.post("/student/skill-survey", requireAuth, requireStudent, async (_req: AuthedRequest, res) => {
+  return res.status(403).json({
+    error: "survey_closed",
+    message: "El docente asigna los roles. Ya no hay encuesta.",
+  });
+});
+
+app.post("/student/project-team/leader", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
+  const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
-
-  // Ensure all questions present
-  for (const q of SKILL_SURVEY_QUESTIONS) {
-    if (body.data.answers[q.id] == null) {
-      return res.status(400).json({ error: "incomplete_answers" });
-    }
-  }
-
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) return res.status(400).json({ error: "student_without_group" });
   try {
-    const result = await submitStudentSurvey(req.auth!.userId, body.data.answers);
-    return res.json(result);
+    const state = await chooseProjectTeamLeader(req.auth!.userId, body.data.leaderId, ctx.groupId);
+    return res.json(state);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";
-    if (msg === "student_without_group" || msg === "incomplete_answers") {
-      return res.status(400).json({ error: msg });
+    if (msg === "not_in_team") {
+      return res.status(403).json({ error: msg, message: "Aún no estás en un equipo de proyecto." });
     }
-    console.error("[skill-survey] student submit failed:", err);
+    if (msg === "invalid_leader") {
+      return res.status(400).json({ error: msg, message: "Elige a alguien de tu mismo equipo." });
+    }
+    console.error("[project-team] leader failed:", err);
     return res.status(500).json({ error: "skill_survey_failed" });
   }
 });

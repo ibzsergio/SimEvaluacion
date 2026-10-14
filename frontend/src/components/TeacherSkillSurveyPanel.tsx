@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
+  assignTeacherStudentRole,
   createTeacherProjectTeam,
   deleteTeacherProjectTeam,
   fetchTeacherSkillSurvey,
@@ -46,6 +47,19 @@ export default function TeacherSkillSurveyPanel({
     return rows.filter((r) => !r.team);
   }, [query.data]);
 
+  const assignedCount = query.data?.assignedCount ?? query.data?.rows.filter((r) => r.assignedRole).length ?? 0;
+
+  const roleMutation = useMutation({
+    mutationFn: ({ studentId, role }: { studentId: string; role: SkillRole }) =>
+      assignTeacherStudentRole(selectedGroupId, studentId, role),
+    onSuccess: async (data) => {
+      setError("");
+      setSuccess("Rol guardado.");
+      qc.setQueryData(["teacher-skill-survey", selectedGroupId], data);
+    },
+    onError: (err) => setError(getApiErrorMessage(err)),
+  });
+
   const suggestMutation = useMutation({
     mutationFn: () => suggestTeacherProjectTeams(selectedGroupId),
     onSuccess: (data) => {
@@ -62,9 +76,10 @@ export default function TeacherSkillSurveyPanel({
       members: Array<{ studentId: string; role: string }>;
     }) => createTeacherProjectTeam(selectedGroupId, payload.name, payload.members),
     onSuccess: async () => {
-      setSuccess("Equipo guardado.");
+      setSuccess("Equipo guardado. El Scrum Master queda como líder sugerido.");
       setError("");
       setDraftMembers([]);
+      setSuggestion(null);
       await qc.invalidateQueries({ queryKey: ["teacher-skill-survey", selectedGroupId] });
     },
     onError: (err) => setError(getApiErrorMessage(err)),
@@ -86,7 +101,7 @@ export default function TeacherSkillSurveyPanel({
       }
       if (prev.length >= 5) return prev;
       const row = query.data?.rows.find((r) => r.student.id === studentId);
-      const role = (row?.profile?.suggestedRole ?? "developer") as SkillRole;
+      const role = (row?.assignedRole ?? row?.profile?.suggestedRole ?? "developer") as SkillRole;
       return [...prev, { studentId, role }];
     });
   }
@@ -134,15 +149,20 @@ export default function TeacherSkillSurveyPanel({
       </div>
 
       <section className="glass p-6">
-        <h2 className="text-lg font-semibold text-white">Roles Scrum y equipos de proyecto</h2>
+        <h2 className="text-lg font-semibold text-white">Roles y equipos del proyecto</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Los alumnos contestan una encuesta (sin jerga técnica). Tú ves su perfil sugerido y formas
-          equipos de <strong className="text-slate-300">4 o 5</strong> personas, equilibrados.
+          Tú asignas el rol de cada alumno y formas equipos de 4 o 5, equilibrados. El alumno ya no
+          contesta encuesta: solo ve su rol, su equipo y puede elegir líder (de preferencia el Scrum
+          Master).
         </p>
-
         {query.data ? (
           <p className="mt-3 text-sm text-cyan-200">
-            Encuesta completada: {query.data.completedCount} / {query.data.totalStudents}
+            Roles asignados: {assignedCount} / {query.data.totalStudents}
+          </p>
+        ) : null}
+        {query.data?.skipped?.length ? (
+          <p className="mt-2 text-xs text-slate-500">
+            No entran: {query.data.skipped.map((s) => s.displayName).join(", ")}.
           </p>
         ) : null}
 
@@ -151,7 +171,7 @@ export default function TeacherSkillSurveyPanel({
             type="button"
             disabled={suggestMutation.isPending || query.isLoading}
             onClick={() => suggestMutation.mutate()}
-            className="rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60"
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-[#ffffff] hover:bg-emerald-500 disabled:opacity-60"
           >
             {suggestMutation.isPending ? "Calculando..." : "Sugerir equipos equilibrados"}
           </button>
@@ -167,6 +187,47 @@ export default function TeacherSkillSurveyPanel({
             {success}
           </p>
         ) : null}
+      </section>
+
+      <section className="glass p-6">
+        <h3 className="mb-3 text-base font-semibold text-white">Asignar roles</h3>
+        {query.isLoading ? (
+          <p className="text-slate-400">Cargando...</p>
+        ) : (
+          <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
+            {(query.data?.rows ?? []).map((row) => (
+              <div
+                key={row.student.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-900/40 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-white">{row.student.displayName}</p>
+                  <p className="text-xs text-slate-500">
+                    Lista #{row.student.listPosition}
+                    {row.team ? ` · ${row.team.teamName}` : " · sin equipo"}
+                  </p>
+                </div>
+                <select
+                  value={row.assignedRole ?? ""}
+                  disabled={roleMutation.isPending}
+                  onChange={(e) => {
+                    const role = e.target.value as SkillRole;
+                    if (!role) return;
+                    roleMutation.mutate({ studentId: row.student.id, role });
+                  }}
+                  className="rounded-lg border border-white/15 bg-slate-950 px-3 py-2 text-sm text-white"
+                >
+                  <option value="">Sin rol</option>
+                  {ROLE_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.short}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {suggestion ? (
@@ -215,7 +276,14 @@ export default function TeacherSkillSurveyPanel({
             {query.data.teams.map((team) => (
               <div key={team.id} className="rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-white">{team.name}</p>
+                  <div>
+                    <p className="font-semibold text-white">{team.name}</p>
+                    <p className="text-xs text-emerald-200">
+                      {team.leaderName
+                        ? `Líder: ${team.leaderName}`
+                        : "Aún no eligen líder (preferible el Scrum Master)"}
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
@@ -242,9 +310,7 @@ export default function TeacherSkillSurveyPanel({
 
       <section className="glass p-6">
         <h3 className="text-base font-semibold text-white">Armar equipo manual (4 o 5)</h3>
-        <p className="mt-1 text-xs text-slate-500">
-          Elige alumnos sin equipo, ajusta roles y guarda.
-        </p>
+        <p className="mt-1 text-xs text-slate-500">Elige alumnos sin equipo, ajusta roles y guarda.</p>
         <input
           value={draftName}
           onChange={(e) => setDraftName(e.target.value)}
@@ -266,7 +332,7 @@ export default function TeacherSkillSurveyPanel({
                 }`}
               >
                 {r.student.displayName}
-                {!r.completed ? " (sin encuesta)" : ""}
+                {r.assignedRoleLabel ? ` · ${r.assignedRoleLabel}` : ""}
               </button>
             );
           })}
@@ -312,55 +378,6 @@ export default function TeacherSkillSurveyPanel({
             </button>
           </div>
         ) : null}
-      </section>
-
-      <section className="glass p-6">
-        <h3 className="mb-3 text-base font-semibold text-white">Perfiles de alumnos</h3>
-        {query.isLoading ? (
-          <p className="text-slate-400">Cargando...</p>
-        ) : (
-          <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
-            {(query.data?.rows ?? []).map((row) => (
-              <div
-                key={row.student.id}
-                className="rounded-xl border border-white/10 bg-slate-900/40 px-4 py-3"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-white">{row.student.displayName}</p>
-                    <p className="text-xs text-slate-500">
-                      Lista #{row.student.listPosition}
-                      {row.student.controlNumber ? ` · ${row.student.controlNumber}` : ""}
-                    </p>
-                  </div>
-                  {row.completed && row.profile ? (
-                    <span className="rounded-lg bg-cyan-500/15 px-2 py-1 text-xs font-semibold text-cyan-100">
-                      {row.profile.suggestedRoleLabel}
-                    </span>
-                  ) : (
-                    <span className="rounded-lg bg-amber-500/15 px-2 py-1 text-xs text-amber-200">
-                      Pendiente de encuesta
-                    </span>
-                  )}
-                </div>
-                {row.profile ? (
-                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-400">
-                    {row.profile.dimensions.slice(0, 3).map((d) => (
-                      <span key={d.key}>
-                        {d.label}: {d.percent}%
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                {row.team ? (
-                  <p className="mt-2 text-xs text-emerald-300">
-                    {row.team.teamName} · {row.team.roleLabel}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
       </section>
     </div>
   );

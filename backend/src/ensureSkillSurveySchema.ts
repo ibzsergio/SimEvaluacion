@@ -9,7 +9,7 @@ async function tableExists(name: string) {
   return Number(rows[0]?.cnt ?? 0) > 0;
 }
 
-async function execOptional(sql: string, ignore = /Duplicate|already exists|errno: 1061|errno: 1826/i) {
+async function execOptional(sql: string, ignore = /Duplicate|already exists|errno: 1061|errno: 1826|errno: 1060/i) {
   try {
     await prisma.$executeRawUnsafe(sql);
   } catch (err) {
@@ -19,12 +19,39 @@ async function execOptional(sql: string, ignore = /Duplicate|already exists|errn
   }
 }
 
+async function columnExists(table: string, column: string) {
+  const rows = await prisma.$queryRaw<Array<{ cnt: bigint }>>`
+    SELECT COUNT(*) AS cnt
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND LOWER(table_name) = LOWER(${table})
+      AND LOWER(column_name) = LOWER(${column})
+  `;
+  return Number(rows[0]?.cnt ?? 0) > 0;
+}
+
+async function ensureProjectRoleColumns() {
+  if (!(await columnExists("SkillSurveyResponse", "assignedRole"))) {
+    await execOptional("ALTER TABLE `SkillSurveyResponse` ADD COLUMN `assignedRole` VARCHAR(191) NULL");
+  }
+  if (!(await columnExists("ProjectTeam", "leaderId"))) {
+    await execOptional("ALTER TABLE `ProjectTeam` ADD COLUMN `leaderId` VARCHAR(191) NULL");
+    await execOptional("CREATE INDEX `ProjectTeam_leaderId_idx` ON `ProjectTeam`(`leaderId`)");
+    await execOptional(`
+      ALTER TABLE \`ProjectTeam\`
+      ADD CONSTRAINT \`ProjectTeam_leaderId_fkey\`
+      FOREIGN KEY (\`leaderId\`) REFERENCES \`User\`(\`id\`) ON DELETE SET NULL ON UPDATE CASCADE
+    `);
+  }
+}
+
 export async function ensureSkillSurveySchema() {
   console.log("[startup] Ensuring skill survey schema...");
   const hasSurvey = await tableExists("SkillSurveyResponse");
   const hasTeam = await tableExists("ProjectTeam");
   const hasMember = await tableExists("ProjectTeamMember");
   if (hasSurvey && hasTeam && hasMember) {
+    await ensureProjectRoleColumns();
     console.log("[startup] Skill survey schema already ready.");
     return;
   }
@@ -101,5 +128,6 @@ export async function ensureSkillSurveySchema() {
     FOREIGN KEY (\`studentId\`) REFERENCES \`User\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
   `);
 
+  await ensureProjectRoleColumns();
   console.log("[startup] Skill survey schema ready.");
 }

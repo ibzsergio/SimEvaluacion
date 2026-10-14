@@ -72,6 +72,7 @@ import {
   getTeacherSurveyBoard,
   suggestProjectTeams,
   updateProjectTeam,
+  assignStudentRole,
 } from "./skillSurveyService.js";
 import { SKILL_ROLE_LABELS, TEAM_ROLE_ORDER } from "./skillSurvey.js";
 
@@ -2372,6 +2373,27 @@ teacherGroupsRouter.get("/groups/:groupId/skill-survey", async (req: AuthedReque
   }
 });
 
+teacherGroupsRouter.put("/groups/:groupId/project-roles/:studentId", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const studentId = String(req.params.studentId);
+  const body = z
+    .object({
+      role: z.enum(["scrum_master", "product_owner", "developer", "ui_designer", "qa_docs"]),
+    })
+    .safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  try {
+    const board = await assignStudentRole(req.auth!.userId, groupId, studentId, body.data.role);
+    return res.json(board);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    if (msg === "group_not_found") return res.status(404).json({ error: msg });
+    if (msg === "invalid_students") return res.status(400).json({ error: msg, message: "Ese alumno no se puede asignar." });
+    console.error("[skill-survey] assign role failed:", err);
+    return res.status(500).json({ error: "skill_survey_failed" });
+  }
+});
+
 teacherGroupsRouter.post("/groups/:groupId/project-teams/suggest", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
   try {
@@ -2383,7 +2405,7 @@ teacherGroupsRouter.post("/groups/:groupId/project-teams/suggest", async (req: A
     if (msg === "not_enough_completed") {
       return res.status(400).json({
         error: msg,
-        message: "Necesitas al menos 4 alumnos con la encuesta completa para sugerir equipos.",
+        message: "Asigna rol a por lo menos 4 alumnos (sin equipo) para sugerir equipos equilibrados.",
       });
     }
     console.error("[skill-survey] suggest failed:", err);

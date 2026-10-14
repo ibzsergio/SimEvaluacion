@@ -674,26 +674,46 @@ export type SkillSurveyQuestion = {
 export type SkillSurveyProfile = {
   suggestedRole: SkillRole;
   suggestedRoleLabel: string;
-  dimensions: Array<{
+  dimensions?: Array<{
     key: string;
     label: string;
     score: number;
     max: number;
     percent: number;
   }>;
-  scores: Record<string, number>;
-  answers: Record<string, number>;
+  scores?: Record<string, number>;
+  answers?: Record<string, number>;
+};
+
+export type StudentProjectMember = {
+  studentId: string;
+  displayName: string;
+  role: string;
+  roleLabel: string;
+  isLeader?: boolean;
 };
 
 export type StudentSkillSurveyState = {
   completed: boolean;
+  assignedRole?: SkillRole | null;
+  assignedRoleLabel?: string | null;
   definition: {
     scale: { min: number; max: number; labels: string[] };
     roles: Record<string, string>;
     questions: SkillSurveyQuestion[];
   };
   profile: SkillSurveyProfile | null;
-  team: { id: string; name: string; role: string; roleLabel: string } | null;
+  team: {
+    id: string;
+    name: string;
+    role: string;
+    roleLabel: string;
+    leaderId?: string | null;
+    leaderName?: string | null;
+    preferredLeaderId?: string | null;
+    preferredLeaderName?: string | null;
+    members?: StudentProjectMember[];
+  } | null;
   updatedAt?: string;
 };
 
@@ -701,7 +721,9 @@ export type TeacherSkillSurveyBoard = {
   group: Pick<ClassGroup, "id" | "code" | "shift">;
   definition: StudentSkillSurveyState["definition"];
   completedCount: number;
+  assignedCount?: number;
   totalStudents: number;
+  skipped?: Array<{ displayName: string; reason: string }>;
   rows: Array<{
     student: {
       id: string;
@@ -711,6 +733,8 @@ export type TeacherSkillSurveyBoard = {
       listPosition: number;
     };
     completed: boolean;
+    assignedRole?: SkillRole | null;
+    assignedRoleLabel?: string | null;
     profile: SkillSurveyProfile | null;
     team: { teamId: string; teamName: string; role: string; roleLabel: string } | null;
     updatedAt?: string;
@@ -718,6 +742,9 @@ export type TeacherSkillSurveyBoard = {
   teams: Array<{
     id: string;
     name: string;
+    leaderId?: string | null;
+    leaderName?: string | null;
+    preferredLeaderId?: string | null;
     members: Array<{
       studentId: string;
       role: string;

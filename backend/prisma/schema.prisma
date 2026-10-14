@@ -113,6 +113,7 @@ model User {
   skillSurveyResponse    SkillSurveyResponse?
   projectTeamMemberships ProjectTeamMember[]
   projectTeamsCreated    ProjectTeam[]        @relation("ProjectTeamCreatedBy")
+  projectTeamsLed        ProjectTeam[]        @relation("ProjectTeamLeader")
   partialExamScores      PartialExamScore[]
 
   @@index([groupId])
@@ -431,6 +432,8 @@ model SkillSurveyResponse {
   /// Puntajes por dimensión { scrumMaster, productOwner, developer, uiDesigner, qaDocs }
   scores        Json
   suggestedRole String
+  /// Rol que asigna el docente (manda sobre la encuesta).
+  assignedRole  String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -445,14 +448,17 @@ model ProjectTeam {
   groupId     String
   name        String
   createdById String
+  leaderId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   group     ClassGroup          @relation(fields: [groupId], references: [id], onDelete: Cascade)
   createdBy User                @relation("ProjectTeamCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  leader    User?               @relation("ProjectTeamLeader", fields: [leaderId], references: [id], onDelete: SetNull)
   members   ProjectTeamMember[]
 
   @@index([groupId])
+  @@index([leaderId])
 }
 
 model ProjectTeamMember {

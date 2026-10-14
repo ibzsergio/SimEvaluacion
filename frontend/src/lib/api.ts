@@ -26,6 +26,7 @@ import type {
   StudentTorre,
   StudentAvion,
   StudentLectura,
+  SkillRole,
 } from "./types";
 
 /** Normaliza VITE_API_URL (sin barra final ni sufijo /api de desarrollo). */
@@ -149,7 +150,7 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "not_enough_completed") {
       return (
         (error.response.data as { message?: string })?.message ??
-        "Necesitas al menos 4 alumnos con la encuesta completa."
+        "Asigna rol a por lo menos 4 alumnos para sugerir equipos."
       );
     }
     if (code === "invalid_team_size") {
@@ -1239,18 +1240,25 @@ export async function fetchStudentSkillSurvey() {
   return data;
 }
 
-export async function submitStudentSkillSurvey(answers: Record<string, number>) {
-  const { data } = await api.post<{
-    completed: boolean;
-    profile: import("./types").SkillSurveyProfile;
-    updatedAt: string;
-  }>("/student/skill-survey", { answers });
+export async function chooseStudentProjectLeader(leaderId: string) {
+  const { data } = await api.post<import("./types").StudentSkillSurveyState>(
+    "/student/project-team/leader",
+    { leaderId },
+  );
   return data;
 }
 
 export async function fetchTeacherSkillSurvey(groupId: string) {
   const { data } = await api.get<import("./types").TeacherSkillSurveyBoard>(
     `/teacher/groups/${groupId}/skill-survey`,
+  );
+  return data;
+}
+
+export async function assignTeacherStudentRole(groupId: string, studentId: string, role: SkillRole) {
+  const { data } = await api.put<import("./types").TeacherSkillSurveyBoard>(
+    `/teacher/groups/${groupId}/project-roles/${studentId}`,
+    { role },
   );
   return data;
 }

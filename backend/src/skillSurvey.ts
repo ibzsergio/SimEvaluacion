@@ -20,6 +20,14 @@ export const SKILL_ROLE_LABELS: Record<SkillRole, string> = {
   qa_docs: "Calidad y documentación (pruebas y manuales)",
 };
 
+export const SKILL_ROLE_SHORT: Record<SkillRole, string> = {
+  scrum_master: "Scrum Master",
+  product_owner: "Product Owner",
+  developer: "Desarrollador",
+  ui_designer: "Diseño / UI",
+  qa_docs: "QA / Docs",
+};
+
 export const SKILL_DIMENSION_LABELS: Record<SkillDimension, string> = {
   scrumMaster: "Organización y liderazgo",
   productOwner: "Análisis y comunicación",
