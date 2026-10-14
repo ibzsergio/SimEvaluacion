@@ -36,6 +36,7 @@ import {
   resetLecturaTimers,
 } from "./lecturaSession.js";
 import { getTorreSession, resetTorreSession, setTorrePaused, setTorreReleased } from "./torreChallenge.js";
+import { getExtraSession, resetExtraSession, setExtraPaused, setExtraReleased } from "./extraChallenge.js";
 import {
   avionErrorHttp,
   clearAvionCustomTeams,
@@ -723,6 +724,58 @@ teacherGroupsRouter.post("/groups/:groupId/torre-pause", async (req: AuthedReque
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
   const session = await setTorrePaused(groupId, body.data.paused);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.get("/groups/:groupId/extra-session", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await getExtraSession(groupId);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.put("/groups/:groupId/extra-settings", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ released: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await setExtraReleased(groupId, body.data.released);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/extra-reset", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await resetExtraSession(groupId);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/extra-pause", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ paused: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await setExtraPaused(groupId, body.data.paused);
   if (!session) return res.status(404).json({ error: "group_not_found" });
   return res.json(session);
 });

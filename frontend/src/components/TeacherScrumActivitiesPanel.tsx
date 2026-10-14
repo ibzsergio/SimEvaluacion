@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAvionSession } from "../lib/api";
+import { fetchAvionSession, fetchExtraSession } from "../lib/api";
 import type { ClassGroup } from "../lib/types";
 import TeacherAvionPanel from "./TeacherAvionPanel";
+import TeacherExtraPanel from "./TeacherExtraPanel";
 import TeacherTorrePanel from "./TeacherTorrePanel";
 
 export default function TeacherScrumActivitiesPanel({
@@ -14,13 +15,19 @@ export default function TeacherScrumActivitiesPanel({
   selectedGroupId: string;
   onSelectGroup: (id: string) => void;
 }) {
-  const [current, setCurrent] = useState<"list" | "torre" | "avion">("list");
+  const [current, setCurrent] = useState<"list" | "torre" | "avion" | "extra">("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
     queryFn: () => fetchAvionSession(selectedGroupId),
     enabled: !!selectedGroupId,
   });
+  const extraQuery = useQuery({
+    queryKey: ["extra-session", selectedGroupId],
+    queryFn: () => fetchExtraSession(selectedGroupId),
+    enabled: !!selectedGroupId,
+  });
   const avionReleased = avionQuery.data?.released ?? false;
+  const extraReleased = extraQuery.data?.released ?? false;
 
   return (
     <div>
@@ -51,7 +58,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "torre" ? (
+      {current === "extra" ? (
+        <TeacherExtraPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "torre" ? (
         <TeacherTorrePanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -71,9 +85,34 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Registro docente. Los alumnos ya no ven Torre Tkinter ni Sprint aéreo en su tablero.
+              Nueva: ¡EXTRA, EXTRA! con equipos de butacas. Torre Tkinter y Sprint aéreo quedan como registro
+              (los alumnos ya no las ven).
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("extra")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-rose-300">Actividad Scrum</p>
+              <h3 className="mt-1 text-xl font-bold text-white">¡EXTRA, EXTRA!</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Portada de periódico o revista que anuncia su producto. Cartulina, hojas de color, pegamento,
+                diurex, periódico y/o revistas. Mismos equipos de butacas. 45 minutos.
+              </p>
+            </div>
+            <span
+              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                extraReleased
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+                  : "border-rose-400/40 bg-rose-500/15 text-rose-100"
+              }`}
+            >
+              {extraReleased ? "Liberada" : "Lista para liberar"}
+            </span>
+          </button>
 
           <button
             type="button"

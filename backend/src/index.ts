@@ -58,6 +58,14 @@ import { ensureDiplomaSchema } from "./ensureDiplomaSchema.js";
 import { ensureLecturaSchema } from "./ensureLecturaSchema.js";
 import { ensureTorreSchema } from "./ensureTorreSchema.js";
 import { ensureAvionSchema } from "./ensureAvionSchema.js";
+import { ensureExtraSchema } from "./ensureExtraSchema.js";
+import {
+  chooseExtraLeader,
+  extraErrorHttp,
+  getExtraSession,
+  startExtraTimer,
+  studentExtraAssignment,
+} from "./extraChallenge.js";
 import { dropPythonPracticeSchema } from "./ensurePythonPracticeSchema.js";
 import { ensureCompilerSchema, getCompilerReleasedForGroup } from "./ensureCompilerSchema.js";
 import { chooseProjectTeamLeader, getStudentSurveyState } from "./skillSurveyService.js";
@@ -630,6 +638,13 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   const lectura = lecturaSession
     ? studentLecturaAssignment(lecturaSession, req.auth!.userId, me.displayName)
     : null;
+  let extra = null;
+  try {
+    const extraSession = await getExtraSession(me.groupId);
+    extra = extraSession ? studentExtraAssignment(extraSession, req.auth!.userId) : null;
+  } catch (err) {
+    console.warn("[student/progress] extra lookup failed:", err);
+  }
   const compilerReleased = myGroup ? await getCompilerReleasedForGroup(myGroup.id) : false;
 
   return res.json({
@@ -655,6 +670,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     lectura,
     torre: null,
     avion: null,
+    extra,
     motivation,
     summary,
     top10,
@@ -759,6 +775,36 @@ app.post("/student/torre/leader", requireAuth, requireStudent, studentScrumHidde
 app.post("/student/torre/start", requireAuth, requireStudent, studentScrumHidden);
 app.post("/student/avion/leader", requireAuth, requireStudent, studentScrumHidden);
 app.post("/student/avion/start", requireAuth, requireStudent, studentScrumHidden);
+
+app.post("/student/extra/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await chooseExtraLeader(ctx.groupId, req.auth!.userId, body.data.leaderId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ extra: studentExtraAssignment(session, req.auth!.userId) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = extraErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+app.post("/student/extra/start", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await startExtraTimer(ctx.groupId, req.auth!.userId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ extra: studentExtraAssignment(session, req.auth!.userId) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = extraErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
 
 app.get("/student/diploma.pdf", requireAuth, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
   if (req.auth!.role !== "STUDENT") return res.status(403).json({ error: "forbidden" });
@@ -935,6 +981,7 @@ void (async () => {
     await ensureLecturaSchema();
     await ensureTorreSchema();
     await ensureAvionSchema();
+    await ensureExtraSchema();
     await dropPythonPracticeSchema();
     await ensureCompilerSchema();
   } catch (err) {

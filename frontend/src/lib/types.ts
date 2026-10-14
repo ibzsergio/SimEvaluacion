@@ -18,6 +18,8 @@ export type ClassGroup = {
   lecturaReleasedAt?: string | null;
   torreReleased?: boolean;
   torreReleasedAt?: string | null;
+  extraReleased?: boolean;
+  extraReleasedAt?: string | null;
   compilerReleased?: boolean;
   compilerReleasedAt?: string | null;
 };
@@ -121,6 +123,7 @@ export type StudentProgress = {
   lectura?: StudentLectura | null;
   torre?: StudentTorre | null;
   avion?: StudentAvion | null;
+  extra?: StudentExtra | null;
 };
 
 export type StudentSeating = {
@@ -203,6 +206,26 @@ export type StudentLectura = {
     teammates: StudentLectura["teammates"];
   }>;
 };
+
+export type StudentExtra = {
+  minutes: number;
+  colorName: string;
+  hex: string;
+  columna: string;
+  displayName: string;
+  isLeader: boolean;
+  leaderId: string | null;
+  leaderName: string | null;
+  startedAt: string | null;
+  pausedAt?: string | null;
+  members: Array<{
+    studentId: string;
+    displayName: string;
+    listNumber: number | null;
+  }>;
+};
+
+export type ExtraSession = TorreSession;
 
 export type StudentTorre = {
   minutes: number;

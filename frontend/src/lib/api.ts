@@ -153,6 +153,12 @@ export function getApiErrorMessage(error: unknown): string {
         "Asigna rol a por lo menos 4 alumnos para sugerir equipos."
       );
     }
+    if (code === "extra_failed") {
+      return (
+        (error.response.data as { message?: string })?.message ??
+        "No se pudo actualizar ¡EXTRA, EXTRA!"
+      );
+    }
     if (code === "invalid_team_size") {
       return "Cada equipo debe tener 4 a 6 integrantes. En 302: de 5, y un equipo de 6.";
     }
@@ -462,6 +468,44 @@ export async function chooseStudentLecturaLeader(leaderId: string) {
 export async function startStudentLecturaTimer() {
   const { data } = await api.post<{ lectura: StudentLectura | null }>("/student/lectura/start");
   return data.lectura;
+}
+
+export async function fetchExtraSession(groupId: string) {
+  const { data } = await api.get<import("./types").ExtraSession>(`/teacher/groups/${groupId}/extra-session`);
+  return data;
+}
+
+export async function updateGroupExtraSettings(groupId: string, payload: { released: boolean }) {
+  const { data } = await api.put<import("./types").ExtraSession>(
+    `/teacher/groups/${groupId}/extra-settings`,
+    payload,
+  );
+  return data;
+}
+
+export async function resetExtraSession(groupId: string) {
+  const { data } = await api.post<import("./types").ExtraSession>(`/teacher/groups/${groupId}/extra-reset`);
+  return data;
+}
+
+export async function setExtraPaused(groupId: string, paused: boolean) {
+  const { data } = await api.post<import("./types").ExtraSession>(`/teacher/groups/${groupId}/extra-pause`, {
+    paused,
+  });
+  return data;
+}
+
+export async function chooseStudentExtraLeader(leaderId: string) {
+  const { data } = await api.post<{ extra: import("./types").StudentExtra | null }>(
+    "/student/extra/leader",
+    { leaderId },
+  );
+  return data.extra;
+}
+
+export async function startStudentExtraTimer() {
+  const { data } = await api.post<{ extra: import("./types").StudentExtra | null }>("/student/extra/start");
+  return data.extra;
 }
 
 export async function fetchTorreSession(groupId: string) {
