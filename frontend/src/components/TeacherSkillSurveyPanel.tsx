@@ -164,11 +164,10 @@ export default function TeacherSkillSurveyPanel({
       <section className="glass p-6">
         <h2 className="text-lg font-semibold text-white">Roles y equipos del proyecto</h2>
         <p className="mt-1 text-sm text-slate-400">
-          En 301, a quienes no contestaron encuesta ya se les asignó el rol que marcaste (Landon Scrum
-          Master, Malillany Diseño/UI, Natalia QA/Docs, Brandon Product Owner, Uriel Desarrollador). No
-          forman un equipo aparte: pulsa <strong className="text-slate-300">Sugerir equipos equilibrados</strong>{" "}
-          para armar <strong className="text-slate-300">6 equipos de 5</strong> mezclados. El alumno ve su
-          rol, su equipo y puede elegir líder (de preferencia el Scrum Master).
+          En 301 los equipos 1 a 4 se quedan como los armamos. En 5 y 6 cada integrante tiene un rol
+          distinto (Scrum Master, Product Owner, Desarrollador, Diseño/UI y QA). Pulsa{" "}
+          <strong className="text-slate-300">Guardar los 6 equipos</strong> para registrarlos. El alumno
+          ve su rol, su equipo y puede elegir líder (de preferencia el Scrum Master).
         </p>
         {query.data ? (
           <p className="mt-3 text-sm text-cyan-200">
@@ -284,17 +283,13 @@ export default function TeacherSkillSurveyPanel({
               <div key={team.name} className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-white">{team.name}</p>
-                  {query.data?.group?.code.trim() === "301" ? (
-                    <span className="text-xs text-slate-500">{team.members.length} integrantes</span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void saveSuggestedTeam(team)}
-                      className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-[#ffffff] hover:bg-emerald-500"
-                    >
-                      Guardar equipo
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => void saveSuggestedTeam(team)}
+                    className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-[#ffffff] hover:bg-emerald-500"
+                  >
+                    Guardar equipo
+                  </button>
                 </div>
                 <ul className="mt-2 space-y-1 text-sm text-slate-300">
                   {team.members.map((m) => (

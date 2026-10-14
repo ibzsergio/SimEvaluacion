@@ -23,6 +23,73 @@ const MARKED_NO_SURVEY_ROLES_301: Array<{ name: string; needles: string[]; role:
   { name: "Vazquez Velez Uriel", needles: ["uriel"], role: "developer" },
 ];
 
+type LockedMember = { name: string; needles: string[]; role: SkillRole };
+type LockedTeam = { name: string; members: LockedMember[] };
+
+/** Equipos 1–4 como los aprobó el docente. En 5 y 6 se reasignaron roles para no dejar puros diseñadores. */
+const LOCKED_TEAMS_301: LockedTeam[] = [
+  {
+    name: "Equipo 1",
+    members: [
+      { name: "Retana Montiel Jonathan Zareth", needles: ["zareth"], role: "scrum_master" },
+      { name: "Romero Morales Mariana Itzel", needles: ["itzel"], role: "product_owner" },
+      { name: "Gasca Castillo Rodrigo", needles: ["gasca"], role: "developer" },
+      { name: "Jaimes Garcia Erik", needles: ["jaimes"], role: "ui_designer" },
+      { name: "Muciño Encino Natalia Isabella", needles: ["natalia", "isabella"], role: "qa_docs" },
+    ],
+  },
+  {
+    name: "Equipo 2",
+    members: [
+      { name: "Gutierrez Gutierrez Maura Isabelaa", needles: ["maura"], role: "scrum_master" },
+      { name: "Santiago Emeterio Brandon Yael", needles: ["brandon"], role: "product_owner" },
+      { name: "Moni Agustin Sahory Sherlyn", needles: ["sherlyn"], role: "developer" },
+      { name: "Perez Reyes Paola Michelle", needles: ["paola"], role: "ui_designer" },
+      { name: "Perez Martinez Ximena Abigail", needles: ["ximena"], role: "qa_docs" },
+    ],
+  },
+  {
+    name: "Equipo 3",
+    members: [
+      { name: "Martinez Cañas Landon Oswaldo", needles: ["landon"], role: "scrum_master" },
+      { name: "Herrera Miranda Paulina Marisol", needles: ["paulina"], role: "product_owner" },
+      { name: "Mendoza Muciño Marco Abraham", needles: ["abraham"], role: "developer" },
+      { name: "Perez Nuñez Fernanda", needles: ["fernanda"], role: "ui_designer" },
+      { name: "Castillo Estrada Yael Martin", needles: ["estrada"], role: "qa_docs" },
+    ],
+  },
+  {
+    name: "Equipo 4",
+    members: [
+      { name: "Chamorro Diaz Miguel Salvador", needles: ["chamorro"], role: "scrum_master" },
+      { name: "Reyes Gutierrez Valentina", needles: ["valentina"], role: "product_owner" },
+      { name: "Vazquez Velez Uriel", needles: ["uriel"], role: "developer" },
+      { name: "Ramirez Julian Abril Sheridan", needles: ["sheridan"], role: "ui_designer" },
+      { name: "Gomez Flores Dafne Regina", needles: ["dafne"], role: "qa_docs" },
+    ],
+  },
+  {
+    name: "Equipo 5",
+    members: [
+      { name: "Angeles Martinez Sarahi", needles: ["sarahi"], role: "scrum_master" },
+      { name: "Cipriano Cruz Adriana", needles: ["cipriano"], role: "product_owner" },
+      { name: "Ramirez Montoya Erik", needles: ["montoya"], role: "developer" },
+      { name: "Gutierrez Rivero Malillany Chantal", needles: ["malillany"], role: "ui_designer" },
+      { name: "Muciño Reyes Jade Sarai", needles: ["jade"], role: "qa_docs" },
+    ],
+  },
+  {
+    name: "Equipo 6",
+    members: [
+      { name: "Gutierrez Ferreyra Raymundo Anastacio", needles: ["raymundo"], role: "scrum_master" },
+      { name: "Solano Hernandez Hamlet", needles: ["hamlet"], role: "product_owner" },
+      { name: "Mejia De La Luz Maya", needles: ["maya"], role: "developer" },
+      { name: "Sedeño Espinosa Leslie Abigail", needles: ["leslie"], role: "ui_designer" },
+      { name: "Moreno Flores Jimena", needles: ["jimena"], role: "qa_docs" },
+    ],
+  },
+];
+
 function isSkillRole(value: string | null | undefined): value is SkillRole {
   return TEAM_ROLE_ORDER.includes(value as SkillRole);
 }
@@ -54,16 +121,44 @@ function hasSurveyAnswers(value: unknown): boolean {
   return Object.keys(asAnswers(value)).length > 0;
 }
 
+function findStudentByNeedles<T extends { displayName: string }>(
+  students: T[],
+  name: string,
+  needles: string[],
+): T | undefined {
+  const byName = findBestNameMatch(students, name);
+  if (byName) return byName;
+  return students.find((s) => {
+    const n = normalizePersonName(s.displayName);
+    return needles.every((needle) => n.includes(normalizePersonName(needle)));
+  });
+}
+
 function findMarkedNoSurveyStudent<T extends { displayName: string }>(
   students: T[],
   spec: (typeof MARKED_NO_SURVEY_ROLES_301)[number],
 ): T | undefined {
-  const byName = findBestNameMatch(students, spec.name);
-  if (byName) return byName;
-  return students.find((s) => {
-    const n = normalizePersonName(s.displayName);
-    return spec.needles.every((needle) => n.includes(needle));
-  });
+  return findStudentByNeedles(students, spec.name, spec.needles);
+}
+
+function resolveLockedTeams301<T extends { id: string; displayName: string }>(students: T[]) {
+  const used = new Set<string>();
+  const teams: Array<{ name: string; members: Array<{ studentId: string; displayName: string; role: SkillRole }> }> = [];
+  for (const team of LOCKED_TEAMS_301) {
+    const members: Array<{ studentId: string; displayName: string; role: SkillRole }> = [];
+    for (const spec of team.members) {
+      const student = findStudentByNeedles(
+        students.filter((s) => !used.has(s.id)),
+        spec.name,
+        spec.needles,
+      );
+      if (!student) return null;
+      used.add(student.id);
+      members.push({ studentId: student.id, displayName: student.displayName, role: spec.role });
+    }
+    teams.push({ name: team.name, members });
+  }
+  return teams;
 }
 
 async function persistAssignedRole(studentId: string, groupId: string, role: SkillRole) {
@@ -119,10 +214,59 @@ async function applyMarkedNoSurveyRoles301(
   return dissolved || matched.length > 0;
 }
 
+async function writeLockedTeams301(
+  teacherId: string,
+  groupId: string,
+  students: Array<{ id: string; displayName: string }>,
+) {
+  const locked = resolveLockedTeams301(students);
+  if (!locked) {
+    console.warn("[skill-survey] 301: no se armaron los 6 equipos fijos (faltó algún nombre)");
+    return false;
+  }
+  const existing = await prisma.projectTeam.findMany({
+    where: { groupId },
+    include: { members: { select: { role: true } } },
+  });
+  const designerHeavy = existing.some(
+    (t) => t.members.filter((m) => m.role === "ui_designer").length >= 3,
+  );
+  if (existing.length === 6 && existing.every((t) => t.members.length === 5) && !designerHeavy) {
+    return false;
+  }
+
+  for (const team of locked) {
+    for (const m of team.members) {
+      await persistAssignedRole(m.studentId, groupId, m.role);
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.projectTeam.deleteMany({ where: { groupId } });
+    for (const team of locked) {
+      await tx.projectTeam.create({
+        data: {
+          groupId,
+          name: team.name,
+          createdById: teacherId,
+          leaderId: team.members.find((m) => m.role === "scrum_master")?.studentId ?? null,
+          members: {
+            create: team.members.map((m) => ({
+              studentId: m.studentId,
+              role: m.role,
+            })),
+          },
+        },
+      });
+    }
+  });
+  return true;
+}
+
 export async function ensure301MarkedRoles() {
   const group = await prisma.classGroup.findFirst({
     where: { code: "301" },
-    select: { id: true },
+    select: { id: true, teacherId: true },
   });
   if (!group) return;
   const students = await prisma.user.findMany({
@@ -130,6 +274,7 @@ export async function ensure301MarkedRoles() {
     select: { id: true, displayName: true },
   });
   await applyMarkedNoSurveyRoles301(group.id, students);
+  await writeLockedTeams301(group.teacherId, group.id, students);
 }
 
 function asAnswers(value: unknown): Record<string, number> {
@@ -342,6 +487,7 @@ export async function getTeacherSurveyBoard(teacherId: string, groupId: string) 
 
   if (group.code.trim() === "301") {
     await applyMarkedNoSurveyRoles301(group.id, students);
+    await writeLockedTeams301(teacherId, group.id, students);
   }
 
   const responses = await prisma.skillSurveyResponse.findMany({
@@ -476,9 +622,15 @@ export async function createProjectTeam(
 
   const already = await prisma.projectTeamMember.findMany({
     where: { studentId: { in: ids } },
-    select: { studentId: true },
+    select: { studentId: true, teamId: true },
   });
-  if (already.length) throw new Error("student_already_in_team");
+  if (already.length) {
+    const oldTeamIds = [...new Set(already.map((a) => a.teamId))];
+    await prisma.projectTeamMember.deleteMany({ where: { studentId: { in: ids } } });
+    await prisma.projectTeam.deleteMany({
+      where: { id: { in: oldTeamIds }, members: { none: {} } },
+    });
+  }
 
   for (const m of members) {
     if (isSkillRole(m.role)) await persistAssignedRole(m.studentId, groupId, m.role);
@@ -662,9 +814,47 @@ function planTeamSizes(n: number, groupCode: string): number[] {
  * Sugiere equipos equilibrados con el rol que asignó el docente.
  * En 301: siempre 6 equipos de 5; quienes no contestaron encuesta se mezclan, no van juntos.
  */
+function fillMissingRoles(team: PoolStudent[]) {
+  const needed = TEAM_ROLE_ORDER.slice(0, team.length);
+  const taken = new Set<SkillRole>();
+  const reassign: PoolStudent[] = [];
+  for (const member of team) {
+    if (needed.includes(member.role) && !taken.has(member.role)) {
+      taken.add(member.role);
+    } else {
+      reassign.push(member);
+    }
+  }
+  const missing = needed.filter((role) => !taken.has(role));
+  for (const member of reassign) {
+    const next = missing.shift();
+    if (next) member.role = next;
+  }
+}
+
 export async function suggestProjectTeams(teacherId: string, groupId: string) {
   const board = await getTeacherSurveyBoard(teacherId, groupId);
   const is301 = board.group.code.trim() === "301";
+  if (is301) {
+    const locked = resolveLockedTeams301(board.rows.map((r) => r.student));
+    if (locked) {
+      return {
+        teamSizes: locked.map((t) => t.members.length),
+        assignedCount: locked.reduce((n, t) => n + t.members.length, 0),
+        suggested: locked.map((t) => ({
+          name: t.name,
+          members: t.members.map((m) => ({
+            studentId: m.studentId,
+            displayName: m.displayName,
+            role: m.role,
+            roleLabel: SKILL_ROLE_LABELS[m.role],
+          })),
+        })),
+        unassigned: [],
+        note: "Equipos 1 a 4 se quedaron como los armamos. En 5 y 6 se cambió el rol para que cada uno tenga Scrum Master, Product Owner, Desarrollador, Diseño/UI y QA (ya no puros diseñadores). Pulsa Guardar los 6 equipos.",
+      };
+    }
+  }
   const assigned = board.rows.filter((r) => r.assignedRole && (is301 || !r.team)) as Array<{
     student: { id: string; displayName: string };
     assignedRole: SkillRole;
@@ -727,6 +917,8 @@ export async function suggestProjectTeams(teacherId: string, groupId: string) {
       }
     }
   }
+
+  for (const team of teams) fillMissingRoles(team);
 
   const placedIds = new Set(teams.flatMap((t) => t.map((m) => m.id)));
   const unassigned = pool

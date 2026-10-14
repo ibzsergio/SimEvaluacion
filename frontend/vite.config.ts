@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261014-roles-sin-encuesta-301",
+        cacheId: "simeval-20261014-equipos-301-roles-5-6",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
