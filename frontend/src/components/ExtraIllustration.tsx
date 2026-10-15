@@ -44,7 +44,7 @@ export default function ExtraIllustration({ compact = false }: { compact?: boole
           Del diagrama a la ventana
         </text>
         <text x="180" y="322" textAnchor="middle" fill="#a16207" fontSize="9">
-          3000 Firmas · 50 min
+          3000 Firmas
         </text>
         <rect x="40" y="344" width="132" height="32" rx="4" fill="#dbeafe" />
         <text x="106" y="365" textAnchor="middle" fill="#1e3a8a" fontSize="9" fontWeight="700">

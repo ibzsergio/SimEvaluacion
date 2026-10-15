@@ -233,6 +233,7 @@ export type StudentExtra = {
   firmasMax?: number;
   firmas?: number | null;
   notes?: ExtraNote[];
+  noTeam?: boolean;
   members: Array<{
     studentId: string;
     displayName: string;

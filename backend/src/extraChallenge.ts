@@ -2,7 +2,7 @@ import { prisma } from "./prisma.js";
 import { todayClassDayDate } from "./classDayService.js";
 import { COLUMN_PALETTE } from "./seatingService.js";
 
-export const EXTRA_MINUTES = 50;
+export const EXTRA_MINUTES = 0;
 export const EXTRA_FIRMAS_MAX = 3000;
 export const EXTRA_ACTIVITY_NAME = "Plan de Acción Proyecto";
 export const EXTRA_ANNOUNCEMENT_TITLE = "Nueva actividad: Plan de Acción Proyecto";
@@ -344,17 +344,33 @@ export async function getExtraSession(groupId: string): Promise<ExtraSession | n
   const projectTeams = await loadProjectTeams(groupId);
   const teams = hydrateProjectTeams(projectTeams, stored);
   const activity = await findPlanActivity(groupId);
+  let released = Boolean(group.extraReleased);
+  if (!released && group.teacherId) {
+    const siblings = await prisma.$queryRaw<Array<{ extraReleased: number | boolean | null }>>`
+      SELECT extraReleased FROM ClassGroup WHERE teacherId = ${group.teacherId}
+    `;
+    if (siblings.some((row) => Boolean(row.extraReleased))) {
+      released = true;
+      await prisma.$executeRawUnsafe(
+        "UPDATE `ClassGroup` SET `extraReleased` = 1, `extraReleasedAt` = ? WHERE `id` = ?",
+        new Date(),
+        groupId,
+      );
+    }
+  }
   const releasedAt =
     group.extraReleasedAt instanceof Date
       ? group.extraReleasedAt.toISOString()
       : group.extraReleasedAt
         ? String(group.extraReleasedAt)
-        : null;
+        : released
+          ? new Date().toISOString()
+          : null;
   return {
     groupId: group.id,
     groupCode: group.code,
     rosterMode: "project",
-    released: Boolean(group.extraReleased),
+    released,
     releasedAt,
     paused: Boolean(stored.pausedAt),
     pausedAt: stored.pausedAt,
@@ -367,17 +383,23 @@ export async function getExtraSession(groupId: string): Promise<ExtraSession | n
 }
 
 export async function setExtraReleased(groupId: string, released: boolean) {
-  const session = await getExtraSession(groupId);
-  if (!session) return null;
   const group = await prisma.classGroup.findUnique({
     where: { id: groupId },
     select: { teacherId: true, code: true },
   });
   if (!group) return null;
-  await persist(groupId, session.teams, {
-    extraReleased: released,
-    extraReleasedAt: released ? new Date() : null,
+  const siblings = await prisma.classGroup.findMany({
+    where: { teacherId: group.teacherId },
+    select: { id: true, code: true },
   });
+  for (const sib of siblings) {
+    const session = await getExtraSession(sib.id);
+    if (!session) continue;
+    await persist(sib.id, session.teams, {
+      extraReleased: released,
+      extraReleasedAt: released ? new Date() : null,
+    });
+  }
   if (released) {
     const existing = await prisma.announcement.findFirst({
       where: { teacherId: group.teacherId, title: EXTRA_ANNOUNCEMENT_TITLE },
@@ -389,7 +411,7 @@ export async function setExtraReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: EXTRA_ANNOUNCEMENT_TITLE,
-          body: `Grupo ${group.code}: Plan de Acción Proyecto (paso 3 · interfaces). Ya hicieron análisis de requerimientos y diagramas/casos de uso/cronograma. En 50 minutos armen en cartulina las pantallas de SU app Tkinter (cartulina, hojas de color, pegamento, diurex, periódico/revistas). Equipos de Roles / Equipos. Vale 3000 Firmas; las notas del docente (ruido, no trabaja, sin material, fuera de tiempo…) bajan ese valor. Eligen líder; el líder arranca el reloj. Al acabar: manos arriba.`,
+          body: `Plan de Acción Proyecto (paso 3 · interfaces) para 301 y 302. Ya hicieron análisis de requerimientos y diagramas/casos de uso/cronograma. Armen en cartulina las pantallas de SU app Tkinter (cartulina, hojas de color, pegamento, diurex, periódico/revistas). Equipos de Roles / Equipos. Vale 3000 Firmas; las notas del docente (ruido, no trabaja, sin material, fuera de tiempo…) bajan ese valor.`,
         },
       });
     }
@@ -510,11 +532,32 @@ export async function applyExtraFirmas(groupId: string, teacherId: string, teamK
 export function studentExtraAssignment(session: ExtraSession, studentId: string) {
   if (!session.released) return null;
   const team = session.teams.find((t) => t.members.some((m) => m.studentId === studentId));
-  if (!team) return null;
+  const swatch = COLUMN_PALETTE[0]!;
+  if (!team) {
+    return {
+      minutes: 0,
+      rosterMode: session.rosterMode,
+      teamName: "Sin equipo asignado",
+      colorName: swatch.name,
+      hex: swatch.hex,
+      columna: "",
+      displayName: "",
+      isLeader: false,
+      leaderId: null,
+      leaderName: null,
+      startedAt: null,
+      pausedAt: null,
+      members: [],
+      firmasMax: EXTRA_FIRMAS_MAX,
+      firmas: null,
+      notes: [],
+      noTeam: true,
+    };
+  }
   const me = team.members.find((m) => m.studentId === studentId)!;
   const notes = team.notes.filter((n) => !n.studentId || n.studentId === studentId);
   return {
-    minutes: session.minutes,
+    minutes: 0,
     rosterMode: session.rosterMode,
     teamName: team.name,
     colorName: team.colorName,
@@ -524,8 +567,8 @@ export function studentExtraAssignment(session: ExtraSession, studentId: string)
     isLeader: team.leaderId === studentId,
     leaderId: team.leaderId,
     leaderName: team.leaderName,
-    startedAt: team.startedAt,
-    pausedAt: session.pausedAt,
+    startedAt: null,
+    pausedAt: null,
     members: team.members,
     firmasMax: EXTRA_FIRMAS_MAX,
     firmas: team.awarded ? me.firmas : null,

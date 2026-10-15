@@ -102,7 +102,6 @@ export default function TeacherScrumActivitiesPanel({
               <p className="mt-1 text-sm text-slate-400">
                 Paso 3: interfaces de su app Tkinter. Equipos de Roles / Equipos en 301 y 302. 3000
                 Firmas (bajan con tus notas). Cartulina, hojas, pegamento, diurex, periódico/revistas.
-                50 minutos.
               </p>
             </div>
             <span

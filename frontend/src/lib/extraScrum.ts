@@ -11,7 +11,7 @@ export function extraRoleLabel(role?: string | null) {
   return ROLE_SHORT[role] ?? role;
 }
 
-export const EXTRA_MINUTOS = 50;
+export const EXTRA_MINUTOS = 0;
 export const EXTRA_TITULO = "Plan de Acción Proyecto";
 export const EXTRA_PROGRAMA = "Paso 3 · Interfaces";
 export const EXTRA_FIRMAS_MAX = 3000;
@@ -88,7 +88,7 @@ export const EXTRA_SECCIONES = [
     id: "sm",
     rol: "Scrum Master",
     titulo: "Cierre a tiempo",
-    detalle: "Reparte zonas, vigila los 50 minutos y que todos peguen. De preferencia es el líder.",
+    detalle: "Reparte zonas y que todos peguen. Coordina al equipo.",
   },
   {
     id: "sexto",
@@ -99,12 +99,10 @@ export const EXTRA_SECCIONES = [
 ] as const;
 
 export const EXTRA_PASOS = [
-  "Lean en equipo. No recorten ni peguen hasta que el líder active el reloj.",
   "301 y 302: equipos de proyecto de Roles / Equipos (el mismo del análisis y los diagramas).",
-  "Elijan un líder (de preferencia el Scrum Master). Esa persona arranca los 50 minutos.",
   "Armen en cartulina las interfaces de SU app Tkinter: pantalla principal y, si cabe, el flujo a otra ventana.",
   "Tienen que verse: nombre de la app, controles, 3 funciones y créditos.",
-  "Al acabarse el tiempo: manos arriba. No sigan pegando. Las pantallas se tienen que sostener solas.",
+  "Las pantallas se tienen que sostener solas (que no se desarmen).",
   "Vale 3000 Firmas. El docente anota en vivo; cada nota baja ese valor.",
 ];
 

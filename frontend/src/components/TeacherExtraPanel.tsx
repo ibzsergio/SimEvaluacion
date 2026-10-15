@@ -6,28 +6,19 @@ import {
   fetchExtraSession,
   getApiErrorMessage,
   removeExtraNote,
-  resetExtraSession,
-  setExtraPaused,
   updateGroupExtraSettings,
 } from "../lib/api";
 import {
   EXTRA_FIRMAS_MAX,
-  EXTRA_MINUTOS,
   EXTRA_NOTAS,
   EXTRA_PROGRAMA,
   EXTRA_SECCIONES,
   EXTRA_TITULO,
   extraRoleLabel,
-  formatClock,
-  remainingSeconds,
 } from "../lib/extraScrum";
 import type { ClassGroup } from "../lib/types";
 import ExtraIllustration from "./ExtraIllustration";
 import ExtraIndicacion from "./ExtraIndicacion";
-
-function extraPauseKey(groupId: string) {
-  return `simeval-extra-pausedAt:${groupId}`;
-}
 
 export default function TeacherExtraPanel({
   groups,
@@ -42,11 +33,6 @@ export default function TeacherExtraPanel({
 }) {
   const qc = useQueryClient();
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
-  const [now, setNow] = useState(() => Date.now());
-  const [localPausedAt, setLocalPausedAt] = useState<string | null>(() =>
-    selectedGroupId ? localStorage.getItem(extraPauseKey(selectedGroupId)) : null,
-  );
-  const [pauseError, setPauseError] = useState("");
   const [noteError, setNoteError] = useState("");
   const [customByTeam, setCustomByTeam] = useState<
     Record<string, { label: string; points: string; studentId: string }>
@@ -65,52 +51,12 @@ export default function TeacherExtraPanel({
   const released = session?.released ?? false;
   const firmasMax = session?.firmasMax ?? EXTRA_FIRMAS_MAX;
 
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
   const releaseMutation = useMutation({
     mutationFn: (next: boolean) => updateGroupExtraSettings(selectedGroupId, { released: next }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["extra-session", selectedGroupId] });
+      await qc.invalidateQueries({ queryKey: ["extra-session"] });
       await qc.invalidateQueries({ queryKey: ["groups"] });
       await qc.invalidateQueries({ queryKey: ["teacher-comms"] });
-    },
-  });
-
-  const resetMutation = useMutation({
-    mutationFn: () => resetExtraSession(selectedGroupId),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["extra-session", selectedGroupId] });
-    },
-  });
-
-  const pauseMutation = useMutation({
-    mutationFn: async (paused: boolean) => {
-      let selectedSession = null;
-      for (const group of groups) {
-        const next = await setExtraPaused(group.id, paused);
-        if (group.id === selectedGroupId) selectedSession = next;
-      }
-      return selectedSession;
-    },
-    onSuccess: async (data, paused) => {
-      setPauseError("");
-      if (paused) {
-        const at = data?.pausedAt ?? localPausedAt ?? new Date().toISOString();
-        for (const group of groups) localStorage.setItem(extraPauseKey(group.id), at);
-        setLocalPausedAt(at);
-      } else {
-        for (const group of groups) localStorage.removeItem(extraPauseKey(group.id));
-        setLocalPausedAt(null);
-      }
-      if (data) qc.setQueryData(["extra-session", selectedGroupId], data);
-      await qc.invalidateQueries({ queryKey: ["extra-session"] });
-    },
-    onError: (err, paused) => {
-      setPauseError(getApiErrorMessage(err));
-      if (!paused) return;
     },
   });
 
@@ -154,31 +100,14 @@ export default function TeacherExtraPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar Plan de Acción Proyecto para el grupo ${selectedGroup?.code}?\n\nEquipos de Roles / Equipos. Paso 3: interfaces en papel de su app Tkinter. 50 minutos. Vale ${firmasMax} Firmas; las notas que pongas bajan ese valor.`,
+        `¿Liberar Plan de Acción Proyecto para 301 y 302?\n\nEquipos de Roles / Equipos. Paso 3: interfaces en papel de su app Tkinter. Vale ${firmasMax} Firmas; las notas que pongas bajan ese valor.`,
       );
       if (!ok) return;
     }
     releaseMutation.mutate(!released);
   }
 
-  function handleReset() {
-    const ok = window.confirm(
-      "¿Reiniciar líderes y relojes de este grupo? Las notas y Firmas se quedan.",
-    );
-    if (!ok) return;
-    resetMutation.mutate();
-  }
-
-  const withLeader = teams.filter((t) => t.leaderId).length;
-  const withTimer = teams.filter((t) => t.startedAt).length;
-  const minutes = session?.minutes ?? EXTRA_MINUTOS;
-  const pausedAt = localPausedAt ?? session?.pausedAt ?? null;
-  const paused = Boolean(pausedAt);
-  void now;
-
   useEffect(() => {
-    setLocalPausedAt(selectedGroupId ? localStorage.getItem(extraPauseKey(selectedGroupId)) : null);
-    setPauseError("");
     setNoteError("");
   }, [selectedGroupId]);
 
@@ -211,15 +140,15 @@ export default function TeacherExtraPanel({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-rose-300">Supervisión en vivo</p>
-            <h2 className="mt-1 text-xl font-bold text-white">Equipos, reloj y notas</h2>
+            <h2 className="mt-1 text-xl font-bold text-white">Equipos y notas</h2>
             <p className="mt-1 text-sm text-slate-400">
               301 y 302: equipos de Roles / Equipos. Parte de {firmasMax.toLocaleString("es-MX")}{" "}
-              Firmas. Cada nota baja el valor y se guarda en la lista de actividades.
+              Firmas. Cada nota baja el valor y se guarda en la lista de actividades. Sin cronómetro.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
-              Líderes {withLeader}/{teams.length || 6} · Relojes {withTimer}/{teams.length || 6}
+              {teams.length} equipos
             </p>
             <button
               type="button"
@@ -229,41 +158,11 @@ export default function TeacherExtraPanel({
             >
               {awardMutation.isPending ? "Guardando..." : "Registrar Firmas de todos"}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!paused) {
-                  const ok = window.confirm(
-                    "¿Pausar los cronómetros de 301 y 302?\n\nEl tiempo transcurrido se conserva. Recargar la página no lo pierde. Después pulsa Reanudar.",
-                  );
-                  if (!ok) return;
-                  const at = new Date().toISOString();
-                  for (const group of groups) localStorage.setItem(extraPauseKey(group.id), at);
-                  setLocalPausedAt(at);
-                  pauseMutation.mutate(true);
-                  return;
-                }
-                pauseMutation.mutate(false);
-              }}
-              disabled={pauseMutation.isPending || groups.length === 0}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 ${
-                paused
-                  ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                  : "bg-amber-500 text-slate-950 hover:bg-amber-400"
-              }`}
-            >
-              {pauseMutation.isPending ? "Guardando..." : paused ? "Reanudar" : "Pausar"}
-            </button>
           </div>
         </div>
-        {paused ? (
-          <p className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-sm font-semibold text-amber-100">
-            Pausado. Los relojes están congelados. Pulsa Reanudar cuando sigan.
-          </p>
-        ) : null}
-        {pauseError || noteError ? (
+        {noteError ? (
           <p className="mt-3 rounded-xl border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-sm text-rose-100">
-            {noteError || pauseError}
+            {noteError}
           </p>
         ) : null}
         {sessionQuery.isLoading ? (
@@ -275,9 +174,6 @@ export default function TeacherExtraPanel({
         ) : (
           <ul className="mt-4 grid gap-3 md:grid-cols-2">
             {teams.map((team) => {
-              const remain = remainingSeconds(team.startedAt, minutes, pausedAt);
-              const running = Boolean(team.startedAt) && remain > 0 && !paused;
-              const done = Boolean(team.startedAt) && remain === 0;
               const notes = team.notes ?? [];
               const custom = customOf(team.key);
               return (
@@ -292,37 +188,13 @@ export default function TeacherExtraPanel({
                         {team.name ?? team.columna ?? team.colorName}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-white">
-                        {team.leaderName ? `Líder: ${team.leaderName}` : "Aún no eligen líder"}
+                        {team.leaderName ? `Líder: ${team.leaderName}` : `${team.members.length} integrantes`}
                       </p>
                     </div>
                     <p className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-xs font-bold text-amber-100">
                       {team.awarded ? "Firmas guardadas" : "Sin registrar"}
                     </p>
                   </div>
-                  <p
-                    className={`mt-2 font-mono text-3xl font-bold ${
-                      done
-                        ? "text-rose-200"
-                        : paused && team.startedAt
-                          ? "text-amber-200"
-                          : running
-                            ? "text-white"
-                            : "text-slate-500"
-                    }`}
-                  >
-                    {team.startedAt ? formatClock(remain) : `${minutes}:00`}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-300">
-                    {done
-                      ? "Tiempo agotado — manos arriba"
-                      : paused && team.startedAt
-                        ? "Pausado"
-                        : running
-                          ? "Reloj en curso"
-                          : team.leaderName
-                            ? "Líder listo · falta activar el reloj"
-                            : "Esperando líder"}
-                  </p>
                   <ul className="mt-3 space-y-0.5 text-xs text-slate-300">
                     {team.members.map((m) => (
                       <li key={m.studentId} className="flex justify-between gap-2">
@@ -515,8 +387,8 @@ export default function TeacherExtraPanel({
         <p className="mt-2 text-sm text-slate-300">
           Grupo {selectedGroup?.code}. Paso 3 del proyecto: interfaces en papel de su app Tkinter (ya
           entregaron requerimientos y diagramas/casos de uso/cronograma). Equipos de Roles / Equipos.{" "}
-          {firmasMax.toLocaleString("es-MX")} Firmas, según las notas. 50 minutos. Cartulina, hojas de
-          color, pegamento, diurex, periódico y/o revistas.
+          {firmasMax.toLocaleString("es-MX")} Firmas, según las notas. Cartulina, hojas de color,
+          pegamento, diurex, periódico y/o revistas.
         </p>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -540,7 +412,7 @@ export default function TeacherExtraPanel({
           <button
             type="button"
             onClick={toggleRelease}
-            disabled={releaseMutation.isPending || !selectedGroupId || teams.length === 0}
+            disabled={releaseMutation.isPending || !selectedGroupId}
             className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 ${
               released
                 ? "border border-amber-400/40 bg-amber-500/20 text-amber-100"
@@ -553,18 +425,10 @@ export default function TeacherExtraPanel({
                 ? "Ocultar a los alumnos"
                 : "Liberar actividad"}
           </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={resetMutation.isPending || !selectedGroupId}
-            className="rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 disabled:opacity-60"
-          >
-            {resetMutation.isPending ? "Reiniciando..." : "Reiniciar líderes y relojes"}
-          </button>
           <p className="text-xs text-slate-400">
             {released
-              ? "Liberada: los alumnos ven instrucciones y el reloj. Tú anotas y se actualizan las Firmas."
-              : "Todavía no la ven los alumnos. Revisa y luego libera."}
+              ? "Liberada en 301 y 302: los alumnos ven instrucciones. Tú anotas y se actualizan las Firmas."
+              : "Todavía no la ven los alumnos. Al liberar se abre en 301 y 302."}
           </p>
         </div>
         {sessionQuery.isError ? (
