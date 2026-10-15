@@ -61,6 +61,7 @@ import { ensureAvionSchema } from "./ensureAvionSchema.js";
 import { ensureExtraSchema } from "./ensureExtraSchema.js";
 import {
   chooseExtraLeader,
+  ensurePlanActivitiesForTeacher,
   extraErrorHttp,
   getExtraSession,
   startExtraTimer,
@@ -327,6 +328,12 @@ app.get("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedRe
     where: { id: groupId, teacherId: req.auth!.userId },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
+
+  try {
+    await ensurePlanActivitiesForTeacher(req.auth!.userId);
+  } catch (err) {
+    console.warn("[teacher/activities] Plan de Acción:", err);
+  }
 
   const activities = await prisma.activity.findMany({
     where: { createdById: req.auth!.userId, groupId },

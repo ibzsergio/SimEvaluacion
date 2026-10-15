@@ -341,6 +341,25 @@ async function upsertMemberGrade(params: {
   });
 }
 
+/** Crea la columna de 3000 Firmas en 301 y 302 si ya existe en uno o si la actividad está liberada. */
+export async function ensurePlanActivitiesForTeacher(teacherId: string) {
+  const classroom = await listClassroomGroups(teacherId);
+  if (!classroom.length) return;
+  const anyReleased = classroom.some((row) => Boolean(row.extraReleased));
+  const existing = await prisma.activity.findFirst({
+    where: { name: EXTRA_ACTIVITY_NAME, groupId: { in: classroom.map((row) => row.id) } },
+    select: { id: true },
+  });
+  if (!anyReleased && !existing) return;
+  for (const row of classroom) {
+    try {
+      await ensurePlanActivity(row.id, teacherId);
+    } catch (err) {
+      console.warn("[extra] no se pudo crear Plan de Acción en", row.code, err);
+    }
+  }
+}
+
 async function applyTeamFirmas(groupId: string, teacherId: string, team: ExtraTeam) {
   const activityId = await ensurePlanActivity(groupId, teacherId);
   for (const member of team.members) {
@@ -389,6 +408,13 @@ export async function getExtraSession(groupId: string): Promise<ExtraSession | n
   } catch (err) {
     console.warn("[extra] no se pudieron hidratar equipos de proyecto:", err);
   }
+  if (released && group.teacherId) {
+    try {
+      await ensurePlanActivitiesForTeacher(group.teacherId);
+    } catch (err) {
+      console.warn("[extra] no se pudieron publicar columnas de Plan de Acción:", err);
+    }
+  }
   const activity = await findPlanActivity(groupId);
   const releasedAt =
     group.extraReleasedAt instanceof Date
@@ -436,6 +462,11 @@ export async function setExtraReleased(groupId: string, released: boolean) {
     }
   }
   if (released) {
+    try {
+      await ensurePlanActivitiesForTeacher(group.teacherId);
+    } catch (err) {
+      console.warn("[extra] no se pudieron publicar columnas al liberar:", err);
+    }
     const existing = await prisma.announcement.findFirst({
       where: { teacherId: group.teacherId, title: EXTRA_ANNOUNCEMENT_TITLE },
       orderBy: { createdAt: "desc" },
