@@ -12,91 +12,116 @@ export function extraRoleLabel(role?: string | null) {
 }
 
 export const EXTRA_MINUTOS = 50;
-export const EXTRA_TITULO = "¡EXTRA, EXTRA!";
-export const EXTRA_PROGRAMA = "Lanzan su app Tkinter";
-export const EXTRA_PUNTOS_MAX = 1000;
+export const EXTRA_TITULO = "Plan de Acción Proyecto";
+export const EXTRA_PROGRAMA = "Paso 3 · Interfaces";
+export const EXTRA_FIRMAS_MAX = 3000;
+export const EXTRA_PUNTOS_MAX = EXTRA_FIRMAS_MAX;
+export const EXTRA_ACTIVITY_NAME = "Plan de Acción Proyecto";
 
-/** Qué anuncian: no es un objeto genérico ni una app de celular. */
+export const EXTRA_PASOS_PREVIOS = [
+  { n: 1, titulo: "Análisis de requerimientos", detalle: "Ya lo entregaron: qué hace el sistema, para quién y qué no entra." },
+  { n: 2, titulo: "Diagramas y cronograma", detalle: "Ya lo entregaron: clases, casos de uso y el calendario del equipo." },
+  { n: 3, titulo: "Interfaces (hoy)", detalle: "Con el material armán las pantallas de papel de SU aplicación Tkinter." },
+];
+
 export const EXTRA_PRODUCTO =
-  "Una aplicación de escritorio en Python + Tkinter: una ventana con botones, cajas de texto y menús que resuelve un problema real del plantel o de la vida diaria (pase de lista, calificaciones, cafetería, biblioteca, horarios, inventario del taller, registro de incidencias, etc.).";
+  "Las interfaces de SU proyecto: ventanas de escritorio en Python + Tkinter (botones, cajas, menús) que ya definieron en requerimientos y diagramas. Una cartulina por pantalla principal; si hay más, las pegan como un flujo.";
 
 export const EXTRA_PRODUCTO_NO =
-  "No anuncian perfume, ropa, un juego sin ventana ni una app de celular. Es el sistema que van a programar con Tkinter.";
+  "No inventen otra app. No es un anuncio genérico ni una app de celular. Es la interfaz del sistema que ya están diseñando.";
 
 export const EXTRA_PRODUCTO_DEBE = [
-  "Nombre corto de la app (inventado por el equipo)",
-  "Quién la usa (alumno, docente, prefecto, cafetería…)",
-  "El problema que resuelve, en una frase que se lea desde lejos",
-  "3 funciones de la ventana (qué hace el usuario y qué responde el programa)",
+  "Nombre de la app (el de su proyecto)",
+  "Pantalla principal: qué ve el usuario al abrir",
+  "Controles reales (botones, cajas, listas) según sus casos de uso",
+  "Flujo: de qué ventana se pasa a cuál",
 ];
 
 export const EXTRA_MATERIALES = [
-  "Cartulina (la página de la portada)",
-  "Hojas de color",
+  "Cartulina (la ventana / pantalla)",
+  "Hojas de color (botones, zonas, menús)",
   "Pegamento y diurex",
-  "Periódico y/o revistas para recortar",
+  "Periódico y/o revistas para recortar íconos y texturas",
+];
+
+export type ExtraNotePreset = {
+  code: string;
+  label: string;
+  points: number;
+  scope: "team" | "member";
+};
+
+export const EXTRA_NOTAS: ExtraNotePreset[] = [
+  { code: "ruido", label: "Mucho ruido", points: 400, scope: "team" },
+  { code: "no_trabaja", label: "No trabaja el equipo", points: 800, scope: "team" },
+  { code: "otro_equipo", label: "Integrante en otro equipo", points: 500, scope: "member" },
+  { code: "sin_material", label: "No trajo material", points: 400, scope: "member" },
+  { code: "fuera_tiempo", label: "Entrega fuera de tiempo", points: 600, scope: "team" },
 ];
 
 export const EXTRA_SECCIONES = [
   {
-    id: "titular",
+    id: "po",
     rol: "Product Owner",
-    titulo: "El titular que vende",
-    detalle:
-      "Nombre de la app Tkinter + promesa: para quién es y qué problema del plantel o de la vida diaria resuelve. Que se lea desde lejos.",
+    titulo: "Qué pantalla y para quién",
+    detalle: "Nombra la ventana y el caso de uso. Que se lea desde lejos.",
   },
   {
-    id: "collage",
+    id: "ui",
     rol: "Diseño / UI",
-    titulo: "La “pantalla” de portada",
-    detalle:
-      "Collage que se vea como la ventana del programa (marco, botones, cajas). Recortes de revista/periódico y hojas de color. Que se vea de revista, no de recado.",
+    titulo: "La ventana en papel",
+    detalle: "Marco, zonas, botones y cajas con recortes y hojas de color. Que se vea interfaz, no recado.",
   },
   {
-    id: "como",
+    id: "dev",
     rol: "Desarrollador",
-    titulo: "Cómo funciona",
-    detalle:
-      "Recuadro con 3 viñetas: qué escribe o elige el usuario, qué hace Python, qué muestra la ventana. Sin párrafos largos.",
+    titulo: "Cómo responde",
+    detalle: "3 viñetas: qué elige o escribe el usuario, qué hace el programa, qué muestra después.",
   },
   {
-    id: "sello",
+    id: "qa",
     rol: "QA / Docs",
-    titulo: "Sello de calidad",
-    detalle: "Caja “Revisado”: créditos del equipo, que no falte nombre de la app ni las 3 funciones, y que no se despegue.",
+    titulo: "Revisión",
+    detalle: "Que no falte un control de sus casos de uso. Créditos del equipo. Que no se despegue.",
   },
   {
-    id: "cierre",
+    id: "sm",
     rol: "Scrum Master",
     titulo: "Cierre a tiempo",
-    detalle: "Reparte zonas en la cartulina, vigila el reloj de 50 minutos y que todos peguen. De preferencia es el líder.",
+    detalle: "Reparte zonas, vigila los 50 minutos y que todos peguen. De preferencia es el líder.",
   },
   {
-    id: "reportero",
+    id: "sexto",
     rol: "Sexto integrante (si hay)",
-    titulo: "Reportero gráfico",
-    detalle: "Más recortes, orilla, “precio” o fecha de edición. Ayuda a que la página se vea llena y limpia.",
+    titulo: "Pantalla extra o flujo",
+    detalle: "Segunda ventana o flechas de navegación. Ayuda a que el prototipo se entienda.",
   },
 ] as const;
 
 export const EXTRA_PASOS = [
   "Lean en equipo. No recorten ni peguen hasta que el líder active el reloj.",
-  "En 301: equipos de proyecto de Roles / Equipos (su app del semestre). En 302: la columna de butacas se pone de acuerdo en UNA sola app Tkinter.",
+  "301 y 302: equipos de proyecto de Roles / Equipos (el mismo del análisis y los diagramas).",
   "Elijan un líder (de preferencia el Scrum Master). Esa persona arranca los 50 minutos.",
-  "En una cartulina armen la portada de un periódico o revista que anuncie el LANZAMIENTO de su aplicación de escritorio en Python + Tkinter (nombre, usuario y problema).",
-  "Tienen que verse las 4 zonas: titular, collage de la ventana, “cómo funciona” (3 funciones) y sello de calidad.",
-  "Al acabarse el tiempo: manos arriba. No sigan pegando. La portada se tiene que sostener sola (que no se desarme).",
-  "Cada equipo presenta su titular en 20 segundos. Gana la más clara, creativa y firme.",
+  "Armen en cartulina las interfaces de SU app Tkinter: pantalla principal y, si cabe, el flujo a otra ventana.",
+  "Tienen que verse: nombre de la app, controles, 3 funciones y créditos.",
+  "Al acabarse el tiempo: manos arriba. No sigan pegando. Las pantallas se tienen que sostener solas.",
+  "Vale 3000 Firmas. El docente anota en vivo; cada nota baja ese valor.",
 ];
 
-export const EXTRA_PUNTAJE = [
-  { lugar: 1, etiqueta: "1° · portada estrella", puntos: 1000 },
-  { lugar: 2, etiqueta: "2° · muy vendible", puntos: 800 },
-  { lugar: 3, etiqueta: "3° · buena edición", puntos: 650 },
-  { lugar: 4, etiqueta: "4° · se entiende", puntos: 500 },
-  { lugar: 5, etiqueta: "5° · le faltó punch", puntos: 350 },
-  { lugar: 6, etiqueta: "6° · se armó tarde", puntos: 200 },
-] as const;
+export function extraNotePreset(code: string) {
+  return EXTRA_NOTAS.find((n) => n.code === code) ?? null;
+}
+
+export function extraMemberFirmas(
+  notes: Array<{ points: number; studentId?: string | null }>,
+  studentId: string,
+  max = EXTRA_FIRMAS_MAX,
+) {
+  const cut = notes
+    .filter((n) => !n.studentId || n.studentId === studentId)
+    .reduce((acc, n) => acc + Math.max(0, n.points), 0);
+  return Math.max(0, max - cut);
+}
 
 export function remainingSeconds(
   startedAt: string | null | undefined,

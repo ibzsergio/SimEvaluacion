@@ -156,7 +156,7 @@ export function getApiErrorMessage(error: unknown): string {
     if (code === "extra_failed") {
       return (
         (error.response.data as { message?: string })?.message ??
-        "No se pudo actualizar ¡EXTRA, EXTRA!"
+        "No se pudo actualizar Plan de Acción Proyecto."
       );
     }
     if (code === "invalid_team_size") {
@@ -506,6 +506,33 @@ export async function chooseStudentExtraLeader(leaderId: string) {
 export async function startStudentExtraTimer() {
   const { data } = await api.post<{ extra: import("./types").StudentExtra | null }>("/student/extra/start");
   return data.extra;
+}
+
+export async function addExtraNote(
+  groupId: string,
+  payload: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
+) {
+  const { data } = await api.post<import("./types").ExtraSession>(
+    `/teacher/groups/${groupId}/extra-note`,
+    payload,
+  );
+  return data;
+}
+
+export async function removeExtraNote(groupId: string, payload: { teamKey: string; noteId: string }) {
+  const { data } = await api.post<import("./types").ExtraSession>(
+    `/teacher/groups/${groupId}/extra-note-remove`,
+    payload,
+  );
+  return data;
+}
+
+export async function applyExtraFirmas(groupId: string, teamKey?: string) {
+  const { data } = await api.post<import("./types").ExtraSession>(
+    `/teacher/groups/${groupId}/extra-award`,
+    teamKey ? { teamKey } : {},
+  );
+  return data;
 }
 
 export async function fetchTorreSession(groupId: string) {

@@ -6,6 +6,7 @@ import {
   startStudentExtraTimer,
 } from "../lib/api";
 import {
+  EXTRA_FIRMAS_MAX,
   EXTRA_MINUTOS,
   EXTRA_PROGRAMA,
   EXTRA_SECCIONES,
@@ -107,7 +108,9 @@ export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
                   : `Reloj: ${formatClock(remain)}`
                 : extra.leaderName
                   ? `Líder: ${extra.leaderName}. Lean y activen cuando estén listos.`
-                  : "Lean las instrucciones y elijan un líder."}
+                  : extra.firmas != null
+                    ? `${extra.firmas.toLocaleString("es-MX")} / ${(extra.firmasMax ?? EXTRA_FIRMAS_MAX).toLocaleString("es-MX")} Firmas.`
+                    : "Lean las instrucciones y elijan un líder."}
           </p>
         </div>
         <span className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200">
@@ -119,6 +122,28 @@ export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
         <div className="space-y-5 px-5 pb-5 pt-2">
           <ExtraIllustration compact />
           <ExtraIndicacion />
+
+          {extra.firmas != null || (extra.notes && extra.notes.length > 0) ? (
+            <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-amber-200">Tus Firmas</p>
+              <p className="mt-1 text-2xl font-bold text-white">
+                {(extra.firmas ?? extra.firmasMax ?? EXTRA_FIRMAS_MAX).toLocaleString("es-MX")} /{" "}
+                {(extra.firmasMax ?? EXTRA_FIRMAS_MAX).toLocaleString("es-MX")}
+              </p>
+              {extra.notes && extra.notes.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-sm text-amber-100">
+                  {extra.notes.map((n) => (
+                    <li key={n.id}>
+                      {n.label}
+                      {n.studentName ? ` · ${n.studentName}` : ""} −{n.points}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-sm text-amber-100">Sin notas. El docente aún puede anotar.</p>
+              )}
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-white">Misión por rol (todos pegan)</h3>
@@ -143,12 +168,11 @@ export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
           ) : (
             <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
               <h3 className="text-sm font-semibold text-white">
-                {extra.rosterMode === "project" ? "Equipo de proyecto" : "Equipo de butacas"}
+                Equipo de proyecto
               </h3>
               <p className="mt-1 text-xs text-slate-400">
-                {extra.rosterMode === "project"
-                  ? "El mismo de Roles / Equipos. Elijan al líder (de preferencia Scrum Master); el reloj solo lo activa esa persona."
-                  : "Tu columna de butacas. Elijan al líder (de preferencia Scrum Master); el reloj solo lo activa esa persona."}
+                El mismo de Roles / Equipos. Elijan al líder (de preferencia Scrum Master); el reloj
+                solo lo activa esa persona.
               </p>
               <ul className="mt-3 space-y-2">
                 {extra.members.map((m) => (

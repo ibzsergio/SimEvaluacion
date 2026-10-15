@@ -36,7 +36,16 @@ import {
   resetLecturaTimers,
 } from "./lecturaSession.js";
 import { getTorreSession, resetTorreSession, setTorrePaused, setTorreReleased } from "./torreChallenge.js";
-import { getExtraSession, resetExtraSession, setExtraPaused, setExtraReleased } from "./extraChallenge.js";
+import {
+  addExtraNote,
+  applyExtraFirmas,
+  extraErrorHttp,
+  getExtraSession,
+  removeExtraNote,
+  resetExtraSession,
+  setExtraPaused,
+  setExtraReleased,
+} from "./extraChallenge.js";
 import {
   avionErrorHttp,
   clearAvionCustomTeams,
@@ -778,6 +787,71 @@ teacherGroupsRouter.post("/groups/:groupId/extra-pause", async (req: AuthedReque
   const session = await setExtraPaused(groupId, body.data.paused);
   if (!session) return res.status(404).json({ error: "group_not_found" });
   return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/extra-note", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      teamKey: z.string().min(1),
+      code: z.string().min(1),
+      label: z.string().trim().optional(),
+      points: z.number().int().min(1).max(3000).optional(),
+      studentId: z.string().min(1).nullable().optional(),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await addExtraNote(groupId, req.auth!.userId, body.data);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = extraErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/extra-note-remove", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ teamKey: z.string().min(1), noteId: z.string().min(1) }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await removeExtraNote(groupId, req.auth!.userId, body.data);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = extraErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/extra-award", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ teamKey: z.string().min(1).optional() }).safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await applyExtraFirmas(groupId, req.auth!.userId, body.data.teamKey);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = extraErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
 });
 
 teacherGroupsRouter.get("/groups/:groupId/avion-session", async (req: AuthedRequest, res) => {

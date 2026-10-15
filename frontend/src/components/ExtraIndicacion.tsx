@@ -1,18 +1,29 @@
 import {
+  EXTRA_FIRMAS_MAX,
   EXTRA_MATERIALES,
+  EXTRA_NOTAS,
   EXTRA_PASOS,
+  EXTRA_PASOS_PREVIOS,
   EXTRA_PRODUCTO,
   EXTRA_PRODUCTO_DEBE,
   EXTRA_PRODUCTO_NO,
-  EXTRA_PUNTAJE,
-  EXTRA_PUNTOS_MAX,
 } from "../lib/extraScrum";
 
 export default function ExtraIndicacion() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-white">Qué producto anuncian</h3>
+        <h3 className="text-sm font-semibold text-white">Del proyecto a la interfaz</h3>
+        <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-slate-300">
+          {EXTRA_PASOS_PREVIOS.map((paso) => (
+            <li key={paso.n}>
+              <span className="font-semibold text-white">{paso.titulo}.</span> {paso.detalle}
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-white">Qué entregan hoy</h3>
         <p className="mt-2 text-sm text-slate-300">{EXTRA_PRODUCTO}</p>
         <p className="mt-2 text-sm text-amber-100">{EXTRA_PRODUCTO_NO}</p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
@@ -38,15 +49,17 @@ export default function ExtraIndicacion() {
         </ol>
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-white">Al terminar el reloj</h3>
+        <h3 className="text-sm font-semibold text-white">Firmas</h3>
         <p className="mt-2 text-sm text-slate-300">
-          Levanten las manos. Quien siga recortando o pegando queda fuera del 1°. Cada equipo grita su
-          titular. El ganador obtiene {EXTRA_PUNTOS_MAX} puntos por integrante.
+          Parte de {EXTRA_FIRMAS_MAX.toLocaleString("es-MX")} Firmas por integrante. El docente
+          supervisa y anota; cada nota baja ese valor.
         </p>
         <ul className="mt-2 space-y-1 text-sm text-slate-400">
-          {EXTRA_PUNTAJE.map((row) => (
-            <li key={row.lugar}>
-              {row.etiqueta}: <span className="text-amber-200">{row.puntos} pts</span>
+          {EXTRA_NOTAS.map((nota) => (
+            <li key={nota.code}>
+              {nota.label}
+              {nota.scope === "member" ? " (al integrante)" : " (al equipo)"}:{" "}
+              <span className="text-amber-200">−{nota.points} Firmas</span>
             </li>
           ))}
         </ul>

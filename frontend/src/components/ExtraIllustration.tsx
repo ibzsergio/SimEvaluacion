@@ -1,7 +1,12 @@
 export default function ExtraIllustration({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? "overflow-hidden rounded-2xl border border-white/10" : ""}>
-      <svg viewBox="0 0 360 420" className="h-auto w-full" role="img" aria-label="Portada de periódico de ejemplo">
+      <svg
+        viewBox="0 0 360 420"
+        className="h-auto w-full"
+        role="img"
+        aria-label="Prototipo en papel de una ventana Tkinter"
+      >
         <defs>
           <linearGradient id="extra-sky" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#1e3a5f" />
@@ -9,42 +14,45 @@ export default function ExtraIllustration({ compact = false }: { compact?: boole
           </linearGradient>
         </defs>
         <rect x="0" y="0" width="360" height="420" rx="24" fill="url(#extra-sky)" />
-        <rect x="28" y="28" width="304" height="364" rx="8" fill="#f4efe4" />
-        <rect x="40" y="40" width="280" height="36" rx="4" fill="#b91c1c" />
-        <text x="180" y="65" textAnchor="middle" fill="#fff7ed" fontSize="18" fontWeight="800">
-          ¡EXTRA, EXTRA!
+        <rect x="24" y="28" width="312" height="364" rx="10" fill="#e2e8f0" />
+        <rect x="24" y="28" width="312" height="36" rx="10" fill="#0f766e" />
+        <rect x="24" y="48" width="312" height="16" fill="#0f766e" />
+        <text x="180" y="52" textAnchor="middle" fill="#ecfdf5" fontSize="13" fontWeight="800">
+          Plan de Acción · interfaz
         </text>
-        <text x="180" y="98" textAnchor="middle" fill="#1c1917" fontSize="13" fontWeight="700">
-          LANZAN SU APP TKINTER EN EL PLANTEL
+        <rect x="40" y="80" width="280" height="28" rx="4" fill="#134e4a" />
+        <text x="180" y="99" textAnchor="middle" fill="#ccfbf1" fontSize="11" fontWeight="700">
+          MiAppTkinter — pantalla principal
         </text>
-        <rect x="40" y="112" width="168" height="130" rx="4" fill="#fb7185" />
-        <rect x="52" y="128" width="60" height="44" fill="#fde68a" />
-        <rect x="120" y="140" width="72" height="52" fill="#38bdf8" />
-        <rect x="64" y="188" width="88" height="36" fill="#86efac" />
-        <text x="124" y="248" textAnchor="middle" fill="#7f1d1d" fontSize="10" fontWeight="700">
-          collage
+        <rect x="40" y="122" width="170" height="150" rx="6" fill="#fff7ed" />
+        <rect x="52" y="138" width="146" height="18" rx="3" fill="#fdba74" />
+        <rect x="52" y="166" width="146" height="28" rx="4" fill="#fff" stroke="#fb923c" />
+        <rect x="52" y="206" width="68" height="24" rx="4" fill="#0d9488" />
+        <rect x="128" y="206" width="70" height="24" rx="4" fill="#64748b" />
+        <text x="125" y="258" textAnchor="middle" fill="#9a3412" fontSize="9" fontWeight="700">
+          cajas y botones
         </text>
-        <rect x="220" y="112" width="100" height="130" rx="4" fill="#fff" stroke="#d6d3d1" />
-        <text x="270" y="138" textAnchor="middle" fill="#44403c" fontSize="9" fontWeight="700">
-          CÓMO FUNCIONA
+        <rect x="222" y="122" width="98" height="150" rx="6" fill="#ecfeff" />
+        <text x="271" y="146" textAnchor="middle" fill="#155e75" fontSize="9" fontWeight="700">
+          CASOS DE USO
         </text>
-        <rect x="232" y="150" width="76" height="8" fill="#a8a29e" />
-        <rect x="232" y="166" width="76" height="8" fill="#a8a29e" />
-        <rect x="232" y="182" width="58" height="8" fill="#a8a29e" />
-        <rect x="40" y="256" width="280" height="58" rx="4" fill="#fef3c7" />
-        <text x="180" y="280" textAnchor="middle" fill="#78350f" fontSize="11" fontWeight="700">
-          SELLO QA · REVISADO
+        <rect x="234" y="158" width="74" height="8" fill="#67e8f9" />
+        <rect x="234" y="174" width="74" height="8" fill="#67e8f9" />
+        <rect x="234" y="190" width="58" height="8" fill="#67e8f9" />
+        <rect x="40" y="286" width="280" height="48" rx="6" fill="#fef3c7" />
+        <text x="180" y="306" textAnchor="middle" fill="#78350f" fontSize="10" fontWeight="700">
+          Del diagrama a la ventana
         </text>
-        <text x="180" y="298" textAnchor="middle" fill="#a16207" fontSize="9">
-          Créditos del equipo · no se despega
+        <text x="180" y="322" textAnchor="middle" fill="#a16207" fontSize="9">
+          3000 Firmas · 50 min
         </text>
-        <rect x="40" y="326" width="132" height="48" rx="4" fill="#e0e7ff" />
-        <text x="106" y="354" textAnchor="middle" fill="#312e81" fontSize="10" fontWeight="700">
-          $5 · edición de hoy
+        <rect x="40" y="344" width="132" height="32" rx="4" fill="#dbeafe" />
+        <text x="106" y="365" textAnchor="middle" fill="#1e3a8a" fontSize="9" fontWeight="700">
+          Requerimientos ✓
         </text>
-        <rect x="184" y="326" width="136" height="48" rx="4" fill="#dcfce7" />
-        <text x="252" y="354" textAnchor="middle" fill="#14532d" fontSize="10" fontWeight="700">
-          Scrum en 50 min
+        <rect x="188" y="344" width="132" height="32" rx="4" fill="#dcfce7" />
+        <text x="254" y="365" textAnchor="middle" fill="#14532d" fontSize="9" fontWeight="700">
+          Clases / casos ✓
         </text>
       </svg>
     </div>

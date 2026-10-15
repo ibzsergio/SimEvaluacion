@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  addExtraNote,
+  applyExtraFirmas,
   fetchExtraSession,
   getApiErrorMessage,
+  removeExtraNote,
   resetExtraSession,
   setExtraPaused,
   updateGroupExtraSettings,
 } from "../lib/api";
 import {
+  EXTRA_FIRMAS_MAX,
   EXTRA_MINUTOS,
+  EXTRA_NOTAS,
   EXTRA_PROGRAMA,
   EXTRA_SECCIONES,
   EXTRA_TITULO,
@@ -42,6 +47,10 @@ export default function TeacherExtraPanel({
     selectedGroupId ? localStorage.getItem(extraPauseKey(selectedGroupId)) : null,
   );
   const [pauseError, setPauseError] = useState("");
+  const [noteError, setNoteError] = useState("");
+  const [customByTeam, setCustomByTeam] = useState<
+    Record<string, { label: string; points: string; studentId: string }>
+  >({});
 
   const sessionQuery = useQuery({
     queryKey: ["extra-session", selectedGroupId],
@@ -54,6 +63,7 @@ export default function TeacherExtraPanel({
   const session = sessionQuery.data;
   const teams = session?.teams ?? [];
   const released = session?.released ?? false;
+  const firmasMax = session?.firmasMax ?? EXTRA_FIRMAS_MAX;
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -104,14 +114,47 @@ export default function TeacherExtraPanel({
     },
   });
 
+  const noteMutation = useMutation({
+    mutationFn: (payload: {
+      teamKey: string;
+      code: string;
+      label?: string;
+      points?: number;
+      studentId?: string | null;
+    }) => addExtraNote(selectedGroupId, payload),
+    onSuccess: async (data) => {
+      setNoteError("");
+      qc.setQueryData(["extra-session", selectedGroupId], data);
+      await qc.invalidateQueries({ queryKey: ["activities"] });
+    },
+    onError: (err) => setNoteError(getApiErrorMessage(err)),
+  });
+
+  const removeNoteMutation = useMutation({
+    mutationFn: (payload: { teamKey: string; noteId: string }) =>
+      removeExtraNote(selectedGroupId, payload),
+    onSuccess: async (data) => {
+      setNoteError("");
+      qc.setQueryData(["extra-session", selectedGroupId], data);
+      await qc.invalidateQueries({ queryKey: ["activities"] });
+    },
+    onError: (err) => setNoteError(getApiErrorMessage(err)),
+  });
+
+  const awardMutation = useMutation({
+    mutationFn: (teamKey?: string) => applyExtraFirmas(selectedGroupId, teamKey),
+    onSuccess: async (data) => {
+      setNoteError("");
+      qc.setQueryData(["extra-session", selectedGroupId], data);
+      await qc.invalidateQueries({ queryKey: ["activities"] });
+    },
+    onError: (err) => setNoteError(getApiErrorMessage(err)),
+  });
+
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar ¡EXTRA, EXTRA! para el grupo ${selectedGroup?.code}?\n\n${
-          selectedGroup?.code.trim() === "301"
-            ? "Los alumnos trabajan con los equipos de Roles / Equipos."
-            : "Los alumnos trabajan por columna de butacas (como están sentados)."
-        } Eligen líder y el líder arranca 50 minutos.`,
+        `¿Liberar Plan de Acción Proyecto para el grupo ${selectedGroup?.code}?\n\nEquipos de Roles / Equipos. Paso 3: interfaces en papel de su app Tkinter. 50 minutos. Vale ${firmasMax} Firmas; las notas que pongas bajan ese valor.`,
       );
       if (!ok) return;
     }
@@ -120,7 +163,7 @@ export default function TeacherExtraPanel({
 
   function handleReset() {
     const ok = window.confirm(
-      "¿Reiniciar líderes y relojes de este grupo? La actividad sigue liberada, pero cada equipo vuelve a elegir líder.",
+      "¿Reiniciar líderes y relojes de este grupo? Las notas y Firmas se quedan.",
     );
     if (!ok) return;
     resetMutation.mutate();
@@ -136,7 +179,12 @@ export default function TeacherExtraPanel({
   useEffect(() => {
     setLocalPausedAt(selectedGroupId ? localStorage.getItem(extraPauseKey(selectedGroupId)) : null);
     setPauseError("");
+    setNoteError("");
   }, [selectedGroupId]);
+
+  function customOf(teamKey: string) {
+    return customByTeam[teamKey] ?? { label: "", points: "300", studentId: "" };
+  }
 
   return (
     <div>
@@ -162,18 +210,25 @@ export default function TeacherExtraPanel({
       <section className="glass mb-6 p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-rose-300">En vivo</p>
-            <h2 className="mt-1 text-xl font-bold text-white">Líder y temporizador por equipo</h2>
+            <p className="text-xs font-bold uppercase tracking-widest text-rose-300">Supervisión en vivo</p>
+            <h2 className="mt-1 text-xl font-bold text-white">Equipos, reloj y notas</h2>
             <p className="mt-1 text-sm text-slate-400">
-              {session?.rosterMode === "project"
-                ? "301: equipos de proyecto (Roles / Equipos). Ves líder y el reloj de 50 minutos."
-                : "302: columnas de butacas. Ves quién ya eligió líder y el reloj de 50 minutos."}
+              301 y 302: equipos de Roles / Equipos. Parte de {firmasMax.toLocaleString("es-MX")}{" "}
+              Firmas. Cada nota baja el valor y se guarda en la lista de actividades.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
               Líderes {withLeader}/{teams.length || 6} · Relojes {withTimer}/{teams.length || 6}
             </p>
+            <button
+              type="button"
+              onClick={() => awardMutation.mutate(undefined)}
+              disabled={awardMutation.isPending || teams.length === 0}
+              className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+            >
+              {awardMutation.isPending ? "Guardando..." : "Registrar Firmas de todos"}
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -206,37 +261,44 @@ export default function TeacherExtraPanel({
             Pausado. Los relojes están congelados. Pulsa Reanudar cuando sigan.
           </p>
         ) : null}
-        {pauseError ? (
+        {pauseError || noteError ? (
           <p className="mt-3 rounded-xl border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-sm text-rose-100">
-            {pauseError}
+            {noteError || pauseError}
           </p>
         ) : null}
         {sessionQuery.isLoading ? (
           <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
         ) : teams.length === 0 ? (
           <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-            {selectedGroup?.code.trim() === "301"
-              ? "No hay equipos de proyecto. Ármalos en Roles / Equipos y vuelve aquí."
-              : "No hay equipos de butacas. Asigna lugares (columnas) primero."}
+            No hay equipos de proyecto. Ármalos en Roles / Equipos y vuelve aquí.
           </p>
         ) : (
-          <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <ul className="mt-4 grid gap-3 md:grid-cols-2">
             {teams.map((team) => {
               const remain = remainingSeconds(team.startedAt, minutes, pausedAt);
               const running = Boolean(team.startedAt) && remain > 0 && !paused;
               const done = Boolean(team.startedAt) && remain === 0;
+              const notes = team.notes ?? [];
+              const custom = customOf(team.key);
               return (
                 <li
                   key={team.key}
                   className="rounded-2xl border p-4"
                   style={{ borderColor: `${team.hex}88`, backgroundColor: `${team.hex}18` }}
                 >
-                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-                    {team.name ?? team.columna ?? team.colorName}
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-white">
-                    {team.leaderName ? `Líder: ${team.leaderName}` : "Aún no eligen líder"}
-                  </p>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
+                        {team.name ?? team.columna ?? team.colorName}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-white">
+                        {team.leaderName ? `Líder: ${team.leaderName}` : "Aún no eligen líder"}
+                      </p>
+                    </div>
+                    <p className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-xs font-bold text-amber-100">
+                      {team.awarded ? "Firmas guardadas" : "Sin registrar"}
+                    </p>
+                  </div>
                   <p
                     className={`mt-2 font-mono text-3xl font-bold ${
                       done
@@ -263,13 +325,183 @@ export default function TeacherExtraPanel({
                   </p>
                   <ul className="mt-3 space-y-0.5 text-xs text-slate-300">
                     {team.members.map((m) => (
-                      <li key={m.studentId}>
-                        {m.displayName}
-                        {m.role ? ` · ${extraRoleLabel(m.role)}` : ""}
-                        {m.studentId === team.leaderId ? " · líder" : ""}
+                      <li key={m.studentId} className="flex justify-between gap-2">
+                        <span>
+                          {m.displayName}
+                          {m.role ? ` · ${extraRoleLabel(m.role)}` : ""}
+                          {m.studentId === team.leaderId ? " · líder" : ""}
+                        </span>
+                        <span className="shrink-0 font-semibold text-amber-100">
+                          {(m.firmas ?? firmasMax).toLocaleString("es-MX")}
+                        </span>
                       </li>
                     ))}
                   </ul>
+
+                  <div className="mt-3 border-t border-white/10 pt-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-rose-100">Notas al equipo</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {EXTRA_NOTAS.filter((n) => n.scope === "team").map((nota) => (
+                        <button
+                          key={nota.code}
+                          type="button"
+                          disabled={noteMutation.isPending}
+                          onClick={() =>
+                            noteMutation.mutate({ teamKey: team.key, code: nota.code })
+                          }
+                          className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-[11px] font-semibold text-slate-100 hover:bg-white/10 disabled:opacity-60"
+                        >
+                          {nota.label} −{nota.points}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs font-bold uppercase tracking-wide text-rose-100">
+                      Nota a un integrante
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {EXTRA_NOTAS.filter((n) => n.scope === "member").map((nota) => (
+                        <span key={nota.code} className="flex flex-wrap items-center gap-1">
+                          <select
+                            className="rounded-lg border border-white/15 bg-slate-950/70 px-2 py-1 text-[11px] text-white"
+                            defaultValue=""
+                            id={`${team.key}-${nota.code}`}
+                          >
+                            <option value="">Quién…</option>
+                            {team.members.map((m) => (
+                              <option key={m.studentId} value={m.studentId}>
+                                {m.displayName}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            disabled={noteMutation.isPending}
+                            onClick={() => {
+                              const select = document.getElementById(
+                                `${team.key}-${nota.code}`,
+                              ) as HTMLSelectElement | null;
+                              const studentId = select?.value ?? "";
+                              if (!studentId) {
+                                setNoteError("Elige a qué integrante aplica la nota.");
+                                return;
+                              }
+                              noteMutation.mutate({
+                                teamKey: team.key,
+                                code: nota.code,
+                                studentId,
+                              });
+                            }}
+                            className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-[11px] font-semibold text-slate-100 hover:bg-white/10 disabled:opacity-60"
+                          >
+                            {nota.label} −{nota.points}
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs font-bold uppercase tracking-wide text-rose-100">Otra nota</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <input
+                        value={custom.label}
+                        onChange={(e) =>
+                          setCustomByTeam((prev) => ({
+                            ...prev,
+                            [team.key]: { ...custom, label: e.target.value },
+                          }))
+                        }
+                        placeholder="Motivo"
+                        className="min-w-[8rem] flex-1 rounded-lg border border-white/15 bg-slate-950/70 px-2 py-1 text-[11px] text-white"
+                      />
+                      <input
+                        value={custom.points}
+                        onChange={(e) =>
+                          setCustomByTeam((prev) => ({
+                            ...prev,
+                            [team.key]: { ...custom, points: e.target.value },
+                          }))
+                        }
+                        inputMode="numeric"
+                        className="w-16 rounded-lg border border-white/15 bg-slate-950/70 px-2 py-1 text-[11px] text-white"
+                      />
+                      <select
+                        value={custom.studentId}
+                        onChange={(e) =>
+                          setCustomByTeam((prev) => ({
+                            ...prev,
+                            [team.key]: { ...custom, studentId: e.target.value },
+                          }))
+                        }
+                        className="rounded-lg border border-white/15 bg-slate-950/70 px-2 py-1 text-[11px] text-white"
+                      >
+                        <option value="">Todo el equipo</option>
+                        {team.members.map((m) => (
+                          <option key={m.studentId} value={m.studentId}>
+                            {m.displayName}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={noteMutation.isPending}
+                        onClick={() => {
+                          const points = Number(custom.points);
+                          if (!custom.label.trim() || !Number.isFinite(points) || points < 1) {
+                            setNoteError("Escribe el motivo y cuántas Firmas se descuentan.");
+                            return;
+                          }
+                          noteMutation.mutate({
+                            teamKey: team.key,
+                            code: "custom",
+                            label: custom.label.trim(),
+                            points: Math.round(points),
+                            studentId: custom.studentId || null,
+                          });
+                          setCustomByTeam((prev) => ({
+                            ...prev,
+                            [team.key]: { label: "", points: "300", studentId: "" },
+                          }));
+                        }}
+                        className="rounded-lg bg-rose-700 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-600 disabled:opacity-60"
+                      >
+                        Anotar
+                      </button>
+                    </div>
+                    {notes.length ? (
+                      <ul className="mt-2 space-y-1">
+                        {notes.map((n) => (
+                          <li
+                            key={n.id}
+                            className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/40 px-2 py-1 text-[11px] text-slate-200"
+                          >
+                            <span>
+                              {n.label}
+                              {n.studentName ? ` · ${n.studentName}` : ""}{" "}
+                              <span className="text-amber-200">−{n.points}</span>
+                            </span>
+                            <button
+                              type="button"
+                              disabled={removeNoteMutation.isPending}
+                              onClick={() =>
+                                removeNoteMutation.mutate({ teamKey: team.key, noteId: n.id })
+                              }
+                              className="text-rose-200 hover:text-white"
+                            >
+                              Quitar
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-slate-400">Sin notas. El equipo iría con {firmasMax}.</p>
+                    )}
+                    <button
+                      type="button"
+                      disabled={awardMutation.isPending}
+                      onClick={() => awardMutation.mutate(team.key)}
+                      className="mt-2 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/15 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
+                    >
+                      Registrar Firmas de este equipo
+                    </button>
+                  </div>
                 </li>
               );
             })}
@@ -281,12 +513,10 @@ export default function TeacherExtraPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-rose-300">{EXTRA_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{EXTRA_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code}. En 50 minutos cada equipo arma la portada que anuncia el lanzamiento
-          de su aplicación de escritorio en Python + Tkinter (nombre, quién la usa, qué problema resuelve).{" "}
-          {selectedGroup?.code.trim() === "301"
-            ? "Cada equipo de Roles / Equipos anuncia SU app del semestre."
-            : "Cada columna de butacas se pone de acuerdo en UNA sola app Tkinter."}{" "}
-          Cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. Al acabar: manos arriba.
+          Grupo {selectedGroup?.code}. Paso 3 del proyecto: interfaces en papel de su app Tkinter (ya
+          entregaron requerimientos y diagramas/casos de uso/cronograma). Equipos de Roles / Equipos.{" "}
+          {firmasMax.toLocaleString("es-MX")} Firmas, según las notas. 50 minutos. Cartulina, hojas de
+          color, pegamento, diurex, periódico y/o revistas.
         </p>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -333,8 +563,8 @@ export default function TeacherExtraPanel({
           </button>
           <p className="text-xs text-slate-400">
             {released
-              ? "Liberada: los alumnos ya ven instrucciones, aviso y el botón del líder."
-              : "Todavía no la ven los alumnos. Revisa la portada de ejemplo y luego libera."}
+              ? "Liberada: los alumnos ven instrucciones y el reloj. Tú anotas y se actualizan las Firmas."
+              : "Todavía no la ven los alumnos. Revisa y luego libera."}
           </p>
         </div>
         {sessionQuery.isError ? (

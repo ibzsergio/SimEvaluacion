@@ -1,15 +1,36 @@
 import { prisma } from "./prisma.js";
-import { COLUMN_LETTERS, loadSeatingBuckets } from "./lecturaSession.js";
+import { todayClassDayDate } from "./classDayService.js";
 import { COLUMN_PALETTE } from "./seatingService.js";
 
 export const EXTRA_MINUTES = 50;
-export const EXTRA_ANNOUNCEMENT_TITLE = "Nueva actividad: ¡EXTRA, EXTRA!";
+export const EXTRA_FIRMAS_MAX = 3000;
+export const EXTRA_ACTIVITY_NAME = "Plan de Acción Proyecto";
+export const EXTRA_ANNOUNCEMENT_TITLE = "Nueva actividad: Plan de Acción Proyecto";
+
+export const EXTRA_NOTE_PRESETS = [
+  { code: "ruido", label: "Mucho ruido", points: 400, scope: "team" as const },
+  { code: "no_trabaja", label: "No trabaja el equipo", points: 800, scope: "team" as const },
+  { code: "otro_equipo", label: "Integrante en otro equipo", points: 500, scope: "member" as const },
+  { code: "sin_material", label: "No trajo material", points: 400, scope: "member" as const },
+  { code: "fuera_tiempo", label: "Entrega fuera de tiempo", points: 600, scope: "team" as const },
+];
+
+export type ExtraNote = {
+  id: string;
+  code: string;
+  label: string;
+  points: number;
+  studentId?: string | null;
+  studentName?: string | null;
+  at: string;
+};
 
 export type ExtraMember = {
   studentId: string;
   displayName: string;
   listNumber: number | null;
   role?: string | null;
+  firmas: number;
 };
 
 export type ExtraTeam = {
@@ -23,6 +44,9 @@ export type ExtraTeam = {
   leaderId: string | null;
   leaderName: string | null;
   startedAt: string | null;
+  notes: ExtraNote[];
+  awarded: boolean;
+  firmasMax: number;
 };
 
 export type ExtraSession = {
@@ -34,6 +58,8 @@ export type ExtraSession = {
   paused: boolean;
   pausedAt: string | null;
   minutes: number;
+  firmasMax: number;
+  activityId: string | null;
   teamCount: number;
   teams: ExtraTeam[];
 };
@@ -42,12 +68,35 @@ type StoredTeamState = {
   key: string;
   leaderId: string | null;
   startedAt: string | null;
+  notes: ExtraNote[];
+  awarded: boolean;
 };
 
 type StoredPayload = {
   teams: StoredTeamState[];
   pausedAt: string | null;
 };
+
+function parseNotes(raw: unknown): ExtraNote[] {
+  if (!Array.isArray(raw)) return [];
+  const notes: ExtraNote[] = [];
+  for (const n of raw) {
+    const item = n as ExtraNote;
+    const points = Math.max(0, Math.round(Number(item.points) || 0));
+    const label = String(item.label ?? "").trim();
+    if (!label || points <= 0) continue;
+    notes.push({
+      id: String(item.id ?? `note_${Math.random().toString(36).slice(2, 9)}`),
+      code: String(item.code ?? "custom"),
+      label,
+      points,
+      studentId: item.studentId ? String(item.studentId) : null,
+      studentName: item.studentName ? String(item.studentName) : null,
+      at: typeof item.at === "string" && item.at ? item.at : new Date().toISOString(),
+    });
+  }
+  return notes;
+}
 
 function parsePayload(raw: unknown): StoredPayload {
   if (!raw || typeof raw !== "object") return { teams: [], pausedAt: null };
@@ -61,8 +110,17 @@ function parsePayload(raw: unknown): StoredPayload {
       key: String(t.key ?? ""),
       leaderId: t.leaderId ?? null,
       startedAt: t.startedAt ?? null,
+      notes: parseNotes(t.notes),
+      awarded: Boolean(t.awarded),
     })),
   };
+}
+
+function memberFirmas(notes: ExtraNote[], studentId: string) {
+  const cut = notes
+    .filter((n) => !n.studentId || n.studentId === studentId)
+    .reduce((acc, n) => acc + n.points, 0);
+  return Math.max(0, EXTRA_FIRMAS_MAX - cut);
 }
 
 function resolveLeader(
@@ -77,37 +135,6 @@ function resolveLeader(
     leaderId: pick,
     leaderName: pick ? (members.find((m) => m.studentId === pick)?.displayName ?? null) : null,
   };
-}
-
-function hydrateSeatingTeams(
-  buckets: Awaited<ReturnType<typeof loadSeatingBuckets>>["buckets"],
-  stored: StoredPayload,
-): ExtraTeam[] {
-  const byKey = new Map(stored.teams.map((t) => [t.key, t]));
-  return buckets.map((bucket, index) => {
-    const prev = byKey.get(bucket.key);
-    const members = [...bucket.members]
-      .sort((a, b) => a.row - b.row || a.col - b.col)
-      .map((m) => ({
-        studentId: m.studentId,
-        displayName: m.displayName,
-        listNumber: m.listNumber,
-      }));
-    const { leaderId, leaderName } = resolveLeader(members, prev?.leaderId, null);
-    const letter = COLUMN_LETTERS[bucket.sortCol - 1] ?? String(bucket.sortCol);
-    return {
-      key: bucket.key,
-      readingIndex: index,
-      colorName: bucket.colorName,
-      hex: bucket.hex,
-      columna: letter,
-      name: `${bucket.colorName} · ${letter}`,
-      members,
-      leaderId,
-      leaderName,
-      startedAt: leaderId ? prev?.startedAt ?? null : null,
-    };
-  });
 }
 
 function hydrateProjectTeams(
@@ -128,11 +155,13 @@ function hydrateProjectTeams(
     const key = `project:${team.id}`;
     const prev = byKey.get(key);
     const swatch = COLUMN_PALETTE[index % COLUMN_PALETTE.length]!;
+    const notes = prev?.notes ?? [];
     const members = team.members.map((m) => ({
       studentId: m.studentId,
       displayName: m.student.displayName,
       listNumber: m.student.listNumber,
       role: m.role,
+      firmas: memberFirmas(notes, m.studentId),
     }));
     const { leaderId, leaderName } = resolveLeader(members, prev?.leaderId, team.leaderId);
     return {
@@ -146,6 +175,9 @@ function hydrateProjectTeams(
       leaderId,
       leaderName,
       startedAt: leaderId ? prev?.startedAt ?? null : null,
+      notes,
+      awarded: Boolean(prev?.awarded),
+      firmasMax: EXTRA_FIRMAS_MAX,
     };
   });
 }
@@ -171,6 +203,8 @@ function toPayload(teams: ExtraTeam[], pausedAt: string | null): StoredPayload {
       key: t.key,
       leaderId: t.leaderId,
       startedAt: t.startedAt,
+      notes: t.notes,
+      awarded: t.awarded,
     })),
   };
 }
@@ -208,6 +242,88 @@ async function persist(
   }
 }
 
+async function findPlanActivity(groupId: string) {
+  return prisma.activity.findFirst({
+    where: { groupId, name: EXTRA_ACTIVITY_NAME },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, maxPoints: true },
+  });
+}
+
+async function ensurePlanActivity(groupId: string, teacherId: string) {
+  const existing = await findPlanActivity(groupId);
+  if (existing) {
+    if (existing.maxPoints !== EXTRA_FIRMAS_MAX) {
+      await prisma.activity.update({
+        where: { id: existing.id },
+        data: { maxPoints: EXTRA_FIRMAS_MAX },
+      });
+    }
+    return existing.id;
+  }
+  const group = await prisma.classGroup.findUnique({
+    where: { id: groupId },
+    select: { currentPartial: true },
+  });
+  const lastOrder = await prisma.activity.aggregate({
+    where: { groupId },
+    _max: { sortOrder: true },
+  });
+  const created = await prisma.activity.create({
+    data: {
+      date: todayClassDayDate(),
+      name: EXTRA_ACTIVITY_NAME,
+      maxPoints: EXTRA_FIRMAS_MAX,
+      signatureMax: 0,
+      sortOrder: (lastOrder._max.sortOrder ?? -1) + 1,
+      partialNumber: group?.currentPartial ?? 1,
+      groupId,
+      createdById: teacherId,
+    },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+async function upsertMemberGrade(params: {
+  activityId: string;
+  studentId: string;
+  teacherId: string;
+  points: number;
+}) {
+  const points = Math.min(EXTRA_FIRMAS_MAX, Math.max(0, Math.round(params.points)));
+  const gradedAt = new Date();
+  await prisma.grade.upsert({
+    where: { activityId_studentId: { activityId: params.activityId, studentId: params.studentId } },
+    update: { points, signatures: 0, gradedById: params.teacherId },
+    create: {
+      activityId: params.activityId,
+      studentId: params.studentId,
+      points,
+      signatures: 0,
+      gradedById: params.teacherId,
+      gradedAt,
+    },
+  });
+  await prisma.submission.upsert({
+    where: { activityId_studentId: { activityId: params.activityId, studentId: params.studentId } },
+    update: {},
+    create: { activityId: params.activityId, studentId: params.studentId, submittedAt: gradedAt },
+  });
+}
+
+async function applyTeamFirmas(groupId: string, teacherId: string, team: ExtraTeam) {
+  const activityId = await ensurePlanActivity(groupId, teacherId);
+  for (const member of team.members) {
+    await upsertMemberGrade({
+      activityId,
+      studentId: member.studentId,
+      teacherId,
+      points: member.firmas,
+    });
+  }
+}
+
 export async function getExtraSession(groupId: string): Promise<ExtraSession | null> {
   const rows = await prisma.$queryRaw<
     Array<{
@@ -225,18 +341,9 @@ export async function getExtraSession(groupId: string): Promise<ExtraSession | n
   const group = rows[0];
   if (!group) return null;
   const stored = parsePayload(group.extraPayload);
-  const code = group.code.trim();
-  const useProject = code === "301";
-  let teams: ExtraTeam[] = [];
-  let rosterMode: ExtraSession["rosterMode"] = "seating";
-  if (useProject) {
-    rosterMode = "project";
-    const projectTeams = await loadProjectTeams(groupId);
-    teams = hydrateProjectTeams(projectTeams, stored);
-  } else {
-    const { buckets } = await loadSeatingBuckets(groupId, group.code, group.teacherId);
-    teams = hydrateSeatingTeams(buckets, stored);
-  }
+  const projectTeams = await loadProjectTeams(groupId);
+  const teams = hydrateProjectTeams(projectTeams, stored);
+  const activity = await findPlanActivity(groupId);
   const releasedAt =
     group.extraReleasedAt instanceof Date
       ? group.extraReleasedAt.toISOString()
@@ -246,12 +353,14 @@ export async function getExtraSession(groupId: string): Promise<ExtraSession | n
   return {
     groupId: group.id,
     groupCode: group.code,
-    rosterMode,
+    rosterMode: "project",
     released: Boolean(group.extraReleased),
     releasedAt,
     paused: Boolean(stored.pausedAt),
     pausedAt: stored.pausedAt,
     minutes: EXTRA_MINUTES,
+    firmasMax: EXTRA_FIRMAS_MAX,
+    activityId: activity?.id ?? null,
     teamCount: teams.length,
     teams,
   };
@@ -280,7 +389,7 @@ export async function setExtraReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: EXTRA_ANNOUNCEMENT_TITLE,
-          body: `Grupo ${group.code}: en 50 minutos armen la portada de un periódico o revista que anuncie el LANZAMIENTO de su aplicación de escritorio en Python + Tkinter (nombre de la app, quién la usa y qué problema del plantel o de la vida diaria resuelve). No es una app de celular ni un objeto. Usen cartulina, hojas de color, pegamento, diurex, periódico y/o revistas. ${group.code.trim() === "301" ? "Usan los equipos de proyecto (Roles / Equipos): cada equipo anuncia SU app del semestre." : "Usan su columna de butacas: se ponen de acuerdo en UNA sola app Tkinter."} Eligen líder; el líder arranca el reloj. Al acabar: manos arriba, no sigan pegando. Gana la portada más clara, creativa y que no se desarme.`,
+          body: `Grupo ${group.code}: Plan de Acción Proyecto (paso 3 · interfaces). Ya hicieron análisis de requerimientos y diagramas/casos de uso/cronograma. En 50 minutos armen en cartulina las pantallas de SU app Tkinter (cartulina, hojas de color, pegamento, diurex, periódico/revistas). Equipos de Roles / Equipos. Vale 3000 Firmas; las notas del docente (ruido, no trabaja, sin material, fuera de tiempo…) bajan ese valor. Eligen líder; el líder arranca el reloj. Al acabar: manos arriba.`,
         },
       });
     }
@@ -315,11 +424,95 @@ export async function setExtraPaused(groupId: string, paused: boolean) {
   return getExtraSession(groupId);
 }
 
+export async function addExtraNote(
+  groupId: string,
+  teacherId: string,
+  input: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
+) {
+  const session = await getExtraSession(groupId);
+  if (!session) throw new Error("group_not_found");
+  const team = session.teams.find((t) => t.key === input.teamKey);
+  if (!team) throw new Error("team_not_found");
+
+  const preset = EXTRA_NOTE_PRESETS.find((p) => p.code === input.code);
+  let label = (input.label ?? preset?.label ?? "").trim();
+  let points = Math.round(Number(input.points ?? preset?.points ?? 0));
+  if (!label || points <= 0) throw new Error("invalid_note");
+  if (points > EXTRA_FIRMAS_MAX) points = EXTRA_FIRMAS_MAX;
+
+  let studentId = input.studentId ? String(input.studentId) : null;
+  let studentName: string | null = null;
+  if (preset?.scope === "member" && !studentId) throw new Error("student_required");
+  if (studentId) {
+    const member = team.members.find((m) => m.studentId === studentId);
+    if (!member) throw new Error("student_not_in_team");
+    studentName = member.displayName;
+  }
+
+  const note: ExtraNote = {
+    id: `note_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+    code: preset?.code ?? "custom",
+    label,
+    points,
+    studentId,
+    studentName,
+    at: new Date().toISOString(),
+  };
+
+  const teams = session.teams.map((t) => {
+    if (t.key !== team.key) return t;
+    const notes = [...t.notes, note];
+    const members = t.members.map((m) => ({ ...m, firmas: memberFirmas(notes, m.studentId) }));
+    return { ...t, notes, members, awarded: true };
+  });
+  const next = teams.find((t) => t.key === team.key)!;
+  await persist(groupId, teams);
+  await applyTeamFirmas(groupId, teacherId, next);
+  return getExtraSession(groupId);
+}
+
+export async function removeExtraNote(
+  groupId: string,
+  teacherId: string,
+  input: { teamKey: string; noteId: string },
+) {
+  const session = await getExtraSession(groupId);
+  if (!session) throw new Error("group_not_found");
+  const team = session.teams.find((t) => t.key === input.teamKey);
+  if (!team) throw new Error("team_not_found");
+  const teams = session.teams.map((t) => {
+    if (t.key !== team.key) return t;
+    const notes = t.notes.filter((n) => n.id !== input.noteId);
+    const members = t.members.map((m) => ({ ...m, firmas: memberFirmas(notes, m.studentId) }));
+    return { ...t, notes, members };
+  });
+  const next = teams.find((t) => t.key === team.key)!;
+  await persist(groupId, teams);
+  if (next.awarded) await applyTeamFirmas(groupId, teacherId, next);
+  return getExtraSession(groupId);
+}
+
+export async function applyExtraFirmas(groupId: string, teacherId: string, teamKey?: string) {
+  const session = await getExtraSession(groupId);
+  if (!session) throw new Error("group_not_found");
+  const targets = teamKey ? session.teams.filter((t) => t.key === teamKey) : session.teams;
+  if (teamKey && targets.length === 0) throw new Error("team_not_found");
+  const teams = session.teams.map((t) =>
+    targets.some((x) => x.key === t.key) ? { ...t, awarded: true } : t,
+  );
+  await persist(groupId, teams);
+  for (const team of teams.filter((t) => t.awarded)) {
+    await applyTeamFirmas(groupId, teacherId, team);
+  }
+  return getExtraSession(groupId);
+}
+
 export function studentExtraAssignment(session: ExtraSession, studentId: string) {
   if (!session.released) return null;
   const team = session.teams.find((t) => t.members.some((m) => m.studentId === studentId));
   if (!team) return null;
   const me = team.members.find((m) => m.studentId === studentId)!;
+  const notes = team.notes.filter((n) => !n.studentId || n.studentId === studentId);
   return {
     minutes: session.minutes,
     rosterMode: session.rosterMode,
@@ -334,6 +527,9 @@ export function studentExtraAssignment(session: ExtraSession, studentId: string)
     startedAt: team.startedAt,
     pausedAt: session.pausedAt,
     members: team.members,
+    firmasMax: EXTRA_FIRMAS_MAX,
+    firmas: team.awarded ? me.firmas : null,
+    notes,
   };
 }
 
@@ -378,18 +574,28 @@ export function extraErrorHttp(msg: string) {
   if (msg === "already_started") {
     return { status: 409 as const, error: msg, message: extraErrorMessage(msg) };
   }
-  if (msg === "invalid_leader") {
+  if (
+    msg === "invalid_leader" ||
+    msg === "invalid_note" ||
+    msg === "student_required" ||
+    msg === "student_not_in_team" ||
+    msg === "team_not_found"
+  ) {
     return { status: 400 as const, error: msg, message: extraErrorMessage(msg) };
   }
-  return { status: 500 as const, error: "extra_failed", message: "No se pudo actualizar ¡EXTRA, EXTRA!" };
+  return { status: 500 as const, error: "extra_failed", message: extraErrorMessage(msg) };
 }
 
 function extraErrorMessage(msg: string) {
   if (msg === "not_released") return "El docente aún no libera la actividad.";
-  if (msg === "not_in_team") return "No estás en un equipo de este reto (proyecto en 301, columna de butacas en 302).";
+  if (msg === "not_in_team") return "No estás en un equipo de proyecto para este plan.";
   if (msg === "not_leader") return "Solo el líder del equipo puede activar el reloj.";
   if (msg === "paused") return "El docente pausó el reto. El reloj está congelado.";
   if (msg === "already_started") return "El reloj ya está corriendo. Ya no se puede cambiar de líder.";
   if (msg === "invalid_leader") return "Elige a alguien de tu mismo equipo.";
-  return "No se pudo actualizar ¡EXTRA, EXTRA!";
+  if (msg === "invalid_note") return "La nota necesita un motivo y un descuento en Firmas.";
+  if (msg === "student_required") return "Elige a qué integrante aplica esta nota.";
+  if (msg === "student_not_in_team") return "Ese alumno no está en este equipo.";
+  if (msg === "team_not_found") return "No se encontró el equipo.";
+  return "No se pudo actualizar Plan de Acción Proyecto.";
 }

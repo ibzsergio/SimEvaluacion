@@ -85,8 +85,9 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Nueva: ¡EXTRA, EXTRA! 301 = equipos de Roles / Equipos. 302 = columnas de butacas. Torre
-              Tkinter y Sprint aéreo quedan como registro (los alumnos ya no las ven).
+              Plan de Acción Proyecto: interfaces en papel (paso 3). 301 y 302 por equipos de Roles /
+              Equipos. Vale 3000 Firmas según tus notas. Torre Tkinter y Sprint aéreo quedan como
+              registro.
             </p>
           </section>
 
@@ -97,10 +98,11 @@ export default function TeacherScrumActivitiesPanel({
           >
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-rose-300">Actividad Scrum</p>
-              <h3 className="mt-1 text-xl font-bold text-white">¡EXTRA, EXTRA!</h3>
+              <h3 className="mt-1 text-xl font-bold text-white">Plan de Acción Proyecto</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Portada que lanza su app de escritorio Python + Tkinter. 301: equipos de Roles / Equipos.
-                302: columnas de butacas. Cartulina, hojas, pegamento, diurex, periódico/revistas. 50 minutos.
+                Paso 3: interfaces de su app Tkinter. Equipos de Roles / Equipos en 301 y 302. 3000
+                Firmas (bajan con tus notas). Cartulina, hojas, pegamento, diurex, periódico/revistas.
+                50 minutos.
               </p>
             </div>
             <span

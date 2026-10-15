@@ -207,6 +207,16 @@ export type StudentLectura = {
   }>;
 };
 
+export type ExtraNote = {
+  id: string;
+  code: string;
+  label: string;
+  points: number;
+  studentId?: string | null;
+  studentName?: string | null;
+  at: string;
+};
+
 export type StudentExtra = {
   minutes: number;
   rosterMode?: "project" | "seating";
@@ -220,21 +230,33 @@ export type StudentExtra = {
   leaderName: string | null;
   startedAt: string | null;
   pausedAt?: string | null;
+  firmasMax?: number;
+  firmas?: number | null;
+  notes?: ExtraNote[];
   members: Array<{
     studentId: string;
     displayName: string;
     listNumber: number | null;
     role?: string | null;
+    firmas?: number;
   }>;
 };
 
 export type ExtraSession = Omit<TorreSession, "teams"> & {
   rosterMode?: "project" | "seating";
+  firmasMax?: number;
+  activityId?: string | null;
   teams: Array<
     Omit<TorreSession["teams"][number], "members"> & {
       name?: string;
+      notes?: ExtraNote[];
+      awarded?: boolean;
+      firmasMax?: number;
       members: Array<
-        TorreSession["teams"][number]["members"][number] & { role?: string | null }
+        TorreSession["teams"][number]["members"][number] & {
+          role?: string | null;
+          firmas?: number;
+        }
       >;
     }
   >;
