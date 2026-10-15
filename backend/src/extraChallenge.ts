@@ -145,7 +145,7 @@ function hydrateProjectTeams(
     members: Array<{
       studentId: string;
       role: string;
-      student: { displayName: string; listNumber: number | null };
+      student: { displayName: string; listNumber: number | null } | null;
     }>;
   }>,
   stored: StoredPayload,
@@ -158,8 +158,8 @@ function hydrateProjectTeams(
     const notes = prev?.notes ?? [];
     const members = team.members.map((m) => ({
       studentId: m.studentId,
-      displayName: m.student.displayName,
-      listNumber: m.student.listNumber,
+      displayName: m.student?.displayName ?? "Alumno",
+      listNumber: m.student?.listNumber ?? null,
       role: m.role,
       firmas: memberFirmas(notes, m.studentId),
     }));
@@ -209,6 +209,36 @@ function toPayload(teams: ExtraTeam[], pausedAt: string | null): StoredPayload {
   };
 }
 
+function isClassroomCode(code: string) {
+  const c = String(code ?? "").trim();
+  return c === "301" || c === "302";
+}
+
+async function listClassroomGroups(teacherId: string) {
+  const rows = await prisma.$queryRaw<
+    Array<{ id: string; code: string; extraReleased: number | boolean | null }>
+  >`
+    SELECT id, code, extraReleased FROM ClassGroup WHERE teacherId = ${teacherId}
+  `;
+  return rows.filter((row) => isClassroomCode(row.code));
+}
+
+async function writeReleasedFlag(groupIds: string[], released: boolean) {
+  if (!groupIds.length) return;
+  const placeholders = groupIds.map(() => "?").join(",");
+  if (released) {
+    await prisma.$executeRawUnsafe(
+      `UPDATE \`ClassGroup\` SET \`extraReleased\` = 1, \`extraReleasedAt\` = NOW(3) WHERE \`id\` IN (${placeholders})`,
+      ...groupIds,
+    );
+  } else {
+    await prisma.$executeRawUnsafe(
+      `UPDATE \`ClassGroup\` SET \`extraReleased\` = 0, \`extraReleasedAt\` = NULL WHERE \`id\` IN (${placeholders})`,
+      ...groupIds,
+    );
+  }
+}
+
 async function persist(
   groupId: string,
   teams: ExtraTeam[],
@@ -225,12 +255,11 @@ async function persist(
   const pausedAt = extra.pausedAt === undefined ? current.pausedAt : extra.pausedAt;
   const payload = JSON.stringify(toPayload(teams, pausedAt ?? null));
   if (extra.extraReleased !== undefined) {
-    const releasedAt = extra.extraReleasedAt ?? (extra.extraReleased ? new Date() : null);
     await prisma.$executeRawUnsafe(
-      "UPDATE `ClassGroup` SET `extraPayload` = ?, `extraReleased` = ?, `extraReleasedAt` = ? WHERE `id` = ?",
+      extra.extraReleased
+        ? "UPDATE `ClassGroup` SET `extraPayload` = ?, `extraReleased` = 1, `extraReleasedAt` = NOW(3) WHERE `id` = ?"
+        : "UPDATE `ClassGroup` SET `extraPayload` = ?, `extraReleased` = 0, `extraReleasedAt` = NULL WHERE `id` = ?",
       payload,
-      extra.extraReleased ? 1 : 0,
-      releasedAt,
       groupId,
     );
   } else {
@@ -340,24 +369,27 @@ export async function getExtraSession(groupId: string): Promise<ExtraSession | n
   `;
   const group = rows[0];
   if (!group) return null;
-  const stored = parsePayload(group.extraPayload);
-  const projectTeams = await loadProjectTeams(groupId);
-  const teams = hydrateProjectTeams(projectTeams, stored);
-  const activity = await findPlanActivity(groupId);
   let released = Boolean(group.extraReleased);
-  if (!released && group.teacherId) {
-    const siblings = await prisma.$queryRaw<Array<{ extraReleased: number | boolean | null }>>`
-      SELECT extraReleased FROM ClassGroup WHERE teacherId = ${group.teacherId}
-    `;
-    if (siblings.some((row) => Boolean(row.extraReleased))) {
-      released = true;
-      await prisma.$executeRawUnsafe(
-        "UPDATE `ClassGroup` SET `extraReleased` = 1, `extraReleasedAt` = ? WHERE `id` = ?",
-        new Date(),
-        groupId,
-      );
+  if (group.teacherId && isClassroomCode(group.code)) {
+    try {
+      const classroom = await listClassroomGroups(group.teacherId);
+      if (classroom.some((row) => Boolean(row.extraReleased))) {
+        released = true;
+        await writeReleasedFlag(classroom.map((row) => row.id), true);
+      }
+    } catch (err) {
+      console.warn("[extra] no se pudo igualar extraReleased de 301/302:", err);
     }
   }
+  const stored = parsePayload(group.extraPayload);
+  let teams: ExtraTeam[] = [];
+  try {
+    const projectTeams = await loadProjectTeams(groupId);
+    teams = hydrateProjectTeams(projectTeams, stored);
+  } catch (err) {
+    console.warn("[extra] no se pudieron hidratar equipos de proyecto:", err);
+  }
+  const activity = await findPlanActivity(groupId);
   const releasedAt =
     group.extraReleasedAt instanceof Date
       ? group.extraReleasedAt.toISOString()
@@ -388,17 +420,20 @@ export async function setExtraReleased(groupId: string, released: boolean) {
     select: { teacherId: true, code: true },
   });
   if (!group) return null;
-  const siblings = await prisma.classGroup.findMany({
-    where: { teacherId: group.teacherId },
-    select: { id: true, code: true },
-  });
-  for (const sib of siblings) {
-    const session = await getExtraSession(sib.id);
-    if (!session) continue;
-    await persist(sib.id, session.teams, {
-      extraReleased: released,
-      extraReleasedAt: released ? new Date() : null,
-    });
+  const classroom = await listClassroomGroups(group.teacherId);
+  const targetIds = classroom.length ? classroom.map((row) => row.id) : [groupId];
+  await writeReleasedFlag(targetIds, released);
+  for (const id of targetIds) {
+    try {
+      const session = await getExtraSession(id);
+      if (!session) continue;
+      await persist(id, session.teams, {
+        extraReleased: released,
+        extraReleasedAt: released ? new Date() : null,
+      });
+    } catch (err) {
+      console.warn("[extra] persist al liberar falló:", id, err);
+    }
   }
   if (released) {
     const existing = await prisma.announcement.findFirst({

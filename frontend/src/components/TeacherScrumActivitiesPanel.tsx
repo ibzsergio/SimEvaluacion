@@ -111,7 +111,7 @@ export default function TeacherScrumActivitiesPanel({
                   : "border-rose-400/40 bg-rose-500/15 text-rose-100"
               }`}
             >
-              {extraReleased ? "Liberada" : "Lista para liberar"}
+              {extraReleased ? "Liberada en 301 y 302" : "Lista para liberar"}
             </span>
           </button>
 
