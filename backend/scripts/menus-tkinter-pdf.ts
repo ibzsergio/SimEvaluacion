@@ -1,4 +1,4 @@
-import { createWriteStream, mkdirSync } from "node:fs";
+import { copyFileSync, createWriteStream, mkdirSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import PDFDocument from "pdfkit";
@@ -47,16 +47,22 @@ function header(doc: PDFKit.PDFDocument) {
 }
 
 function footer(doc: PDFKit.PDFDocument) {
+  // pageAdded + escribir bajo el margen inferior crea una copia vacía de cada hoja.
+  doc.removeAllListeners("pageAdded");
   const range = doc.bufferedPageRange();
   for (let i = 0; i < range.count; i += 1) {
     doc.switchToPage(range.start + i);
+    const bottom = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
     doc.save();
     doc.fillColor(i === 0 ? "#99f6e4" : C.muted).font("Helvetica").fontSize(8);
     doc.text(`Página ${i + 1} de ${range.count}`, MARGIN, PAGE_H - 32, {
       width: CONTENT_W,
       align: "center",
+      lineBreak: false,
     });
     doc.restore();
+    doc.page.margins.bottom = bottom;
   }
 }
 
@@ -606,35 +612,6 @@ ventana.mainloop()`,
     "Criterio de comprensión",
     "Si un compañero de otro equipo puede decir qué widget usarías para turno, para Negrita y para Salir —y por qué—, el tema se entendió. Si todo le parece “un menú”, todavía no hay análisis.",
   );
-
-  h1(doc, "11. Mini práctica (para el salón)");
-  para(doc, "En 15–20 minutos, en equipos de proyecto:");
-  bullet(doc, [
-    "Una ventana con barra Archivo (Guardar / Salir) y Ayuda (Acerca de).",
-    "Un OptionMenu con al menos tres opciones de su propio proyecto (no copien “turno” si su app es otra).",
-    "Un Label que muestre la opción elegida.",
-    "Un popup con clic derecho que repita dos de esas opciones.",
-    "tearoff apagado en todos los Menu.",
-  ]);
-  para(
-    doc,
-    "Al exponer: no lean el código renglón por renglón. Señalen barra, OptionMenu y popup, y digan qué variable comparte cada uno. Esa frase es la evidencia de que leyeron para programar, no para llenar minutos.",
-  );
-
-  h1(doc, "12. Glosario rápido");
-  bullet(doc, [
-    "cascade — menú colgado de otro menú (la palabra de la barra).",
-    "command — acción al elegir un renglón.",
-    "OptionMenu — menú de opciones (una de varias, en una caja).",
-    "popup / tk_popup — menú que aparece en las coordenadas del clic.",
-    "StringVar / BooleanVar / IntVar — canal entre el control y el programa.",
-    "tearoff — menú desprendible; en clase casi siempre va en 0.",
-    "value — valor que escribe un radiobutton al elegirse.",
-  ]);
-  para(
-    doc,
-    "Siguiente paso natural: conectar el valor del OptionMenu a un archivo .txt o a otra ventana (Toplevel). El menú decide; el resto del programa obedece.",
-  );
 }
 
 async function main() {
@@ -649,7 +626,7 @@ async function main() {
       Subject: "Conceptos, tipos, ejemplos gráficos y código",
     },
   });
-  const stream = createWriteStream(OUT_FILE);
+  const stream = createWriteStream(join(OUT_DIR, "Menus_de_opciones_en_Tkinter.tmp.pdf"));
   doc.pipe(stream);
   doc.on("pageAdded", () => header(doc));
   build(doc);
@@ -659,7 +636,14 @@ async function main() {
     stream.on("finish", () => resolve());
     stream.on("error", reject);
   });
-  console.log(OUT_FILE);
+  const tmp = join(OUT_DIR, "Menus_de_opciones_en_Tkinter.tmp.pdf");
+  try {
+    copyFileSync(tmp, OUT_FILE);
+    unlinkSync(tmp);
+    console.log(OUT_FILE);
+  } catch {
+    console.log(tmp);
+  }
 }
 
 main().catch((err) => {
