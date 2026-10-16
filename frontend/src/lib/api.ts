@@ -1284,6 +1284,83 @@ export async function fetchGroupDeliveryStatus(groupId: string) {
   return data;
 }
 
+export type LagLevel = "al_dia" | "seguimiento" | "atrasado";
+
+export type LagReport = {
+  generatedAt: string;
+  reportDate: string;
+  reportDateLabel: string;
+  isFriday: boolean;
+  weekFriday: string;
+  weekFridayLabel: string;
+  group: {
+    id: string;
+    code: string;
+    shift: string;
+    currentPartial: number;
+    partialNumber: number;
+    partialLabel: string;
+  };
+  partialInventory: Array<{
+    partialNumber: number;
+    label: string;
+    published: number;
+    due: number;
+    upcoming: number;
+    isCurrent: boolean;
+  }>;
+  activities: Array<{
+    id: string;
+    name: string;
+    date: string;
+    dateLabel: string;
+    maxPoints: number;
+    due: boolean;
+    ungradedStudents: number;
+  }>;
+  counts: {
+    published: number;
+    due: number;
+    upcoming: number;
+    students: number;
+    onTrack: number;
+    watch: number;
+    behind: number;
+  };
+  onTrackNames: string[];
+  behind: Array<{
+    id: string;
+    displayName: string;
+    listNumber: number | null;
+    controlNumber: string | null;
+    graded: number;
+    missing: number;
+    due: number;
+    level: Exclude<LagLevel, "al_dia">;
+    levelLabel: string;
+    missingActivities: Array<{ id: string; name: string; dateLabel: string }>;
+  }>;
+};
+
+export async function fetchLagReport(groupId: string, partialNumber?: number) {
+  const { data } = await api.get<LagReport>(`/teacher/groups/${groupId}/lag-report`, {
+    params: partialNumber ? { partialNumber } : undefined,
+  });
+  return data;
+}
+
+export async function downloadGroupLagReport(groupId: string, groupCode: string, partialNumber?: number) {
+  const query = partialNumber ? `?partialNumber=${partialNumber}` : "";
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/lag-report.pdf${query}`,
+    `reporte_viernes_grupo_${groupCode}.pdf`,
+  );
+}
+
+export async function downloadFridayLagReport() {
+  await downloadTeacherBlob("/teacher/reports/lag-friday.pdf", "reporte_viernes_atrasos.pdf");
+}
+
 export async function fetchSeatingPlan(groupId: string, date: string) {
   const { data } = await api.get<SeatingPlan>(`/teacher/groups/${groupId}/seating`, {
     params: { date },

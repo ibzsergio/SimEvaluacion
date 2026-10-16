@@ -29,6 +29,7 @@ import {
   todayClassDayDate,
 } from "./classDayService.js";
 import { getGroupDeliveryStatus } from "./deliveryStatusService.js";
+import { createFridayLagPdf, getLagReport, getTeacherLagReports } from "./lagReport.js";
 import {
   generateLecturaForGroup,
   getLecturaSession,
@@ -1175,6 +1176,71 @@ teacherGroupsRouter.get("/groups/:groupId/delivery-status", async (req: AuthedRe
     }
     console.error("[delivery-status] failed:", err);
     return res.status(500).json({ error: "delivery_status_failed" });
+  }
+});
+
+function requestedPartial(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 6) return undefined;
+  return parsed;
+}
+
+function sendLagPdf(res: Response, reports: Awaited<ReturnType<typeof getTeacherLagReports>>, filename: string) {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  const doc = createFridayLagPdf(reports);
+  doc.pipe(res);
+  doc.end();
+}
+
+teacherGroupsRouter.get("/groups/:groupId/lag-report", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  try {
+    const report = await getLagReport(
+      req.auth!.userId,
+      groupId,
+      requestedPartial(req.query.partialNumber),
+    );
+    return res.json(report);
+  } catch (err) {
+    if (err instanceof Error && err.message === "group_not_found") {
+      return res.status(404).json({ error: "group_not_found" });
+    }
+    console.error("[lag-report] failed:", err);
+    return res.status(500).json({ error: "lag_report_failed" });
+  }
+});
+
+teacherGroupsRouter.get("/groups/:groupId/lag-report.pdf", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  try {
+    const report = await getLagReport(
+      req.auth!.userId,
+      groupId,
+      requestedPartial(req.query.partialNumber),
+    );
+    return sendLagPdf(
+      res,
+      [report],
+      `reporte_viernes_grupo_${report.group.code}_p${report.group.partialNumber}_${report.reportDate}.pdf`,
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "group_not_found") {
+      return res.status(404).json({ error: "group_not_found" });
+    }
+    console.error("[lag-report.pdf] failed:", err);
+    return res.status(500).json({ error: "lag_report_failed" });
+  }
+});
+
+teacherGroupsRouter.get("/reports/lag-friday.pdf", async (req: AuthedRequest, res) => {
+  try {
+    const reports = await getTeacherLagReports(req.auth!.userId);
+    const date = reports[0]?.reportDate ?? formatClassDayIso(todayClassDayDate());
+    return sendLagPdf(res, reports, `reporte_viernes_atrasos_${date}.pdf`);
+  } catch (err) {
+    console.error("[lag-friday.pdf] failed:", err);
+    return res.status(500).json({ error: "lag_report_failed" });
   }
 });
 

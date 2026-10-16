@@ -1,6 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchGroupDeliveryStatus, getApiErrorMessage } from "../lib/api";
+import {
+  downloadFridayLagReport,
+  downloadGroupLagReport,
+  fetchGroupDeliveryStatus,
+  fetchLagReport,
+  getApiErrorMessage,
+  type LagReport,
+} from "../lib/api";
 import { formatCalendarDate, getActivityKindLabel } from "../lib/dates";
 import type { ClassGroup } from "../lib/types";
 
@@ -17,12 +24,26 @@ export default function GroupDeliveryStatusPanel({
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("all");
+  const [partialNumber, setPartialNumber] = useState<number | undefined>(undefined);
+  const [downloading, setDownloading] = useState<"group" | "all" | null>(null);
+
+  useEffect(() => {
+    setPartialNumber(undefined);
+  }, [selectedGroupId]);
 
   const query = useQuery({
     queryKey: ["delivery-status", selectedGroupId],
     queryFn: () => fetchGroupDeliveryStatus(selectedGroupId),
     enabled: !!selectedGroupId,
   });
+
+  const lagQuery = useQuery({
+    queryKey: ["lag-report", selectedGroupId, partialNumber ?? "current"],
+    queryFn: () => fetchLagReport(selectedGroupId, partialNumber),
+    enabled: !!selectedGroupId,
+  });
+
+  const selectedGroup = groups.find((group) => group.id === selectedGroupId);
 
   const filteredRows = useMemo(() => {
     const rows = query.data?.rows ?? [];
@@ -68,6 +89,40 @@ export default function GroupDeliveryStatusPanel({
           </button>
         ))}
       </div>
+
+      <FridayLagSection
+        report={lagQuery.data}
+        loading={lagQuery.isLoading}
+        error={lagQuery.isError ? getApiErrorMessage(lagQuery.error) : ""}
+        groupCode={selectedGroup?.code ?? "grupo"}
+        downloading={downloading}
+        onSelectPartial={(value) => setPartialNumber(value)}
+        onDownloadGroup={async () => {
+          if (!selectedGroupId) return;
+          setDownloading("group");
+          try {
+            await downloadGroupLagReport(
+              selectedGroupId,
+              selectedGroup?.code ?? "grupo",
+              lagQuery.data?.group.partialNumber,
+            );
+          } catch (err) {
+            window.alert(getApiErrorMessage(err));
+          } finally {
+            setDownloading(null);
+          }
+        }}
+        onDownloadAll={async () => {
+          setDownloading("all");
+          try {
+            await downloadFridayLagReport();
+          } catch (err) {
+            window.alert(getApiErrorMessage(err));
+          } finally {
+            setDownloading(null);
+          }
+        }}
+      />
 
       <section className="glass p-6">
         <h2 className="text-lg font-semibold text-white">Historial de entregas</h2>
@@ -214,6 +269,172 @@ export default function GroupDeliveryStatusPanel({
         </section>
       )}
     </div>
+  );
+}
+
+function FridayLagSection({
+  report,
+  loading,
+  error,
+  groupCode,
+  downloading,
+  onSelectPartial,
+  onDownloadGroup,
+  onDownloadAll,
+}: {
+  report?: LagReport;
+  loading: boolean;
+  error: string;
+  groupCode: string;
+  downloading: "group" | "all" | null;
+  onSelectPartial: (partialNumber: number) => void;
+  onDownloadGroup: () => void;
+  onDownloadAll: () => void;
+}) {
+  const segundo = report?.partialInventory.find((row) => row.partialNumber === 2);
+  const needsFollowUp = (report?.counts.watch ?? 0) + (report?.counts.behind ?? 0);
+
+  return (
+    <section className="glass p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Reporte del viernes</h2>
+          <p className="mt-1 max-w-3xl text-sm text-slate-400">
+            Lista a los alumnos atrasados en las actividades del parcial. Una actividad cuenta
+            cuando su fecha es hoy o anterior y todavía no tiene calificación. Ámbar: falta 1,
+            pero ya tiene otras. Rojo: no tiene la actividad exigible, o faltan 2 o más.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={downloading !== null || !report}
+            onClick={onDownloadGroup}
+            className="rounded-xl border border-rose-400/40 bg-rose-500/15 px-4 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-500/25 disabled:opacity-60"
+          >
+            {downloading === "group" ? "Generando..." : `PDF grupo ${groupCode}`}
+          </button>
+          <button
+            type="button"
+            disabled={downloading !== null}
+            onClick={onDownloadAll}
+            className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10 disabled:opacity-60"
+          >
+            {downloading === "all" ? "Generando..." : "PDF de todos los grupos"}
+          </button>
+        </div>
+      </div>
+
+      {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
+      {loading && !report ? <p className="mt-3 text-sm text-slate-400">Preparando el corte...</p> : null}
+
+      {report ? (
+        <>
+          <p className="mt-3 text-sm text-slate-300">
+            Corte: {report.reportDateLabel}
+            {report.isFriday
+              ? " · listo para entregar hoy."
+              : ` · la semana cierra el ${report.weekFridayLabel}.`}
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {report.partialInventory.map((row) => {
+              const active = row.partialNumber === report.group.partialNumber;
+              return (
+                <button
+                  key={row.partialNumber}
+                  type="button"
+                  onClick={() => onSelectPartial(row.partialNumber)}
+                  className={`rounded-xl border px-4 py-3 text-left ${
+                    active
+                      ? "border-cyan-400/40 bg-cyan-500/15"
+                      : "border-white/10 bg-slate-900/40 hover:bg-white/5"
+                  }`}
+                >
+                  <p className="text-xs text-slate-400">
+                    {row.label}
+                    {row.isCurrent ? " · vigente" : ""}
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-white">{row.published}</p>
+                  <p className="text-[11px] text-slate-500">
+                    {row.due} exigibles · {row.upcoming} próximas
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {segundo && report.group.partialNumber !== 2 ? (
+            <p className="mt-3 text-sm text-slate-400">
+              Segundo parcial: {segundo.published}{" "}
+              {segundo.published === 1 ? "actividad publicada" : "actividades publicadas"}
+              {segundo.published === 0
+                ? ". Todavía no hay actividades de ese parcial; el reporte de abajo usa el parcial vigente."
+                : `. ${segundo.due} ya exigibles y ${segundo.upcoming} próximas.`}
+            </p>
+          ) : null}
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat label="Actividades del parcial" value={report.counts.published} />
+            <Stat label="Al día" value={report.counts.onTrack} tone="ok" />
+            <Stat label="Falta 1" value={report.counts.watch} />
+            <Stat label="Atrasados" value={report.counts.behind} tone="bad" />
+          </div>
+
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold text-white">
+              {report.group.partialLabel} · alumnos por atender ({needsFollowUp})
+            </h3>
+            {!report.activities.length ? (
+              <p className="mt-2 text-sm text-slate-400">
+                No hay actividades publicadas en {report.group.partialLabel.toLowerCase()}.
+              </p>
+            ) : report.counts.due === 0 ? (
+              <p className="mt-2 text-sm text-slate-400">
+                Hay {report.counts.published} actividades, pero ninguna tiene fecha cumplida. Nadie
+                se marca como atrasado todavía.
+              </p>
+            ) : report.behind.length === 0 ? (
+              <p className="mt-2 text-sm text-emerald-200">
+                Nadie está atrasado. Los {report.counts.onTrack} alumnos tienen calificación en las{" "}
+                {report.counts.due} actividades exigibles.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {report.behind.map((student) => (
+                  <li
+                    key={student.id}
+                    className={`rounded-xl border px-4 py-3 ${
+                      student.level === "atrasado"
+                        ? "border-rose-400/30 bg-rose-500/10"
+                        : "border-amber-400/30 bg-amber-500/10"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="font-semibold text-white">
+                        {student.listNumber != null ? `${student.listNumber}. ` : ""}
+                        {student.displayName}
+                      </p>
+                      <p
+                        className={`text-xs font-bold uppercase tracking-wide ${
+                          student.level === "atrasado" ? "text-rose-200" : "text-amber-200"
+                        }`}
+                      >
+                        {student.levelLabel} · {student.graded} de {student.due} · faltan{" "}
+                        {student.missing}
+                      </p>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-300">
+                      {student.missingActivities.map((activity) => activity.name).join(" · ")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      ) : null}
+    </section>
   );
 }
 

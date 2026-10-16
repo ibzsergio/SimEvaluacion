@@ -22,6 +22,7 @@ import {
   createActivity,
   deleteActivity,
   downloadBothGroupsTotalsExcel,
+  downloadFridayLagReport,
   fetchActivities,
   fetchGroups,
   getApiErrorMessage,
@@ -75,6 +76,7 @@ export default function TeacherPage() {
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [downloadingLag, setDownloadingLag] = useState(false);
 
   const groupsQuery = useQuery({
     queryKey: ["groups"],
@@ -312,23 +314,42 @@ export default function TeacherPage() {
             Compilador Python
           </TabButton>
         </div>
-        <button
-          type="button"
-          disabled={downloadingExcel}
-          onClick={async () => {
-            setDownloadingExcel(true);
-            try {
-              await downloadBothGroupsTotalsExcel(groups);
-            } catch (err) {
-              window.alert(getApiErrorMessage(err));
-            } finally {
-              setDownloadingExcel(false);
-            }
-          }}
-          className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
-        >
-          {downloadingExcel ? "Generando Excel..." : `Descargar Excel ${groupsLabelPlus}`}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={downloadingLag}
+            onClick={async () => {
+              setDownloadingLag(true);
+              try {
+                await downloadFridayLagReport();
+              } catch (err) {
+                window.alert(getApiErrorMessage(err));
+              } finally {
+                setDownloadingLag(false);
+              }
+            }}
+            className="rounded-xl border border-rose-400/40 bg-rose-500/15 px-4 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-500/25 disabled:opacity-60"
+          >
+            {downloadingLag ? "Generando reporte..." : "Reporte del viernes"}
+          </button>
+          <button
+            type="button"
+            disabled={downloadingExcel}
+            onClick={async () => {
+              setDownloadingExcel(true);
+              try {
+                await downloadBothGroupsTotalsExcel(groups);
+              } catch (err) {
+                window.alert(getApiErrorMessage(err));
+              } finally {
+                setDownloadingExcel(false);
+              }
+            }}
+            className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
+          >
+            {downloadingExcel ? "Generando Excel..." : `Descargar Excel ${groupsLabelPlus}`}
+          </button>
+        </div>
       </div>
 
       {tab === "importar" ? (
