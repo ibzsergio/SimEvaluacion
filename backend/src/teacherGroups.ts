@@ -1179,12 +1179,6 @@ teacherGroupsRouter.get("/groups/:groupId/delivery-status", async (req: AuthedRe
   }
 });
 
-function requestedPartial(value: unknown) {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 6) return undefined;
-  return parsed;
-}
-
 function sendLagPdf(res: Response, reports: Awaited<ReturnType<typeof getTeacherLagReports>>, filename: string) {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -1196,11 +1190,7 @@ function sendLagPdf(res: Response, reports: Awaited<ReturnType<typeof getTeacher
 teacherGroupsRouter.get("/groups/:groupId/lag-report", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
   try {
-    const report = await getLagReport(
-      req.auth!.userId,
-      groupId,
-      requestedPartial(req.query.partialNumber),
-    );
+    const report = await getLagReport(req.auth!.userId, groupId, 2);
     return res.json(report);
   } catch (err) {
     if (err instanceof Error && err.message === "group_not_found") {
@@ -1214,11 +1204,7 @@ teacherGroupsRouter.get("/groups/:groupId/lag-report", async (req: AuthedRequest
 teacherGroupsRouter.get("/groups/:groupId/lag-report.pdf", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
   try {
-    const report = await getLagReport(
-      req.auth!.userId,
-      groupId,
-      requestedPartial(req.query.partialNumber),
-    );
+    const report = await getLagReport(req.auth!.userId, groupId, 2);
     return sendLagPdf(
       res,
       [report],

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   downloadFridayLagReport,
@@ -24,12 +24,7 @@ export default function GroupDeliveryStatusPanel({
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("all");
-  const [partialNumber, setPartialNumber] = useState<number | undefined>(undefined);
   const [downloading, setDownloading] = useState<"group" | "all" | null>(null);
-
-  useEffect(() => {
-    setPartialNumber(undefined);
-  }, [selectedGroupId]);
 
   const query = useQuery({
     queryKey: ["delivery-status", selectedGroupId],
@@ -38,8 +33,8 @@ export default function GroupDeliveryStatusPanel({
   });
 
   const lagQuery = useQuery({
-    queryKey: ["lag-report", selectedGroupId, partialNumber ?? "current"],
-    queryFn: () => fetchLagReport(selectedGroupId, partialNumber),
+    queryKey: ["lag-report", selectedGroupId, 2],
+    queryFn: () => fetchLagReport(selectedGroupId, 2),
     enabled: !!selectedGroupId,
   });
 
@@ -96,16 +91,11 @@ export default function GroupDeliveryStatusPanel({
         error={lagQuery.isError ? getApiErrorMessage(lagQuery.error) : ""}
         groupCode={selectedGroup?.code ?? "grupo"}
         downloading={downloading}
-        onSelectPartial={(value) => setPartialNumber(value)}
         onDownloadGroup={async () => {
           if (!selectedGroupId) return;
           setDownloading("group");
           try {
-            await downloadGroupLagReport(
-              selectedGroupId,
-              selectedGroup?.code ?? "grupo",
-              lagQuery.data?.group.partialNumber,
-            );
+            await downloadGroupLagReport(selectedGroupId, selectedGroup?.code ?? "grupo", 2);
           } catch (err) {
             window.alert(getApiErrorMessage(err));
           } finally {
@@ -278,7 +268,6 @@ function FridayLagSection({
   error,
   groupCode,
   downloading,
-  onSelectPartial,
   onDownloadGroup,
   onDownloadAll,
 }: {
@@ -287,23 +276,16 @@ function FridayLagSection({
   error: string;
   groupCode: string;
   downloading: "group" | "all" | null;
-  onSelectPartial: (partialNumber: number) => void;
   onDownloadGroup: () => void;
   onDownloadAll: () => void;
 }) {
-  const segundo = report?.partialInventory.find((row) => row.partialNumber === 2);
   const needsFollowUp = (report?.counts.watch ?? 0) + (report?.counts.behind ?? 0);
 
   return (
     <section className="glass p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-white">Reporte del viernes</h2>
-          <p className="mt-1 max-w-3xl text-sm text-slate-400">
-            Lista a los alumnos atrasados en las actividades del parcial. Una actividad cuenta
-            cuando su fecha es hoy o anterior y todavía no tiene calificación. Ámbar: falta 1,
-            pero ya tiene otras. Rojo: no tiene la actividad exigible, o faltan 2 o más.
-          </p>
+          <h2 className="text-lg font-semibold text-white">Reporte del viernes · Segundo parcial</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -337,45 +319,8 @@ function FridayLagSection({
               : ` · la semana cierra el ${report.weekFridayLabel}.`}
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {report.partialInventory.map((row) => {
-              const active = row.partialNumber === report.group.partialNumber;
-              return (
-                <button
-                  key={row.partialNumber}
-                  type="button"
-                  onClick={() => onSelectPartial(row.partialNumber)}
-                  className={`rounded-xl border px-4 py-3 text-left ${
-                    active
-                      ? "border-cyan-400/40 bg-cyan-500/15"
-                      : "border-white/10 bg-slate-900/40 hover:bg-white/5"
-                  }`}
-                >
-                  <p className="text-xs text-slate-400">
-                    {row.label}
-                    {row.isCurrent ? " · vigente" : ""}
-                  </p>
-                  <p className="mt-1 text-2xl font-bold text-white">{row.published}</p>
-                  <p className="text-[11px] text-slate-500">
-                    {row.due} exigibles · {row.upcoming} próximas
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-
-          {segundo && report.group.partialNumber !== 2 ? (
-            <p className="mt-3 text-sm text-slate-400">
-              Segundo parcial: {segundo.published}{" "}
-              {segundo.published === 1 ? "actividad publicada" : "actividades publicadas"}
-              {segundo.published === 0
-                ? ". Todavía no hay actividades de ese parcial; el reporte de abajo usa el parcial vigente."
-                : `. ${segundo.due} ya exigibles y ${segundo.upcoming} próximas.`}
-            </p>
-          ) : null}
-
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Actividades del parcial" value={report.counts.published} />
+            <Stat label="Actividades del corte" value={report.counts.due} />
             <Stat label="Al día" value={report.counts.onTrack} tone="ok" />
             <Stat label="Falta 1" value={report.counts.watch} />
             <Stat label="Atrasados" value={report.counts.behind} tone="bad" />

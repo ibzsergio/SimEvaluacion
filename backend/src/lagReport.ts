@@ -308,11 +308,13 @@ export async function getLagReport(
   };
 }
 
+const SECOND_PARTIAL = 2;
+
 export async function getTeacherLagReports(teacherId: string) {
   const groups = await listTeacherGroups(teacherId);
   const reports: LagReport[] = [];
   for (const group of groups) {
-    reports.push(await getLagReport(teacherId, group.id));
+    reports.push(await getLagReport(teacherId, group.id, SECOND_PARTIAL));
   }
   return reports;
 }
@@ -400,32 +402,12 @@ function drawBanner(doc: PdfDoc, report: LagReport, continued: boolean) {
   doc.y = 96;
 }
 
-function howToRead(report: LagReport) {
-  const fridayNote = report.isFriday
-    ? "Este corte corresponde al viernes de entrega."
-    : `La semana escolar cierra el ${report.weekFridayLabel}.`;
-  return `Cómo leerlo. Una actividad del ${report.group.partialLabel.toLowerCase()} es exigible cuando su fecha es hoy o anterior. El alumno está al día solo si esa actividad ya tiene calificación. Ámbar (Falta 1): le falta una y ya tiene otras calificadas. Rojo (Atrasado): no tiene calificación en la actividad exigible, o le faltan 2 o más. Las actividades con fecha futura no cuentan. ${fridayNote}`;
-}
-
-function drawHowTo(doc: PdfDoc, report: LagReport) {
-  const y = doc.y;
-  const text = howToRead(report);
-  doc.font("Helvetica").fontSize(8.5);
-  const height = doc.heightOfString(text, { width: CONTENT_W - 20, lineGap: 1 }) + 14;
-  fillRect(doc, MARGIN, y, CONTENT_W, height, "#f8fafc");
-  doc.save();
-  doc.rect(MARGIN, y, 3, height).fill("#0f766e");
-  doc.restore();
-  textAt(doc, text, MARGIN + 12, y + 7, CONTENT_W - 22, { size: 8.5, color: "#334155" });
-  doc.y = y + height + 12;
-}
-
 function drawKpis(doc: PdfDoc, report: LagReport) {
   const items = [
     {
-      value: String(report.counts.published),
-      label: "Actividades del parcial",
-      hint: `${report.counts.due} exigibles · ${report.counts.upcoming} próximas`,
+      value: String(report.counts.due),
+      label: "Actividades del corte",
+      hint: "segundo parcial",
       color: "#0f172a",
     },
     {
@@ -481,19 +463,18 @@ function drawSectionTitle(doc: PdfDoc, title: string) {
 }
 
 const ACTIVITY_COLS = [
-  { title: "#", width: 28 },
-  { title: "Actividad", width: 279 },
-  { title: "Fecha", width: 90 },
-  { title: "¿Exigible?", width: 80 },
-  { title: "Alumnos sin calificación", width: 300 },
+  { title: "#", width: 36 },
+  { title: "Actividad", width: 630 },
+  { title: "Fecha", width: 111 },
 ] as const;
 
 function drawActivityTable(doc: PdfDoc, report: LagReport, onPageBreak: () => void) {
-  drawSectionTitle(doc, `Actividades de ${report.group.partialLabel.toLowerCase()}`);
-  if (!report.activities.length) {
+  const activities = report.activities.filter((activity) => activity.due);
+  drawSectionTitle(doc, "Actividades del segundo parcial");
+  if (!activities.length) {
     textAt(
       doc,
-      `No hay actividades publicadas en ${report.group.partialLabel.toLowerCase()}. Por eso ningún alumno puede marcarse como atrasado en este parcial.`,
+      "No hay actividades del segundo parcial con fecha cumplida.",
       MARGIN,
       doc.y,
       CONTENT_W,
@@ -526,28 +507,20 @@ function drawActivityTable(doc: PdfDoc, report: LagReport, onPageBreak: () => vo
   };
 
   drawHeader();
-  report.activities.forEach((activity, index) => {
+  activities.forEach((activity, index) => {
     ensure(20);
     const y = doc.y;
     fillRect(doc, MARGIN, y, CONTENT_W, 18, index % 2 === 0 ? "#f8fafc" : "#ffffff");
-    const cells = [
-      String(index + 1),
-      activity.name,
-      activity.dateLabel,
-      activity.due ? "Sí" : "No, aún no",
-      activity.due ? `${activity.ungradedStudents} de ${report.counts.students}` : "No se exige todavía",
-    ];
+    const cells = [String(index + 1), activity.name, activity.dateLabel];
     let x = MARGIN;
     cells.forEach((cell, cellIndex) => {
       const col = ACTIVITY_COLS[cellIndex]!;
-      const color =
-        cellIndex === 3 ? (activity.due ? "#047857" : "#64748b") : "#0f172a";
       textAt(doc, cell, x + 4, y + 4, col.width - 8, {
         size: 8,
-        color,
+        color: "#0f172a",
         height: 11,
         ellipsis: true,
-        font: cellIndex === 3 && activity.due ? "Helvetica-Bold" : "Helvetica",
+        font: cellIndex === 1 ? "Helvetica-Bold" : "Helvetica",
       });
       x += col.width;
     });
@@ -671,19 +644,7 @@ function drawOnTrack(doc: PdfDoc, report: LagReport) {
 function renderGroup(doc: PdfDoc, report: LagReport) {
   const continueHeader = () => drawBanner(doc, report, true);
   drawBanner(doc, report, false);
-  drawHowTo(doc, report);
   drawKpis(doc, report);
-  const inventory = report.partialInventory
-    .map(
-      (row) =>
-        `${row.label}${row.isCurrent ? " (vigente)" : ""}: ${row.published} actividad${row.published === 1 ? "" : "es"}`,
-    )
-    .join("   ·   ");
-  textAt(doc, `Inventario por parcial. ${inventory}.`, MARGIN, doc.y, CONTENT_W, {
-    size: 8,
-    color: "#475569",
-  });
-  doc.y += 18;
   drawActivityTable(doc, report, continueHeader);
   drawStudentTable(doc, report, continueHeader);
   drawOnTrack(doc, report);
