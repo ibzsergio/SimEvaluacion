@@ -3,7 +3,7 @@ import { parseClassDayDate } from "./classDayService.js";
 import { listTeacherGroups } from "./groups.js";
 
 export const INTERFACE_ACTIVITY_NAME = "Diseño de Interfaces Proyecto";
-export const INTERFACE_MAX_POINTS = 3000;
+export const INTERFACE_MAX_POINTS = 5000;
 export const INTERFACE_CLOSE_ISO = "2026-10-22";
 export const INTERFACE_PARTIAL = 2;
 export const INTERFACE_WARNING_POINTS = 50;
@@ -17,9 +17,17 @@ export async function ensureInterfaceDesignActivities(teacherId: string) {
   for (const group of groups) {
     const existing = await prisma.activity.findFirst({
       where: { groupId: group.id, name: INTERFACE_ACTIVITY_NAME },
-      select: { id: true },
+      select: { id: true, maxPoints: true },
     });
-    if (existing) continue;
+    if (existing) {
+      if (existing.maxPoints !== INTERFACE_MAX_POINTS) {
+        await prisma.activity.update({
+          where: { id: existing.id },
+          data: { maxPoints: INTERFACE_MAX_POINTS },
+        });
+      }
+      continue;
+    }
 
     const lastOrder = await prisma.activity.aggregate({
       where: { groupId: group.id },

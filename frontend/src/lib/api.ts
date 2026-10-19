@@ -861,7 +861,7 @@ export type InterfaceSession = {
     hex: string;
     leaderId: string | null;
     leaderName: string | null;
-    awarded: boolean;
+    awardedDays: string[];
     members: Array<{
       studentId: string;
       displayName: string;
@@ -874,6 +874,7 @@ export type InterfaceSession = {
       code: string;
       label: string;
       points: number;
+      day: string;
       studentId: string | null;
       studentName: string | null;
     }>;
@@ -887,7 +888,14 @@ export async function fetchInterfaceSession(groupId: string) {
 
 export async function addInterfaceNote(
   groupId: string,
-  payload: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
+  payload: {
+    teamKey: string;
+    code: string;
+    day: string;
+    label?: string;
+    points?: number;
+    studentId?: string | null;
+  },
 ) {
   const { data } = await api.post<InterfaceSession>(`/teacher/groups/${groupId}/interface-note`, payload);
   return data;
@@ -901,10 +909,11 @@ export async function removeInterfaceNote(groupId: string, payload: { teamKey: s
   return data;
 }
 
-export async function applyInterfacePoints(groupId: string, teamKey?: string) {
-  const { data } = await api.post<InterfaceSession>(`/teacher/groups/${groupId}/interface-award`, {
-    teamKey,
-  });
+export async function applyInterfacePoints(
+  groupId: string,
+  payload: { day: string; teamKey?: string },
+) {
+  const { data } = await api.post<InterfaceSession>(`/teacher/groups/${groupId}/interface-award`, payload);
   return data;
 }
 
@@ -916,7 +925,7 @@ export async function fetchStudentInterfaceDesign() {
       points: number | null;
       pointsMax: number;
       awarded: boolean;
-      notes: Array<{ id: string; label: string; points: number; studentName: string | null }>;
+      notes: Array<{ id: string; label: string; points: number; day?: string; studentName: string | null }>;
     } | null;
   }>("/student/interface-design");
   return data.interfaceDesign;

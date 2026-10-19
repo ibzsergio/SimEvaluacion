@@ -886,8 +886,9 @@ teacherGroupsRouter.post("/groups/:groupId/interface-note", async (req: AuthedRe
       teamKey: z.string().min(1),
       code: z.string().min(1),
       label: z.string().trim().optional(),
-      points: z.number().int().min(1).max(3000).optional(),
+      points: z.number().int().min(1).max(5000).optional(),
       studentId: z.string().min(1).nullable().optional(),
+      day: z.enum(["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22"]),
     })
     .safeParse(req.body);
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
@@ -927,7 +928,12 @@ teacherGroupsRouter.post("/groups/:groupId/interface-note-remove", async (req: A
 
 teacherGroupsRouter.post("/groups/:groupId/interface-award", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
-  const body = z.object({ teamKey: z.string().min(1).optional() }).safeParse(req.body ?? {});
+  const body = z
+    .object({
+      teamKey: z.string().min(1).optional(),
+      day: z.enum(["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22"]),
+    })
+    .safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId: req.auth!.userId },
@@ -935,7 +941,7 @@ teacherGroupsRouter.post("/groups/:groupId/interface-award", async (req: AuthedR
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
   try {
-    const session = await applyInterfacePoints(groupId, req.auth!.userId, body.data.teamKey);
+    const session = await applyInterfacePoints(groupId, req.auth!.userId, body.data.day, body.data.teamKey);
     return res.json(session);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";

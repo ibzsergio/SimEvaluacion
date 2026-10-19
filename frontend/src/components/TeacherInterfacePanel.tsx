@@ -8,9 +8,31 @@ import {
   removeInterfaceNote,
   setActivityStudentRelease,
 } from "../lib/api";
-import { INTERFACE_NOTES } from "../lib/interfaceDesign";
+import {
+  INTERFACE_DAYS,
+  INTERFACE_MAX_POINTS,
+  INTERFACE_NOTES,
+  type InterfaceDay,
+} from "../lib/interfaceDesign";
 import { extraRoleLabel } from "../lib/extraScrum";
 import type { ClassGroup } from "../lib/types";
+
+function mexicoTodayIso() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function defaultInterfaceDay(): InterfaceDay {
+  const iso = mexicoTodayIso();
+  const match = INTERFACE_DAYS.find((item) => item.iso === iso);
+  if (match) return match.iso;
+  if (iso < INTERFACE_DAYS[0].iso) return INTERFACE_DAYS[0].iso;
+  return INTERFACE_DAYS[INTERFACE_DAYS.length - 1]!.iso;
+}
 
 export default function TeacherInterfacePanel({
   groups,
@@ -24,6 +46,7 @@ export default function TeacherInterfacePanel({
   hideGroupPicker?: boolean;
 }) {
   const qc = useQueryClient();
+  const [day, setDay] = useState<InterfaceDay>(defaultInterfaceDay);
   const [noteError, setNoteError] = useState("");
   const [customByTeam, setCustomByTeam] = useState<
     Record<string, { label: string; points: string; studentId: string }>
@@ -38,12 +61,13 @@ export default function TeacherInterfacePanel({
   const session = sessionQuery.data;
   const teams = session?.teams ?? [];
   const released = session?.released ?? false;
-  const pointsMax = session?.pointsMax ?? 3000;
+  const pointsMax = session?.pointsMax ?? INTERFACE_MAX_POINTS;
 
   const noteMutation = useMutation({
     mutationFn: (payload: {
       teamKey: string;
       code: string;
+      day: string;
       label?: string;
       points?: number;
       studentId?: string | null;
@@ -66,7 +90,8 @@ export default function TeacherInterfacePanel({
   });
 
   const awardMutation = useMutation({
-    mutationFn: (teamKey?: string) => applyInterfacePoints(selectedGroupId, teamKey),
+    mutationFn: (payload: { teamKey?: string; day: InterfaceDay }) =>
+      applyInterfacePoints(selectedGroupId, payload),
     onSuccess: async (data) => {
       setNoteError("");
       qc.setQueryData(["interface-session", selectedGroupId], data);
@@ -135,8 +160,9 @@ export default function TeacherInterfacePanel({
             </p>
             <h2 className="mt-1 text-xl font-bold text-white">Equipos y notas</h2>
             <p className="mt-1 max-w-3xl text-sm text-slate-400">
-              Cada equipo parte de {pointsMax.toLocaleString("es-MX")} puntos. Cada nota resta 50.
-              Fuera del equipo se anota una vez por cada llamada de atención. Cierra el 22 de octubre.
+              Cada equipo parte de {pointsMax.toLocaleString("es-MX")} puntos en total. Anota el día que
+              estás viendo (19 al 22 de octubre). Al registrar, se guarda el acumulado de esos cuatro
+              días. Cada nota resta 50. Fuera del equipo se anota una vez por cada llamada de atención.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -156,13 +182,29 @@ export default function TeacherInterfacePanel({
             </button>
             <button
               type="button"
-              onClick={() => awardMutation.mutate(undefined)}
+              onClick={() => awardMutation.mutate({ day })}
               disabled={awardMutation.isPending || teams.length === 0}
               className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
             >
-              {awardMutation.isPending ? "Guardando..." : "Registrar puntos de todos"}
+              {awardMutation.isPending ? "Guardando..." : "Registrar este día en todos"}
             </button>
           </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {INTERFACE_DAYS.map((item) => (
+            <button
+              key={item.iso}
+              type="button"
+              onClick={() => setDay(item.iso)}
+              className={`rounded-xl px-3 py-1.5 text-sm font-semibold ${
+                day === item.iso
+                  ? "bg-violet-600 text-white"
+                  : "border border-white/10 bg-white/5 text-slate-300"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
         <p className="mt-2 text-xs text-slate-500">
           {released
@@ -189,6 +231,9 @@ export default function TeacherInterfacePanel({
               const custom = customOf(team.key);
               const teamNotes = INTERFACE_NOTES.filter((note) => note.scope === "team");
               const memberNotes = INTERFACE_NOTES.filter((note) => note.scope === "member");
+              const dayNotes = team.notes.filter((note) => note.day === day);
+              const dayRegistered = team.awardedDays.includes(day);
+              const dayCut = dayNotes.reduce((acc, note) => acc + note.points, 0);
               return (
                 <li
                   key={team.key}
@@ -205,7 +250,7 @@ export default function TeacherInterfacePanel({
                       </p>
                     </div>
                     <p className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-xs font-bold text-amber-100">
-                      {team.awarded ? "Puntos guardados" : "Sin registrar"}
+                      {dayRegistered ? "Día registrado" : "Sin registrar"}
                     </p>
                   </div>
                   <ul className="mt-3 space-y-0.5 text-xs text-slate-300">
@@ -222,18 +267,22 @@ export default function TeacherInterfacePanel({
                       </li>
                     ))}
                   </ul>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Acumulado de los 4 días
+                    {dayCut > 0 ? ` · este día resta ${dayCut.toLocaleString("es-MX")}` : ""}
+                  </p>
 
                   <div className="mt-3 border-t border-white/10 pt-3">
                     <p className="text-xs font-bold uppercase tracking-wide text-rose-100">Notas al equipo</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {teamNotes.map((note) => {
-                        const used = team.notes.some((item) => item.code === note.code);
+                        const used = dayNotes.some((item) => item.code === note.code);
                         return (
                           <button
                             key={note.code}
                             type="button"
                             disabled={noteMutation.isPending || used}
-                            onClick={() => noteMutation.mutate({ teamKey: team.key, code: note.code })}
+                            onClick={() => noteMutation.mutate({ teamKey: team.key, code: note.code, day })}
                             className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-[11px] font-semibold text-slate-100 hover:bg-white/10 disabled:opacity-50"
                           >
                             {note.label} −{note.points}
@@ -272,7 +321,7 @@ export default function TeacherInterfacePanel({
                                 setNoteError("Elige a qué integrante aplica la llamada de atención.");
                                 return;
                               }
-                              noteMutation.mutate({ teamKey: team.key, code: note.code, studentId });
+                              noteMutation.mutate({ teamKey: team.key, code: note.code, studentId, day });
                             }}
                             className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-[11px] font-semibold text-slate-100 hover:bg-white/10 disabled:opacity-60"
                           >
@@ -335,6 +384,7 @@ export default function TeacherInterfacePanel({
                           noteMutation.mutate({
                             teamKey: team.key,
                             code: "custom",
+                            day,
                             label: custom.label.trim(),
                             points: Math.round(points),
                             studentId: custom.studentId || null,
@@ -350,9 +400,9 @@ export default function TeacherInterfacePanel({
                       </button>
                     </div>
 
-                    {team.notes.length ? (
+                    {dayNotes.length ? (
                       <ul className="mt-2 space-y-1">
-                        {team.notes.map((note) => (
+                        {dayNotes.map((note) => (
                           <li
                             key={note.id}
                             className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/40 px-2 py-1 text-[11px] text-slate-200"
@@ -375,16 +425,16 @@ export default function TeacherInterfacePanel({
                       </ul>
                     ) : (
                       <p className="mt-2 text-[11px] text-slate-400">
-                        Sin notas. El equipo iría con {pointsMax.toLocaleString("es-MX")}.
+                        Sin notas este día.
                       </p>
                     )}
                     <button
                       type="button"
                       disabled={awardMutation.isPending}
-                      onClick={() => awardMutation.mutate(team.key)}
+                      onClick={() => awardMutation.mutate({ day, teamKey: team.key })}
                       className="mt-2 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/15 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
                     >
-                      Registrar puntos de este equipo
+                      Registrar este día
                     </button>
                   </div>
                 </li>

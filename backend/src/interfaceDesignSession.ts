@@ -14,11 +14,19 @@ export const INTERFACE_NOTE_PRESETS = [
   { code: "fuera", label: "Fuera del equipo", points: 50, scope: "member" as const },
 ];
 
+export const INTERFACE_DAYS = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22"] as const;
+export type InterfaceDay = (typeof INTERFACE_DAYS)[number];
+
+function isInterfaceDay(value: string): value is InterfaceDay {
+  return (INTERFACE_DAYS as readonly string[]).includes(value);
+}
+
 type InterfaceNote = {
   id: string;
   code: string;
   label: string;
   points: number;
+  day: InterfaceDay;
   studentId: string | null;
   studentName: string | null;
 };
@@ -37,7 +45,7 @@ export type InterfaceTeam = {
   hex: string;
   leaderId: string | null;
   leaderName: string | null;
-  awarded: boolean;
+  awardedDays: InterfaceDay[];
   members: InterfaceMember[];
   notes: InterfaceNote[];
 };
@@ -51,7 +59,7 @@ export type InterfaceSession = {
   teams: InterfaceTeam[];
 };
 
-type StoredTeam = { key: string; notes: InterfaceNote[]; awarded: boolean };
+type StoredTeam = { key: string; notes: InterfaceNote[]; awarded?: boolean; awardedDays?: InterfaceDay[] };
 
 function parseNotes(raw: unknown): InterfaceNote[] {
   if (!Array.isArray(raw)) return [];
@@ -61,11 +69,13 @@ function parseNotes(raw: unknown): InterfaceNote[] {
     const points = Math.max(0, Math.round(Number(note.points) || 0));
     const label = String(note.label ?? "").trim();
     if (!label || points <= 0) continue;
+    const day = isInterfaceDay(String(note.day ?? "")) ? note.day : INTERFACE_DAYS[0];
     notes.push({
       id: String(note.id ?? `note_${Math.random().toString(36).slice(2, 9)}`),
       code: String(note.code ?? "custom"),
       label,
       points,
+      day,
       studentId: note.studentId ? String(note.studentId) : null,
       studentName: note.studentName ? String(note.studentName) : null,
     });
@@ -79,10 +89,13 @@ function parsePayload(raw: unknown): StoredTeam[] {
   if (!Array.isArray(teams)) return [];
   return teams.map((item) => {
     const team = item as StoredTeam;
+    const fromList = Array.isArray(team.awardedDays)
+      ? team.awardedDays.map(String).filter(isInterfaceDay)
+      : [];
     return {
       key: String(team.key ?? ""),
       notes: parseNotes(team.notes),
-      awarded: Boolean(team.awarded),
+      awardedDays: fromList.length ? fromList : team.awarded ? [INTERFACE_DAYS[0]] : [],
     };
   });
 }
@@ -122,7 +135,7 @@ async function loadTeams(groupId: string, stored: StoredTeam[]): Promise<Interfa
       hex: swatch.hex,
       leaderId: leader?.studentId ?? null,
       leaderName: leader?.displayName ?? null,
-      awarded: Boolean(prev?.awarded),
+      awardedDays: (prev?.awardedDays ?? []).filter(isInterfaceDay),
       members,
       notes,
     };
@@ -142,7 +155,7 @@ async function saveTeams(groupId: string, teams: InterfaceTeam[]) {
     teams: teams.map((team) => ({
       key: team.key,
       notes: team.notes,
-      awarded: team.awarded,
+      awardedDays: team.awardedDays,
     })),
   };
   await prisma.classGroup.update({
@@ -222,12 +235,21 @@ export async function getInterfaceSession(groupId: string): Promise<InterfaceSes
 export async function addInterfaceNote(
   groupId: string,
   teacherId: string,
-  input: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
+  input: {
+    teamKey: string;
+    code: string;
+    day: string;
+    label?: string;
+    points?: number;
+    studentId?: string | null;
+  },
 ) {
   const session = await getInterfaceSession(groupId);
   if (!session) throw new Error("group_not_found");
   const team = session.teams.find((item) => item.key === input.teamKey);
   if (!team) throw new Error("team_not_found");
+  if (!isInterfaceDay(input.day)) throw new Error("invalid_day");
+  const day = input.day;
 
   const preset = INTERFACE_NOTE_PRESETS.find((item) => item.code === input.code);
   const label = (input.label ?? preset?.label ?? "").trim();
@@ -235,7 +257,10 @@ export async function addInterfaceNote(
   if (!label || points <= 0) throw new Error("invalid_note");
   if (points > INTERFACE_MAX_POINTS) points = INTERFACE_MAX_POINTS;
 
-  if (preset?.scope === "team" && team.notes.some((note) => note.code === preset.code)) {
+  if (
+    preset?.scope === "team" &&
+    team.notes.some((note) => note.code === preset.code && note.day === day)
+  ) {
     throw new Error("already_noted");
   }
 
@@ -253,6 +278,7 @@ export async function addInterfaceNote(
     code: preset?.code ?? "custom",
     label,
     points,
+    day,
     studentId,
     studentName,
   };
@@ -287,7 +313,7 @@ export async function removeInterfaceNote(
     return {
       ...item,
       notes,
-      awarded: notes.length === 0 ? false : item.awarded,
+      awardedDays: item.awardedDays,
       members: item.members.map((member) => ({
         ...member,
         points: memberPoints(notes, member.studentId),
@@ -298,14 +324,22 @@ export async function removeInterfaceNote(
   return getInterfaceSession(groupId);
 }
 
-export async function applyInterfacePoints(groupId: string, teacherId: string, teamKey?: string) {
+export async function applyInterfacePoints(
+  groupId: string,
+  teacherId: string,
+  day: string,
+  teamKey?: string,
+) {
   const session = await getInterfaceSession(groupId);
   if (!session) throw new Error("group_not_found");
+  if (!isInterfaceDay(day)) throw new Error("invalid_day");
   const targets = teamKey ? session.teams.filter((team) => team.key === teamKey) : session.teams;
   if (teamKey && targets.length === 0) throw new Error("team_not_found");
-  const teams = session.teams.map((team) =>
-    targets.some((target) => target.key === team.key) ? { ...team, awarded: true } : team,
-  );
+  const teams = session.teams.map((team) => {
+    if (!targets.some((target) => target.key === team.key)) return team;
+    const awardedDays = team.awardedDays.includes(day) ? team.awardedDays : [...team.awardedDays, day];
+    return { ...team, awardedDays };
+  });
   await saveTeams(groupId, teams);
   for (const team of teams.filter((item) => targets.some((target) => target.key === item.key))) {
     await applyTeamPoints(groupId, teacherId, team);
@@ -330,22 +364,25 @@ export function studentInterfaceView(session: InterfaceSession, studentId: strin
   return {
     teamName: team.name,
     leaderName: team.leaderName,
-    points: team.awarded ? me.points : null,
+    points: team.awardedDays.length ? me.points : null,
     pointsMax: session.pointsMax,
-    awarded: team.awarded,
+    awarded: team.awardedDays.length > 0,
     notes: team.notes.filter((note) => !note.studentId || note.studentId === studentId),
   };
 }
 
 export function interfaceErrorHttp(msg: string) {
   if (msg === "already_noted") {
-    return { status: 409 as const, error: msg, message: "Esa nota del equipo ya está anotada." };
+    return { status: 409 as const, error: msg, message: "Esa nota ya está anotada en este día." };
   }
   if (msg === "student_required") {
     return { status: 400 as const, error: msg, message: "Elige a qué integrante aplica la llamada de atención." };
   }
   if (msg === "student_not_in_team") {
     return { status: 400 as const, error: msg, message: "Ese alumno no está en este equipo." };
+  }
+  if (msg === "invalid_day") {
+    return { status: 400 as const, error: msg, message: "Elige un día del 19 al 22 de octubre." };
   }
   if (msg === "invalid_note") {
     return { status: 400 as const, error: msg, message: "Escribe el motivo y cuántos puntos se restan." };

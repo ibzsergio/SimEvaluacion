@@ -4,6 +4,7 @@ import {
   INTERFACE_CLOSE_ISO,
   INTERFACE_CRITERIA,
   INTERFACE_MAX_POINTS,
+  interfaceDayLabel,
 } from "../lib/interfaceDesign";
 
 export default function InterfaceDesignBrief({
@@ -19,7 +20,7 @@ export default function InterfaceDesignBrief({
   released?: boolean;
   points?: number | null;
   teamName?: string | null;
-  notes?: Array<{ id: string; label: string; points: number; studentName?: string | null }>;
+  notes?: Array<{ id: string; label: string; points: number; day?: string; studentName?: string | null }>;
   onRelease?: (released: boolean) => void;
   releasing?: boolean;
 }) {
@@ -72,13 +73,14 @@ export default function InterfaceDesignBrief({
                 </span>
               </p>
             ) : (
-              <p className="mt-1 text-slate-400">Todavía sin registrar. El equipo parte de 3,000.</p>
+              <p className="mt-1 text-slate-400">Todavía sin registrar. El equipo parte de 5,000.</p>
             )}
             {notes.length ? (
               <ul className="mt-2 space-y-1 text-xs text-amber-100">
                 {notes.map((note) => (
                   <li key={note.id}>
                     {note.label}
+                    {note.day ? ` · ${interfaceDayLabel(note.day)}` : ""}
                     {note.studentName ? ` · ${note.studentName}` : ""} −{note.points}
                   </li>
                 ))}
