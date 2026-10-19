@@ -25,6 +25,13 @@ export default function InterfaceDesignBrief({
   releasing?: boolean;
 }) {
   const dateLabel = formatCalendarDate(INTERFACE_CLOSE_ISO);
+  const firmas =
+    points == null
+      ? null
+      : Math.max(
+          0,
+          INTERFACE_MAX_POINTS - notes.reduce((acc, note) => acc + note.points, 0),
+        );
 
   return (
     <section className="glass mb-4 overflow-hidden p-0">
@@ -65,13 +72,13 @@ export default function InterfaceDesignBrief({
         {mode === "student" ? (
           <div className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-sm text-slate-200">
             <p>{teamName ? `Tu equipo: ${teamName}` : "Cuando el docente te asigne equipo, aquí verás tu puntaje."}</p>
-            {points != null ? (
+            {firmas != null ? (
               <p className="mt-1 text-emerald-200">
                 Tus firmas:{" "}
                 <span className="font-bold text-white">
-                  {points.toLocaleString("es-MX")} de {INTERFACE_MAX_POINTS.toLocaleString("es-MX")}
+                  {firmas.toLocaleString("es-MX")} de {INTERFACE_MAX_POINTS.toLocaleString("es-MX")}
                 </span>
-                {points < INTERFACE_MAX_POINTS
+                {firmas < INTERFACE_MAX_POINTS
                   ? ". Van bajando por las notas guardadas."
                   : ". Se mantienen: todavía no hay descuentos."}
               </p>

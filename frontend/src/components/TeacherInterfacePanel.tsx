@@ -61,7 +61,7 @@ export default function TeacherInterfacePanel({
   const session = sessionQuery.data;
   const teams = session?.teams ?? [];
   const released = session?.released ?? false;
-  const pointsMax = session?.pointsMax ?? INTERFACE_MAX_POINTS;
+  const pointsMax = INTERFACE_MAX_POINTS;
 
   const noteMutation = useMutation({
     mutationFn: (payload: {
@@ -235,6 +235,12 @@ export default function TeacherInterfacePanel({
               const dayNotes = team.notes.filter((note) => note.day === day);
               const dayRegistered = team.awardedDays.includes(day);
               const dayCut = dayNotes.reduce((acc, note) => acc + note.points, 0);
+              const firmasOf = (studentId: string) => {
+                const cut = team.notes
+                  .filter((note) => !note.studentId || note.studentId === studentId)
+                  .reduce((acc, note) => acc + note.points, 0);
+                return Math.max(0, pointsMax - cut);
+              };
               return (
                 <li
                   key={team.key}
@@ -263,7 +269,7 @@ export default function TeacherInterfacePanel({
                           {member.studentId === team.leaderId ? " · líder" : ""}
                         </span>
                         <span className="shrink-0 font-semibold text-amber-100">
-                          {member.points.toLocaleString("es-MX")}
+                          {firmasOf(member.studentId).toLocaleString("es-MX")}
                         </span>
                       </li>
                     ))}
