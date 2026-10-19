@@ -54,6 +54,7 @@ import {
   interfaceErrorHttp,
   removeInterfaceNote,
 } from "./interfaceDesignSession.js";
+import { INTERFACE_ACTIVITY_NAME } from "./interfaceDesignActivity.js";
 import {
   avionErrorHttp,
   clearAvionCustomTeams,
@@ -404,7 +405,11 @@ teacherGroupsRouter.get("/groups", async (req: AuthedRequest, res) => {
     }),
     prisma.activity.groupBy({
       by: ["groupId", "partialNumber"],
-      where: { groupId: { in: groupIds }, createdById: req.auth!.userId },
+      where: {
+        groupId: { in: groupIds },
+        createdById: req.auth!.userId,
+        name: { not: INTERFACE_ACTIVITY_NAME },
+      },
       _count: { _all: true },
     }),
   ]);
