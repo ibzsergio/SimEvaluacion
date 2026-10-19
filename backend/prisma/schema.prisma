@@ -130,6 +130,8 @@ model Activity {
   sortOrder    Int      @default(0)
   /// 1 = primer parcial, 2 = segundo, …
   partialNumber Int     @default(1)
+  /// false = solo la ve el docente, hasta que la libere.
+  releasedToStudents Boolean @default(true)
 
   groupId String
   group   ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)

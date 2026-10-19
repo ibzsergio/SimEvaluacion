@@ -847,6 +847,14 @@ export async function createActivity(payload: {
   return data.activity;
 }
 
+export async function setActivityStudentRelease(activityId: string, released: boolean) {
+  const { data } = await api.put<{ released: boolean; releasedCount: number; activity: Activity | null }>(
+    `/teacher/activities/${activityId}/student-release`,
+    { released },
+  );
+  return data;
+}
+
 export async function updateActivity(
   activityId: string,
   payload: { date: string; name: string; maxPoints: number },

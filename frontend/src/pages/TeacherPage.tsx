@@ -26,9 +26,12 @@ import {
   fetchActivities,
   fetchGroups,
   getApiErrorMessage,
+  setActivityStudentRelease,
   startNextPartial,
   updateActivity,
 } from "../lib/api";
+import InterfaceDesignBrief from "../components/InterfaceDesignBrief";
+import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
 import { formatGroupCodesPlus, formatTeacherGroupsSubtitle } from "../lib/groups";
 import {
   ensurePracticaNumber,
@@ -77,6 +80,7 @@ export default function TeacherPage() {
   const [formSuccess, setFormSuccess] = useState("");
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [downloadingLag, setDownloadingLag] = useState(false);
+  const [releasingInterface, setReleasingInterface] = useState(false);
 
   const groupsQuery = useQuery({
     queryKey: ["groups"],
@@ -116,7 +120,8 @@ export default function TeacherPage() {
     return [...nums].sort((a, b) => a - b);
   }, [activities, currentPartial]);
   const currentActivities = activities.filter((a) => (a.partialNumber ?? 1) === currentPartial);
-  const activeId = selectedId ?? currentActivities[0]?.id ?? null;
+  const interfaceActivity = activities.find((a) => a.name === INTERFACE_ACTIVITY_NAME) ?? null;
+  const activeId = selectedId ?? interfaceActivity?.id ?? currentActivities[0]?.id ?? null;
   const editingActivity = editingActivityId
     ? activities.find((a) => a.id === editingActivityId) ?? null
     : null;
@@ -508,7 +513,37 @@ export default function TeacherPage() {
           </div>
 
           {selectedGroupId ? (
-            <div className="shrink-0">
+            <div className="shrink-0 space-y-4">
+              {interfaceActivity ? (
+                <InterfaceDesignBrief
+                  mode="teacher"
+                  released={interfaceActivity.releasedToStudents === true}
+                  releasing={releasingInterface}
+                  onRelease={async (released) => {
+                    const ok = window.confirm(
+                      released
+                        ? "¿Liberar Diseño de Interfaces Proyecto para que los alumnos la vean en su teléfono?"
+                        : "¿Ocultar Diseño de Interfaces Proyecto? Los alumnos dejarán de verla.",
+                    );
+                    if (!ok) return;
+                    setReleasingInterface(true);
+                    try {
+                      await setActivityStudentRelease(interfaceActivity.id, released);
+                      await qc.invalidateQueries({ queryKey: ["activities"] });
+                      setFormSuccess(
+                        released
+                          ? "Diseño de Interfaces Proyecto ya está en el teléfono de los alumnos."
+                          : "Diseño de Interfaces Proyecto volvió a quedar solo para ti.",
+                      );
+                      setFormError("");
+                    } catch (err) {
+                      setFormError(getApiErrorMessage(err));
+                    } finally {
+                      setReleasingInterface(false);
+                    }
+                  }}
+                />
+              ) : null}
               <ClosePartialPanel groups={groups} selectedGroupId={selectedGroupId} />
             </div>
           ) : null}
@@ -662,7 +697,9 @@ export default function TeacherPage() {
                   {activityPartialNumbers.map((partialNo, sectionIndex) => {
                     const items = activities.filter((a) => (a.partialNumber ?? 1) === partialNo);
                     const isCurrent = partialNo === currentPartial;
-                    const collapsed = !isCurrent && collapsedPartials[partialNo] !== false;
+                    const hasInterface = items.some((item) => item.name === INTERFACE_ACTIVITY_NAME);
+                    const collapsed =
+                      !isCurrent && !hasInterface && collapsedPartials[partialNo] !== false;
                     const showCut = sectionIndex > 0;
                     return (
                       <div key={partialNo}>
@@ -801,6 +838,11 @@ function ActivityListItem({
           <p className={`font-medium ${active ? "text-cyan-100" : "text-slate-200"}`}>{activity.name}</p>
           <p className="text-xs text-slate-400">
             {formatCalendarDate(activity.date)} · {activity.maxPoints} pts
+            {activity.name === INTERFACE_ACTIVITY_NAME ? (
+              <span className={activity.releasedToStudents ? " text-emerald-300" : " text-amber-200"}>
+                {activity.releasedToStudents ? " · Visible para alumnos" : " · Solo docente"}
+              </span>
+            ) : null}
             {activity.createdAt ? (
               <span className="text-slate-500"> · Publicada {formatDateTime(activity.createdAt)}</span>
             ) : null}

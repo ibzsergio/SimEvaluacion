@@ -164,7 +164,7 @@ export async function getLagReport(
       select: { id: true, displayName: true, listNumber: true, controlNumber: true },
     }),
     prisma.activity.findMany({
-      where: { groupId },
+      where: { groupId, releasedToStudents: true },
       orderBy: [{ partialNumber: "asc" }, { sortOrder: "asc" }, { date: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,

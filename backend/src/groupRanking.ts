@@ -72,7 +72,7 @@ export async function getGroupRanking(groupId: string, rankingPartial?: number) 
   const partialNumber = rankingPartial ?? currentPartial;
 
   const activities = await prisma.activity.findMany({
-    where: { groupId, partialNumber },
+    where: { groupId, partialNumber, releasedToStudents: true },
     select: { id: true },
   });
 
@@ -84,7 +84,7 @@ export async function getGroupRanking(groupId: string, rankingPartial?: number) 
 
   const totals = await prisma.grade.groupBy({
     by: ["studentId"],
-    where: { student: { groupId }, activity: { groupId, partialNumber } },
+    where: { student: { groupId }, activity: { groupId, partialNumber, releasedToStudents: true } },
     _sum: { points: true },
   });
   const scoreByStudent = new Map(totals.map((t) => [t.studentId, t._sum.points ?? 0]));
@@ -92,7 +92,7 @@ export async function getGroupRanking(groupId: string, rankingPartial?: number) 
 
   // Usar gradedAt (primera calificación): no se actualiza al recalificar.
   const allGrades = await prisma.grade.findMany({
-    where: { activity: { groupId, partialNumber } },
+    where: { activity: { groupId, partialNumber, releasedToStudents: true } },
     select: { activityId: true, studentId: true, gradedAt: true },
   });
 

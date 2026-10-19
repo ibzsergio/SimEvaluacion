@@ -67,6 +67,11 @@ import {
   startExtraTimer,
   studentExtraAssignment,
 } from "./extraChallenge.js";
+import {
+  ensureInterfaceDesignActivities,
+  INTERFACE_ACTIVITY_NAME,
+  setInterfaceDesignReleased,
+} from "./interfaceDesignActivity.js";
 import { dropPythonPracticeSchema } from "./ensurePythonPracticeSchema.js";
 import { ensureCompilerSchema, getCompilerReleasedForGroup } from "./ensureCompilerSchema.js";
 import { chooseProjectTeamLeader, getStudentSurveyState } from "./skillSurveyService.js";
@@ -334,6 +339,11 @@ app.get("/teacher/activities", requireAuth, requireTeacher, async (req: AuthedRe
   } catch (err) {
     console.warn("[teacher/activities] Plan de Acción:", err);
   }
+  try {
+    await ensureInterfaceDesignActivities(req.auth!.userId);
+  } catch (err) {
+    console.warn("[teacher/activities] Diseño de Interfaces:", err);
+  }
 
   const activities = await prisma.activity.findMany({
     where: { createdById: req.auth!.userId, groupId },
@@ -421,6 +431,40 @@ app.put("/teacher/activities/:activityId", requireAuth, requireTeacher, async (r
     activity: { ...updated, date: formatClassDayIso(updated.date) },
   });
 });
+
+app.put(
+  "/teacher/activities/:activityId/student-release",
+  requireAuth,
+  requireTeacher,
+  async (req: AuthedRequest, res) => {
+    const activityId = String(req.params.activityId);
+    const body = z.object({ released: z.boolean() }).safeParse(req.body);
+    if (!body.success) return res.status(400).json({ error: "invalid_body" });
+
+    const existing = await prisma.activity.findFirst({
+      where: { id: activityId, createdById: req.auth!.userId },
+      select: { id: true, name: true },
+    });
+    if (!existing) return res.status(404).json({ error: "activity_not_found" });
+    if (existing.name !== INTERFACE_ACTIVITY_NAME) {
+      return res.status(400).json({
+        error: "not_releasable",
+        message: "Solo Diseño de Interfaces Proyecto se libera aparte.",
+      });
+    }
+
+    const releasedCount = await setInterfaceDesignReleased(req.auth!.userId, body.data.released);
+    const activity = await prisma.activity.findFirst({
+      where: { id: activityId, createdById: req.auth!.userId },
+      include: { group: { select: { code: true, shift: true } } },
+    });
+    return res.json({
+      released: body.data.released,
+      releasedCount,
+      activity: activity ? { ...activity, date: formatClassDayIso(activity.date) } : null,
+    });
+  },
+);
 
 app.delete(
   "/teacher/activities/:activityId",
@@ -544,8 +588,16 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     },
   });
 
+  const currentPartial = myGroup?.currentPartial ?? 1;
   const activities = await prisma.activity.findMany({
-    where: { groupId: me.groupId, partialNumber: myGroup?.currentPartial ?? 1 },
+    where: {
+      groupId: me.groupId,
+      releasedToStudents: true,
+      OR: [
+        { partialNumber: currentPartial },
+        { name: INTERFACE_ACTIVITY_NAME },
+      ],
+    },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: { id: true, date: true, name: true, maxPoints: true, createdAt: true },
   });
@@ -984,6 +1036,17 @@ void (async () => {
     await ensureSkillSurveySchema();
     await ensurePartialExamSchema();
     await ensurePartialCutSchema();
+    try {
+      const teachers = await prisma.user.findMany({
+        where: { role: "TEACHER" },
+        select: { id: true },
+      });
+      for (const teacher of teachers) {
+        await ensureInterfaceDesignActivities(teacher.id);
+      }
+    } catch (err) {
+      console.warn("[startup] Diseño de Interfaces:", err);
+    }
     await ensureDiplomaSchema();
     await ensureLecturaSchema();
     await ensureTorreSchema();

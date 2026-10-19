@@ -37,5 +37,10 @@ export async function ensurePartialCutSchema() {
   await execOptional(
     "UPDATE `ClassGroup` SET `currentPartial` = 2 WHERE `partialClosed` = 1 AND `currentPartial` = 1",
   );
+  if (!(await columnExists("Activity", "releasedToStudents"))) {
+    await execOptional(
+      "ALTER TABLE `Activity` ADD COLUMN `releasedToStudents` BOOLEAN NOT NULL DEFAULT true",
+    );
+  }
   console.log("[startup] Partial cut schema ready.");
 }

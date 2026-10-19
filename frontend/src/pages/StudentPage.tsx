@@ -11,7 +11,9 @@ import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Top10Ranking from "../components/Top10Ranking";
 import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
+import InterfaceDesignBrief from "../components/InterfaceDesignBrief";
 import { formatCalendarDate, formatDateTime, partialLabel } from "../lib/dates";
+import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
 import { getDiplomaEncouragement, getDiplomaHeadline, getExemptionStatus } from "../lib/exemption";
 import { useAuth } from "../lib/auth";
 import type { ActivityStatus, StudentActivity } from "../lib/types";
@@ -70,8 +72,14 @@ export default function StudentPage() {
     exemption: getExemptionStatus(entry.place, partialClosed, currentPartial),
   }));
 
-  const pendingActivities = data.activities.filter((a) => a.status === "pending");
-  const gradedActivities = data.activities.filter((a) => a.status === "graded");
+  const interfaceActivity =
+    data.activities.find((activity) => activity.name === INTERFACE_ACTIVITY_NAME) ?? null;
+  const pendingActivities = data.activities.filter(
+    (a) => a.status === "pending" && a.name !== INTERFACE_ACTIVITY_NAME,
+  );
+  const gradedActivities = data.activities.filter(
+    (a) => a.status === "graded" && a.name !== INTERFACE_ACTIVITY_NAME,
+  );
 
   const greetingName = data.motivation.firstName;
 
@@ -95,6 +103,13 @@ export default function StudentPage() {
         </section>
       ) : null}
       <StudentMotivationCard motivation={motivation} />
+
+      {interfaceActivity ? (
+        <InterfaceDesignBrief
+          mode="student"
+          points={interfaceActivity.grade?.points ?? null}
+        />
+      ) : null}
 
       <StudentSkillSurveyPanel />
 

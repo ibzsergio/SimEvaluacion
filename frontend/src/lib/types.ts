@@ -467,6 +467,7 @@ export type Activity = {
   group?: { code: string; shift: string };
   createdAt?: string;
   partialNumber?: number;
+  releasedToStudents?: boolean;
 };
 
 export type GradeRow = {
