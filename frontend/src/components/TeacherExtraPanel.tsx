@@ -427,7 +427,7 @@ export default function TeacherExtraPanel({
           </button>
           <p className="text-xs text-slate-400">
             {released
-              ? "Liberada en 301 y 302: los alumnos ven instrucciones. Tú anotas y se actualizan las Firmas."
+              ? "Liberada en 301 y 302: los alumnos ven sus Firmas, sin las instrucciones. Tú anotas y se actualizan."
               : "Todavía no la ven los alumnos. Al liberar se abre en 301 y 302."}
           </p>
         </div>

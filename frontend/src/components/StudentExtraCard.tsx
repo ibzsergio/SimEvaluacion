@@ -1,26 +1,11 @@
 import { useState } from "react";
-import {
-  EXTRA_FIRMAS_MAX,
-  EXTRA_PROGRAMA,
-  EXTRA_SECCIONES,
-  EXTRA_TITULO,
-  extraRoleLabel,
-} from "../lib/extraScrum";
+import { EXTRA_FIRMAS_MAX, EXTRA_PROGRAMA, EXTRA_TITULO, extraRoleLabel } from "../lib/extraScrum";
 import type { StudentExtra } from "../lib/types";
-import ExtraIllustration from "./ExtraIllustration";
-import ExtraIndicacion from "./ExtraIndicacion";
-
-const READ_KEY = "simeval-plan-accion-read-v1";
 
 export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
   const hex = extra.hex;
-  const [read, setRead] = useState(() => localStorage.getItem(READ_KEY) === "1");
-  const [open, setOpen] = useState(() => localStorage.getItem(READ_KEY) !== "1");
-
-  function markRead() {
-    localStorage.setItem(READ_KEY, "1");
-    setRead(true);
-  }
+  const [open, setOpen] = useState(false);
+  const firmasMax = extra.firmasMax ?? EXTRA_FIRMAS_MAX;
 
   return (
     <section className="glass mb-6 overflow-hidden border-2 p-0" style={{ borderColor: `${hex}66` }}>
@@ -40,26 +25,22 @@ export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
             {extra.noTeam
               ? "Aún no estás en un equipo de Roles / Equipos. Pide al docente que te asigne."
               : extra.firmas != null
-                ? `${extra.firmas.toLocaleString("es-MX")} / ${(extra.firmasMax ?? EXTRA_FIRMAS_MAX).toLocaleString("es-MX")} Firmas.`
-                : "Interfaces de su app Tkinter. Lean las instrucciones y trabajen en equipo."}
+                ? `${extra.firmas.toLocaleString("es-MX")} / ${firmasMax.toLocaleString("es-MX")} Firmas.`
+                : `${firmasMax.toLocaleString("es-MX")} Firmas. El docente anota si hay que restar.`}
           </p>
         </div>
         <span className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200">
-          {open ? "Ocultar" : "Ver reto"}
+          {open ? "Ocultar" : "Ver equipo"}
         </span>
       </button>
 
       {open ? (
         <div className="space-y-5 px-5 pb-5 pt-2">
-          <ExtraIllustration compact />
-          <ExtraIndicacion />
-
           {extra.firmas != null || (extra.notes && extra.notes.length > 0) ? (
             <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-3">
               <p className="text-xs font-bold uppercase tracking-widest text-amber-200">Tus Firmas</p>
               <p className="mt-1 text-2xl font-bold text-white">
-                {(extra.firmas ?? extra.firmasMax ?? EXTRA_FIRMAS_MAX).toLocaleString("es-MX")} /{" "}
-                {(extra.firmasMax ?? EXTRA_FIRMAS_MAX).toLocaleString("es-MX")}
+                {(extra.firmas ?? firmasMax).toLocaleString("es-MX")} / {firmasMax.toLocaleString("es-MX")}
               </p>
               {extra.notes && extra.notes.length > 0 ? (
                 <ul className="mt-2 space-y-1 text-sm text-amber-100">
@@ -76,27 +57,7 @@ export default function StudentExtraCard({ extra }: { extra: StudentExtra }) {
             </div>
           ) : null}
 
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-white">Misión por rol (todos pegan)</h3>
-            {EXTRA_SECCIONES.map((sec) => (
-              <div key={sec.id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: hex }}>
-                  {sec.rol} · {sec.titulo}
-                </p>
-                <p className="mt-1 text-sm text-slate-200">{sec.detalle}</p>
-              </div>
-            ))}
-          </div>
-
-          {!read ? (
-            <button
-              type="button"
-              onClick={markRead}
-              className="w-full rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-500"
-            >
-              Ya leí las instrucciones
-            </button>
-          ) : extra.noTeam ? (
+          {extra.noTeam ? (
             <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
               No apareces en un equipo de Roles / Equipos. El docente te puede asignar ahí.
             </p>
