@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { formatClassDayIso, getParticipationStarsByStudent } from "./classDayService.js";
+import { interfaceDesignClosed, INTERFACE_ACTIVITY_NAME } from "./interfaceDesignActivity.js";
 import { getExemptionStatus } from "./exemptionStatus.js";
 import {
   applyAttendanceDemotions,
@@ -72,7 +73,12 @@ export async function getGroupRanking(groupId: string, rankingPartial?: number) 
   const partialNumber = rankingPartial ?? currentPartial;
 
   const activities = await prisma.activity.findMany({
-    where: { groupId, partialNumber, releasedToStudents: true },
+    where: {
+      groupId,
+      partialNumber,
+      releasedToStudents: true,
+      ...(interfaceDesignClosed() ? {} : { name: { not: INTERFACE_ACTIVITY_NAME } }),
+    },
     select: { id: true },
   });
 

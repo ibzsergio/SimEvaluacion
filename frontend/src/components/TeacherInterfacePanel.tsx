@@ -160,9 +160,10 @@ export default function TeacherInterfacePanel({
             </p>
             <h2 className="mt-1 text-xl font-bold text-white">Equipos y notas</h2>
             <p className="mt-1 max-w-3xl text-sm text-slate-400">
-              Cada equipo parte de {pointsMax.toLocaleString("es-MX")} puntos en total. Anota el día que
-              estás viendo (19 al 22 de octubre). Al registrar, se guarda el acumulado de esos cuatro
-              días. Cada nota resta 50. Fuera del equipo se anota una vez por cada llamada de atención.
+              Cada equipo parte de {pointsMax.toLocaleString("es-MX")} firmas. Anota el día que estás
+              viendo. Registrar este día guarda esas notas: si no hubo ninguna, las firmas se mantienen;
+              si las hubo, se restan. En cuanto la liberes, el alumno ve si bajan o siguen igual. El
+              jueves 22 se publica como actividad.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -186,7 +187,7 @@ export default function TeacherInterfacePanel({
               disabled={awardMutation.isPending || teams.length === 0}
               className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
             >
-              {awardMutation.isPending ? "Guardando..." : "Registrar este día en todos"}
+              {awardMutation.isPending ? "Guardando..." : "Guardar firmas de este día en todos"}
             </button>
           </div>
         </div>
@@ -268,8 +269,8 @@ export default function TeacherInterfacePanel({
                     ))}
                   </ul>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    Acumulado de los 4 días
-                    {dayCut > 0 ? ` · este día resta ${dayCut.toLocaleString("es-MX")}` : ""}
+                    Firmas con las notas anotadas
+                    {dayCut > 0 ? ` · este día resta ${dayCut.toLocaleString("es-MX")} al guardarlo` : ""}
                   </p>
 
                   <div className="mt-3 border-t border-white/10 pt-3">
@@ -434,7 +435,7 @@ export default function TeacherInterfacePanel({
                       onClick={() => awardMutation.mutate({ day, teamKey: team.key })}
                       className="mt-2 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/15 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
                     >
-                      Registrar este día
+                      Guardar firmas de este día
                     </button>
                   </div>
                 </li>

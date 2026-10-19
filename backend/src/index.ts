@@ -69,6 +69,7 @@ import {
 } from "./extraChallenge.js";
 import {
   ensureInterfaceDesignActivities,
+  interfaceDesignClosed,
   INTERFACE_ACTIVITY_NAME,
   setInterfaceDesignReleased,
 } from "./interfaceDesignActivity.js";
@@ -590,14 +591,21 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   });
 
   const currentPartial = myGroup?.currentPartial ?? 1;
+  const interfaceClosed = interfaceDesignClosed();
+  if (interfaceClosed) {
+    try {
+      await getInterfaceSession(me.groupId);
+    } catch (err) {
+      console.warn("[student/progress] cierre de Diseño de Interfaces:", err);
+    }
+  }
   const activities = await prisma.activity.findMany({
     where: {
       groupId: me.groupId,
       releasedToStudents: true,
-      OR: [
-        { partialNumber: currentPartial },
-        { name: INTERFACE_ACTIVITY_NAME },
-      ],
+      OR: interfaceClosed
+        ? [{ partialNumber: currentPartial }, { name: INTERFACE_ACTIVITY_NAME }]
+        : [{ partialNumber: currentPartial, name: { not: INTERFACE_ACTIVITY_NAME } }],
     },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: { id: true, date: true, name: true, maxPoints: true, createdAt: true },

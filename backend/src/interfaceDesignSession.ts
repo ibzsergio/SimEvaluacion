@@ -2,6 +2,7 @@ import { prisma } from "./prisma.js";
 import { COLUMN_PALETTE } from "./seatingService.js";
 import {
   ensureInterfaceDesignActivities,
+  interfaceDesignClosed,
   INTERFACE_ACTIVITY_NAME,
   INTERFACE_MAX_POINTS,
 } from "./interfaceDesignActivity.js";
@@ -107,6 +108,10 @@ function memberPoints(notes: InterfaceNote[], studentId: string) {
   return Math.max(0, INTERFACE_MAX_POINTS - cut);
 }
 
+function committedNotes(team: Pick<InterfaceTeam, "notes" | "awardedDays">) {
+  return team.notes.filter((note) => team.awardedDays.includes(note.day));
+}
+
 async function loadTeams(groupId: string, stored: StoredTeam[]): Promise<InterfaceTeam[]> {
   const projectTeams = await prisma.projectTeam.findMany({
     where: { groupId },
@@ -142,21 +147,31 @@ async function loadTeams(groupId: string, stored: StoredTeam[]): Promise<Interfa
   });
 }
 
-async function readStored(groupId: string) {
+async function readPayload(groupId: string) {
   const group = await prisma.classGroup.findUnique({
     where: { id: groupId },
     select: { interfacePayload: true },
   });
-  return parsePayload(group?.interfacePayload);
+  return group?.interfacePayload;
 }
 
-async function saveTeams(groupId: string, teams: InterfaceTeam[]) {
+function payloadPublished(raw: unknown) {
+  return Boolean(raw && typeof raw === "object" && (raw as { published?: unknown }).published);
+}
+
+async function readStored(groupId: string) {
+  return parsePayload(await readPayload(groupId));
+}
+
+async function saveTeams(groupId: string, teams: InterfaceTeam[], published?: boolean) {
+  const prev = await readPayload(groupId);
   const payload = {
     teams: teams.map((team) => ({
       key: team.key,
       notes: team.notes,
       awardedDays: team.awardedDays,
     })),
+    published: published ?? payloadPublished(prev),
   };
   await prisma.classGroup.update({
     where: { id: groupId },
@@ -203,12 +218,13 @@ async function applyTeamPoints(groupId: string, teacherId: string, team: Interfa
   const activity = await activityForGroup(groupId);
   const activityId = activity?.id;
   if (!activityId) return;
+  const notes = committedNotes(team);
   for (const member of team.members) {
     await writeMemberGrade({
       activityId,
       studentId: member.studentId,
       teacherId,
-      points: member.points,
+      points: memberPoints(notes, member.studentId),
     });
   }
 }
@@ -221,7 +237,14 @@ export async function getInterfaceSession(groupId: string): Promise<InterfaceSes
   if (!group) return null;
   await ensureInterfaceDesignActivities(group.teacherId);
   const activity = await activityForGroup(groupId);
-  const teams = await loadTeams(groupId, await readStored(groupId));
+  const storedRaw = await readPayload(groupId);
+  const teams = await loadTeams(groupId, parsePayload(storedRaw));
+  if (interfaceDesignClosed() && activity && !payloadPublished(storedRaw)) {
+    for (const team of teams) {
+      await applyTeamPoints(groupId, group.teacherId, team);
+    }
+    await saveTeams(groupId, teams, true);
+  }
   return {
     groupId: group.id,
     groupCode: group.code,
@@ -357,17 +380,20 @@ export function studentInterfaceView(session: InterfaceSession, studentId: strin
       points: null as number | null,
       pointsMax: session.pointsMax,
       awarded: false,
+      closed: interfaceDesignClosed(),
       notes: [] as InterfaceNote[],
     };
   }
   const me = team.members.find((member) => member.studentId === studentId)!;
+  const saved = committedNotes(team);
   return {
     teamName: team.name,
     leaderName: team.leaderName,
-    points: team.awardedDays.length ? me.points : null,
+    points: memberPoints(saved, studentId),
     pointsMax: session.pointsMax,
     awarded: team.awardedDays.length > 0,
-    notes: team.notes.filter((note) => !note.studentId || note.studentId === studentId),
+    closed: interfaceDesignClosed(),
+    notes: saved.filter((note) => !note.studentId || note.studentId === studentId),
   };
 }
 

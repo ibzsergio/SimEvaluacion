@@ -37,6 +37,7 @@ export default function StudentPage() {
     queryFn: fetchStudentInterfaceDesign,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
+    refetchInterval: 20_000,
   });
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
@@ -85,11 +86,12 @@ export default function StudentPage() {
 
   const interfaceActivity =
     data.activities.find((activity) => activity.name === INTERFACE_ACTIVITY_NAME) ?? null;
+  const interfaceStillOpen = interfaceLive.data ? interfaceLive.data.closed !== true : false;
   const pendingActivities = data.activities.filter(
-    (a) => a.status === "pending" && a.name !== INTERFACE_ACTIVITY_NAME,
+    (a) => a.status === "pending" && !(interfaceStillOpen && a.name === INTERFACE_ACTIVITY_NAME),
   );
   const gradedActivities = data.activities.filter(
-    (a) => a.status === "graded" && a.name !== INTERFACE_ACTIVITY_NAME,
+    (a) => a.status === "graded" && !(interfaceStillOpen && a.name === INTERFACE_ACTIVITY_NAME),
   );
 
   const greetingName = data.motivation.firstName;
@@ -115,11 +117,11 @@ export default function StudentPage() {
       ) : null}
       <StudentMotivationCard motivation={motivation} />
 
-      {interfaceActivity ? (
+      {interfaceLive.data || interfaceActivity ? (
         <InterfaceDesignBrief
           mode="student"
           teamName={interfaceLive.data?.teamName}
-          points={interfaceLive.data?.points ?? interfaceActivity.grade?.points ?? null}
+          points={interfaceLive.data?.points ?? interfaceActivity?.grade?.points ?? null}
           notes={interfaceLive.data?.notes ?? []}
         />
       ) : null}

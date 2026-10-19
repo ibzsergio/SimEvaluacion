@@ -34,14 +34,14 @@ export default function InterfaceDesignBrief({
         </p>
         <h2 className="mt-1 text-xl font-bold text-white">{INTERFACE_ACTIVITY_NAME}</h2>
         <p className="mt-1 text-sm text-slate-200">
-          Hasta {INTERFACE_MAX_POINTS.toLocaleString("es-MX")} puntos · cierra el {dateLabel}
+          {INTERFACE_MAX_POINTS.toLocaleString("es-MX")} firmas · cierra el {dateLabel}
         </p>
       </div>
 
       <div className="space-y-3 px-4 py-4 sm:px-5">
         <p className="text-sm text-slate-300">
-          El equipo parte de {INTERFACE_MAX_POINTS.toLocaleString("es-MX")} puntos. El puntaje baja
-          si no se cumple lo de abajo.
+          El equipo parte de {INTERFACE_MAX_POINTS.toLocaleString("es-MX")} firmas. Si no se cumple lo
+          de abajo, el docente lo anota y al guardar el día se restan.
         </p>
         <ul className="space-y-2">
           {INTERFACE_CRITERIA.map((item) => (
@@ -67,13 +67,19 @@ export default function InterfaceDesignBrief({
             <p>{teamName ? `Tu equipo: ${teamName}` : "Cuando el docente te asigne equipo, aquí verás tu puntaje."}</p>
             {points != null ? (
               <p className="mt-1 text-emerald-200">
-                Tu puntaje:{" "}
+                Tus firmas:{" "}
                 <span className="font-bold text-white">
                   {points.toLocaleString("es-MX")} de {INTERFACE_MAX_POINTS.toLocaleString("es-MX")}
                 </span>
+                {points < INTERFACE_MAX_POINTS
+                  ? ". Van bajando por las notas guardadas."
+                  : ". Se mantienen: todavía no hay descuentos."}
               </p>
             ) : (
-              <p className="mt-1 text-slate-400">Todavía sin registrar. El equipo parte de 5,000.</p>
+              <p className="mt-1 text-slate-400">
+                Cuando el docente guarde el día, aquí verás si tus {INTERFACE_MAX_POINTS.toLocaleString("es-MX")}{" "}
+                firmas bajan o se mantienen.
+              </p>
             )}
             {notes.length ? (
               <ul className="mt-2 space-y-1 text-xs text-amber-100">

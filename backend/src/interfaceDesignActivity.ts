@@ -3,10 +3,24 @@ import { parseClassDayDate } from "./classDayService.js";
 import { listTeacherGroups } from "./groups.js";
 
 export const INTERFACE_ACTIVITY_NAME = "Diseño de Interfaces Proyecto";
-export const INTERFACE_MAX_POINTS = 5000;
+export const INTERFACE_MAX_POINTS = 3000;
 export const INTERFACE_CLOSE_ISO = "2026-10-22";
 export const INTERFACE_PARTIAL = 2;
 export const INTERFACE_WARNING_POINTS = 50;
+
+export function mexicoTodayIso(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+/** El jueves 22 de octubre la actividad ya está cerrada y se publica a los alumnos. */
+export function interfaceDesignClosed(now = new Date()) {
+  return mexicoTodayIso(now) >= INTERFACE_CLOSE_ISO;
+}
 
 /** La deja en los grupos del docente, oculta para los alumnos hasta que la libere. */
 export async function ensureInterfaceDesignActivities(teacherId: string) {
@@ -17,13 +31,17 @@ export async function ensureInterfaceDesignActivities(teacherId: string) {
   for (const group of groups) {
     const existing = await prisma.activity.findFirst({
       where: { groupId: group.id, name: INTERFACE_ACTIVITY_NAME },
-      select: { id: true, maxPoints: true },
+      select: { id: true, maxPoints: true, releasedToStudents: true },
     });
     if (existing) {
-      if (existing.maxPoints !== INTERFACE_MAX_POINTS) {
+      const publish = interfaceDesignClosed() && !existing.releasedToStudents;
+      if (existing.maxPoints !== INTERFACE_MAX_POINTS || publish) {
         await prisma.activity.update({
           where: { id: existing.id },
-          data: { maxPoints: INTERFACE_MAX_POINTS },
+          data: {
+            ...(existing.maxPoints !== INTERFACE_MAX_POINTS ? { maxPoints: INTERFACE_MAX_POINTS } : {}),
+            ...(publish ? { releasedToStudents: true } : {}),
+          },
         });
       }
       continue;
@@ -41,7 +59,7 @@ export async function ensureInterfaceDesignActivities(teacherId: string) {
         signatureMax: 0,
         sortOrder: (lastOrder._max.sortOrder ?? -1) + 1,
         partialNumber: INTERFACE_PARTIAL,
-        releasedToStudents: false,
+        releasedToStudents: interfaceDesignClosed(),
         groupId: group.id,
         createdById: teacherId,
       },

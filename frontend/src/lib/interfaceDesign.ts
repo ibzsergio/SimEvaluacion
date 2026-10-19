@@ -1,5 +1,5 @@
 export const INTERFACE_ACTIVITY_NAME = "Diseño de Interfaces Proyecto";
-export const INTERFACE_MAX_POINTS = 5000;
+export const INTERFACE_MAX_POINTS = 3000;
 export const INTERFACE_CLOSE_ISO = "2026-10-22";
 export const INTERFACE_WARNING_POINTS = 50;
 

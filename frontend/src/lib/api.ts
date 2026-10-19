@@ -925,6 +925,7 @@ export async function fetchStudentInterfaceDesign() {
       points: number | null;
       pointsMax: number;
       awarded: boolean;
+      closed?: boolean;
       notes: Array<{ id: string; label: string; points: number; day?: string; studentName: string | null }>;
     } | null;
   }>("/student/interface-design");
