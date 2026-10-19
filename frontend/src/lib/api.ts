@@ -247,6 +247,8 @@ export function getApiErrorMessage(error: unknown): string {
       if (message) return message;
       if (detail) return detail;
     }
+    const message = (error.response.data as { message?: string })?.message;
+    if (message) return message;
     return `Error del servidor (${error.response.status}).`;
   }
   if (error instanceof Error && error.message) return error.message;
@@ -845,6 +847,79 @@ export async function createActivity(payload: {
 }) {
   const { data } = await api.post<{ activity: Activity }>("/teacher/activities", payload);
   return data.activity;
+}
+
+export type InterfaceSession = {
+  groupId: string;
+  groupCode: string;
+  released: boolean;
+  activityId: string | null;
+  pointsMax: number;
+  teams: Array<{
+    key: string;
+    name: string;
+    hex: string;
+    leaderId: string | null;
+    leaderName: string | null;
+    awarded: boolean;
+    members: Array<{
+      studentId: string;
+      displayName: string;
+      listNumber: number | null;
+      role: string | null;
+      points: number;
+    }>;
+    notes: Array<{
+      id: string;
+      code: string;
+      label: string;
+      points: number;
+      studentId: string | null;
+      studentName: string | null;
+    }>;
+  }>;
+};
+
+export async function fetchInterfaceSession(groupId: string) {
+  const { data } = await api.get<InterfaceSession>(`/teacher/groups/${groupId}/interface-session`);
+  return data;
+}
+
+export async function addInterfaceNote(
+  groupId: string,
+  payload: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
+) {
+  const { data } = await api.post<InterfaceSession>(`/teacher/groups/${groupId}/interface-note`, payload);
+  return data;
+}
+
+export async function removeInterfaceNote(groupId: string, payload: { teamKey: string; noteId: string }) {
+  const { data } = await api.post<InterfaceSession>(
+    `/teacher/groups/${groupId}/interface-note-remove`,
+    payload,
+  );
+  return data;
+}
+
+export async function applyInterfacePoints(groupId: string, teamKey?: string) {
+  const { data } = await api.post<InterfaceSession>(`/teacher/groups/${groupId}/interface-award`, {
+    teamKey,
+  });
+  return data;
+}
+
+export async function fetchStudentInterfaceDesign() {
+  const { data } = await api.get<{
+    interfaceDesign: {
+      teamName: string | null;
+      leaderName: string | null;
+      points: number | null;
+      pointsMax: number;
+      awarded: boolean;
+      notes: Array<{ id: string; label: string; points: number; studentName: string | null }>;
+    } | null;
+  }>("/student/interface-design");
+  return data.interfaceDesign;
 }
 
 export async function setActivityStudentRelease(activityId: string, released: boolean) {

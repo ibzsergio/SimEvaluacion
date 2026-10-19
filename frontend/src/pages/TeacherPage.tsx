@@ -26,11 +26,10 @@ import {
   fetchActivities,
   fetchGroups,
   getApiErrorMessage,
-  setActivityStudentRelease,
   startNextPartial,
   updateActivity,
 } from "../lib/api";
-import InterfaceDesignBrief from "../components/InterfaceDesignBrief";
+import TeacherInterfacePanel from "../components/TeacherInterfacePanel";
 import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
 import { formatGroupCodesPlus, formatTeacherGroupsSubtitle } from "../lib/groups";
 import {
@@ -80,7 +79,6 @@ export default function TeacherPage() {
   const [formSuccess, setFormSuccess] = useState("");
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [downloadingLag, setDownloadingLag] = useState(false);
-  const [releasingInterface, setReleasingInterface] = useState(false);
 
   const groupsQuery = useQuery({
     queryKey: ["groups"],
@@ -514,36 +512,12 @@ export default function TeacherPage() {
 
           {selectedGroupId ? (
             <div className="shrink-0 space-y-4">
-              {interfaceActivity ? (
-                <InterfaceDesignBrief
-                  mode="teacher"
-                  released={interfaceActivity.releasedToStudents === true}
-                  releasing={releasingInterface}
-                  onRelease={async (released) => {
-                    const ok = window.confirm(
-                      released
-                        ? "¿Liberar Diseño de Interfaces Proyecto para que los alumnos la vean en su teléfono?"
-                        : "¿Ocultar Diseño de Interfaces Proyecto? Los alumnos dejarán de verla.",
-                    );
-                    if (!ok) return;
-                    setReleasingInterface(true);
-                    try {
-                      await setActivityStudentRelease(interfaceActivity.id, released);
-                      await qc.invalidateQueries({ queryKey: ["activities"] });
-                      setFormSuccess(
-                        released
-                          ? "Diseño de Interfaces Proyecto ya está en el teléfono de los alumnos."
-                          : "Diseño de Interfaces Proyecto volvió a quedar solo para ti.",
-                      );
-                      setFormError("");
-                    } catch (err) {
-                      setFormError(getApiErrorMessage(err));
-                    } finally {
-                      setReleasingInterface(false);
-                    }
-                  }}
-                />
-              ) : null}
+              <TeacherInterfacePanel
+                groups={groups}
+                selectedGroupId={selectedGroupId}
+                onSelectGroup={setSelectedGroupId}
+                hideGroupPicker
+              />
               <ClosePartialPanel groups={groups} selectedGroupId={selectedGroupId} />
             </div>
           ) : null}

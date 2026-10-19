@@ -4,6 +4,7 @@ import { fetchAvionSession, fetchExtraSession } from "../lib/api";
 import type { ClassGroup } from "../lib/types";
 import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
+import TeacherInterfacePanel from "./TeacherInterfacePanel";
 import TeacherTorrePanel from "./TeacherTorrePanel";
 
 export default function TeacherScrumActivitiesPanel({
@@ -15,7 +16,7 @@ export default function TeacherScrumActivitiesPanel({
   selectedGroupId: string;
   onSelectGroup: (id: string) => void;
 }) {
-  const [current, setCurrent] = useState<"list" | "torre" | "avion" | "extra">("list");
+  const [current, setCurrent] = useState<"list" | "torre" | "avion" | "extra" | "interfaces">("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
     queryFn: () => fetchAvionSession(selectedGroupId),
@@ -58,7 +59,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "extra" ? (
+      {current === "interfaces" ? (
+        <TeacherInterfacePanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "extra" ? (
         <TeacherExtraPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -90,6 +98,24 @@ export default function TeacherScrumActivitiesPanel({
               registro.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("interfaces")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad de equipo</p>
+              <h3 className="mt-1 text-xl font-bold text-white">Diseño de Interfaces Proyecto</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Equipos de Roles / Equipos. Parte de 3,000 puntos. Cada nota resta 50. Cierra el 22 de
+                octubre.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full border border-violet-400/40 bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-100">
+              Notas en vivo
+            </span>
+          </button>
 
           <button
             type="button"

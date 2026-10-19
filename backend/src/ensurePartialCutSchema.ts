@@ -42,5 +42,8 @@ export async function ensurePartialCutSchema() {
       "ALTER TABLE `Activity` ADD COLUMN `releasedToStudents` BOOLEAN NOT NULL DEFAULT true",
     );
   }
+  if (!(await columnExists("ClassGroup", "interfacePayload"))) {
+    await execOptional("ALTER TABLE `ClassGroup` ADD COLUMN `interfacePayload` JSON NULL");
+  }
   console.log("[startup] Partial cut schema ready.");
 }

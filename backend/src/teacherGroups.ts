@@ -48,6 +48,13 @@ import {
   setExtraReleased,
 } from "./extraChallenge.js";
 import {
+  addInterfaceNote,
+  applyInterfacePoints,
+  getInterfaceSession,
+  interfaceErrorHttp,
+  removeInterfaceNote,
+} from "./interfaceDesignSession.js";
+import {
   avionErrorHttp,
   clearAvionCustomTeams,
   getAvionSession,
@@ -851,6 +858,88 @@ teacherGroupsRouter.post("/groups/:groupId/extra-award", async (req: AuthedReque
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";
     const mapped = extraErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.get("/groups/:groupId/interface-session", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await getInterfaceSession(groupId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json(session);
+  } catch (err) {
+    console.error("[interface-session] failed:", err);
+    return res.status(500).json({ error: "interface_failed" });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/interface-note", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      teamKey: z.string().min(1),
+      code: z.string().min(1),
+      label: z.string().trim().optional(),
+      points: z.number().int().min(1).max(3000).optional(),
+      studentId: z.string().min(1).nullable().optional(),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await addInterfaceNote(groupId, req.auth!.userId, body.data);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = interfaceErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/interface-note-remove", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ teamKey: z.string().min(1), noteId: z.string().min(1) }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await removeInterfaceNote(groupId, body.data);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = interfaceErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/interface-award", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ teamKey: z.string().min(1).optional() }).safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await applyInterfacePoints(groupId, req.auth!.userId, body.data.teamKey);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = interfaceErrorHttp(msg);
     return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
   }
 });

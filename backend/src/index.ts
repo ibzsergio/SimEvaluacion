@@ -72,6 +72,7 @@ import {
   INTERFACE_ACTIVITY_NAME,
   setInterfaceDesignReleased,
 } from "./interfaceDesignActivity.js";
+import { getInterfaceSession, studentInterfaceView } from "./interfaceDesignSession.js";
 import { dropPythonPracticeSchema } from "./ensurePythonPracticeSchema.js";
 import { ensureCompilerSchema, getCompilerReleasedForGroup } from "./ensureCompilerSchema.js";
 import { chooseProjectTeamLeader, getStudentSurveyState } from "./skillSurveyService.js";
@@ -862,6 +863,19 @@ app.post("/student/extra/start", requireAuth, requireStudent, async (req: Authed
     const msg = err instanceof Error ? err.message : "error";
     const mapped = extraErrorHttp(msg);
     return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+app.get("/student/interface-design", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await getInterfaceSession(ctx.groupId);
+    if (!session) return res.json({ interfaceDesign: null });
+    return res.json({ interfaceDesign: studentInterfaceView(session, req.auth!.userId) });
+  } catch (err) {
+    console.warn("[student/interface-design] failed:", err);
+    return res.json({ interfaceDesign: null });
   }
 });
 

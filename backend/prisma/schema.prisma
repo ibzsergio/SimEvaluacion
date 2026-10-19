@@ -68,6 +68,8 @@ model ClassGroup {
   /// El docente activa el compilador Python para que los alumnos lo vean.
   compilerReleased Boolean @default(false)
   compilerReleasedAt DateTime?
+  /// Notas en vivo de Diseño de Interfaces Proyecto.
+  interfacePayload Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

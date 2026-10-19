@@ -3,6 +3,21 @@ export const INTERFACE_MAX_POINTS = 3000;
 export const INTERFACE_CLOSE_ISO = "2026-10-22";
 export const INTERFACE_WARNING_POINTS = 50;
 
+export type InterfaceNotePreset = {
+  code: string;
+  label: string;
+  points: number;
+  scope: "team" | "member";
+};
+
+export const INTERFACE_NOTES: InterfaceNotePreset[] = [
+  { code: "silencio", label: "Sin orden y silencio", points: 50, scope: "team" },
+  { code: "tarde", label: "Entrega fuera de tiempo", points: 50, scope: "team" },
+  { code: "diseno", label: "Diseño, forma o presentación", points: 50, scope: "team" },
+  { code: "organizacion", label: "Organización del equipo", points: 50, scope: "team" },
+  { code: "fuera", label: "Fuera del equipo", points: 50, scope: "member" },
+];
+
 export const INTERFACE_CRITERIA = [
   {
     title: "Entrega en tiempo y fecha",

@@ -10,12 +10,16 @@ export default function InterfaceDesignBrief({
   mode,
   released = false,
   points,
+  teamName,
+  notes = [],
   onRelease,
   releasing = false,
 }: {
   mode: "teacher" | "student";
   released?: boolean;
   points?: number | null;
+  teamName?: string | null;
+  notes?: Array<{ id: string; label: string; points: number; studentName?: string | null }>;
   onRelease?: (released: boolean) => void;
   releasing?: boolean;
 }) {
@@ -57,13 +61,30 @@ export default function InterfaceDesignBrief({
           ))}
         </ul>
 
-        {mode === "student" && points != null ? (
-          <p className="text-sm text-emerald-200">
-            Tu puntaje:{" "}
-            <span className="font-bold text-white">
-              {points.toLocaleString("es-MX")} de {INTERFACE_MAX_POINTS.toLocaleString("es-MX")}
-            </span>
-          </p>
+        {mode === "student" ? (
+          <div className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-sm text-slate-200">
+            <p>{teamName ? `Tu equipo: ${teamName}` : "Cuando el docente te asigne equipo, aquí verás tu puntaje."}</p>
+            {points != null ? (
+              <p className="mt-1 text-emerald-200">
+                Tu puntaje:{" "}
+                <span className="font-bold text-white">
+                  {points.toLocaleString("es-MX")} de {INTERFACE_MAX_POINTS.toLocaleString("es-MX")}
+                </span>
+              </p>
+            ) : (
+              <p className="mt-1 text-slate-400">Todavía sin registrar. El equipo parte de 3,000.</p>
+            )}
+            {notes.length ? (
+              <ul className="mt-2 space-y-1 text-xs text-amber-100">
+                {notes.map((note) => (
+                  <li key={note.id}>
+                    {note.label}
+                    {note.studentName ? ` · ${note.studentName}` : ""} −{note.points}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         ) : null}
 
         {mode === "teacher" ? (

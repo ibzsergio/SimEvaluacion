@@ -10,7 +10,12 @@ import StudentExtraCard from "../components/StudentExtraCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Top10Ranking from "../components/Top10Ranking";
-import { downloadStudentDiploma, fetchStudentProgress, getApiErrorMessage } from "../lib/api";
+import {
+  downloadStudentDiploma,
+  fetchStudentInterfaceDesign,
+  fetchStudentProgress,
+  getApiErrorMessage,
+} from "../lib/api";
 import InterfaceDesignBrief from "../components/InterfaceDesignBrief";
 import { formatCalendarDate, formatDateTime, partialLabel } from "../lib/dates";
 import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
@@ -27,6 +32,12 @@ const studentFooter = (
 export default function StudentPage() {
   const { user } = useAuth();
   const [downloadingDiploma, setDownloadingDiploma] = useState(false);
+  const interfaceLive = useQuery({
+    queryKey: ["student-interface"],
+    queryFn: fetchStudentInterfaceDesign,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+  });
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
     queryFn: fetchStudentProgress,
@@ -107,7 +118,9 @@ export default function StudentPage() {
       {interfaceActivity ? (
         <InterfaceDesignBrief
           mode="student"
-          points={interfaceActivity.grade?.points ?? null}
+          teamName={interfaceLive.data?.teamName}
+          points={interfaceLive.data?.points ?? interfaceActivity.grade?.points ?? null}
+          notes={interfaceLive.data?.notes ?? []}
         />
       ) : null}
 
