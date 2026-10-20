@@ -12,6 +12,7 @@ import {
   INTERFACE_DAYS,
   INTERFACE_MAX_POINTS,
   INTERFACE_NOTES,
+  interfaceDayLabel,
   type InterfaceDay,
 } from "../lib/interfaceDesign";
 import { extraRoleLabel } from "../lib/extraScrum";
@@ -82,9 +83,10 @@ export default function TeacherInterfacePanel({
   const removeMutation = useMutation({
     mutationFn: (payload: { teamKey: string; noteId: string }) =>
       removeInterfaceNote(selectedGroupId, payload),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setNoteError("");
       qc.setQueryData(["interface-session", selectedGroupId], data);
+      await qc.invalidateQueries({ queryKey: ["grades-matrix"] });
     },
     onError: (err) => setNoteError(getApiErrorMessage(err)),
   });
@@ -407,33 +409,44 @@ export default function TeacherInterfacePanel({
                       </button>
                     </div>
 
-                    {dayNotes.length ? (
+                    <p className="mt-3 text-xs font-bold uppercase tracking-wide text-emerald-100">
+                      Reponer puntos
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Si alguien faltó y hoy trae justificante, reponle los puntos del día en que se los
+                      restaste. También vale si ese día ya estaba guardado.
+                    </p>
+                    {team.notes.length ? (
                       <ul className="mt-2 space-y-1">
-                        {dayNotes.map((note) => (
-                          <li
-                            key={note.id}
-                            className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/40 px-2 py-1 text-[11px] text-slate-200"
-                          >
-                            <span>
-                              {note.label}
-                              {note.studentName ? ` · ${note.studentName}` : ""}{" "}
-                              <span className="text-amber-200">−{note.points}</span>
-                            </span>
-                            <button
-                              type="button"
-                              disabled={removeMutation.isPending}
-                              onClick={() => removeMutation.mutate({ teamKey: team.key, noteId: note.id })}
-                              className="text-rose-200 hover:text-white"
+                        {[...team.notes]
+                          .sort((a, b) => a.day.localeCompare(b.day))
+                          .map((note) => (
+                            <li
+                              key={note.id}
+                              className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/40 px-2 py-1 text-[11px] text-slate-200"
                             >
-                              Quitar
-                            </button>
-                          </li>
-                        ))}
+                              <span>
+                                <span className="text-slate-400">{interfaceDayLabel(note.day)}</span>
+                                {" · "}
+                                {note.label}
+                                {note.studentName ? ` · ${note.studentName}` : " · todo el equipo"}{" "}
+                                <span className="text-amber-200">−{note.points}</span>
+                              </span>
+                              <button
+                                type="button"
+                                disabled={removeMutation.isPending}
+                                onClick={() =>
+                                  removeMutation.mutate({ teamKey: team.key, noteId: note.id })
+                                }
+                                className="shrink-0 rounded-md border border-emerald-400/40 px-2 py-0.5 font-semibold text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-60"
+                              >
+                                Reponer
+                              </button>
+                            </li>
+                          ))}
                       </ul>
                     ) : (
-                      <p className="mt-2 text-[11px] text-slate-400">
-                        Sin notas este día.
-                      </p>
+                      <p className="mt-2 text-[11px] text-slate-400">Sin notas que reponer.</p>
                     )}
                     <button
                       type="button"

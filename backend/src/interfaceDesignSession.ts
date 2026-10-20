@@ -324,12 +324,15 @@ export async function addInterfaceNote(
 
 export async function removeInterfaceNote(
   groupId: string,
+  teacherId: string,
   input: { teamKey: string; noteId: string },
 ) {
   const session = await getInterfaceSession(groupId);
   if (!session) throw new Error("group_not_found");
   const team = session.teams.find((item) => item.key === input.teamKey);
   if (!team) throw new Error("team_not_found");
+  const removed = team.notes.find((note) => note.id === input.noteId);
+  if (!removed) throw new Error("note_not_found");
   const teams = session.teams.map((item) => {
     if (item.key !== team.key) return item;
     const notes = item.notes.filter((note) => note.id !== input.noteId);
@@ -344,6 +347,10 @@ export async function removeInterfaceNote(
     };
   });
   await saveTeams(groupId, teams);
+  const updated = teams.find((item) => item.key === team.key);
+  if (updated && updated.awardedDays.includes(removed.day)) {
+    await applyTeamPoints(groupId, teacherId, updated);
+  }
   return getInterfaceSession(groupId);
 }
 
@@ -415,6 +422,9 @@ export function interfaceErrorHttp(msg: string) {
   }
   if (msg === "team_not_found") {
     return { status: 404 as const, error: msg, message: "No se encontró el equipo." };
+  }
+  if (msg === "note_not_found") {
+    return { status: 404 as const, error: msg, message: "Esa nota ya no está. Recarga el equipo." };
   }
   return { status: 500 as const, error: "interface_failed", message: "No se pudo actualizar Diseño de Interfaces Proyecto." };
 }

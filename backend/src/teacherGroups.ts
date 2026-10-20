@@ -922,7 +922,7 @@ teacherGroupsRouter.post("/groups/:groupId/interface-note-remove", async (req: A
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
   try {
-    const session = await removeInterfaceNote(groupId, body.data);
+    const session = await removeInterfaceNote(groupId, req.auth!.userId, body.data);
     return res.json(session);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";
