@@ -114,8 +114,16 @@ export default function ClassDayPanel({
     );
   }, [localRows, search]);
 
-  const missedToday = useMemo(
-    () => localRows.filter((r) => r.attendance === "ABSENT" || r.attendance === "LATE"),
+  const absentToday = useMemo(
+    () => localRows.filter((r) => r.attendance === "ABSENT"),
+    [localRows],
+  );
+  const lateToday = useMemo(
+    () => localRows.filter((r) => r.attendance === "LATE"),
+    [localRows],
+  );
+  const presentToday = useMemo(
+    () => localRows.filter((r) => r.attendance === "PRESENT"),
     [localRows],
   );
 
@@ -385,12 +393,37 @@ export default function ClassDayPanel({
           </div>
         ) : null}
 
-        {missedToday.length > 0 ? (
-          <div className="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-            <p className="font-semibold">⚠ {missedToday.length} alumno(s) sin asistir o con tardanza hoy</p>
-            <p className="mt-1 text-xs text-rose-200/90">
-              {missedToday.map((r) => r.student.displayName).join(" · ")}
-            </p>
+        {localRows.length > 0 ? (
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+              <p className="text-xs font-bold uppercase tracking-wide text-rose-200">Faltas</p>
+              <p className="mt-1 text-2xl font-bold text-white">{absentToday.length}</p>
+              {absentToday.length > 0 ? (
+                <p className="mt-1 text-xs text-rose-200/90">
+                  {absentToday.map((r) => r.student.displayName).join(" · ")}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-rose-200/70">Nadie falta hoy.</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-200">Retardos</p>
+              <p className="mt-1 text-2xl font-bold text-white">{lateToday.length}</p>
+              {lateToday.length > 0 ? (
+                <p className="mt-1 text-xs text-amber-100/90">
+                  {lateToday.map((r) => r.student.displayName).join(" · ")}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-amber-200/70">Sin retardos hoy.</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-200">Asistencias</p>
+              <p className="mt-1 text-2xl font-bold text-white">{presentToday.length}</p>
+              <p className="mt-1 text-xs text-emerald-200/80">
+                {presentToday.length === 1 ? "Alumno presente." : "Alumnos presentes."}
+              </p>
+            </div>
           </div>
         ) : null}
 
@@ -444,7 +477,8 @@ export default function ClassDayPanel({
               </thead>
               <tbody>
                 {filteredRows.map((row) => {
-                  const missed = row.attendance === "ABSENT" || row.attendance === "LATE";
+                  const missed = row.attendance === "ABSENT";
+                  const late = row.attendance === "LATE";
                   const absences = effectiveAbsenceCount(row);
                   const atRisk = absences > absenceAlertAfter;
                   return (
@@ -463,10 +497,16 @@ export default function ClassDayPanel({
                       <td className="px-4 py-3">
                         <p
                           className={`font-medium ${
-                            atRisk ? "text-rose-100" : missed ? "text-rose-200" : "text-white"
+                            atRisk
+                              ? "text-rose-100"
+                              : missed
+                                ? "text-rose-200"
+                                : late
+                                  ? "text-amber-200"
+                                  : "text-white"
                           }`}
                         >
-                          {atRisk ? "🔴 " : missed ? "⚠ " : ""}
+                          {atRisk ? "🔴 " : missed ? "⚠ " : late ? "⏱ " : ""}
                           {row.student.displayName}
                         </p>
                         <p className="text-xs text-slate-500">
