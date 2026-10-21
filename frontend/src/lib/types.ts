@@ -124,6 +124,7 @@ export type StudentProgress = {
   torre?: StudentTorre | null;
   avion?: StudentAvion | null;
   extra?: StudentExtra | null;
+  impro?: StudentImpro | null;
 };
 
 export type StudentSeating = {
@@ -242,6 +243,12 @@ export type StudentExtra = {
     firmas?: number;
   }>;
 };
+
+export type StudentImpro = StudentExtra & {
+  role?: string | null;
+};
+
+export type ImproSession = ExtraSession;
 
 export type ExtraSession = Omit<TorreSession, "teams"> & {
   rosterMode?: "project" | "seating";

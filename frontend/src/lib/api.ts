@@ -529,6 +529,67 @@ export async function removeExtraNote(groupId: string, payload: { teamKey: strin
   return data;
 }
 
+export async function fetchImproSession(groupId: string) {
+  const { data } = await api.get<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-session`);
+  return data;
+}
+
+export async function updateGroupImproSettings(groupId: string, payload: { released: boolean }) {
+  const { data } = await api.put<import("./types").ImproSession>(
+    `/teacher/groups/${groupId}/impro-settings`,
+    payload,
+  );
+  return data;
+}
+
+export async function resetImproSession(groupId: string) {
+  const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-reset`);
+  return data;
+}
+
+export async function setImproPaused(groupId: string, paused: boolean) {
+  const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-pause`, {
+    paused,
+  });
+  return data;
+}
+
+export async function chooseStudentImproLeader(leaderId: string) {
+  const { data } = await api.post<{ impro: import("./types").StudentImpro | null }>("/student/impro/leader", {
+    leaderId,
+  });
+  return data.impro;
+}
+
+export async function startStudentImproTimer() {
+  const { data } = await api.post<{ impro: import("./types").StudentImpro | null }>("/student/impro/start");
+  return data.impro;
+}
+
+export async function addImproNote(
+  groupId: string,
+  payload: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
+) {
+  const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-note`, payload);
+  return data;
+}
+
+export async function removeImproNote(groupId: string, payload: { teamKey: string; noteId: string }) {
+  const { data } = await api.post<import("./types").ImproSession>(
+    `/teacher/groups/${groupId}/impro-note-remove`,
+    payload,
+  );
+  return data;
+}
+
+export async function applyImproFirmas(groupId: string, teamKey?: string) {
+  const { data } = await api.post<import("./types").ImproSession>(
+    `/teacher/groups/${groupId}/impro-award`,
+    teamKey ? { teamKey } : {},
+  );
+  return data;
+}
+
 export async function applyExtraFirmas(groupId: string, teamKey?: string) {
   const { data } = await api.post<import("./types").ExtraSession>(
     `/teacher/groups/${groupId}/extra-award`,

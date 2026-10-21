@@ -7,6 +7,7 @@ import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentExtraCard from "../components/StudentExtraCard";
+import StudentImproCard from "../components/StudentImproCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Top10Ranking from "../components/Top10Ranking";
@@ -46,8 +47,11 @@ export default function StudentPage() {
     refetchOnWindowFocus: true,
     refetchInterval: (query) => {
       const extra = query.state.data?.extra;
+      const impro = query.state.data?.impro;
       const lectura = query.state.data?.lectura;
-      if (extra?.startedAt || extra?.pausedAt || lectura?.startedAt) return 5000;
+      if (impro?.startedAt || impro?.pausedAt || extra?.startedAt || extra?.pausedAt || lectura?.startedAt) {
+        return 5000;
+      }
       if (lectura && !lectura.startedAt) return 8000;
       return 30_000;
     },
@@ -141,6 +145,8 @@ export default function StudentPage() {
       )}
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
+
+      {data.impro ? <StudentImproCard impro={data.impro} /> : null}
 
       {data.extra ? <StudentExtraCard extra={data.extra} /> : null}
 

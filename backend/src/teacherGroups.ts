@@ -48,6 +48,16 @@ import {
   setExtraReleased,
 } from "./extraChallenge.js";
 import {
+  addImproNote,
+  applyImproFirmas,
+  getImproSession,
+  improErrorHttp,
+  removeImproNote,
+  resetImproSession,
+  setImproPaused,
+  setImproReleased,
+} from "./improChallenge.js";
+import {
   addInterfaceNote,
   applyInterfacePoints,
   getInterfaceSession,
@@ -863,6 +873,123 @@ teacherGroupsRouter.post("/groups/:groupId/extra-award", async (req: AuthedReque
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";
     const mapped = extraErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.get("/groups/:groupId/impro-session", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await getImproSession(groupId);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.put("/groups/:groupId/impro-settings", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ released: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await setImproReleased(groupId, body.data.released);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/impro-reset", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await resetImproSession(groupId);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/impro-pause", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ paused: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const session = await setImproPaused(groupId, body.data.paused);
+  if (!session) return res.status(404).json({ error: "group_not_found" });
+  return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/impro-note", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      teamKey: z.string().min(1),
+      code: z.string().min(1),
+      label: z.string().trim().optional(),
+      points: z.number().int().min(1).max(1000).optional(),
+      studentId: z.string().min(1).nullable().optional(),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await addImproNote(groupId, req.auth!.userId, body.data);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = improErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/impro-note-remove", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ teamKey: z.string().min(1), noteId: z.string().min(1) }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await removeImproNote(groupId, req.auth!.userId, body.data);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = improErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.post("/groups/:groupId/impro-award", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ teamKey: z.string().min(1).optional() }).safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await applyImproFirmas(groupId, req.auth!.userId, body.data.teamKey);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = improErrorHttp(msg);
     return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
   }
 });

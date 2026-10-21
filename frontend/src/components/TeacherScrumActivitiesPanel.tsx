@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAvionSession, fetchExtraSession } from "../lib/api";
+import { fetchAvionSession, fetchExtraSession, fetchImproSession } from "../lib/api";
 import type { ClassGroup } from "../lib/types";
 import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
+import TeacherImproPanel from "./TeacherImproPanel";
 import TeacherInterfacePanel from "./TeacherInterfacePanel";
 import TeacherTorrePanel from "./TeacherTorrePanel";
 
@@ -16,7 +17,7 @@ export default function TeacherScrumActivitiesPanel({
   selectedGroupId: string;
   onSelectGroup: (id: string) => void;
 }) {
-  const [current, setCurrent] = useState<"list" | "torre" | "avion" | "extra" | "interfaces">("list");
+  const [current, setCurrent] = useState<"list" | "torre" | "avion" | "extra" | "interfaces" | "impro">("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
     queryFn: () => fetchAvionSession(selectedGroupId),
@@ -29,6 +30,12 @@ export default function TeacherScrumActivitiesPanel({
   });
   const avionReleased = avionQuery.data?.released ?? false;
   const extraReleased = extraQuery.data?.released ?? false;
+  const improQuery = useQuery({
+    queryKey: ["impro-session", selectedGroupId],
+    queryFn: () => fetchImproSession(selectedGroupId),
+    enabled: !!selectedGroupId,
+  });
+  const improReleased = improQuery.data?.released ?? false;
 
   return (
     <div>
@@ -59,7 +66,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "interfaces" ? (
+      {current === "impro" ? (
+        <TeacherImproPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "interfaces" ? (
         <TeacherInterfacePanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -93,11 +107,35 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Plan de Acción Proyecto: interfaces en papel (paso 3). 301 y 302 por equipos de Roles /
-              Equipos. Vale 3000 Firmas según tus notas. Torre Tkinter y Sprint aéreo quedan como
-              registro.
+              Sprint improvisado: 50 minutos, equipos de proyecto, puesto físico con material del salón.
+              Plan de Acción y Diseño de Interfaces siguen en la lista. Torre Tkinter y Sprint aéreo
+              quedan como registro.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("impro")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-orange-300">Actividad Scrum</p>
+              <h3 className="mt-1 text-xl font-bold text-white">Sprint improvisado</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Equipos de Roles / Equipos. 50 minutos. Eligen líder y arman un puesto con materiales
+                improvisados. Alguien de otro equipo lo opera en 60 segundos. 1000 Firmas.
+              </p>
+            </div>
+            <span
+              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                improReleased
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+                  : "border-orange-400/40 bg-orange-500/15 text-orange-100"
+              }`}
+            >
+              {improReleased ? "Liberada en este grupo" : "Lista para liberar"}
+            </span>
+          </button>
 
           <button
             type="button"

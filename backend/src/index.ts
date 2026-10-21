@@ -59,6 +59,14 @@ import { ensureLecturaSchema } from "./ensureLecturaSchema.js";
 import { ensureTorreSchema } from "./ensureTorreSchema.js";
 import { ensureAvionSchema } from "./ensureAvionSchema.js";
 import { ensureExtraSchema } from "./ensureExtraSchema.js";
+import { ensureImproSchema } from "./ensureImproSchema.js";
+import {
+  chooseImproLeader,
+  getImproSession,
+  improErrorHttp,
+  startImproTimer,
+  studentImproAssignment,
+} from "./improChallenge.js";
 import {
   chooseExtraLeader,
   ensurePlanActivitiesForTeacher,
@@ -713,6 +721,13 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   } catch (err) {
     console.warn("[student/progress] extra lookup failed:", err);
   }
+  let impro = null;
+  try {
+    const improSession = await getImproSession(me.groupId);
+    impro = improSession ? studentImproAssignment(improSession, req.auth!.userId) : null;
+  } catch (err) {
+    console.warn("[student/progress] impro lookup failed:", err);
+  }
   const compilerReleased = myGroup ? await getCompilerReleasedForGroup(myGroup.id) : false;
 
   return res.json({
@@ -739,6 +754,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
     torre: null,
     avion: null,
     extra,
+    impro,
     motivation,
     summary,
     top10,
@@ -856,6 +872,36 @@ app.post("/student/extra/leader", requireAuth, requireStudent, async (req: Authe
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";
     const mapped = extraErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+app.post("/student/impro/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await chooseImproLeader(ctx.groupId, req.auth!.userId, body.data.leaderId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ impro: studentImproAssignment(session, req.auth!.userId) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = improErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+app.post("/student/impro/start", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) return res.status(400).json({ error: "student_without_group" });
+  try {
+    const session = await startImproTimer(ctx.groupId, req.auth!.userId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json({ impro: studentImproAssignment(session, req.auth!.userId) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = improErrorHttp(msg);
     return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
   }
 });
@@ -1074,6 +1120,7 @@ void (async () => {
     await ensureTorreSchema();
     await ensureAvionSchema();
     await ensureExtraSchema();
+    await ensureImproSchema();
     await dropPythonPracticeSchema();
     await ensureCompilerSchema();
   } catch (err) {
