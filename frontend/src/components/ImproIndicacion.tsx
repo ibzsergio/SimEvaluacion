@@ -25,10 +25,10 @@ export default function ImproIndicacion() {
         </ul>
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-white">Material improvisado</h3>
+        <h3 className="text-sm font-semibold text-white">Material</h3>
         <p className="mt-2 text-sm text-slate-300">
-          No hay lista de compra. Usan lo que ya traen encima o lo que encuentren en el salón durante
-          la cacería. Ejemplos:
+          Con esto se arma. Hojas de color para la forma, tijeras para el corte, pegamento y diurex
+          para que se pare.
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
           {IMPRO_MATERIALES.map((item) => (

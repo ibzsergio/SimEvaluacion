@@ -126,7 +126,7 @@ export default function TeacherImproPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar Sprint improvisado para el grupo ${selectedGroup?.code ?? ""}?\n\nSolo este grupo. Equipos de Roles / Equipos. El líder activa ${minutes} minutos. Vale ${firmasMax} Firmas.`,
+        `¿Liberar Pop-Up para el grupo ${selectedGroup?.code ?? ""}?\n\nSolo este grupo. Equipos de Roles / Equipos. Hojas de color, pegamento, diurex y tijeras. El líder activa ${minutes} minutos. Vale ${firmasMax} Firmas.`,
       );
       if (!ok) return;
     }
@@ -170,9 +170,9 @@ export default function TeacherImproPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-orange-300">{IMPRO_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{IMPRO_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code}. Equipos de Roles / Equipos. {minutes} minutos. El puesto se arma
-          con lo que encuentren en el salón y lo opera alguien de otro equipo. Parte de{" "}
-          {firmasMax.toLocaleString("es-MX")} Firmas.
+          Grupo {selectedGroup?.code}. Equipos de Roles / Equipos. {minutes} minutos. Un pop-up de su
+          proyecto con hojas de color, pegamento, diurex y tijeras. Alguien de otro equipo lo opera.
+          Parte de {firmasMax.toLocaleString("es-MX")} Firmas.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAvionSession, fetchExtraSession, fetchImproSession } from "../lib/api";
+import { IMPRO_TITULO } from "../lib/improScrum";
 import type { ClassGroup } from "../lib/types";
 import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
@@ -107,9 +108,9 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Sprint improvisado: 50 minutos, equipos de proyecto, puesto físico con material del salón.
-              Plan de Acción y Diseño de Interfaces siguen en la lista. Torre Tkinter y Sprint aéreo
-              quedan como registro.
+              Pop-Up: 50 minutos, equipos de proyecto, un escenario de papel con hojas de color, pegamento,
+              diurex y tijeras. Plan de Acción y Diseño de Interfaces siguen en la lista. Torre Tkinter
+              y Sprint aéreo quedan como registro.
             </p>
           </section>
 
@@ -120,10 +121,11 @@ export default function TeacherScrumActivitiesPanel({
           >
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-orange-300">Actividad Scrum</p>
-              <h3 className="mt-1 text-xl font-bold text-white">Sprint improvisado</h3>
+              <h3 className="mt-1 text-xl font-bold text-white">{IMPRO_TITULO}</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Equipos de Roles / Equipos. 50 minutos. Eligen líder y arman un puesto con materiales
-                improvisados. Alguien de otro equipo lo opera en 60 segundos. 1000 Firmas.
+                Equipos de Roles / Equipos. 50 minutos. Eligen líder y arman un pop-up de su proyecto
+                con hojas de color, pegamento, diurex y tijeras. Alguien de otro equipo lo opera en 60
+                segundos. 1000 Firmas.
               </p>
             </div>
             <span

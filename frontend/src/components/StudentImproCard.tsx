@@ -16,7 +16,7 @@ import {
 import type { StudentImpro } from "../lib/types";
 import ImproIndicacion from "./ImproIndicacion";
 
-const READ_KEY = "simeval-impro-read-v1";
+const READ_KEY = "simeval-impro-read-v2";
 
 export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
   const qc = useQueryClient();
@@ -258,7 +258,7 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
                     </p>
                   ) : done ? (
                     <p className="mt-2 text-sm font-semibold text-rose-100">
-                      Manos arriba. El puesto se queda como está.
+                      Manos arriba. El pop-up se queda como está.
                     </p>
                   ) : (
                     <p className="mt-2 text-sm text-slate-200">{sprint?.detalle}</p>

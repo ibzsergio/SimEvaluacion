@@ -12,118 +12,116 @@ export function improRoleLabel(role?: string | null) {
 }
 
 export const IMPRO_MINUTOS = 50;
-export const IMPRO_TITULO = "Sprint improvisado";
+export const IMPRO_TITULO = "Pop-Up";
 export const IMPRO_PROGRAMA = "Actividad Scrum";
 export const IMPRO_FIRMAS_MAX = 1000;
-export const IMPRO_ACTIVITY_NAME = "Sprint improvisado";
+export const IMPRO_ACTIVITY_NAME = "Pop-Up";
 
 export const IMPRO_PRODUCTO =
-  "Un puesto de mesa que se sostiene solo. Alguien de otro equipo lo opera en 60 segundos, sin que ustedes hablen, y entiende el caso de uso más importante de SU aplicación.";
+  "Un pop-up de su proyecto que se para solo. Al abrirlo, alguien de otro equipo entiende en 60 segundos el caso de uso más importante de SU aplicación. Algo se mueve: una pestaña, una puerta o una tira que se jala.";
 
 export const IMPRO_PRODUCTO_NO =
-  "No es un dibujo en una hoja. No es toda la app ni otra app. No vale un kit armado en casa. Tiene que ser un objeto que se toca.";
+  "No es un cartel pegado en la mesa. No es toda la app ni otra app. Si no se para y nada se mueve, no cuenta.";
 
 export const IMPRO_PRODUCTO_DEBE = [
-  "Nombre del proyecto, legible a unos 2 metros",
+  "Nombre del proyecto, grande, que se lea de lejos",
   "Una sola frase: «El usuario logra ___»",
-  "Una pieza que se mueva (pestaña, ficha, ventana o palanca)",
+  "Una pieza de papel que se mueva al jalar o al abrir",
   "Que se sostenga sin que nadie lo detenga con la mano",
-  "Al menos 4 materiales improvisados distintos",
+  "Solo hojas de color, pegamento, diurex y tijeras",
 ];
 
 export const IMPRO_MATERIALES = [
-  "Hojas, folders o páginas de cuaderno",
-  "Plumas, lápices o marcadores",
-  "Clips, ligas o cinta que alguien ya traiga",
-  "Botellas, tapas, cajas o envases",
-  "Libretas o reglas como estructura",
-  "Cartón o bolsas que ya estén en el salón",
+  "Hojas de color",
+  "Pegamento",
+  "Diurex",
+  "Tijeras",
 ];
 
 export const IMPRO_PROHIBIDO = [
-  "Salir del salón a comprar o a pedir material",
-  "Traer piezas ya recortadas o armadas de casa",
-  "Seguir construyendo cuando el reloj llega a 00:00",
-  "Hablar en el sprint de silencio o durante la prueba de 60 segundos",
+  "Botellas, palitos, cartón, revistas u otro material fuera de la lista",
+  "Un dibujo plano que no se pare",
+  "Seguir armando cuando el reloj llega a 00:00",
+  "Hablar en el tramo de silencio o durante la prueba de 60 segundos",
 ];
 
 export const IMPRO_ROLES = [
   {
     id: "product_owner",
     label: "Product Owner",
-    tarea: "Escribe la frase «El usuario logra ___». Si el puesto enseña otra cosa, la recorta. Un solo caso de uso.",
+    tarea: "Escribe la frase «El usuario logra ___». Si el pop-up enseña otra cosa, la recorta. Un solo caso de uso.",
   },
   {
     id: "scrum_master",
     label: "Scrum Master",
-    tarea: "Activa el reloj y anuncia los cortes (5, 12, 22, 42 y 50). Hace cumplir el silencio y que nadie se quede mirando. También construye.",
+    tarea: "Activa el reloj y anuncia los cortes (5, 12, 22, 42 y 50). Hace cumplir el silencio y que nadie se quede mirando. También corta y pega.",
   },
   {
     id: "developer",
     label: "Desarrollador",
-    tarea: "Arma la estructura que se sostiene y la pieza que se mueve. Reparte cortes y pegado: no lo arma solo.",
+    tarea: "Diseña el pliegue que lo para y la pieza que se mueve. Reparte cortes y pegado: no lo arma solo.",
   },
   {
     id: "ui_designer",
     label: "Diseño / UI",
-    tarea: "El nombre se lee de lejos. Se entiende con la forma, no con un párrafo. Cuida que se vea producto y no montón.",
+    tarea: "El nombre se lee de lejos. El caso de uso se entiende con colores y forma, no con un párrafo.",
   },
   {
     id: "qa_docs",
     label: "QA / Docs",
-    tarea: "Anota la lista de materiales, invita a alguien de otro equipo y escribe qué logró operar en 60 segundos y qué no entendió.",
+    tarea: "Revisa que solo usen el material pedido, invita a alguien de otro equipo y anota qué logró hacer en 60 segundos.",
   },
 ] as const;
 
 export const IMPRO_SPRINTS = [
   {
     id: "arranque",
-    nombre: "Sprint 0 — Arranque",
+    nombre: "Acto 1 — El gancho",
     desde: 0,
     hasta: 5,
     detalle:
-      "Elijan líder. El líder activa los 50 minutos. El Product Owner escribe en una tira: «El usuario logra ___». Un solo caso de uso de SU proyecto.",
+      "Elijan líder. El líder activa los 50 minutos. El Product Owner escribe: «El usuario logra ___». Acuerden qué pieza de papel se va a mover.",
   },
   {
-    id: "caceria",
-    nombre: "Sprint 1 — Cacería",
+    id: "corte",
+    nombre: "Acto 2 — El corte",
     desde: 5,
     hasta: 12,
     detalle:
-      "Reúnan materiales improvisados sin salir del salón. Al minuto 12 se cierra la pila: lo que no esté en la mesa no se usa. QA anota la lista. Mínimo 4 materiales distintos.",
+      "Recorten todas las piezas con las hojas de color. Al minuto 12 se cierran las tijeras: ya no salen piezas nuevas, solo se pega.",
   },
   {
     id: "silencio",
-    nombre: "Sprint 2 — Silencio",
+    nombre: "Acto 3 — Silencio",
     desde: 12,
     hasta: 22,
     detalle:
-      "Nadie habla. Solo notas y gestos. Cada rol construye su parte. Si alguien habla, el Scrum Master lo corta.",
+      "Nadie habla. Solo notas y gestos. Cada rol arma su parte. Si alguien habla, el Scrum Master lo corta.",
   },
   {
     id: "ensamble",
-    nombre: "Sprint 3 — Ensamble",
+    nombre: "Acto 4 — El armado",
     desde: 22,
     hasta: 42,
     detalle:
-      "Ya pueden hablar. Unan el puesto: tiene que sostenerse solo y tener una pieza que se mueva. Ensayen la operación de 60 segundos.",
+      "Ya pueden hablar. Peguen con pegamento y diurex. El pop-up tiene que pararse solo y la pieza tiene que moverse. Ensayen los 60 segundos.",
   },
   {
     id: "release",
-    nombre: "Sprint 4 — Release",
+    nombre: "Acto 5 — El estreno",
     desde: 42,
     hasta: 50,
     detalle:
-      "Inviten a una persona de otro equipo. Esa persona opera el puesto. Ustedes no explican. QA anota qué logró y qué no entendió. A los 50, manos arriba.",
+      "Inviten a una persona de otro equipo. Esa persona abre el pop-up y lo opera. Ustedes no explican. QA anota qué entendió. A los 50, manos arriba.",
   },
 ] as const;
 
 export const IMPRO_PASOS = [
-  "Son los equipos de Roles / Equipos, los mismos del proyecto. No se mezclan con otro equipo.",
-  "Lean esto antes de construir. El líder es quien activa los 50 minutos.",
-  "Elijan un solo caso de uso. Si intentan mostrar toda la app, el puesto no cumple.",
-  "Del minuto 12 al 22 trabajan en silencio. La comunicación es escrita.",
-  "El producto se entrega cuando alguien de otro equipo lo opera en 60 segundos sin explicación.",
+  "Son los equipos de Roles / Equipos, los mismos del proyecto.",
+  "Lean esto antes de cortar. El líder es quien activa los 50 minutos.",
+  "Elijan un solo caso de uso de SU aplicación. Si intentan mostrar toda la app, no cumple.",
+  "Del minuto 12 al 22 trabajan en silencio. Se comunican por escrito.",
+  "El estreno es cuando alguien de otro equipo lo opera en 60 segundos, sin explicación.",
   "Parte de 1000 Firmas. El docente anota en vivo; cada nota baja ese valor.",
 ];
 
@@ -138,7 +136,7 @@ export const IMPRO_NOTAS: ImproNotePreset[] = [
   { code: "ruido", label: "Mucho ruido", points: 100, scope: "team" },
   { code: "no_trabaja", label: "No trabaja el equipo", points: 200, scope: "team" },
   { code: "fuera_equipo", label: "Integrante fuera del equipo", points: 150, scope: "member" },
-  { code: "no_improvisado", label: "Material no improvisado", points: 200, scope: "team" },
+  { code: "plano", label: "Quedó en cartel plano", points: 200, scope: "team" },
   { code: "fuera_tiempo", label: "Siguen después del tiempo", points: 150, scope: "team" },
   { code: "no_opera", label: "El extraño no pudo operarlo", points: 150, scope: "team" },
 ];

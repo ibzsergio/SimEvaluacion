@@ -4,14 +4,15 @@ import { COLUMN_PALETTE } from "./seatingService.js";
 
 export const IMPRO_MINUTES = 50;
 export const IMPRO_FIRMAS_MAX = 1000;
-export const IMPRO_ACTIVITY_NAME = "Sprint improvisado";
-export const IMPRO_ANNOUNCEMENT_TITLE = "Nueva actividad: Sprint improvisado";
+export const IMPRO_ACTIVITY_NAME = "Pop-Up";
+export const IMPRO_LEGACY_ACTIVITY_NAME = "Sprint improvisado";
+export const IMPRO_ANNOUNCEMENT_TITLE = "Nueva actividad: Pop-Up";
 
 export const IMPRO_NOTE_PRESETS = [
   { code: "ruido", label: "Mucho ruido", points: 100, scope: "team" as const },
   { code: "no_trabaja", label: "No trabaja el equipo", points: 200, scope: "team" as const },
   { code: "fuera_equipo", label: "Integrante fuera del equipo", points: 150, scope: "member" as const },
-  { code: "no_improvisado", label: "Material no improvisado", points: 200, scope: "team" as const },
+  { code: "plano", label: "Quedó en cartel plano", points: 200, scope: "team" as const },
   { code: "fuera_tiempo", label: "Siguen después del tiempo", points: 150, scope: "team" as const },
   { code: "no_opera", label: "El extraño no pudo operarlo", points: 150, scope: "team" as const },
 ];
@@ -324,6 +325,17 @@ async function applyTeamFirmas(groupId: string, teacherId: string, team: ImproTe
   }
 }
 
+let legacyRenamed = false;
+
+async function renameLegacyActivity() {
+  if (legacyRenamed) return;
+  await prisma.activity.updateMany({
+    where: { name: IMPRO_LEGACY_ACTIVITY_NAME },
+    data: { name: IMPRO_ACTIVITY_NAME },
+  });
+  legacyRenamed = true;
+}
+
 export async function getImproSession(groupId: string): Promise<ImproSession | null> {
   const rows = await prisma.$queryRaw<
     Array<{
@@ -340,6 +352,11 @@ export async function getImproSession(groupId: string): Promise<ImproSession | n
   `;
   const group = rows[0];
   if (!group) return null;
+  try {
+    await renameLegacyActivity();
+  } catch (err) {
+    console.warn("[impro] no se pudo renombrar la actividad anterior:", err);
+  }
   const released = Boolean(group.improReleased);
   const stored = parsePayload(group.improPayload);
   let teams: ImproTeam[] = [];
@@ -392,7 +409,7 @@ export async function setImproReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: IMPRO_ANNOUNCEMENT_TITLE,
-          body: `Sprint improvisado para el grupo ${group.code}. Equipos de Roles / Equipos. En 50 minutos arman un puesto físico, con materiales improvisados del salón, que alguien de otro equipo pueda operar en 60 segundos. El líder activa el reloj. Hay un tramo en silencio. Vale 1000 Firmas; las notas del docente bajan ese valor.`,
+          body: `Pop-Up para el grupo ${group.code}. Equipos de Roles / Equipos. En 50 minutos arman, con hojas de color, pegamento, diurex y tijeras, un pop-up de SU proyecto que se para solo y que alguien de otro equipo pueda operar en 60 segundos. El líder activa el reloj. Hay un tramo en silencio. Vale 1000 Firmas; las notas del docente bajan ese valor.`,
         },
       });
     }
@@ -622,5 +639,5 @@ function improErrorMessage(msg: string) {
   if (msg === "student_required") return "Elige a qué integrante aplica esta nota.";
   if (msg === "student_not_in_team") return "Ese alumno no está en este equipo.";
   if (msg === "team_not_found") return "No se encontró el equipo.";
-  return "No se pudo actualizar Sprint improvisado.";
+  return "No se pudo actualizar Pop-Up.";
 }
