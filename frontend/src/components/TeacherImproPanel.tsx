@@ -24,6 +24,7 @@ import {
 } from "../lib/improScrum";
 import type { ClassGroup } from "../lib/types";
 import ImproIndicacion from "./ImproIndicacion";
+import PopUpIllustration from "./PopUpIllustration";
 
 export default function TeacherImproPanel({
   groups,
@@ -174,6 +175,9 @@ export default function TeacherImproPanel({
           proyecto con hojas de color, pegamento, diurex y tijeras. Alguien de otro equipo lo opera.
           Parte de {firmasMax.toLocaleString("es-MX")} Firmas.
         </p>
+        <div className="mt-5">
+          <PopUpIllustration />
+        </div>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -243,12 +247,12 @@ export default function TeacherImproPanel({
             <h2 className="mt-1 text-xl font-bold text-white">Equipos, reloj y notas</h2>
           </div>
           <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
-            {teams.length} equipos
+            {sessionQuery.isError ? "Sin datos" : `${teams.length} equipos`}
           </p>
         </div>
         {sessionQuery.isLoading ? (
           <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
-        ) : teams.length === 0 ? (
+        ) : sessionQuery.isError ? null : teams.length === 0 ? (
           <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
             No hay equipos de proyecto. Ármalos en Roles / Equipos y vuelve aquí.
           </p>

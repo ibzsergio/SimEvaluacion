@@ -15,6 +15,7 @@ import {
 } from "../lib/improScrum";
 import type { StudentImpro } from "../lib/types";
 import ImproIndicacion from "./ImproIndicacion";
+import PopUpIllustration from "./PopUpIllustration";
 
 const READ_KEY = "simeval-impro-read-v2";
 
@@ -158,6 +159,7 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
             </div>
           ) : null}
 
+          <PopUpIllustration />
           <ImproIndicacion />
 
           {!impro.role ? null : (
