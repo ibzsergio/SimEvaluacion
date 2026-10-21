@@ -108,8 +108,12 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
               ? `Silencio · ${formatClock(remain)}`
               : `${sprint?.nombre ?? "Reloj"} · ${formatClock(remain)}`
         : impro.leaderName
-          ? `Líder: ${impro.leaderName}. Lean y activen cuando estén listos.`
-          : "Lean el reto, tomen su rol y elijan un líder.";
+          ? impro.sharedClock
+            ? `Líder: ${impro.leaderName}. El docente inicia los 50 minutos.`
+            : `Líder: ${impro.leaderName}. Lean y activen cuando estén listos.`
+          : impro.sharedClock
+            ? "Lean el reto. El docente inicia los 50 minutos del grupo."
+            : "Lean el reto, tomen su rol y elijan un líder.";
 
   return (
     <section className="glass mb-6 overflow-hidden border-2 p-0" style={{ borderColor: `${hex}66` }}>
@@ -200,6 +204,55 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
             >
               Ya leí las instrucciones
             </button>
+          ) : impro.sharedClock ? (
+            <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+              <h3 className="text-sm font-semibold text-white">Equipo de proyecto</h3>
+              <p className="mt-1 text-xs text-slate-400">
+                El mismo de Roles / Equipos. El docente inicia los 50 minutos para todo el grupo. En ese
+                momento pueden salir por cartón, palos de madera y unicel.
+              </p>
+              <ul className="mt-3 space-y-1 text-sm text-slate-200">
+                {impro.members.map((m) => (
+                  <li key={m.studentId}>
+                    {m.displayName}
+                    {m.role ? ` · ${improRoleLabel(m.role)}` : ""}
+                    {m.studentId === impro.leaderId ? " · líder" : ""}
+                  </li>
+                ))}
+              </ul>
+              {!impro.startedAt ? (
+                <p className="mt-3 text-sm text-slate-300">
+                  {impro.leaderName
+                    ? `Líder del proyecto: ${impro.leaderName}. Esperen a que el docente pulse Iniciar 50 minutos.`
+                    : "Esperen a que el docente pulse Iniciar 50 minutos."}
+                </p>
+              ) : null}
+              {impro.startedAt ? (
+                <div
+                  className={`mt-4 rounded-xl border p-4 text-center ${
+                    sprint?.id === "silencio" && !done
+                      ? "border-orange-400/40 bg-orange-500/15"
+                      : "border-amber-400/30 bg-amber-500/10"
+                  }`}
+                >
+                  <p className="text-xs font-bold uppercase tracking-widest text-amber-200">
+                    {done ? "Tiempo agotado" : paused ? "Pausado" : (sprint?.nombre ?? "Tiempo restante")}
+                  </p>
+                  <p className="mt-1 font-mono text-4xl font-bold text-white">{formatClock(remain)}</p>
+                  {paused ? (
+                    <p className="mt-2 text-sm font-semibold text-amber-100">
+                      El docente pausó el reto. El tiempo ya corrido se conserva.
+                    </p>
+                  ) : done ? (
+                    <p className="mt-2 text-sm font-semibold text-rose-100">
+                      Manos arriba. El pop-up se queda como está.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-200">{sprint?.detalle}</p>
+                  )}
+                </div>
+              ) : null}
+            </div>
           ) : (
             <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
               <h3 className="text-sm font-semibold text-white">Equipo de proyecto</h3>

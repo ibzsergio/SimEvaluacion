@@ -13,10 +13,12 @@ import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Top10Ranking from "../components/Top10Ranking";
 import {
   downloadStudentDiploma,
+  fetchStudentComms,
   fetchStudentInterfaceDesign,
   fetchStudentProgress,
   getApiErrorMessage,
 } from "../lib/api";
+import { studentImproFromAnnouncements } from "../lib/popupLive";
 import InterfaceDesignBrief from "../components/InterfaceDesignBrief";
 import { formatCalendarDate, formatDateTime, partialLabel } from "../lib/dates";
 import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
@@ -39,6 +41,13 @@ export default function StudentPage() {
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     refetchInterval: 20_000,
+  });
+  const commsLive = useQuery({
+    queryKey: ["student-comms"],
+    queryFn: fetchStudentComms,
+    staleTime: 4_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5_000,
   });
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
@@ -100,6 +109,8 @@ export default function StudentPage() {
   );
 
   const greetingName = data.motivation.firstName;
+  const impro =
+    data.impro ?? studentImproFromAnnouncements(data.extra, commsLive.data?.announcements ?? []);
 
   return (
     <Layout
@@ -147,7 +158,7 @@ export default function StudentPage() {
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
-      {data.impro ? <StudentImproCard impro={data.impro} /> : null}
+      {impro ? <StudentImproCard impro={impro} /> : null}
 
       {data.extra ? <StudentExtraCard extra={data.extra} /> : null}
 

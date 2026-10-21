@@ -252,9 +252,11 @@ export default function TeacherImproPanel({
           </button>
         </div>
         <p className="mt-3 text-xs text-slate-400">
-          {released
-            ? "Liberada en este grupo. Los alumnos eligen líder y el líder arranca el reloj."
-            : "Todavía no la ven los alumnos. Se libera solo en el grupo que estás viendo."}
+          {session?.sharedClock
+            ? "Equipos de Roles / Equipos. Iniciar arranca los 50 minutos de este grupo para todos. En ese momento ya pueden salir por material."
+            : released
+              ? "Liberada en este grupo. Los alumnos eligen líder y el líder arranca el reloj."
+              : "Todavía no la ven los alumnos. Se libera solo en el grupo que estás viendo."}
           {paused ? " Relojes en pausa." : ""}
         </p>
         {noteError ? (

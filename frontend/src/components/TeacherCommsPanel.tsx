@@ -11,6 +11,7 @@ import {
   downloadTeacherCalendarFile,
   uploadSchoolCalendar,
 } from "../lib/api";
+import { POPUP_ANNOUNCEMENT_TITLE, popupPublicText } from "../lib/popupLive";
 
 export default function TeacherCommsPanel() {
   const qc = useQueryClient();
@@ -281,7 +282,9 @@ export default function TeacherCommsPanel() {
                     Eliminar
                   </button>
                 </div>
-                <p className="mt-1 text-slate-300">{a.body}</p>
+                <p className="mt-1 whitespace-pre-wrap text-slate-300">
+                  {a.title === POPUP_ANNOUNCEMENT_TITLE ? popupPublicText(a.body) : a.body}
+                </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {a.group?.code ? `Grupo ${a.group.code}` : "Todos"} · {formatDate(a.createdAt)}
                 </p>

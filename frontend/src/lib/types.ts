@@ -246,10 +246,13 @@ export type StudentExtra = {
 
 export type StudentImpro = StudentExtra & {
   role?: string | null;
+  /** Reloj de todo el grupo, compartido aunque el servidor nuevo aún no esté publicado. */
+  sharedClock?: boolean;
 };
 
 export type ImproSession = ExtraSession & {
   loadError?: string | null;
+  sharedClock?: boolean;
 };
 
 export type ExtraSession = Omit<TorreSession, "teams"> & {

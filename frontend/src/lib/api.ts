@@ -1,4 +1,17 @@
 import axios from "axios";
+import { IMPRO_FIRMAS_MAX } from "./improScrum";
+import {
+  POPUP_ANNOUNCEMENT_TITLE,
+  POPUP_GRADE_NAME,
+  improSessionFromProjectTeams,
+  interfaceSessionAsExtra,
+  noteFromPreset,
+  popupGradeRows,
+  popupStateFromAnnouncements,
+  serializePopupState,
+  withTeamNames,
+  type PopupLiveState,
+} from "./popupLive";
 import type {
   Activity,
   ClassGroup,
@@ -229,6 +242,9 @@ export function getApiErrorMessage(error: unknown): string {
       const path = (error.response.data as { path?: string })?.path;
       if (path?.includes("torre-pause")) {
         return "El servidor todavía está actualizando la pausa. Recarga en 1 o 2 minutos. Los relojes ya están congelados en la base de datos.";
+      }
+      if (path?.includes("impro")) {
+        return "No se pudo guardar Pop-Up. Recarga la página e inténtalo de nuevo.";
       }
       return (
         "Esa función aún no está en el servidor (Railway está desplegando). Espera 1 o 2 minutos y recarga. " +
@@ -529,34 +545,134 @@ export async function removeExtraNote(groupId: string, payload: { teamKey: strin
   return data;
 }
 
+function missingImproRoute(error: unknown) {
+  if (!axios.isAxiosError(error) || error.response?.status !== 404) return false;
+  const code = (error.response.data as { error?: string } | undefined)?.error;
+  return code === "not_found";
+}
+
+async function projectTeamsForPopup(groupId: string) {
+  try {
+    const extra = await fetchExtraSession(groupId);
+    if (extra.teams.length > 0) return extra;
+  } catch (error) {
+    if (!missingImproRoute(error) && axios.isAxiosError(error) && error.response?.status !== 404) {
+      throw error;
+    }
+  }
+  const design = await fetchInterfaceSession(groupId);
+  return interfaceSessionAsExtra(design);
+}
+
+async function savePopupState(groupId: string, state: PopupLiveState) {
+  const comms = await fetchTeacherComms();
+  const previous = comms.announcements.filter(
+    (item) => item.title === POPUP_ANNOUNCEMENT_TITLE && item.groupId === groupId,
+  );
+  await Promise.all(previous.map((item) => deleteAnnouncement(item.id)));
+  await createAnnouncement({
+    title: POPUP_ANNOUNCEMENT_TITLE,
+    body: serializePopupState(state),
+    groupId,
+  });
+}
+
+async function popupSession(groupId: string, mutate?: (state: PopupLiveState) => PopupLiveState) {
+  const [base, comms] = await Promise.all([projectTeamsForPopup(groupId), fetchTeacherComms()]);
+  const current = popupStateFromAnnouncements(comms.announcements, groupId);
+  const next = withTeamNames(mutate ? mutate(current) : current, base.teams);
+  if (mutate) await savePopupState(groupId, next);
+  return improSessionFromProjectTeams(base, next, true);
+}
+
+async function writePopupGrades(groupId: string, session: import("./types").ImproSession, teamKey?: string) {
+  const rows = popupGradeRows(session, teamKey);
+  if (rows.length === 0) return;
+  const activities = await fetchActivities(groupId);
+  let activity = activities.find((item) => item.name === POPUP_GRADE_NAME);
+  if (!activity) {
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    activity = await createActivity({
+      groupId,
+      date,
+      name: POPUP_GRADE_NAME,
+      maxPoints: IMPRO_FIRMAS_MAX,
+    });
+  }
+  await saveGradesBatch(
+    groupId,
+    rows.map((row) => ({ activityId: activity.id, studentId: row.studentId, points: row.points })),
+  );
+}
+
 export async function fetchImproSession(groupId: string) {
-  const { data } = await api.get<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-session`);
-  return data;
+  try {
+    const { data } = await api.get<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-session`);
+    return data;
+  } catch (error) {
+    if (!missingImproRoute(error)) throw error;
+    return popupSession(groupId);
+  }
 }
 
 export async function updateGroupImproSettings(groupId: string, payload: { released: boolean }) {
-  const { data } = await api.put<import("./types").ImproSession>(
-    `/teacher/groups/${groupId}/impro-settings`,
-    payload,
-  );
-  return data;
+  try {
+    const { data } = await api.put<import("./types").ImproSession>(
+      `/teacher/groups/${groupId}/impro-settings`,
+      payload,
+    );
+    return data;
+  } catch (error) {
+    if (!missingImproRoute(error)) throw error;
+    return popupSession(groupId, (state) => ({ ...state, released: payload.released }));
+  }
 }
 
 export async function startImproTimers(groupId: string) {
-  const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-start`);
-  return data;
+  try {
+    const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-start`);
+    return data;
+  } catch (error) {
+    if (!missingImproRoute(error)) throw error;
+    return popupSession(groupId, (state) => ({
+      ...state,
+      released: true,
+      pausedAt: null,
+      startedAt: state.startedAt ?? new Date().toISOString(),
+    }));
+  }
 }
 
 export async function resetImproSession(groupId: string) {
-  const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-reset`);
-  return data;
+  try {
+    const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-reset`);
+    return data;
+  } catch (error) {
+    if (!missingImproRoute(error)) throw error;
+    return popupSession(groupId, (state) => ({ ...state, startedAt: null, pausedAt: null }));
+  }
 }
 
 export async function setImproPaused(groupId: string, paused: boolean) {
-  const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-pause`, {
-    paused,
-  });
-  return data;
+  try {
+    const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-pause`, {
+      paused,
+    });
+    return data;
+  } catch (error) {
+    if (!missingImproRoute(error)) throw error;
+    return popupSession(groupId, (state) => {
+      if (paused) return { ...state, pausedAt: state.pausedAt ?? new Date().toISOString() };
+      if (!state.pausedAt || !state.startedAt) return { ...state, pausedAt: null };
+      const pauseMs = Math.max(0, Date.now() - new Date(state.pausedAt).getTime());
+      return {
+        ...state,
+        pausedAt: null,
+        startedAt: new Date(new Date(state.startedAt).getTime() + pauseMs).toISOString(),
+      };
+    });
+  }
 }
 
 export async function chooseStudentImproLeader(leaderId: string) {
@@ -575,24 +691,68 @@ export async function addImproNote(
   groupId: string,
   payload: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
 ) {
-  const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-note`, payload);
-  return data;
+  try {
+    const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-note`, payload);
+    return data;
+  } catch (error) {
+    if (!missingImproRoute(error)) throw error;
+    const base = await projectTeamsForPopup(groupId);
+    const team = base.teams.find((item) => item.key === payload.teamKey);
+    if (!team) throw new Error("No encontré ese equipo de proyecto.");
+    const note = noteFromPreset(payload.code, team, payload.studentId);
+    if (payload.label) note.label = payload.label;
+    if (payload.points != null) note.points = payload.points;
+    return popupSession(groupId, (state) => ({
+      ...state,
+      notes: {
+        ...state.notes,
+        [payload.teamKey]: [...(state.notes[payload.teamKey] ?? []), note],
+      },
+    }));
+  }
 }
 
 export async function removeImproNote(groupId: string, payload: { teamKey: string; noteId: string }) {
-  const { data } = await api.post<import("./types").ImproSession>(
-    `/teacher/groups/${groupId}/impro-note-remove`,
-    payload,
-  );
-  return data;
+  try {
+    const { data } = await api.post<import("./types").ImproSession>(
+      `/teacher/groups/${groupId}/impro-note-remove`,
+      payload,
+    );
+    return data;
+  } catch (error) {
+    if (!missingImproRoute(error)) throw error;
+    return popupSession(groupId, (state) => ({
+      ...state,
+      notes: {
+        ...state.notes,
+        [payload.teamKey]: (state.notes[payload.teamKey] ?? []).filter((note) => note.id !== payload.noteId),
+      },
+    }));
+  }
 }
 
 export async function applyImproFirmas(groupId: string, teamKey?: string) {
-  const { data } = await api.post<import("./types").ImproSession>(
-    `/teacher/groups/${groupId}/impro-award`,
-    teamKey ? { teamKey } : {},
-  );
-  return data;
+  try {
+    const { data } = await api.post<import("./types").ImproSession>(
+      `/teacher/groups/${groupId}/impro-award`,
+      teamKey ? { teamKey } : {},
+    );
+    return data;
+  } catch (error) {
+    if (!missingImproRoute(error)) throw error;
+    const preview = await popupSession(groupId);
+    const keys = teamKey ? [teamKey] : preview.teams.map((team) => team.key);
+    if (teamKey && !preview.teams.some((team) => team.key === teamKey)) {
+      throw new Error("No encontré ese equipo de proyecto.");
+    }
+    const saved = await popupSession(groupId, (state) => ({
+      ...state,
+      released: true,
+      awarded: [...new Set([...state.awarded, ...keys])],
+    }));
+    await writePopupGrades(groupId, saved, teamKey);
+    return saved;
+  }
 }
 
 export async function applyExtraFirmas(groupId: string, teamKey?: string) {

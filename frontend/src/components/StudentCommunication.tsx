@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { fetchStudentComms, getApiErrorMessage, downloadStudentCalendarFile } from "../lib/api";
+import { POPUP_ANNOUNCEMENT_TITLE, popupPublicText } from "../lib/popupLive";
 
 export default function StudentCommunication() {
   const [downloading, setDownloading] = useState(false);
@@ -76,7 +77,9 @@ export default function StudentCommunication() {
                 className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4"
               >
                 <p className="font-semibold text-white">{a.title}</p>
-                <p className="mt-2 text-sm text-slate-300 whitespace-pre-wrap">{a.body}</p>
+                <p className="mt-2 text-sm text-slate-300 whitespace-pre-wrap">
+                  {a.title === POPUP_ANNOUNCEMENT_TITLE ? popupPublicText(a.body) : a.body}
+                </p>
                 <p className="mt-2 text-xs text-slate-500">{formatDate(a.createdAt)}</p>
               </li>
             ))}
