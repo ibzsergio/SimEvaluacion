@@ -58,8 +58,8 @@ export default function PopUpIllustration() {
         />
       </div>
       <p className="text-xs text-slate-400">
-        Hojas de color, pegamento, diurex y tijeras. Tiene que pararse solo y algo se mueve. Un cartel
-        pegado en la mesa no cuenta.
+        Tiene que pararse, algo se mueve y medir mínimo 30 cm de ancho por 30 cm de alto. Al iniciar el
+        reloj pueden salir por cartón, palos de madera y unicel. Un cartel plano no cuenta.
       </p>
     </div>
   );

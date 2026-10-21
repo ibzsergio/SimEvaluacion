@@ -17,29 +17,29 @@ export const IMPRO_PROGRAMA = "Actividad Scrum";
 export const IMPRO_FIRMAS_MAX = 1000;
 export const IMPRO_ACTIVITY_NAME = "Pop-Up";
 
+export const IMPRO_MEDIDA = "30 cm de ancho por 30 cm de alto";
+
 export const IMPRO_PRODUCTO =
-  "Un pop-up de su proyecto que se para solo. Al abrirlo, alguien de otro equipo entiende en 60 segundos el caso de uso más importante de SU aplicación. Algo se mueve: una pestaña, una puerta o una tira que se jala.";
+  "Un pop-up de su proyecto, de mínimo 30 cm de ancho por 30 cm de alto, que se para solo. Al abrirlo, alguien de otro equipo entiende en 60 segundos el caso de uso más importante de SU aplicación. Algo se mueve: una pestaña, una puerta o una tira que se jala.";
 
 export const IMPRO_PRODUCTO_NO =
-  "No es un cartel pegado en la mesa. No es toda la app ni otra app. Si no se para y nada se mueve, no cuenta.";
+  "No es un cartel pegado en la mesa. No es toda la app. Si mide menos de 30 × 30 cm, si no se para o si nada se mueve, no cuenta.";
 
 export const IMPRO_PRODUCTO_DEBE = [
+  "Mínimo 30 cm de ancho y 30 cm de alto",
   "Nombre del proyecto, grande, que se lea de lejos",
   "Una sola frase: «El usuario logra ___»",
-  "Una pieza de papel que se mueva al jalar o al abrir",
+  "Una pieza que se mueva al jalar o al abrir",
   "Que se sostenga sin que nadie lo detenga con la mano",
-  "Solo hojas de color, pegamento, diurex y tijeras",
 ];
 
 export const IMPRO_MATERIALES = [
-  "Hojas de color",
-  "Pegamento",
-  "Diurex",
-  "Tijeras",
+  "Lo que ya tienen: hojas de color, pegamento, diurex y tijeras",
+  "En cuanto inicie el reloj pueden salir a buscar más: cartón, palos de madera, unicel y lo que haga falta para llegar a 30 × 30 cm",
 ];
 
 export const IMPRO_PROHIBIDO = [
-  "Botellas, palitos, cartón, revistas u otro material fuera de la lista",
+  "Un pop-up más chico de 30 cm de ancho o de 30 cm de alto",
   "Un dibujo plano que no se pare",
   "Seguir armando cuando el reloj llega a 00:00",
   "Hablar en el tramo de silencio o durante la prueba de 60 segundos",
@@ -54,74 +54,67 @@ export const IMPRO_ROLES = [
   {
     id: "scrum_master",
     label: "Scrum Master",
-    tarea: "Activa el reloj y anuncia los cortes (5, 12, 22, 42 y 50). Hace cumplir el silencio y que nadie se quede mirando. También corta y pega.",
+    tarea: "Activa el reloj. En ese momento el equipo ya puede salir por material. Anuncia los cortes (12, 22, 42 y 50), hace cumplir el silencio y también construye.",
   },
   {
     id: "developer",
     label: "Desarrollador",
-    tarea: "Diseña el pliegue que lo para y la pieza que se mueve. Reparte cortes y pegado: no lo arma solo.",
+    tarea: "Arma la estructura de al menos 30 × 30 cm con el cartón, los palos o el unicel que traigan, y la pieza que se mueve. No lo arma solo.",
   },
   {
     id: "ui_designer",
     label: "Diseño / UI",
-    tarea: "El nombre se lee de lejos. El caso de uso se entiende con colores y forma, no con un párrafo.",
+    tarea: "El nombre se lee de lejos. El caso de uso se entiende con la forma, no con un párrafo.",
   },
   {
     id: "qa_docs",
     label: "QA / Docs",
-    tarea: "Revisa que solo usen el material pedido, invita a alguien de otro equipo y anota qué logró hacer en 60 segundos.",
+    tarea: "Mide ancho y alto. Si no llega a 30 × 30 cm, no cumple. Invita a alguien de otro equipo y anota qué logró hacer en 60 segundos.",
   },
 ] as const;
 
 export const IMPRO_SPRINTS = [
   {
-    id: "arranque",
-    nombre: "Acto 1 — El gancho",
+    id: "busqueda",
+    nombre: "Acto 1 — A buscar",
     desde: 0,
-    hasta: 5,
-    detalle:
-      "Elijan líder. El líder activa los 50 minutos. El Product Owner escribe: «El usuario logra ___». Acuerden qué pieza de papel se va a mover.",
-  },
-  {
-    id: "corte",
-    nombre: "Acto 2 — El corte",
-    desde: 5,
     hasta: 12,
     detalle:
-      "Recorten todas las piezas con las hojas de color. Al minuto 12 se cierran las tijeras: ya no salen piezas nuevas, solo se pega.",
+      "El líder activa los 50 minutos. En ese instante ya pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up medirá mínimo 30 cm de ancho por 30 cm de alto. El Product Owner escribe: «El usuario logra ___».",
   },
   {
     id: "silencio",
-    nombre: "Acto 3 — Silencio",
+    nombre: "Acto 2 — Silencio",
     desde: 12,
     hasta: 22,
     detalle:
-      "Nadie habla. Solo notas y gestos. Cada rol arma su parte. Si alguien habla, el Scrum Master lo corta.",
+      "De vuelta en el salón, nadie habla. Armen la estructura de 30 × 30. Si alguien habla, el Scrum Master lo corta.",
   },
   {
     id: "ensamble",
-    nombre: "Acto 4 — El armado",
+    nombre: "Acto 3 — El armado",
     desde: 22,
     hasta: 42,
     detalle:
-      "Ya pueden hablar. Peguen con pegamento y diurex. El pop-up tiene que pararse solo y la pieza tiene que moverse. Ensayen los 60 segundos.",
+      "Ya pueden hablar. Peguen hojas, cartón, palos y unicel. Tiene que pararse, medir al menos 30 × 30 cm y tener una pieza que se mueva. Ensayen los 60 segundos.",
   },
   {
     id: "release",
-    nombre: "Acto 5 — El estreno",
+    nombre: "Acto 4 — El estreno",
     desde: 42,
     hasta: 50,
     detalle:
-      "Inviten a una persona de otro equipo. Esa persona abre el pop-up y lo opera. Ustedes no explican. QA anota qué entendió. A los 50, manos arriba.",
+      "QA mide ancho y alto. Inviten a una persona de otro equipo: abre el pop-up y lo opera. Ustedes no explican. A los 50, manos arriba.",
   },
 ] as const;
 
 export const IMPRO_PASOS = [
-  "Son los equipos de Roles / Equipos, los mismos del proyecto.",
-  "Lean esto antes de cortar. El líder es quien activa los 50 minutos.",
-  "Elijan un solo caso de uso de SU aplicación. Si intentan mostrar toda la app, no cumple.",
+  "Son los equipos de Roles / Equipos, los mismos del proyecto. No se arman equipos nuevos.",
+  "El líder del proyecto activa los 50 minutos. El docente también puede arrancar el reloj de todos.",
+  "En cuanto inicie el tiempo, pueden salir a buscar cartón, palos de madera, unicel y lo que necesiten.",
+  "El pop-up mide como mínimo 30 cm de ancho por 30 cm de alto.",
   "Del minuto 12 al 22 trabajan en silencio. Se comunican por escrito.",
-  "El estreno es cuando alguien de otro equipo lo opera en 60 segundos, sin explicación.",
+  "Alguien de otro equipo lo opera en 60 segundos, sin explicación.",
   "Parte de 1000 Firmas. El docente anota en vivo; cada nota baja ese valor.",
 ];
 
@@ -137,6 +130,7 @@ export const IMPRO_NOTAS: ImproNotePreset[] = [
   { code: "no_trabaja", label: "No trabaja el equipo", points: 200, scope: "team" },
   { code: "fuera_equipo", label: "Integrante fuera del equipo", points: 150, scope: "member" },
   { code: "plano", label: "Quedó en cartel plano", points: 200, scope: "team" },
+  { code: "medida", label: "No llega a 30 × 30 cm", points: 200, scope: "team" },
   { code: "fuera_tiempo", label: "Siguen después del tiempo", points: 150, scope: "team" },
   { code: "no_opera", label: "El extraño no pudo operarlo", points: 150, scope: "team" },
 ];

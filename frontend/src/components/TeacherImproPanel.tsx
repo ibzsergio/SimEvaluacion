@@ -8,6 +8,7 @@ import {
   removeImproNote,
   resetImproSession,
   setImproPaused,
+  startImproTimers,
   updateGroupImproSettings,
 } from "../lib/api";
 import {
@@ -73,6 +74,15 @@ export default function TeacherImproPanel({
     },
   });
 
+  const startMutation = useMutation({
+    mutationFn: () => startImproTimers(selectedGroupId),
+    onSuccess: async (data) => {
+      setNoteError("");
+      qc.setQueryData(["impro-session", selectedGroupId], data);
+    },
+    onError: (err) => setNoteError(getApiErrorMessage(err)),
+  });
+
   const pauseMutation = useMutation({
     mutationFn: (next: boolean) => setImproPaused(selectedGroupId, next),
     onSuccess: async (data) => {
@@ -127,11 +137,19 @@ export default function TeacherImproPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar Pop-Up para el grupo ${selectedGroup?.code ?? ""}?\n\nSolo este grupo. Equipos de Roles / Equipos. Hojas de color, pegamento, diurex y tijeras. El líder activa ${minutes} minutos. Vale ${firmasMax} Firmas.`,
+        `¿Liberar Pop-Up para el grupo ${selectedGroup?.code ?? ""}?\n\nEquipos de Roles / Equipos. Al iniciar el reloj pueden salir por cartón, palos de madera y unicel. Mínimo 30 × 30 cm. El líder activa ${minutes} minutos. Vale ${firmasMax} Firmas.`,
       );
       if (!ok) return;
     }
     releaseMutation.mutate(!released);
+  }
+
+  function handleStartAll() {
+    const ok = window.confirm(
+      `¿Iniciar los ${minutes} minutos de todos los equipos de proyecto de este grupo?\n\nEn ese momento ya pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up mide mínimo 30 cm de ancho por 30 cm de alto.`,
+    );
+    if (!ok) return;
+    startMutation.mutate();
   }
 
   function handleReset() {
@@ -171,9 +189,10 @@ export default function TeacherImproPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-orange-300">{IMPRO_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{IMPRO_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code}. Equipos de Roles / Equipos. {minutes} minutos. Un pop-up de su
-          proyecto con hojas de color, pegamento, diurex y tijeras. Alguien de otro equipo lo opera.
-          Parte de {firmasMax.toLocaleString("es-MX")} Firmas.
+          Grupo {selectedGroup?.code}. Los equipos son los de Roles / Equipos. {minutes} minutos. Al
+          iniciar el reloj pueden salir por cartón, palos de madera, unicel y lo que haga falta. El
+          pop-up mide mínimo 30 cm de ancho por 30 cm de alto. Parte de {firmasMax.toLocaleString("es-MX")}{" "}
+          Firmas.
         </p>
         <div className="mt-5">
           <PopUpIllustration />
@@ -194,6 +213,14 @@ export default function TeacherImproPanel({
               : released
                 ? "Ocultar a los alumnos"
                 : "Liberar actividad"}
+          </button>
+          <button
+            type="button"
+            onClick={handleStartAll}
+            disabled={startMutation.isPending || !selectedGroupId || teams.length === 0}
+            className="rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-500 disabled:opacity-60"
+          >
+            {startMutation.isPending ? "Iniciando..." : `Iniciar ${minutes} minutos`}
           </button>
           <button
             type="button"
@@ -254,7 +281,8 @@ export default function TeacherImproPanel({
           <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
         ) : sessionQuery.isError ? null : teams.length === 0 ? (
           <p className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-            No hay equipos de proyecto. Ármalos en Roles / Equipos y vuelve aquí.
+            {session?.loadError ??
+              "No hay equipos de proyecto en este grupo. Revisa Roles / Equipos."}
           </p>
         ) : (
           <ul className="mt-4 grid gap-3 md:grid-cols-2">

@@ -17,7 +17,7 @@ import type { StudentImpro } from "../lib/types";
 import ImproIndicacion from "./ImproIndicacion";
 import PopUpIllustration from "./PopUpIllustration";
 
-const READ_KEY = "simeval-impro-read-v2";
+const READ_KEY = "simeval-impro-read-v3";
 
 export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
   const qc = useQueryClient();
@@ -36,6 +36,10 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
   useEffect(() => {
     setNomineeId(impro.leaderId ?? onlyMember);
   }, [impro.leaderId, onlyMember]);
+
+  useEffect(() => {
+    if (impro.startedAt) setOpen(true);
+  }, [impro.startedAt]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -83,7 +87,7 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
 
   function startTimer() {
     const ok = window.confirm(
-      `¿Activar el reloj de ${impro.minutes || IMPRO_MINUTOS} minutos?\n\nSolo el líder puede hacerlo. Cuando arranque, ya no podrán cambiar de líder.`,
+      `¿Activar el reloj de ${impro.minutes || IMPRO_MINUTOS} minutos?\n\nEn ese momento ya pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta.\nEl pop-up mide mínimo 30 cm de ancho por 30 cm de alto.\nCuando arranque, ya no podrán cambiar de líder.`,
     );
     if (!ok) return;
     startMutation.mutate();
@@ -98,9 +102,11 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
       : impro.startedAt
         ? done
           ? "Tiempo agotado — manos arriba. No sigan construyendo."
-          : sprint?.id === "silencio"
-            ? `Silencio · ${formatClock(remain)}`
-            : `${sprint?.nombre ?? "Reloj"} · ${formatClock(remain)}`
+          : sprint?.id === "busqueda"
+            ? `Salgan por material · ${formatClock(remain)}`
+            : sprint?.id === "silencio"
+              ? `Silencio · ${formatClock(remain)}`
+              : `${sprint?.nombre ?? "Reloj"} · ${formatClock(remain)}`
         : impro.leaderName
           ? `Líder: ${impro.leaderName}. Lean y activen cuando estén listos.`
           : "Lean el reto, tomen su rol y elijan un líder.";
@@ -129,6 +135,18 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
 
       {open ? (
         <div className="space-y-5 px-5 pb-5 pt-2">
+          {sprint?.id === "busqueda" && !done && !paused ? (
+            <div className="rounded-xl border border-orange-400/40 bg-orange-500/15 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-orange-200">
+                El tiempo ya inició — pueden salir
+              </p>
+              <p className="mt-1 text-sm text-orange-50">
+                Busquen cartón, palos de madera, unicel y lo que haga falta. El pop-up mide mínimo 30 cm
+                de ancho por 30 cm de alto.
+              </p>
+            </div>
+          ) : null}
+
           {sprint?.id === "silencio" && !done && !paused ? (
             <div className="rounded-xl border border-orange-400/40 bg-orange-500/15 px-4 py-3">
               <p className="text-xs font-bold uppercase tracking-widest text-orange-200">Ahora: silencio</p>

@@ -1,5 +1,6 @@
 import {
   IMPRO_FIRMAS_MAX,
+  IMPRO_MEDIDA,
   IMPRO_MATERIALES,
   IMPRO_NOTAS,
   IMPRO_PASOS,
@@ -27,8 +28,8 @@ export default function ImproIndicacion() {
       <div>
         <h3 className="text-sm font-semibold text-white">Material</h3>
         <p className="mt-2 text-sm text-slate-300">
-          Con esto se arma. Hojas de color para la forma, tijeras para el corte, pegamento y diurex
-          para que se pare.
+          Empiezan con hojas de color, pegamento, diurex y tijeras. En cuanto el líder active el
+          reloj, pueden salir del salón a buscar más material para llegar a {IMPRO_MEDIDA}.
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
           {IMPRO_MATERIALES.map((item) => (

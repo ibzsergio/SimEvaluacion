@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { todayClassDayDate } from "./classDayService.js";
+import { ensureImproSchema } from "./ensureImproSchema.js";
 import { COLUMN_PALETTE } from "./seatingService.js";
 
 export const IMPRO_MINUTES = 50;
@@ -13,6 +14,7 @@ export const IMPRO_NOTE_PRESETS = [
   { code: "no_trabaja", label: "No trabaja el equipo", points: 200, scope: "team" as const },
   { code: "fuera_equipo", label: "Integrante fuera del equipo", points: 150, scope: "member" as const },
   { code: "plano", label: "Quedó en cartel plano", points: 200, scope: "team" as const },
+  { code: "medida", label: "No llega a 30 × 30 cm", points: 200, scope: "team" as const },
   { code: "fuera_tiempo", label: "Siguen después del tiempo", points: 150, scope: "team" as const },
   { code: "no_opera", label: "El extraño no pudo operarlo", points: 150, scope: "team" as const },
 ];
@@ -64,6 +66,7 @@ export type ImproSession = {
   activityId: string | null;
   teamCount: number;
   teams: ImproTeam[];
+  loadError: string | null;
 };
 
 type StoredTeamState = {
@@ -165,7 +168,7 @@ function hydrateProjectTeams(
       role: m.role,
       firmas: memberFirmas(notes, m.studentId),
     }));
-    const { leaderId, leaderName } = resolveLeader(members, prev?.leaderId, null);
+    const { leaderId, leaderName } = resolveLeader(members, prev?.leaderId, team.leaderId);
     return {
       key,
       readingIndex: index,
@@ -336,8 +339,8 @@ async function renameLegacyActivity() {
   legacyRenamed = true;
 }
 
-export async function getImproSession(groupId: string): Promise<ImproSession | null> {
-  const rows = await prisma.$queryRaw<
+async function readGroupRow(groupId: string) {
+  return prisma.$queryRaw<
     Array<{
       id: string;
       code: string;
@@ -350,6 +353,18 @@ export async function getImproSession(groupId: string): Promise<ImproSession | n
     SELECT id, code, teacherId, improReleased, improReleasedAt, improPayload
     FROM ClassGroup WHERE id = ${groupId}
   `;
+}
+
+export async function getImproSession(groupId: string): Promise<ImproSession | null> {
+  let rows: Awaited<ReturnType<typeof readGroupRow>>;
+  try {
+    rows = await readGroupRow(groupId);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/improReleased|improPayload|Unknown column/i.test(msg)) throw err;
+    await ensureImproSchema();
+    rows = await readGroupRow(groupId);
+  }
   const group = rows[0];
   if (!group) return null;
   try {
@@ -360,10 +375,15 @@ export async function getImproSession(groupId: string): Promise<ImproSession | n
   const released = Boolean(group.improReleased);
   const stored = parsePayload(group.improPayload);
   let teams: ImproTeam[] = [];
+  let loadError: string | null = null;
   try {
     const projectTeams = await loadProjectTeams(groupId);
     teams = hydrateProjectTeams(projectTeams, stored);
+    if (teams.length === 0) {
+      loadError = "Este grupo no tiene equipos en Roles / Equipos.";
+    }
   } catch (err) {
+    loadError = err instanceof Error ? err.message : "No se pudieron leer los equipos de proyecto.";
     console.warn("[impro] no se pudieron hidratar equipos de proyecto:", err);
   }
   const activity = await findImproActivity(groupId);
@@ -386,6 +406,7 @@ export async function getImproSession(groupId: string): Promise<ImproSession | n
     activityId: activity?.id ?? null,
     teamCount: teams.length,
     teams,
+    loadError,
   };
 }
 
@@ -409,7 +430,7 @@ export async function setImproReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: IMPRO_ANNOUNCEMENT_TITLE,
-          body: `Pop-Up para el grupo ${group.code}. Equipos de Roles / Equipos. En 50 minutos arman, con hojas de color, pegamento, diurex y tijeras, un pop-up de SU proyecto que se para solo y que alguien de otro equipo pueda operar en 60 segundos. El líder activa el reloj. Hay un tramo en silencio. Vale 1000 Firmas; las notas del docente bajan ese valor.`,
+          body: `Pop-Up para el grupo ${group.code}. Equipos de Roles / Equipos. En cuanto el líder active los 50 minutos, pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up mide mínimo 30 cm de ancho por 30 cm de alto, se para solo y alguien de otro equipo lo opera en 60 segundos. Vale 1000 Firmas.`,
         },
       });
     }
@@ -422,6 +443,21 @@ export async function resetImproSession(groupId: string) {
   if (!session) return null;
   const teams = session.teams.map((t) => ({ ...t, leaderId: null, leaderName: null, startedAt: null }));
   await persist(groupId, teams, { pausedAt: null });
+  return getImproSession(groupId);
+}
+
+export async function startImproTimers(groupId: string) {
+  const session = await getImproSession(groupId);
+  if (!session) return null;
+  if (session.paused) throw new Error("paused");
+  const startedAt = new Date().toISOString();
+  const teams = session.teams.map((team) => {
+    if (team.startedAt || team.members.length === 0) return team;
+    const leaderId = team.leaderId ?? team.members[0]?.studentId ?? null;
+    const leaderName = team.members.find((member) => member.studentId === leaderId)?.displayName ?? team.leaderName;
+    return { ...team, leaderId, leaderName, startedAt };
+  });
+  await persist(groupId, teams, { pausedAt: session.pausedAt });
   return getImproSession(groupId);
 }
 

@@ -248,7 +248,9 @@ export type StudentImpro = StudentExtra & {
   role?: string | null;
 };
 
-export type ImproSession = ExtraSession;
+export type ImproSession = ExtraSession & {
+  loadError?: string | null;
+};
 
 export type ExtraSession = Omit<TorreSession, "teams"> & {
   rosterMode?: "project" | "seating";

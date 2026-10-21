@@ -108,9 +108,9 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Pop-Up: 50 minutos, equipos de proyecto, un escenario de papel con hojas de color, pegamento,
-              diurex y tijeras. Plan de Acción y Diseño de Interfaces siguen en la lista. Torre Tkinter
-              y Sprint aéreo quedan como registro.
+              Pop-Up: equipos de Roles / Equipos, 50 minutos. Al iniciar el reloj pueden salir por cartón,
+              palos de madera y unicel. Mínimo 30 × 30 cm. Plan de Acción y Diseño de Interfaces siguen
+              en la lista. Torre Tkinter y Sprint aéreo quedan como registro.
             </p>
           </section>
 
@@ -123,9 +123,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-orange-300">Actividad Scrum</p>
               <h3 className="mt-1 text-xl font-bold text-white">{IMPRO_TITULO}</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Equipos de Roles / Equipos. 50 minutos. Eligen líder y arman un pop-up de su proyecto
-                con hojas de color, pegamento, diurex y tijeras. Alguien de otro equipo lo opera en 60
-                segundos. 1000 Firmas.
+                Equipos de Roles / Equipos. 50 minutos. Al iniciar el reloj salen por más material. El
+                pop-up mide mínimo 30 cm de ancho por 30 cm de alto. 1000 Firmas.
               </p>
             </div>
             <span

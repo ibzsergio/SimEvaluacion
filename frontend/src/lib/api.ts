@@ -542,6 +542,11 @@ export async function updateGroupImproSettings(groupId: string, payload: { relea
   return data;
 }
 
+export async function startImproTimers(groupId: string) {
+  const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-start`);
+  return data;
+}
+
 export async function resetImproSession(groupId: string) {
   const { data } = await api.post<import("./types").ImproSession>(`/teacher/groups/${groupId}/impro-reset`);
   return data;

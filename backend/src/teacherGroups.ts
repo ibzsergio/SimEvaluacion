@@ -56,6 +56,7 @@ import {
   resetImproSession,
   setImproPaused,
   setImproReleased,
+  startImproTimers,
 } from "./improChallenge.js";
 import {
   addInterfaceNote,
@@ -901,6 +902,24 @@ teacherGroupsRouter.put("/groups/:groupId/impro-settings", async (req: AuthedReq
   const session = await setImproReleased(groupId, body.data.released);
   if (!session) return res.status(404).json({ error: "group_not_found" });
   return res.json(session);
+});
+
+teacherGroupsRouter.post("/groups/:groupId/impro-start", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await startImproTimers(groupId);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = improErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
 });
 
 teacherGroupsRouter.post("/groups/:groupId/impro-reset", async (req: AuthedRequest, res) => {

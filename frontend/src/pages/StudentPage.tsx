@@ -52,6 +52,7 @@ export default function StudentPage() {
       if (impro?.startedAt || impro?.pausedAt || extra?.startedAt || extra?.pausedAt || lectura?.startedAt) {
         return 5000;
       }
+      if (impro && !impro.startedAt) return 8000;
       if (lectura && !lectura.startedAt) return 8000;
       return 30_000;
     },
