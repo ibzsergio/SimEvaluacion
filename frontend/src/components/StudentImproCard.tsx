@@ -87,7 +87,7 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
 
   function startTimer() {
     const ok = window.confirm(
-      `¿Activar el reloj de ${impro.minutes || IMPRO_MINUTOS} minutos?\n\nEn ese momento ya pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta.\nEl pop-up mide mínimo 30 cm de ancho por 30 cm de alto.\nCuando arranque, ya no podrán cambiar de líder.`,
+      `¿Activar el reloj de ${impro.minutes || IMPRO_MINUTOS} minutos?\n\nEn ese momento ya pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta.\nEl pop-up es de programación y mide mínimo 30 cm de ancho por 30 cm de alto.\nCuando arranque, ya no podrán cambiar de líder.`,
     );
     if (!ok) return;
     startMutation.mutate();
@@ -145,8 +145,8 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
                 El tiempo ya inició — pueden salir
               </p>
               <p className="mt-1 text-sm text-orange-50">
-                Busquen cartón, palos de madera, unicel y lo que haga falta. El pop-up mide mínimo 30 cm
-                de ancho por 30 cm de alto.
+                Busquen cartón, palos de madera, unicel y lo que haga falta. El pop-up es de programación:
+                una parte de su programa, mínimo 30 cm de ancho por 30 cm de alto.
               </p>
             </div>
           ) : null}
@@ -208,8 +208,9 @@ export default function StudentImproCard({ impro }: { impro: StudentImpro }) {
             <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
               <h3 className="text-sm font-semibold text-white">Equipo de proyecto</h3>
               <p className="mt-1 text-xs text-slate-400">
-                El mismo de Roles / Equipos. El docente inicia los 50 minutos para todo el grupo. En ese
-                momento pueden salir por cartón, palos de madera y unicel.
+                El mismo de Roles / Equipos. El pop-up muestra una parte de su programa. El docente inicia
+                los 50 minutos para todo el grupo. En ese momento pueden salir por cartón, palos de madera
+                y unicel.
               </p>
               <ul className="mt-3 space-y-1 text-sm text-slate-200">
                 {impro.members.map((m) => (

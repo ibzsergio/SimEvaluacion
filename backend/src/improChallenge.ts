@@ -430,7 +430,7 @@ export async function setImproReleased(groupId: string, released: boolean) {
           teacherId: group.teacherId,
           groupId,
           title: IMPRO_ANNOUNCEMENT_TITLE,
-          body: `Pop-Up para el grupo ${group.code}. Equipos de Roles / Equipos. En cuanto el líder active los 50 minutos, pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up mide mínimo 30 cm de ancho por 30 cm de alto, se para solo y alguien de otro equipo lo opera en 60 segundos. Vale 1000 Firmas.`,
+          body: `Pop-Up para el grupo ${group.code}. Equipos de Roles / Equipos. El pop-up es de programación: una pantalla, una función o lo que hace su programa. En cuanto el líder active los 50 minutos, pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. Mide mínimo 30 cm de ancho por 30 cm de alto, se para solo y alguien de otro equipo lo entiende en 60 segundos. Vale 1000 Firmas.`,
         },
       });
     }

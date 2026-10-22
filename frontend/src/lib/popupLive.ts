@@ -58,13 +58,13 @@ export function parsePopupState(body: string): PopupLiveState | null {
 
 function visibleCopy(state: PopupLiveState) {
   if (state.startedAt && !state.pausedAt) {
-    return "El reloj de 50 minutos ya inició. Pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up mide mínimo 30 cm de ancho por 30 cm de alto.";
+    return "El reloj de 50 minutos ya inició. Pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up es de programación: una parte de su programa, mínimo 30 cm de ancho por 30 cm de alto.";
   }
   if (state.pausedAt) {
-    return "El docente pausó el reloj de Pop-Up. Esperen a que lo reanude. El pop-up mide mínimo 30 cm de ancho por 30 cm de alto.";
+    return "El docente pausó el reloj de Pop-Up. Esperen a que lo reanude. El pop-up es de programación y mide mínimo 30 cm de ancho por 30 cm de alto.";
   }
   if (state.released) {
-    return "Pop-Up está liberado para este grupo. Esperen a que el docente inicie los 50 minutos. En ese momento pueden salir a buscar cartón, palos de madera y unicel. Mínimo 30 cm de ancho por 30 cm de alto.";
+    return "Pop-Up está liberado para este grupo. El pop-up es de programación: una parte de su programa. Esperen a que el docente inicie los 50 minutos. En ese momento pueden salir a buscar cartón, palos de madera y unicel. Mínimo 30 cm de ancho por 30 cm de alto.";
   }
   return "Pop-Up está en preparación para este grupo.";
 }

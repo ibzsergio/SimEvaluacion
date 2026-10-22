@@ -137,7 +137,7 @@ export default function TeacherImproPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar Pop-Up para el grupo ${selectedGroup?.code ?? ""}?\n\nEquipos de Roles / Equipos. Al iniciar el reloj pueden salir por cartón, palos de madera y unicel. Mínimo 30 × 30 cm. El líder activa ${minutes} minutos. Vale ${firmasMax} Firmas.`,
+        `¿Liberar Pop-Up para el grupo ${selectedGroup?.code ?? ""}?\n\nEquipos de Roles / Equipos. El pop-up es de programación: una parte de su programa. Al iniciar el reloj pueden salir por cartón, palos de madera y unicel. Mínimo 30 × 30 cm. El líder activa ${minutes} minutos. Vale ${firmasMax} Firmas.`,
       );
       if (!ok) return;
     }
@@ -146,7 +146,7 @@ export default function TeacherImproPanel({
 
   function handleStartAll() {
     const ok = window.confirm(
-      `¿Iniciar los ${minutes} minutos de todos los equipos de proyecto de este grupo?\n\nEn ese momento ya pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up mide mínimo 30 cm de ancho por 30 cm de alto.`,
+      `¿Iniciar los ${minutes} minutos de todos los equipos de proyecto de este grupo?\n\nEn ese momento ya pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up es de programación y mide mínimo 30 cm de ancho por 30 cm de alto.`,
     );
     if (!ok) return;
     startMutation.mutate();
@@ -189,10 +189,10 @@ export default function TeacherImproPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-orange-300">{IMPRO_PROGRAMA}</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{IMPRO_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">
-          Grupo {selectedGroup?.code}. Los equipos son los de Roles / Equipos. {minutes} minutos. Al
-          iniciar el reloj pueden salir por cartón, palos de madera, unicel y lo que haga falta. El
-          pop-up mide mínimo 30 cm de ancho por 30 cm de alto. Parte de {firmasMax.toLocaleString("es-MX")}{" "}
-          Firmas.
+          Grupo {selectedGroup?.code}. Los equipos son los de Roles / Equipos. {minutes} minutos. El
+          pop-up está enfocado en programación: una pantalla, una función o lo que hace su programa. Al
+          iniciar el reloj pueden salir por cartón, palos de madera, unicel y lo que haga falta. Mide
+          mínimo 30 cm de ancho por 30 cm de alto. Parte de {firmasMax.toLocaleString("es-MX")} Firmas.
         </p>
         <div className="mt-5">
           <PopUpIllustration />
@@ -253,7 +253,7 @@ export default function TeacherImproPanel({
         </div>
         <p className="mt-3 text-xs text-slate-400">
           {session?.sharedClock
-            ? "Equipos de Roles / Equipos. Iniciar arranca los 50 minutos de este grupo para todos. En ese momento ya pueden salir por material."
+            ? "Equipos de Roles / Equipos. El pop-up es de programación. Iniciar arranca los 50 minutos de este grupo para todos. En ese momento ya pueden salir por material."
             : released
               ? "Liberada en este grupo. Los alumnos eligen líder y el líder arranca el reloj."
               : "Todavía no la ven los alumnos. Se libera solo en el grupo que estás viendo."}

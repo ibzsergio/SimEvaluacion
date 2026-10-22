@@ -20,15 +20,16 @@ export const IMPRO_ACTIVITY_NAME = "Pop-Up";
 export const IMPRO_MEDIDA = "30 cm de ancho por 30 cm de alto";
 
 export const IMPRO_PRODUCTO =
-  "Un pop-up de su proyecto, de mínimo 30 cm de ancho por 30 cm de alto, que se para solo. Al abrirlo, alguien de otro equipo entiende en 60 segundos el caso de uso más importante de SU aplicación. Algo se mueve: una pestaña, una puerta o una tira que se jala.";
+  "Un pop-up de programación: muestra una parte de SU programa (una pantalla, una función o lo que el programa hace). Mide mínimo 30 cm de ancho por 30 cm de alto y se para solo. Al abrirlo, alguien de otro equipo entiende en 60 segundos esa parte del programa. Algo se mueve: una pestaña, una puerta o una tira que se jala.";
 
 export const IMPRO_PRODUCTO_NO =
-  "No es un cartel pegado en la mesa. No es toda la app. Si mide menos de 30 × 30 cm, si no se para o si nada se mueve, no cuenta.";
+  "No es un cartel pegado en la mesa. No es un dibujo ajeno al programa. Si mide menos de 30 × 30 cm, si no se para o si nada se mueve, no cuenta.";
 
 export const IMPRO_PRODUCTO_DEBE = [
+  "Enfocado en programación: una pantalla, una función o lo que hace su programa",
   "Mínimo 30 cm de ancho y 30 cm de alto",
-  "Nombre del proyecto, grande, que se lea de lejos",
-  "Una sola frase: «El usuario logra ___»",
+  "Nombre del programa, grande, que se lea de lejos",
+  "Una sola frase: «El programa logra ___»",
   "Una pieza que se mueva al jalar o al abrir",
   "Que se sostenga sin que nadie lo detenga con la mano",
 ];
@@ -39,6 +40,7 @@ export const IMPRO_MATERIALES = [
 ];
 
 export const IMPRO_PROHIBIDO = [
+  "Un pop-up que no explique una parte de su programa",
   "Un pop-up más chico de 30 cm de ancho o de 30 cm de alto",
   "Un dibujo plano que no se pare",
   "Seguir armando cuando el reloj llega a 00:00",
@@ -49,7 +51,7 @@ export const IMPRO_ROLES = [
   {
     id: "product_owner",
     label: "Product Owner",
-    tarea: "Escribe la frase «El usuario logra ___». Si el pop-up enseña otra cosa, la recorta. Un solo caso de uso.",
+    tarea: "Elige una sola parte del programa y escribe «El programa logra ___». Si el pop-up enseña otra cosa, la recorta.",
   },
   {
     id: "scrum_master",
@@ -64,12 +66,12 @@ export const IMPRO_ROLES = [
   {
     id: "ui_designer",
     label: "Diseño / UI",
-    tarea: "El nombre se lee de lejos. El caso de uso se entiende con la forma, no con un párrafo.",
+    tarea: "El nombre del programa se lee de lejos. La pantalla, la función o el flujo se entiende con la forma, no con un párrafo.",
   },
   {
     id: "qa_docs",
     label: "QA / Docs",
-    tarea: "Mide ancho y alto. Si no llega a 30 × 30 cm, no cumple. Invita a alguien de otro equipo y anota qué logró hacer en 60 segundos.",
+    tarea: "Mide ancho y alto. Si no llega a 30 × 30 cm, no cumple. Invita a alguien de otro equipo y anota si entendió esa parte del programa en 60 segundos.",
   },
 ] as const;
 
@@ -80,7 +82,7 @@ export const IMPRO_SPRINTS = [
     desde: 0,
     hasta: 12,
     detalle:
-      "El líder activa los 50 minutos. En ese instante ya pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up medirá mínimo 30 cm de ancho por 30 cm de alto. El Product Owner escribe: «El usuario logra ___».",
+      "El líder activa los 50 minutos. En ese instante ya pueden salir a buscar cartón, palos de madera, unicel y lo que haga falta. El pop-up es de programación y medirá mínimo 30 cm de ancho por 30 cm de alto. El Product Owner escribe qué parte del programa van a mostrar: «El programa logra ___».",
   },
   {
     id: "silencio",
@@ -96,7 +98,7 @@ export const IMPRO_SPRINTS = [
     desde: 22,
     hasta: 42,
     detalle:
-      "Ya pueden hablar. Peguen hojas, cartón, palos y unicel. Tiene que pararse, medir al menos 30 × 30 cm y tener una pieza que se mueva. Ensayen los 60 segundos.",
+      "Ya pueden hablar. Peguen hojas, cartón, palos y unicel. Tiene que mostrar una parte del programa, pararse, medir al menos 30 × 30 cm y tener una pieza que se mueva. Ensayen los 60 segundos.",
   },
   {
     id: "release",
@@ -104,12 +106,13 @@ export const IMPRO_SPRINTS = [
     desde: 42,
     hasta: 50,
     detalle:
-      "QA mide ancho y alto. Inviten a una persona de otro equipo: abre el pop-up y lo opera. Ustedes no explican. A los 50, manos arriba.",
+      "QA mide ancho y alto. Inviten a una persona de otro equipo: abre el pop-up y entiende esa parte del programa. Ustedes no explican. A los 50, manos arriba.",
   },
 ] as const;
 
 export const IMPRO_PASOS = [
   "Son los equipos de Roles / Equipos, los mismos del proyecto. No se arman equipos nuevos.",
+  "El pop-up está enfocado en programación: una pantalla, una función o lo que hace su programa.",
   "El líder del proyecto activa los 50 minutos. El docente también puede arrancar el reloj de todos.",
   "En cuanto inicie el tiempo, pueden salir a buscar cartón, palos de madera, unicel y lo que necesiten.",
   "El pop-up mide como mínimo 30 cm de ancho por 30 cm de alto.",

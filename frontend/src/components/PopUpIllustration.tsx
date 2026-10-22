@@ -58,8 +58,9 @@ export default function PopUpIllustration() {
         />
       </div>
       <p className="text-xs text-slate-400">
-        Tiene que pararse, algo se mueve y medir mínimo 30 cm de ancho por 30 cm de alto. Al iniciar el
-        reloj pueden salir por cartón, palos de madera y unicel. Un cartel plano no cuenta.
+        Es de programación: una pantalla, una función o lo que hace su programa. Tiene que pararse, algo
+        se mueve y medir mínimo 30 cm de ancho por 30 cm de alto. Al iniciar el reloj pueden salir por
+        cartón, palos de madera y unicel. Un cartel plano no cuenta.
       </p>
     </div>
   );
