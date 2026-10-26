@@ -8,6 +8,7 @@ export const INTERFACE_DAYS = [
   { iso: "2026-10-20", label: "Mar 20" },
   { iso: "2026-10-21", label: "Mié 21" },
   { iso: "2026-10-22", label: "Jue 22" },
+  { iso: "2026-10-26", label: "Lun 26" },
 ] as const;
 
 export type InterfaceDay = (typeof INTERFACE_DAYS)[number]["iso"];

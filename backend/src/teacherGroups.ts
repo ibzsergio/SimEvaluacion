@@ -63,6 +63,7 @@ import {
   applyInterfacePoints,
   getInterfaceSession,
   interfaceErrorHttp,
+  INTERFACE_DAYS,
   removeInterfaceNote,
 } from "./interfaceDesignSession.js";
 import { INTERFACE_ACTIVITY_NAME } from "./interfaceDesignActivity.js";
@@ -1039,7 +1040,7 @@ teacherGroupsRouter.post("/groups/:groupId/interface-note", async (req: AuthedRe
       label: z.string().trim().optional(),
       points: z.number().int().min(1).max(3000).optional(),
       studentId: z.string().min(1).nullable().optional(),
-      day: z.enum(["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22"]),
+      day: z.enum(INTERFACE_DAYS),
     })
     .safeParse(req.body);
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
@@ -1082,7 +1083,7 @@ teacherGroupsRouter.post("/groups/:groupId/interface-award", async (req: AuthedR
   const body = z
     .object({
       teamKey: z.string().min(1).optional(),
-      day: z.enum(["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22"]),
+      day: z.enum(INTERFACE_DAYS),
     })
     .safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });

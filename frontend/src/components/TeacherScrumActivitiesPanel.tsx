@@ -148,7 +148,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad de equipo</p>
               <h3 className="mt-1 text-xl font-bold text-white">Diseño de Interfaces Proyecto</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Equipos de Roles / Equipos. Parte de 3,000 firmas. Notas del 19 al 22 de octubre. Cada
+                Equipos de Roles / Equipos. Parte de 3,000 firmas. Notas del 19 al 22 y el lunes 26. Cada
                 nota resta 50 al registrar el día.
               </p>
             </div>

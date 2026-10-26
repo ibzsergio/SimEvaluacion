@@ -165,7 +165,7 @@ export default function TeacherInterfacePanel({
               Cada equipo parte de {pointsMax.toLocaleString("es-MX")} firmas. Anota el día que estás
               viendo. Registrar este día guarda esas notas: si no hubo ninguna, las firmas se mantienen;
               si las hubo, se restan. En cuanto la liberes, el alumno ve si bajan o siguen igual. El
-              jueves 22 se publica como actividad.
+              jueves 22 se publica como actividad. El lunes 26 también se puede anotar y guardar.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

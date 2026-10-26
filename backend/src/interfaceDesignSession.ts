@@ -15,7 +15,7 @@ export const INTERFACE_NOTE_PRESETS = [
   { code: "fuera", label: "Fuera del equipo", points: 50, scope: "member" as const },
 ];
 
-export const INTERFACE_DAYS = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22"] as const;
+export const INTERFACE_DAYS = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-26"] as const;
 export type InterfaceDay = (typeof INTERFACE_DAYS)[number];
 
 function isInterfaceDay(value: string): value is InterfaceDay {
@@ -415,7 +415,7 @@ export function interfaceErrorHttp(msg: string) {
     return { status: 400 as const, error: msg, message: "Ese alumno no está en este equipo." };
   }
   if (msg === "invalid_day") {
-    return { status: 400 as const, error: msg, message: "Elige un día del 19 al 22 de octubre." };
+    return { status: 400 as const, error: msg, message: "Elige un día del 19 al 22 o el lunes 26 de octubre." };
   }
   if (msg === "invalid_note") {
     return { status: 400 as const, error: msg, message: "Escribe el motivo y cuántos puntos se restan." };
