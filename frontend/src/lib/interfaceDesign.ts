@@ -39,10 +39,10 @@ export const INTERFACE_COTEJO = [
     detail: "La interfaz sirve para lo que el programa tiene que hacer. Se puede usar.",
   },
   {
-    code: "profesional",
-    label: "Diseño atractivo y profesional",
+    code: "entrega",
+    label: "Entrega en tiempo y forma",
     points: 350,
-    detail: "Se ve como un producto terminado, con forma y acabado claros.",
+    detail: "Llegó el día indicado y el diseño está completo, como se pidió.",
   },
   {
     code: "color",
