@@ -24,6 +24,60 @@ export type InterfaceNotePreset = {
   scope: "team" | "member";
 };
 
+/** Lista de cotejo del diseño. Si no se cumple, se resta. Suma 3,000. */
+export const INTERFACE_COTEJO = [
+  {
+    code: "trabajo",
+    label: "Trabajo en equipo",
+    points: 400,
+    detail: "Todos construyen, se reparten el diseño y nadie se queda mirando.",
+  },
+  {
+    code: "funcional",
+    label: "Diseño funcional",
+    points: 500,
+    detail: "La interfaz sirve para lo que el programa tiene que hacer. Se puede usar.",
+  },
+  {
+    code: "profesional",
+    label: "Diseño atractivo y profesional",
+    points: 500,
+    detail: "Se ve como un producto terminado, con forma y acabado claros.",
+  },
+  {
+    code: "color",
+    label: "Colorimetría",
+    points: 400,
+    detail: "Los colores combinan, contrastan y se leen. No pelean entre sí.",
+  },
+  {
+    code: "tipo",
+    label: "Tipografía adecuada",
+    points: 350,
+    detail: "El texto se lee. El tamaño y el peso distinguen títulos, botones y contenido.",
+  },
+  {
+    code: "usable",
+    label: "Diseño amigable con el usuario",
+    points: 450,
+    detail: "Alguien de otro equipo entiende qué tocar, sin explicación.",
+  },
+  {
+    code: "navegacion",
+    label: "Navegación clara",
+    points: 200,
+    detail: "Se sabe cómo pasar de una pantalla a otra y cómo volver.",
+  },
+  {
+    code: "alineacion",
+    label: "Alineación y espaciado",
+    points: 200,
+    detail: "Los elementos están alineados y respiran. Nada queda encimado.",
+  },
+] as const;
+
+export const INTERFACE_COTEJO_TOTAL = INTERFACE_COTEJO.reduce((acc, item) => acc + item.points, 0);
+
 export const INTERFACE_NOTES: InterfaceNotePreset[] = [
   { code: "silencio", label: "Sin orden y silencio", points: 50, scope: "team" },
   { code: "tarde", label: "Entrega fuera de tiempo", points: 50, scope: "team" },
@@ -33,26 +87,24 @@ export const INTERFACE_NOTES: InterfaceNotePreset[] = [
 ];
 
 export const INTERFACE_CRITERIA = [
-  {
-    title: "Entrega en tiempo y fecha",
-    detail: "Cierra el 22 de octubre. Entregar ese día conserva el puntaje.",
-  },
-  {
-    title: "Diseño, forma y presentación profesional",
-    detail: "La interfaz se reconoce como pantalla de un proyecto, con forma y acabado claros.",
-  },
-  {
-    title: "Buena organización del equipo",
-    detail: "El equipo trabaja junto y cada quien sabe qué parte del diseño le toca.",
-  },
+  ...INTERFACE_COTEJO.map((item) => ({
+    title: item.label,
+    detail: item.detail,
+    penalty: `−${item.points.toLocaleString("es-MX")}`,
+  })),
   {
     title: "Orden y silencio",
-    detail: "Si no hay orden y silencio, son 50 puntos menos.",
+    detail: "Nota que el equipo ya tenía. Si no hay orden, son 50 firmas menos.",
+    penalty: "−50",
+  },
+  {
+    title: "Entrega en tiempo",
+    detail: "Nota que el equipo ya tenía. Entregar fuera de tiempo resta 50.",
     penalty: "−50",
   },
   {
     title: "Integrante fuera del equipo",
-    detail: "50 puntos menos por cada llamada de atención.",
+    detail: "50 firmas menos por cada llamada de atención a una persona.",
     penalty: "−50 c/u",
   },
 ] as const;

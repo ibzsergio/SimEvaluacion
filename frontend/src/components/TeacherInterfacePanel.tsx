@@ -9,6 +9,8 @@ import {
   setActivityStudentRelease,
 } from "../lib/api";
 import {
+  INTERFACE_COTEJO,
+  INTERFACE_COTEJO_TOTAL,
   INTERFACE_DAYS,
   INTERFACE_MAX_POINTS,
   INTERFACE_NOTES,
@@ -162,10 +164,10 @@ export default function TeacherInterfacePanel({
             </p>
             <h2 className="mt-1 text-xl font-bold text-white">Equipos y notas</h2>
             <p className="mt-1 max-w-3xl text-sm text-slate-400">
-              Cada equipo parte de {pointsMax.toLocaleString("es-MX")} firmas. Anota el día que estás
-              viendo. Registrar este día guarda esas notas: si no hubo ninguna, las firmas se mantienen;
-              si las hubo, se restan. En cuanto la liberes, el alumno ve si bajan o siguen igual. El
-              jueves 22 se publica como actividad. El lunes 26 también se puede anotar y guardar.
+              Cada equipo parte de {pointsMax.toLocaleString("es-MX")} firmas. La lista de cotejo del
+              diseño también suma {INTERFACE_COTEJO_TOTAL.toLocaleString("es-MX")}: lo que no cumplan se
+              resta. Las notas de 50 que el equipo ya tenía siguen restando. El lunes 26 también se puede
+              anotar y guardar.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -235,6 +237,8 @@ export default function TeacherInterfacePanel({
               const teamNotes = INTERFACE_NOTES.filter((note) => note.scope === "team");
               const memberNotes = INTERFACE_NOTES.filter((note) => note.scope === "member");
               const dayNotes = team.notes.filter((note) => note.day === day);
+              const cotejoMark = (code: string, label: string) =>
+                dayNotes.find((note) => note.code === code || note.label === label);
               const dayRegistered = team.awardedDays.includes(day);
               const dayCut = dayNotes.reduce((acc, note) => acc + note.points, 0);
               const firmasOf = (studentId: string) => {
@@ -282,23 +286,107 @@ export default function TeacherInterfacePanel({
                   </p>
 
                   <div className="mt-3 border-t border-white/10 pt-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-rose-100">Notas al equipo</p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {teamNotes.map((note) => {
-                        const used = dayNotes.some((item) => item.code === note.code);
+                    <p className="text-xs font-bold uppercase tracking-wide text-violet-100">
+                      Lista de cotejo
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Marcado = cumple y no resta. Si lo quitas, ese criterio no se cumple y resta sus
+                      puntos al guardar el día.
+                    </p>
+                    <ul className="mt-2 space-y-1">
+                      {INTERFACE_COTEJO.map((item) => {
+                        const mark = cotejoMark(item.code, item.label);
+                        const cumple = !mark;
                         return (
-                          <button
-                            key={note.code}
-                            type="button"
-                            disabled={noteMutation.isPending || used}
-                            onClick={() => noteMutation.mutate({ teamKey: team.key, code: note.code, day })}
-                            className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-[11px] font-semibold text-slate-100 hover:bg-white/10 disabled:opacity-50"
-                          >
-                            {note.label} −{note.points}
-                          </button>
+                          <li key={item.code}>
+                            <button
+                              type="button"
+                              disabled={noteMutation.isPending || removeMutation.isPending}
+                              onClick={() => {
+                                if (mark) {
+                                  removeMutation.mutate({ teamKey: team.key, noteId: mark.id });
+                                  return;
+                                }
+                                noteMutation.mutate({
+                                  teamKey: team.key,
+                                  code: item.code,
+                                  day,
+                                  label: item.label,
+                                  points: item.points,
+                                });
+                              }}
+                              className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] ${
+                                cumple
+                                  ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-50"
+                                  : "border-rose-400/30 bg-rose-500/10 text-rose-50"
+                              }`}
+                            >
+                              <span
+                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold ${
+                                  cumple
+                                    ? "border-emerald-300 bg-emerald-500 text-white"
+                                    : "border-rose-300 bg-transparent"
+                                }`}
+                                aria-hidden
+                              >
+                                {cumple ? "✓" : ""}
+                              </span>
+                              <span className="min-w-0 flex-1 font-semibold">{item.label}</span>
+                              <span className="shrink-0 font-bold">
+                                {cumple ? item.points : `−${mark?.points ?? item.points}`}
+                              </span>
+                            </button>
+                          </li>
                         );
                       })}
-                    </div>
+                    </ul>
+
+                    <p className="mt-3 text-xs font-bold uppercase tracking-wide text-rose-100">
+                      Notas que el equipo ya tenía
+                    </p>
+                    <ul className="mt-2 space-y-1">
+                      {teamNotes.map((note) => {
+                        const mark = cotejoMark(note.code, note.label);
+                        const cumple = !mark;
+                        return (
+                          <li key={note.code}>
+                            <button
+                              type="button"
+                              disabled={noteMutation.isPending || removeMutation.isPending}
+                              onClick={() => {
+                                if (mark) {
+                                  removeMutation.mutate({ teamKey: team.key, noteId: mark.id });
+                                  return;
+                                }
+                                noteMutation.mutate({
+                                  teamKey: team.key,
+                                  code: note.code,
+                                  day,
+                                  label: note.label,
+                                  points: note.points,
+                                });
+                              }}
+                              className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] ${
+                                cumple
+                                  ? "border-white/10 bg-slate-950/40 text-slate-100"
+                                  : "border-rose-400/30 bg-rose-500/10 text-rose-50"
+                              }`}
+                            >
+                              <span
+                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold ${
+                                  cumple ? "border-emerald-300 bg-emerald-500 text-white" : "border-rose-300"
+                                }`}
+                                aria-hidden
+                              >
+                                {cumple ? "✓" : ""}
+                              </span>
+                              <span className="min-w-0 flex-1 font-semibold">{note.label}</span>
+                              <span className="shrink-0 font-bold">{cumple ? note.points : `−${mark?.points ?? note.points}`}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
 
                     <p className="mt-3 text-xs font-bold uppercase tracking-wide text-rose-100">
                       Nota a un integrante

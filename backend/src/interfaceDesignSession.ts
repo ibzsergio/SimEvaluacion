@@ -8,6 +8,14 @@ import {
 } from "./interfaceDesignActivity.js";
 
 export const INTERFACE_NOTE_PRESETS = [
+  { code: "trabajo", label: "Trabajo en equipo", points: 400, scope: "team" as const },
+  { code: "funcional", label: "Diseño funcional", points: 500, scope: "team" as const },
+  { code: "profesional", label: "Diseño atractivo y profesional", points: 500, scope: "team" as const },
+  { code: "color", label: "Colorimetría", points: 400, scope: "team" as const },
+  { code: "tipo", label: "Tipografía adecuada", points: 350, scope: "team" as const },
+  { code: "usable", label: "Diseño amigable con el usuario", points: 450, scope: "team" as const },
+  { code: "navegacion", label: "Navegación clara", points: 200, scope: "team" as const },
+  { code: "alineacion", label: "Alineación y espaciado", points: 200, scope: "team" as const },
   { code: "silencio", label: "Sin orden y silencio", points: 50, scope: "team" as const },
   { code: "tarde", label: "Entrega fuera de tiempo", points: 50, scope: "team" as const },
   { code: "diseno", label: "Diseño, forma o presentación", points: 50, scope: "team" as const },
@@ -280,9 +288,11 @@ export async function addInterfaceNote(
   if (!label || points <= 0) throw new Error("invalid_note");
   if (points > INTERFACE_MAX_POINTS) points = INTERFACE_MAX_POINTS;
 
+  const noteCode = preset?.code ?? (input.code && input.code !== "custom" ? input.code.trim() : "custom");
   if (
-    preset?.scope === "team" &&
-    team.notes.some((note) => note.code === preset.code && note.day === day)
+    noteCode !== "custom" &&
+    !input.studentId &&
+    team.notes.some((note) => note.day === day && (note.code === noteCode || note.label === label))
   ) {
     throw new Error("already_noted");
   }
@@ -298,7 +308,7 @@ export async function addInterfaceNote(
 
   const note: InterfaceNote = {
     id: `note_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
-    code: preset?.code ?? "custom",
+    code: noteCode,
     label,
     points,
     day,
