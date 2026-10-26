@@ -295,16 +295,35 @@ export default function TeacherInterfacePanel({
                     </p>
                     <ul className="mt-2 space-y-1">
                       {INTERFACE_COTEJO.map((item) => {
-                        const mark = cotejoMark(item.code, item.label);
-                        const cumple = !mark;
+                        const aliases = "aliases" in item ? item.aliases : [];
+                        const marks = dayNotes.filter(
+                          (note) =>
+                            note.code === item.code ||
+                            note.label === item.label ||
+                            (aliases as readonly string[]).includes(note.code) ||
+                            (aliases as readonly string[]).some((code) =>
+                              note.label.toLowerCase().includes(code === "funcional" ? "diseño funcional" : "diseño amigable"),
+                            ),
+                        );
+                        const cumple = marks.length === 0;
+                        const cut = marks.reduce((acc, note) => acc + note.points, 0);
                         return (
                           <li key={item.code}>
                             <button
                               type="button"
                               disabled={noteMutation.isPending || removeMutation.isPending}
                               onClick={() => {
-                                if (mark) {
-                                  removeMutation.mutate({ teamKey: team.key, noteId: mark.id });
+                                if (marks.length) {
+                                  void (async () => {
+                                    let latest = null;
+                                    for (const itemMark of marks) {
+                                      latest = await removeInterfaceNote(selectedGroupId, {
+                                        teamKey: team.key,
+                                        noteId: itemMark.id,
+                                      });
+                                    }
+                                    if (latest) qc.setQueryData(["interface-session", selectedGroupId], latest);
+                                  })().catch((err) => setNoteError(getApiErrorMessage(err)));
                                   return;
                                 }
                                 noteMutation.mutate({
@@ -333,7 +352,7 @@ export default function TeacherInterfacePanel({
                               </span>
                               <span className="min-w-0 flex-1 font-semibold leading-snug">{item.label}</span>
                               <span className="shrink-0 font-bold">
-                                {cumple ? item.points : `−${mark?.points ?? item.points}`}
+                                {cumple ? item.points : `−${cut || item.points}`}
                               </span>
                             </button>
                           </li>

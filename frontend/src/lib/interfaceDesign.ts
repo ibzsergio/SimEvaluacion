@@ -33,10 +33,11 @@ export const INTERFACE_COTEJO = [
     detail: "Todos construyen, se reparten el diseño y nadie se queda mirando.",
   },
   {
-    code: "funcional",
-    label: "Diseño funcional",
-    points: 400,
-    detail: "La interfaz sirve para lo que el programa tiene que hacer. Se puede usar.",
+    code: "profesional",
+    label: "Diseño profesional y amigable con el usuario",
+    points: 700,
+    detail: "Se ve profesional, funciona y alguien de otro equipo entiende qué tocar, sin explicación.",
+    aliases: ["funcional", "usable"],
   },
   {
     code: "entrega",
@@ -55,12 +56,6 @@ export const INTERFACE_COTEJO = [
     label: "Tipografía adecuada",
     points: 200,
     detail: "El texto se lee. El tamaño y el peso distinguen títulos, botones y contenido.",
-  },
-  {
-    code: "usable",
-    label: "Diseño amigable con el usuario",
-    points: 300,
-    detail: "Alguien de otro equipo entiende qué tocar, sin explicación.",
   },
   {
     code: "docente",

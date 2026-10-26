@@ -9,11 +9,10 @@ import {
 
 export const INTERFACE_NOTE_PRESETS = [
   { code: "trabajo", label: "Trabajo en equipo", points: 300, scope: "team" as const },
-  { code: "funcional", label: "Diseño funcional", points: 400, scope: "team" as const },
+  { code: "profesional", label: "Diseño profesional y amigable con el usuario", points: 700, scope: "team" as const },
   { code: "entrega", label: "Entrega en tiempo y forma", points: 350, scope: "team" as const },
   { code: "color", label: "Colorimetría", points: 250, scope: "team" as const },
   { code: "tipo", label: "Tipografía adecuada", points: 200, scope: "team" as const },
-  { code: "usable", label: "Diseño amigable con el usuario", points: 300, scope: "team" as const },
   { code: "docente", label: "Vista del docente", points: 300, scope: "team" as const },
   { code: "directivo", label: "Vista del directivo", points: 300, scope: "team" as const },
   { code: "responsivo", label: "Diseño 100% responsivo", points: 300, scope: "team" as const },
