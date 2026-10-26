@@ -156,7 +156,7 @@ export default function TeacherInterfacePanel({
         </div>
       )}
 
-      <section className="glass p-6">
+      <section className="glass p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-violet-300">
@@ -166,16 +166,16 @@ export default function TeacherInterfacePanel({
             <p className="mt-1 max-w-3xl text-sm text-slate-400">
               Cada equipo parte de {pointsMax.toLocaleString("es-MX")} firmas. La lista de cotejo del
               diseño también suma {INTERFACE_COTEJO_TOTAL.toLocaleString("es-MX")}: lo que no cumplan se
-              resta. Las notas de 50 que el equipo ya tenía siguen restando. El lunes 26 también se puede
-              anotar y guardar.
+              resta. También se cotejan la vista del docente, la vista del directivo y que el diseño sea
+              100% responsivo. Las notas de 50 que el equipo ya tenía siguen restando.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <button
               type="button"
               onClick={toggleRelease}
               disabled={releaseMutation.isPending || !session?.activityId}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${
+              className={`min-h-11 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${
                 released ? "border border-amber-400/40 bg-amber-500/20" : "bg-violet-600 hover:bg-violet-500"
               }`}
             >
@@ -189,19 +189,19 @@ export default function TeacherInterfacePanel({
               type="button"
               onClick={() => awardMutation.mutate({ day })}
               disabled={awardMutation.isPending || teams.length === 0}
-              className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+              className="min-h-11 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
             >
               {awardMutation.isPending ? "Guardando..." : "Guardar firmas de este día en todos"}
             </button>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {INTERFACE_DAYS.map((item) => (
             <button
               key={item.iso}
               type="button"
               onClick={() => setDay(item.iso)}
-              className={`rounded-xl px-3 py-1.5 text-sm font-semibold ${
+              className={`min-h-11 rounded-xl px-3 py-2 text-sm font-semibold ${
                 day === item.iso
                   ? "bg-violet-600 text-white"
                   : "border border-white/10 bg-white/5 text-slate-300"
@@ -231,7 +231,7 @@ export default function TeacherInterfacePanel({
             No hay equipos de proyecto. Ármalos en Roles / Equipos y vuelve aquí.
           </p>
         ) : (
-          <ul className="mt-4 grid gap-3 md:grid-cols-2">
+          <ul className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
             {teams.map((team) => {
               const custom = customOf(team.key);
               const teamNotes = INTERFACE_NOTES.filter((note) => note.scope === "team");
@@ -315,14 +315,14 @@ export default function TeacherInterfacePanel({
                                   points: item.points,
                                 });
                               }}
-                              className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] ${
+                              className={`flex min-h-11 w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm ${
                                 cumple
                                   ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-50"
                                   : "border-rose-400/30 bg-rose-500/10 text-rose-50"
                               }`}
                             >
                               <span
-                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold ${
+                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs font-bold ${
                                   cumple
                                     ? "border-emerald-300 bg-emerald-500 text-white"
                                     : "border-rose-300 bg-transparent"
@@ -331,7 +331,7 @@ export default function TeacherInterfacePanel({
                               >
                                 {cumple ? "✓" : ""}
                               </span>
-                              <span className="min-w-0 flex-1 font-semibold">{item.label}</span>
+                              <span className="min-w-0 flex-1 font-semibold leading-snug">{item.label}</span>
                               <span className="shrink-0 font-bold">
                                 {cumple ? item.points : `−${mark?.points ?? item.points}`}
                               </span>
@@ -366,21 +366,21 @@ export default function TeacherInterfacePanel({
                                   points: note.points,
                                 });
                               }}
-                              className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] ${
+                              className={`flex min-h-11 w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm ${
                                 cumple
                                   ? "border-white/10 bg-slate-950/40 text-slate-100"
                                   : "border-rose-400/30 bg-rose-500/10 text-rose-50"
                               }`}
                             >
                               <span
-                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold ${
+                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs font-bold ${
                                   cumple ? "border-emerald-300 bg-emerald-500 text-white" : "border-rose-300"
                                 }`}
                                 aria-hidden
                               >
                                 {cumple ? "✓" : ""}
                               </span>
-                              <span className="min-w-0 flex-1 font-semibold">{note.label}</span>
+                              <span className="min-w-0 flex-1 font-semibold leading-snug">{note.label}</span>
                               <span className="shrink-0 font-bold">{cumple ? note.points : `−${mark?.points ?? note.points}`}</span>
                             </button>
                           </li>
@@ -393,9 +393,9 @@ export default function TeacherInterfacePanel({
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {memberNotes.map((note) => (
-                        <span key={note.code} className="flex flex-wrap items-center gap-1">
+                        <span key={note.code} className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
                           <select
-                            className="rounded-lg border border-white/15 bg-slate-950/70 px-2 py-1 text-[11px] text-white"
+                            className="min-h-11 w-full rounded-lg border border-white/15 bg-slate-950/70 px-2 py-2 text-sm text-white sm:w-auto sm:min-w-0 sm:flex-1"
                             defaultValue=""
                             id={`${team.key}-${note.code}`}
                           >
@@ -420,7 +420,7 @@ export default function TeacherInterfacePanel({
                               }
                               noteMutation.mutate({ teamKey: team.key, code: note.code, studentId, day });
                             }}
-                            className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-[11px] font-semibold text-slate-100 hover:bg-white/10 disabled:opacity-60"
+                            className="min-h-11 w-full rounded-lg border border-white/15 bg-slate-950/40 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10 disabled:opacity-60 sm:w-auto"
                           >
                             {note.label} −{note.points}
                           </button>
@@ -429,7 +429,7 @@ export default function TeacherInterfacePanel({
                     </div>
 
                     <p className="mt-3 text-xs font-bold uppercase tracking-wide text-rose-100">Otra nota</p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_4.5rem_minmax(0,1fr)_auto]">
                       <input
                         value={custom.label}
                         onChange={(e) =>
@@ -439,7 +439,7 @@ export default function TeacherInterfacePanel({
                           }))
                         }
                         placeholder="Motivo"
-                        className="min-w-[8rem] flex-1 rounded-lg border border-white/15 bg-slate-950/70 px-2 py-1 text-[11px] text-white"
+                        className="min-h-11 w-full min-w-0 rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white"
                       />
                       <input
                         value={custom.points}
@@ -450,7 +450,7 @@ export default function TeacherInterfacePanel({
                           }))
                         }
                         inputMode="numeric"
-                        className="w-16 rounded-lg border border-white/15 bg-slate-950/70 px-2 py-1 text-[11px] text-white"
+                        className="min-h-11 w-full rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white"
                       />
                       <select
                         value={custom.studentId}
@@ -460,7 +460,7 @@ export default function TeacherInterfacePanel({
                             [team.key]: { ...custom, studentId: e.target.value },
                           }))
                         }
-                        className="rounded-lg border border-white/15 bg-slate-950/70 px-2 py-1 text-[11px] text-white"
+                        className="min-h-11 w-full min-w-0 rounded-lg border border-white/15 bg-slate-950/70 px-2 py-2 text-sm text-white"
                       >
                         <option value="">Todo el equipo</option>
                         {team.members.map((member) => (
@@ -491,7 +491,7 @@ export default function TeacherInterfacePanel({
                             [team.key]: { label: "", points: "50", studentId: "" },
                           }));
                         }}
-                        className="rounded-lg bg-rose-700 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-600 disabled:opacity-60"
+                        className="min-h-11 rounded-lg bg-rose-700 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-60"
                       >
                         Anotar
                       </button>
@@ -511,7 +511,7 @@ export default function TeacherInterfacePanel({
                           .map((note) => (
                             <li
                               key={note.id}
-                              className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/40 px-2 py-1 text-[11px] text-slate-200"
+                              className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/40 px-3 py-2 text-sm text-slate-200"
                             >
                               <span>
                                 <span className="text-slate-400">{interfaceDayLabel(note.day)}</span>
@@ -540,7 +540,7 @@ export default function TeacherInterfacePanel({
                       type="button"
                       disabled={awardMutation.isPending}
                       onClick={() => awardMutation.mutate({ day, teamKey: team.key })}
-                      className="mt-2 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/15 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
+                      className="mt-2 min-h-11 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/15 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
                     >
                       Guardar firmas de este día
                     </button>
