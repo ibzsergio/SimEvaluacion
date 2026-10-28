@@ -11,6 +11,7 @@ import {
   downloadTeacherCalendarFile,
   uploadSchoolCalendar,
 } from "../lib/api";
+import { MAQUINA_ANNOUNCEMENT_TITLE, maquinaPublicText } from "../lib/maquinaLive";
 import { POPUP_ANNOUNCEMENT_TITLE, popupPublicText } from "../lib/popupLive";
 
 export default function TeacherCommsPanel() {
@@ -283,7 +284,11 @@ export default function TeacherCommsPanel() {
                   </button>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap text-slate-300">
-                  {a.title === POPUP_ANNOUNCEMENT_TITLE ? popupPublicText(a.body) : a.body}
+                  {a.title === POPUP_ANNOUNCEMENT_TITLE
+                    ? popupPublicText(a.body)
+                    : a.title === MAQUINA_ANNOUNCEMENT_TITLE
+                      ? maquinaPublicText(a.body)
+                      : a.body}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {a.group?.code ? `Grupo ${a.group.code}` : "Todos"} · {formatDate(a.createdAt)}

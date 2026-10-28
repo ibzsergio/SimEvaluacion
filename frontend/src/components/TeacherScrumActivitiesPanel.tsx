@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAvionSession, fetchExtraSession, fetchImproSession } from "../lib/api";
+import { fetchAvionSession, fetchExtraSession, fetchImproSession, fetchMaquinaSession } from "../lib/api";
 import { IMPRO_TITULO } from "../lib/improScrum";
+import { MAQUINA_TITULO } from "../lib/maquinaScrum";
 import type { ClassGroup } from "../lib/types";
 import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
 import TeacherImproPanel from "./TeacherImproPanel";
 import TeacherInterfacePanel from "./TeacherInterfacePanel";
+import TeacherMaquinaPanel from "./TeacherMaquinaPanel";
 import TeacherTorrePanel from "./TeacherTorrePanel";
 
 export default function TeacherScrumActivitiesPanel({
@@ -18,7 +20,7 @@ export default function TeacherScrumActivitiesPanel({
   selectedGroupId: string;
   onSelectGroup: (id: string) => void;
 }) {
-  const [current, setCurrent] = useState<"list" | "torre" | "avion" | "extra" | "interfaces" | "impro">("list");
+  const [current, setCurrent] = useState<"list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina">("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
     queryFn: () => fetchAvionSession(selectedGroupId),
@@ -37,6 +39,12 @@ export default function TeacherScrumActivitiesPanel({
     enabled: !!selectedGroupId,
   });
   const improReleased = improQuery.data?.released ?? false;
+  const maquinaQuery = useQuery({
+    queryKey: ["maquina-session", selectedGroupId],
+    queryFn: () => fetchMaquinaSession(selectedGroupId),
+    enabled: !!selectedGroupId && current === "list",
+  });
+  const maquinaReleased = maquinaQuery.data?.released ?? false;
 
   return (
     <div>
@@ -67,7 +75,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "impro" ? (
+      {current === "maquina" ? (
+        <TeacherMaquinaPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "impro" ? (
         <TeacherImproPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -108,11 +123,34 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Pop-Up: equipos de Roles / Equipos, 50 minutos, enfocado en programación. Al iniciar el
-              reloj pueden salir por cartón, palos de madera y unicel. Mínimo 30 × 30 cm. Plan de Acción
-              y Diseño de Interfaces siguen en la lista. Torre Tkinter y Sprint aéreo quedan como registro.
+              La máquina: equipos de Roles / Equipos, 50 minutos. Construyen una máquina de su programa.
+              La ficha recorre sola 3 estaciones. 1000 Firmas. Pop-Up ya no se muestra a los alumnos.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("maquina")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-lime-300">Actividad Scrum</p>
+              <h3 className="mt-1 text-xl font-bold text-white">{MAQUINA_TITULO}</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Equipos de Roles / Equipos. 50 minutos. Construyen una máquina de por lo menos 40 cm. La
+                ficha entra, pasa por 3 estaciones de su programa y sale sola. 1000 Firmas.
+              </p>
+            </div>
+            <span
+              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                maquinaReleased
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+                  : "border-lime-400/40 bg-lime-500/15 text-lime-100"
+              }`}
+            >
+              {maquinaReleased ? "Liberada en este grupo" : "Lista para liberar"}
+            </span>
+          </button>
 
           <button
             type="button"

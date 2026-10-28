@@ -1,5 +1,6 @@
 import axios from "axios";
 import { IMPRO_FIRMAS_MAX } from "./improScrum";
+import { MAQUINA_ACTIVITY_NAME, MAQUINA_FIRMAS_MAX } from "./maquinaScrum";
 import {
   POPUP_ANNOUNCEMENT_TITLE,
   POPUP_GRADE_NAME,
@@ -12,6 +13,16 @@ import {
   withTeamNames,
   type PopupLiveState,
 } from "./popupLive";
+import {
+  MAQUINA_ANNOUNCEMENT_TITLE,
+  maquinaGradeRows,
+  maquinaNote,
+  maquinaSessionFromProjectTeams,
+  maquinaStateFromAnnouncements,
+  serializeMaquinaState,
+  withTeamNames as withMaquinaTeamNames,
+  type MaquinaLiveState,
+} from "./maquinaLive";
 import type {
   Activity,
   ClassGroup,
@@ -753,6 +764,121 @@ export async function applyImproFirmas(groupId: string, teamKey?: string) {
     await writePopupGrades(groupId, saved, teamKey);
     return saved;
   }
+}
+
+async function saveMaquinaState(groupId: string, state: MaquinaLiveState) {
+  const comms = await fetchTeacherComms();
+  const previous = comms.announcements.filter(
+    (item) => item.title === MAQUINA_ANNOUNCEMENT_TITLE && item.groupId === groupId,
+  );
+  await Promise.all(previous.map((item) => deleteAnnouncement(item.id)));
+  await createAnnouncement({
+    title: MAQUINA_ANNOUNCEMENT_TITLE,
+    body: serializeMaquinaState(state),
+    groupId,
+  });
+}
+
+async function maquinaSession(groupId: string, mutate?: (state: MaquinaLiveState) => MaquinaLiveState) {
+  const [base, comms] = await Promise.all([projectTeamsForPopup(groupId), fetchTeacherComms()]);
+  const current = maquinaStateFromAnnouncements(comms.announcements, groupId);
+  const next = withMaquinaTeamNames(mutate ? mutate(current) : current, base.teams);
+  if (mutate) await saveMaquinaState(groupId, next);
+  return maquinaSessionFromProjectTeams(base, next);
+}
+
+async function writeMaquinaGrades(groupId: string, session: import("./types").ImproSession, teamKey?: string) {
+  const rows = maquinaGradeRows(session, teamKey);
+  if (rows.length === 0) return;
+  const activities = await fetchActivities(groupId);
+  let activity = activities.find((item) => item.name === MAQUINA_ACTIVITY_NAME);
+  if (!activity) {
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    activity = await createActivity({
+      groupId,
+      date,
+      name: MAQUINA_ACTIVITY_NAME,
+      maxPoints: MAQUINA_FIRMAS_MAX,
+    });
+  }
+  await saveGradesBatch(
+    groupId,
+    rows.map((row) => ({ activityId: activity.id, studentId: row.studentId, points: row.points })),
+  );
+}
+
+export async function fetchMaquinaSession(groupId: string) {
+  return maquinaSession(groupId);
+}
+
+export async function updateMaquinaReleased(groupId: string, released: boolean) {
+  return maquinaSession(groupId, (state) => ({ ...state, released }));
+}
+
+export async function startMaquinaTimers(groupId: string) {
+  return maquinaSession(groupId, (state) => ({
+    ...state,
+    released: true,
+    pausedAt: null,
+    startedAt: state.startedAt ?? new Date().toISOString(),
+  }));
+}
+
+export async function resetMaquinaSession(groupId: string) {
+  return maquinaSession(groupId, (state) => ({ ...state, startedAt: null, pausedAt: null }));
+}
+
+export async function setMaquinaPaused(groupId: string, paused: boolean) {
+  return maquinaSession(groupId, (state) => {
+    if (paused) return { ...state, pausedAt: state.pausedAt ?? new Date().toISOString() };
+    if (!state.pausedAt || !state.startedAt) return { ...state, pausedAt: null };
+    const pauseMs = Math.max(0, Date.now() - new Date(state.pausedAt).getTime());
+    return {
+      ...state,
+      pausedAt: null,
+      startedAt: new Date(new Date(state.startedAt).getTime() + pauseMs).toISOString(),
+    };
+  });
+}
+
+export async function addMaquinaNote(groupId: string, payload: { teamKey: string; code: string }) {
+  const base = await projectTeamsForPopup(groupId);
+  const team = base.teams.find((item) => item.key === payload.teamKey);
+  if (!team) throw new Error("No encontré ese equipo de proyecto.");
+  const note = maquinaNote(payload.code);
+  return maquinaSession(groupId, (state) => ({
+    ...state,
+    notes: {
+      ...state.notes,
+      [payload.teamKey]: [...(state.notes[payload.teamKey] ?? []), note],
+    },
+  }));
+}
+
+export async function removeMaquinaNote(groupId: string, payload: { teamKey: string; noteId: string }) {
+  return maquinaSession(groupId, (state) => ({
+    ...state,
+    notes: {
+      ...state.notes,
+      [payload.teamKey]: (state.notes[payload.teamKey] ?? []).filter((note) => note.id !== payload.noteId),
+    },
+  }));
+}
+
+export async function applyMaquinaFirmas(groupId: string, teamKey?: string) {
+  const preview = await maquinaSession(groupId);
+  const keys = teamKey ? [teamKey] : preview.teams.map((team) => team.key);
+  if (teamKey && !preview.teams.some((team) => team.key === teamKey)) {
+    throw new Error("No encontré ese equipo de proyecto.");
+  }
+  const saved = await maquinaSession(groupId, (state) => ({
+    ...state,
+    released: true,
+    awarded: [...new Set([...state.awarded, ...keys])],
+  }));
+  await writeMaquinaGrades(groupId, saved, teamKey);
+  return saved;
 }
 
 export async function applyExtraFirmas(groupId: string, teamKey?: string) {
