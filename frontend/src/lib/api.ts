@@ -1221,6 +1221,7 @@ export type InterfacePeerBoard = {
     hex: string;
     teacherPoints: number;
     peerAverage: number | null;
+    finalPoints?: number;
     received: number;
     expected: number;
     evaluators: InterfacePeerEvaluator[];
@@ -1328,6 +1329,7 @@ export type StudentInterfaceDesign = {
   teamName: string | null;
   leaderName: string | null;
   points: number | null;
+  teacherPoints?: number | null;
   pointsMax: number;
   awarded: boolean;
   closed?: boolean;

@@ -117,6 +117,7 @@ export type PeerBoardTeam = {
   hex: string;
   teacherPoints: number;
   peerAverage: number | null;
+  finalPoints: number;
   received: number;
   expected: number;
   evaluators: PeerEvaluator[];
@@ -262,11 +263,32 @@ function peerScore(missed: string[]) {
   return Math.max(0, PEER_MAX - cut);
 }
 
-function teacherTeamPoints(team: InterfaceTeam) {
+function teacherTeamPoints(team: InterfaceTeam, notes = team.notes) {
   return memberPoints(
-    team.notes.filter((note) => !note.studentId),
+    notes.filter((note) => !note.studentId),
     "",
   );
+}
+
+function personalCut(notes: InterfaceNote[], studentId: string) {
+  return notes.filter((note) => note.studentId === studentId).reduce((acc, note) => acc + note.points, 0);
+}
+
+function averageScore(teacherPoints: number, peerAverage: number | null) {
+  if (peerAverage == null) return teacherPoints;
+  return Math.round((teacherPoints + peerAverage) / 2);
+}
+
+function leaderPeerAverage(targetKey: string, teams: InterfaceTeam[], reviews: PeerReview[]) {
+  const scores = teams
+    .filter((team) => team.key !== targetKey)
+    .map((team) => leaderOf(team))
+    .filter((leader): leader is NonNullable<typeof leader> => Boolean(leader))
+    .map((leader) => reviews.find((review) => review.reviewerId === leader.studentId && review.targetTeamKey === targetKey))
+    .filter((review): review is PeerReview => Boolean(review))
+    .map((review) => peerScore(review.missed));
+  if (!scores.length) return null;
+  return Math.round(scores.reduce((acc, score) => acc + score, 0) / scores.length);
 }
 
 function leaderOf(team: InterfaceTeam) {
@@ -307,14 +329,17 @@ function buildPeerBoard(teams: InterfaceTeam[], reviews: PeerReview[], published
       });
     evaluators.sort((a, b) => a.teamName.localeCompare(b.teamName, "es"));
     const scoring = evaluators.filter((person) => person.isLeader && person.points != null);
+    const teacherPoints = teacherTeamPoints(team);
+    const peerAverage = scoring.length
+      ? Math.round(scoring.reduce((acc, person) => acc + (person.points ?? 0), 0) / scoring.length)
+      : null;
     return {
       key: team.key,
       name: team.name,
       hex: team.hex,
-      teacherPoints: teacherTeamPoints(team),
-      peerAverage: scoring.length
-        ? Math.round(scoring.reduce((acc, person) => acc + (person.points ?? 0), 0) / scoring.length)
-        : null,
+      teacherPoints,
+      peerAverage,
+      finalPoints: averageScore(teacherPoints, peerAverage),
       received: scoring.length,
       expected: evaluators.filter((person) => person.isLeader).length,
       evaluators,
@@ -380,17 +405,24 @@ async function writeMemberGrade(params: {
   });
 }
 
-async function applyTeamPoints(groupId: string, teacherId: string, team: InterfaceTeam) {
+async function applyTeamPoints(
+  groupId: string,
+  teacherId: string,
+  team: InterfaceTeam,
+  allTeams: InterfaceTeam[],
+) {
   const activity = await activityForGroup(groupId);
   const activityId = activity?.id;
   if (!activityId) return;
   const notes = committedNotes(team);
+  const reviews = parsePeerReviews(await readPayload(groupId));
+  const base = averageScore(teacherTeamPoints(team, notes), leaderPeerAverage(team.key, allTeams, reviews));
   for (const member of team.members) {
     await writeMemberGrade({
       activityId,
       studentId: member.studentId,
       teacherId,
-      points: memberPoints(notes, member.studentId),
+      points: Math.max(0, base - personalCut(notes, member.studentId)),
     });
   }
 }
@@ -407,7 +439,7 @@ export async function getInterfaceSession(groupId: string): Promise<InterfaceSes
   const teams = await loadTeams(groupId, parsePayload(storedRaw));
   if (interfaceDesignClosed() && activity && !payloadPublished(storedRaw)) {
     for (const team of teams) {
-      await applyTeamPoints(groupId, group.teacherId, team);
+      await applyTeamPoints(groupId, group.teacherId, team, teams);
     }
     await saveTeams(groupId, teams, { published: true });
   }
@@ -466,6 +498,13 @@ export async function submitPeerReview(
     updatedAt: new Date().toISOString(),
   });
   await saveTeams(groupId, session.teams, { peerReviews: reviews, peerPublished: true });
+  const owner = await prisma.classGroup.findUnique({
+    where: { id: groupId },
+    select: { teacherId: true },
+  });
+  if (owner && (target.awardedDays.length > 0 || interfaceDesignClosed())) {
+    await applyTeamPoints(groupId, owner.teacherId, target, session.teams);
+  }
   const next = await getInterfaceSession(groupId);
   if (!next) throw new Error("group_not_found");
   return studentInterfaceView(next, studentId);
@@ -567,7 +606,7 @@ export async function removeInterfaceNote(
   await saveTeams(groupId, teams);
   const updated = teams.find((item) => item.key === team.key);
   if (updated && updated.awardedDays.includes(removed.day)) {
-    await applyTeamPoints(groupId, teacherId, updated);
+    await applyTeamPoints(groupId, teacherId, updated, teams);
   }
   return getInterfaceSession(groupId);
 }
@@ -590,7 +629,7 @@ export async function applyInterfacePoints(
   });
   await saveTeams(groupId, teams);
   for (const team of teams.filter((item) => targets.some((target) => target.key === item.key))) {
-    await applyTeamPoints(groupId, teacherId, team);
+    await applyTeamPoints(groupId, teacherId, team, teams);
   }
   return getInterfaceSession(groupId);
 }
@@ -609,12 +648,18 @@ export function studentInterfaceView(session: InterfaceSession, studentId: strin
       notes: [] as InterfaceNote[],
     };
   }
-  const me = team.members.find((member) => member.studentId === studentId)!;
   const saved = committedNotes(team);
+  const boardMine = session.peer.teams.find((item) => item.key === team.key);
+  const teacherOnly = Math.max(0, teacherTeamPoints(team, saved) - personalCut(saved, studentId));
+  const finalPoints = Math.max(
+    0,
+    averageScore(teacherTeamPoints(team, saved), boardMine?.peerAverage ?? null) - personalCut(saved, studentId),
+  );
   return {
     teamName: team.name,
     leaderName: team.leaderName,
-    points: memberPoints(saved, studentId),
+    points: finalPoints,
+    teacherPoints: teacherOnly,
     pointsMax: session.pointsMax,
     awarded: team.awardedDays.length > 0,
     closed: interfaceDesignClosed(),

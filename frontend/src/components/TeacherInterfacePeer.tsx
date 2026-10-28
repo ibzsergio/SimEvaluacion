@@ -60,6 +60,12 @@ function missedLabel(code: string) {
   return INTERFACE_COTEJO.find((item) => item.code === code)?.label ?? code;
 }
 
+function finalOf(team: { teacherPoints: number; peerAverage: number | null; finalPoints?: number }) {
+  if (typeof team.finalPoints === "number") return team.finalPoints;
+  if (team.peerAverage == null) return team.teacherPoints;
+  return Math.round((team.teacherPoints + team.peerAverage) / 2);
+}
+
 export default function TeacherInterfacePeer({
   groupId,
   released,
@@ -74,6 +80,9 @@ export default function TeacherInterfacePeer({
   const qc = useQueryClient();
   const board = peer ?? previewBoard(teams);
   const live = Boolean(peer);
+  const ranked = board.teams.map((team) => ({ ...team, final: finalOf(team) }));
+  const topScore = ranked.length ? Math.max(...ranked.map((team) => team.final)) : 0;
+  const best = ranked.filter((team) => team.final === topScore);
 
   const publishMutation = useMutation({
     mutationFn: (published: boolean) => setInterfacePeerPublished(groupId, published),
@@ -86,7 +95,7 @@ export default function TeacherInterfacePeer({
     const next = !board.published;
     const ok = window.confirm(
       next
-        ? "¿Publicar la coevaluación? Cada líder evaluará el diseño de los demás equipos. Todos verán qué líder los está evaluando. Tu calificación no cambia."
+        ? "¿Publicar la coevaluación? Cada líder evaluará el diseño de los demás equipos. El puntaje del equipo será el promedio de tu evaluación y la de los líderes."
         : "¿Ocultar la coevaluación? Los alumnos dejan de verla. Lo que ya enviaron se conserva.",
     );
     if (!ok) return;
@@ -102,7 +111,7 @@ export default function TeacherInterfacePeer({
           <p className="mt-1 max-w-3xl text-sm text-slate-400">
             Cada líder coteja el diseño de interfaces de los demás equipos, con la misma lista de{" "}
             {firmas(INTERFACE_COTEJO_TOTAL)} firmas. Evalúan el proyecto, no a los alumnos. Tu
-            calificación queda aparte y no se mezcla con el promedio de los líderes.
+            calificación y la de los líderes se promedian. Ese promedio es el puntaje que cuenta.
           </p>
         </div>
         <button
@@ -126,7 +135,7 @@ export default function TeacherInterfacePeer({
       <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-3 text-sm text-cyan-50">
         <p className="font-semibold text-white">Así lo van a ver en su teléfono</p>
         <ul className="mt-2 space-y-1 text-cyan-100/90">
-          <li>Su calificación del docente, aparte del promedio de los líderes.</li>
+          <li>El puntaje que cuenta: el promedio de tu evaluación y la de los líderes.</li>
           <li>El nombre del líder de cada equipo que evalúa su diseño, y si ya envió o sigue pendiente.</li>
           <li>Solo el líder llena la lista de cotejo del diseño de los demás equipos. Nadie evalúa al propio.</li>
         </ul>
@@ -150,17 +159,37 @@ export default function TeacherInterfacePeer({
         </p>
       ) : null}
 
+      {best.length > 0 && best.length < ranked.length ? (
+        <div className="mt-4 rounded-xl border border-amber-300/40 bg-amber-400/15 px-3 py-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-200">Mejor evaluado</p>
+          <p className="mt-1 text-lg font-bold text-white">
+            {best.map((team) => team.name).join(" y ")}
+            <span className="text-sm font-medium text-amber-100"> · {firmas(topScore)} firmas</span>
+          </p>
+          <p className="mt-1 text-xs text-amber-100/80">
+            Sale del promedio entre tu cotejo y el de los líderes. Si aún no hay coevaluación, gana el mejor de tu lista.
+          </p>
+        </div>
+      ) : null}
+
       <ul className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-        {board.teams.map((team) => (
+        {ranked.map((team) => (
           <li
             key={team.key}
             className="rounded-2xl border p-4"
             style={{ borderColor: `${team.hex}88`, backgroundColor: `${team.hex}18` }}
           >
-            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
-              {team.name}
-            </p>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: team.hex }}>
+                {team.name}
+              </p>
+              {best.length < ranked.length && team.final === topScore ? (
+                <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[11px] font-bold text-amber-100">
+                  Mejor evaluado
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
               <div className="rounded-xl bg-slate-950/40 px-3 py-2">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">Tu calificación</p>
                 <p className="text-lg font-bold text-white">
@@ -176,6 +205,13 @@ export default function TeacherInterfacePeer({
                     {" "}
                     · {team.received} de {team.expected}
                   </span>
+                </p>
+              </div>
+              <div className="rounded-xl bg-slate-950/40 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Promedio que cuenta</p>
+                <p className="text-lg font-bold text-white">
+                  {firmas(team.final)}
+                  <span className="text-sm font-medium text-slate-400"> / {firmas(INTERFACE_MAX_POINTS)}</span>
                 </p>
               </div>
             </div>

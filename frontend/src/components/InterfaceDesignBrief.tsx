@@ -25,13 +25,7 @@ export default function InterfaceDesignBrief({
   releasing?: boolean;
 }) {
   const dateLabel = formatCalendarDate(INTERFACE_CLOSE_ISO);
-  const firmas =
-    points == null
-      ? null
-      : Math.max(
-          0,
-          INTERFACE_MAX_POINTS - notes.reduce((acc, note) => acc + note.points, 0),
-        );
+  const firmas = points == null ? null : Math.max(0, Math.round(points));
 
   return (
     <section className="glass mb-4 overflow-hidden p-0">
@@ -79,7 +73,7 @@ export default function InterfaceDesignBrief({
                   {firmas.toLocaleString("es-MX")} de {INTERFACE_MAX_POINTS.toLocaleString("es-MX")}
                 </span>
                 {firmas < INTERFACE_MAX_POINTS
-                  ? ". Van bajando por las notas guardadas."
+                  ? ". Es el promedio de la evaluación del docente y la de los líderes, cuando ya hay coevaluación."
                   : ". Se mantienen: todavía no hay descuentos."}
               </p>
             ) : (

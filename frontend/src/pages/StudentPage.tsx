@@ -139,7 +139,8 @@ export default function StudentPage() {
       ) : null}
       {interfaceLive.data?.peer ? (
         <StudentInterfacePeer
-          teacherPoints={interfaceLive.data.points ?? interfaceActivity?.grade?.points ?? null}
+          teacherPoints={interfaceLive.data.teacherPoints ?? interfaceLive.data.points ?? interfaceActivity?.grade?.points ?? null}
+          finalPoints={interfaceLive.data.points ?? interfaceActivity?.grade?.points ?? null}
           peer={interfaceLive.data.peer}
         />
       ) : null}

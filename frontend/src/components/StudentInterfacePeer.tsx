@@ -13,9 +13,11 @@ function firmas(value: number) {
 
 export default function StudentInterfacePeer({
   teacherPoints,
+  finalPoints,
   peer,
 }: {
   teacherPoints: number | null;
+  finalPoints: number | null;
   peer: PeerState;
 }) {
   const qc = useQueryClient();
@@ -60,12 +62,21 @@ export default function StudentInterfacePeer({
       </div>
 
       <div className="space-y-3 px-4 py-4 sm:px-5">
+        <div className="rounded-xl border border-lime-400/30 bg-lime-500/10 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-lime-200">Puntaje que cuenta</p>
+          <p className="text-lg font-bold text-white">
+            {finalPoints == null ? "—" : firmas(finalPoints)}
+            <span className="text-sm font-medium text-slate-400"> / {firmas(INTERFACE_MAX_POINTS)}</span>
+          </p>
+          <p className="mt-1 text-xs text-lime-100/80">
+            Promedio de la evaluación del docente y la de los líderes.
+          </p>
+        </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">Calificación del docente</p>
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">Evaluación del docente</p>
             <p className="text-lg font-bold text-white">
               {teacherPoints == null ? "—" : firmas(teacherPoints)}
-              <span className="text-sm font-medium text-slate-400"> / {firmas(INTERFACE_MAX_POINTS)}</span>
             </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2">
