@@ -20,6 +20,7 @@ import {
 } from "../lib/api";
 import { studentImproFromAnnouncements } from "../lib/popupLive";
 import InterfaceDesignBrief from "../components/InterfaceDesignBrief";
+import StudentInterfacePeer from "../components/StudentInterfacePeer";
 import { formatCalendarDate, formatDateTime, partialLabel } from "../lib/dates";
 import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
 import { getDiplomaEncouragement, getDiplomaHeadline, getExemptionStatus } from "../lib/exemption";
@@ -139,6 +140,12 @@ export default function StudentPage() {
           teamName={interfaceLive.data?.teamName}
           points={interfaceLive.data?.points ?? interfaceActivity?.grade?.points ?? null}
           notes={interfaceLive.data?.notes ?? []}
+        />
+      ) : null}
+      {interfaceLive.data?.peer ? (
+        <StudentInterfacePeer
+          teacherPoints={interfaceLive.data.points ?? interfaceActivity?.grade?.points ?? null}
+          peer={interfaceLive.data.peer}
         />
       ) : null}
 

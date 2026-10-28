@@ -19,6 +19,7 @@ import {
 } from "../lib/interfaceDesign";
 import { extraRoleLabel } from "../lib/extraScrum";
 import type { ClassGroup } from "../lib/types";
+import TeacherInterfacePeer from "./TeacherInterfacePeer";
 
 function mexicoTodayIso() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -59,6 +60,7 @@ export default function TeacherInterfacePanel({
     queryKey: ["interface-session", selectedGroupId],
     queryFn: () => fetchInterfaceSession(selectedGroupId),
     enabled: !!selectedGroupId,
+    refetchInterval: 20_000,
   });
 
   const session = sessionQuery.data;
@@ -570,6 +572,15 @@ export default function TeacherInterfacePanel({
           </ul>
         )}
       </section>
+
+      {teams.length > 0 ? (
+        <TeacherInterfacePeer
+          groupId={selectedGroupId}
+          released={released}
+          teams={teams}
+          peer={session?.peer}
+        />
+      ) : null}
     </div>
   );
 }

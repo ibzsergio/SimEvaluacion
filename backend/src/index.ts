@@ -81,7 +81,12 @@ import {
   INTERFACE_ACTIVITY_NAME,
   setInterfaceDesignReleased,
 } from "./interfaceDesignActivity.js";
-import { getInterfaceSession, studentInterfaceView } from "./interfaceDesignSession.js";
+import {
+  getInterfaceSession,
+  interfaceErrorHttp,
+  studentInterfaceView,
+  submitPeerReview,
+} from "./interfaceDesignSession.js";
 import { dropPythonPracticeSchema } from "./ensurePythonPracticeSchema.js";
 import { ensureCompilerSchema, getCompilerReleasedForGroup } from "./ensureCompilerSchema.js";
 import { chooseProjectTeamLeader, getStudentSurveyState } from "./skillSurveyService.js";
@@ -930,6 +935,26 @@ app.get("/student/interface-design", requireAuth, requireStudent, async (req: Au
   } catch (err) {
     console.warn("[student/interface-design] failed:", err);
     return res.json({ interfaceDesign: null });
+  }
+});
+
+app.post("/student/interface-peer", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
+  const ctx = await loadStudentViewContext(req.auth!.userId);
+  if (!ctx) return res.status(400).json({ error: "student_without_group" });
+  const body = z
+    .object({
+      targetTeamKey: z.string().min(1),
+      missed: z.array(z.string()).max(20),
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  try {
+    const interfaceDesign = await submitPeerReview(ctx.groupId, req.auth!.userId, body.data);
+    return res.json({ interfaceDesign });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = interfaceErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
   }
 });
 

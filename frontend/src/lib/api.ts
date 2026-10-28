@@ -1075,12 +1075,60 @@ export async function createActivity(payload: {
   return data.activity;
 }
 
+export type InterfacePeerEvaluator = {
+  studentId: string;
+  displayName: string;
+  teamKey: string;
+  teamName: string;
+  isLeader: boolean;
+  done: boolean;
+  points: number | null;
+  missed: string[];
+};
+
+export type InterfacePeerBoard = {
+  published: boolean;
+  pointsMax: number;
+  teams: Array<{
+    key: string;
+    name: string;
+    hex: string;
+    teacherPoints: number;
+    peerAverage: number | null;
+    received: number;
+    expected: number;
+    evaluators: InterfacePeerEvaluator[];
+  }>;
+};
+
+export type StudentInterfacePeer = {
+  isLeader: boolean;
+  pointsMax: number;
+  peerAverage: number | null;
+  evaluatingUs: Array<{
+    studentId: string;
+    displayName: string;
+    teamName: string;
+    isLeader: boolean;
+    done: boolean;
+  }>;
+  toReview: Array<{
+    key: string;
+    name: string;
+    hex: string;
+    done: boolean;
+    points: number | null;
+    missed: string[];
+  }>;
+};
+
 export type InterfaceSession = {
   groupId: string;
   groupCode: string;
   released: boolean;
   activityId: string | null;
   pointsMax: number;
+  peer?: InterfacePeerBoard;
   teams: Array<{
     key: string;
     name: string;
@@ -1143,18 +1191,34 @@ export async function applyInterfacePoints(
   return data;
 }
 
+export async function setInterfacePeerPublished(groupId: string, published: boolean) {
+  const { data } = await api.put<InterfaceSession>(`/teacher/groups/${groupId}/interface-peer-publish`, {
+    published,
+  });
+  return data;
+}
+
+export type StudentInterfaceDesign = {
+  teamName: string | null;
+  leaderName: string | null;
+  points: number | null;
+  pointsMax: number;
+  awarded: boolean;
+  closed?: boolean;
+  notes: Array<{ id: string; label: string; points: number; day?: string; studentName: string | null }>;
+  peer?: StudentInterfacePeer | null;
+};
+
 export async function fetchStudentInterfaceDesign() {
-  const { data } = await api.get<{
-    interfaceDesign: {
-      teamName: string | null;
-      leaderName: string | null;
-      points: number | null;
-      pointsMax: number;
-      awarded: boolean;
-      closed?: boolean;
-      notes: Array<{ id: string; label: string; points: number; day?: string; studentName: string | null }>;
-    } | null;
-  }>("/student/interface-design");
+  const { data } = await api.get<{ interfaceDesign: StudentInterfaceDesign | null }>("/student/interface-design");
+  return data.interfaceDesign;
+}
+
+export async function submitInterfacePeerReview(payload: { targetTeamKey: string; missed: string[] }) {
+  const { data } = await api.post<{ interfaceDesign: StudentInterfaceDesign }>(
+    "/student/interface-peer",
+    payload,
+  );
   return data.interfaceDesign;
 }
 

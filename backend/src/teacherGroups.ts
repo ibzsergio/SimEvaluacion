@@ -65,6 +65,7 @@ import {
   interfaceErrorHttp,
   INTERFACE_DAYS,
   removeInterfaceNote,
+  setInterfacePeerPublished,
 } from "./interfaceDesignSession.js";
 import { INTERFACE_ACTIVITY_NAME } from "./interfaceDesignActivity.js";
 import {
@@ -1094,6 +1095,26 @@ teacherGroupsRouter.post("/groups/:groupId/interface-award", async (req: AuthedR
   if (!group) return res.status(404).json({ error: "group_not_found" });
   try {
     const session = await applyInterfacePoints(groupId, req.auth!.userId, body.data.day, body.data.teamKey);
+    return res.json(session);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "error";
+    const mapped = interfaceErrorHttp(msg);
+    return res.status(mapped.status).json({ error: mapped.error, message: mapped.message });
+  }
+});
+
+teacherGroupsRouter.put("/groups/:groupId/interface-peer-publish", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z.object({ published: z.boolean() }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "invalid_body" });
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  try {
+    const session = await setInterfacePeerPublished(groupId, body.data.published);
+    if (!session) return res.status(404).json({ error: "group_not_found" });
     return res.json(session);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "error";

@@ -68,9 +68,65 @@ export type InterfaceSession = {
   activityId: string | null;
   pointsMax: number;
   teams: InterfaceTeam[];
+  peer: InterfacePeerBoard;
 };
 
 type StoredTeam = { key: string; notes: InterfaceNote[]; awarded?: boolean; awardedDays?: InterfaceDay[] };
+
+export const PEER_CRITERIA = [
+  { code: "trabajo", points: 300 },
+  { code: "profesional", points: 700 },
+  { code: "entrega", points: 350 },
+  { code: "color", points: 250 },
+  { code: "tipo", points: 200 },
+  { code: "docente", points: 300 },
+  { code: "directivo", points: 300 },
+  { code: "responsivo", points: 300 },
+  { code: "navegacion", points: 150 },
+  { code: "alineacion", points: 150 },
+] as const;
+
+const PEER_CODES = new Set<string>(PEER_CRITERIA.map((item) => item.code));
+const PEER_MAX = PEER_CRITERIA.reduce((acc, item) => acc + item.points, 0);
+
+type PeerReview = {
+  reviewerId: string;
+  reviewerName: string;
+  reviewerTeamKey: string;
+  reviewerTeamName: string;
+  isLeader: boolean;
+  targetTeamKey: string;
+  missed: string[];
+  updatedAt: string;
+};
+
+export type PeerEvaluator = {
+  studentId: string;
+  displayName: string;
+  teamKey: string;
+  teamName: string;
+  isLeader: boolean;
+  done: boolean;
+  points: number | null;
+  missed: string[];
+};
+
+export type PeerBoardTeam = {
+  key: string;
+  name: string;
+  hex: string;
+  teacherPoints: number;
+  peerAverage: number | null;
+  received: number;
+  expected: number;
+  evaluators: PeerEvaluator[];
+};
+
+export type InterfacePeerBoard = {
+  published: boolean;
+  pointsMax: number;
+  teams: PeerBoardTeam[];
+};
 
 function parseNotes(raw: unknown): InterfaceNote[] {
   if (!Array.isArray(raw)) return [];
@@ -173,7 +229,90 @@ async function readStored(groupId: string) {
   return parsePayload(await readPayload(groupId));
 }
 
-async function saveTeams(groupId: string, teams: InterfaceTeam[], published?: boolean) {
+function parsePeerReviews(raw: unknown): PeerReview[] {
+  if (!raw || typeof raw !== "object") return [];
+  const list = (raw as { peerReviews?: unknown }).peerReviews;
+  if (!Array.isArray(list)) return [];
+  const reviews: PeerReview[] = [];
+  for (const item of list) {
+    const review = item as PeerReview;
+    const reviewerId = String(review.reviewerId ?? "");
+    const targetTeamKey = String(review.targetTeamKey ?? "");
+    if (!reviewerId || !targetTeamKey) continue;
+    reviews.push({
+      reviewerId,
+      reviewerName: String(review.reviewerName ?? "Alumno"),
+      reviewerTeamKey: String(review.reviewerTeamKey ?? ""),
+      reviewerTeamName: String(review.reviewerTeamName ?? ""),
+      isLeader: Boolean(review.isLeader),
+      targetTeamKey,
+      missed: Array.isArray(review.missed) ? review.missed.map(String).filter((code) => PEER_CODES.has(code)) : [],
+      updatedAt: String(review.updatedAt ?? new Date().toISOString()),
+    });
+  }
+  return reviews;
+}
+
+function peerPublishedFlag(raw: unknown) {
+  return Boolean(raw && typeof raw === "object" && (raw as { peerPublished?: unknown }).peerPublished);
+}
+
+function peerScore(missed: string[]) {
+  const cut = PEER_CRITERIA.filter((item) => missed.includes(item.code)).reduce((acc, item) => acc + item.points, 0);
+  return Math.max(0, PEER_MAX - cut);
+}
+
+function teacherTeamPoints(team: InterfaceTeam) {
+  return memberPoints(
+    team.notes.filter((note) => !note.studentId),
+    "",
+  );
+}
+
+function buildPeerBoard(teams: InterfaceTeam[], reviews: PeerReview[], published: boolean): InterfacePeerBoard {
+  const boardTeams = teams.map((team) => {
+    const received = reviews.filter((review) => review.targetTeamKey === team.key);
+    const scores = received.map((review) => peerScore(review.missed));
+    const evaluators: PeerEvaluator[] = teams
+      .filter((other) => other.key !== team.key)
+      .flatMap((other) =>
+        other.members.map((member) => {
+          const review = received.find((item) => item.reviewerId === member.studentId);
+          return {
+            studentId: member.studentId,
+            displayName: member.displayName,
+            teamKey: other.key,
+            teamName: other.name,
+            isLeader: other.leaderId === member.studentId,
+            done: Boolean(review),
+            points: review ? peerScore(review.missed) : null,
+            missed: review?.missed ?? [],
+          };
+        }),
+      );
+    evaluators.sort((a, b) => {
+      if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
+      return a.teamName.localeCompare(b.teamName, "es") || a.displayName.localeCompare(b.displayName, "es");
+    });
+    return {
+      key: team.key,
+      name: team.name,
+      hex: team.hex,
+      teacherPoints: teacherTeamPoints(team),
+      peerAverage: scores.length ? Math.round(scores.reduce((acc, score) => acc + score, 0) / scores.length) : null,
+      received: received.length,
+      expected: evaluators.length,
+      evaluators,
+    };
+  });
+  return { published, pointsMax: PEER_MAX, teams: boardTeams };
+}
+
+async function saveTeams(
+  groupId: string,
+  teams: InterfaceTeam[],
+  extra?: { published?: boolean; peerPublished?: boolean; peerReviews?: PeerReview[] },
+) {
   const prev = await readPayload(groupId);
   const payload = {
     teams: teams.map((team) => ({
@@ -181,7 +320,9 @@ async function saveTeams(groupId: string, teams: InterfaceTeam[], published?: bo
       notes: team.notes,
       awardedDays: team.awardedDays,
     })),
-    published: published ?? payloadPublished(prev),
+    published: extra?.published ?? payloadPublished(prev),
+    peerPublished: extra?.peerPublished ?? peerPublishedFlag(prev),
+    peerReviews: extra?.peerReviews ?? parsePeerReviews(prev),
   };
   await prisma.classGroup.update({
     where: { id: groupId },
@@ -253,8 +394,10 @@ export async function getInterfaceSession(groupId: string): Promise<InterfaceSes
     for (const team of teams) {
       await applyTeamPoints(groupId, group.teacherId, team);
     }
-    await saveTeams(groupId, teams, true);
+    await saveTeams(groupId, teams, { published: true });
   }
+  const payload = await readPayload(groupId);
+  const reviews = parsePeerReviews(payload);
   return {
     groupId: group.id,
     groupCode: group.code,
@@ -262,7 +405,54 @@ export async function getInterfaceSession(groupId: string): Promise<InterfaceSes
     activityId: activity?.id ?? null,
     pointsMax: INTERFACE_MAX_POINTS,
     teams,
+    peer: buildPeerBoard(teams, reviews, peerPublishedFlag(payload)),
   };
+}
+
+export async function setInterfacePeerPublished(groupId: string, published: boolean) {
+  const session = await getInterfaceSession(groupId);
+  if (!session) return null;
+  const payload = await readPayload(groupId);
+  await saveTeams(groupId, session.teams, {
+    peerPublished: published,
+    peerReviews: parsePeerReviews(payload),
+  });
+  return getInterfaceSession(groupId);
+}
+
+export async function submitPeerReview(
+  groupId: string,
+  studentId: string,
+  input: { targetTeamKey: string; missed: string[] },
+) {
+  const session = await getInterfaceSession(groupId);
+  if (!session) throw new Error("group_not_found");
+  if (!session.released || !session.peer.published) throw new Error("peer_closed");
+  const mine = session.teams.find((team) => team.members.some((member) => member.studentId === studentId));
+  if (!mine) throw new Error("not_in_team");
+  const target = session.teams.find((team) => team.key === input.targetTeamKey);
+  if (!target) throw new Error("team_not_found");
+  if (target.key === mine.key) throw new Error("own_team");
+  const me = mine.members.find((member) => member.studentId === studentId)!;
+  const missed = [...new Set(input.missed.filter((code) => PEER_CODES.has(code)))];
+  const payload = await readPayload(groupId);
+  const reviews = parsePeerReviews(payload).filter(
+    (review) => !(review.reviewerId === studentId && review.targetTeamKey === target.key),
+  );
+  reviews.push({
+    reviewerId: studentId,
+    reviewerName: me.displayName,
+    reviewerTeamKey: mine.key,
+    reviewerTeamName: mine.name,
+    isLeader: mine.leaderId === studentId,
+    targetTeamKey: target.key,
+    missed,
+    updatedAt: new Date().toISOString(),
+  });
+  await saveTeams(groupId, session.teams, { peerReviews: reviews, peerPublished: true });
+  const next = await getInterfaceSession(groupId);
+  if (!next) throw new Error("group_not_found");
+  return studentInterfaceView(next, studentId);
 }
 
 export async function addInterfaceNote(
@@ -413,6 +603,36 @@ export function studentInterfaceView(session: InterfaceSession, studentId: strin
     awarded: team.awardedDays.length > 0,
     closed: interfaceDesignClosed(),
     notes: saved.filter((note) => !note.studentId || note.studentId === studentId),
+    peer: session.peer.published ? studentPeerView(session, studentId) : null,
+  };
+}
+
+function studentPeerView(session: InterfaceSession, studentId: string) {
+  const mine = session.teams.find((team) => team.members.some((member) => member.studentId === studentId));
+  const boardMine = session.peer.teams.find((team) => team.key === mine?.key);
+  const mineReviewTargets = session.peer.teams.filter((team) => team.key !== mine?.key);
+  return {
+    isLeader: mine?.leaderId === studentId,
+    pointsMax: session.peer.pointsMax,
+    peerAverage: boardMine?.peerAverage ?? null,
+    evaluatingUs: (boardMine?.evaluators ?? []).map((person) => ({
+      studentId: person.studentId,
+      displayName: person.displayName,
+      teamName: person.teamName,
+      isLeader: person.isLeader,
+      done: person.done,
+    })),
+    toReview: mineReviewTargets.map((team) => {
+      const mineReview = team.evaluators.find((person) => person.studentId === studentId);
+      return {
+        key: team.key,
+        name: team.name,
+        hex: team.hex,
+        done: Boolean(mineReview?.done),
+        points: mineReview?.points ?? null,
+        missed: mineReview?.missed ?? [],
+      };
+    }),
   };
 }
 
@@ -428,6 +648,15 @@ export function interfaceErrorHttp(msg: string) {
   }
   if (msg === "invalid_day") {
     return { status: 400 as const, error: msg, message: "Elige un día del 19 al 22 o el lunes 26 de octubre." };
+  }
+  if (msg === "own_team") {
+    return { status: 400 as const, error: msg, message: "No evalúas a tu propio equipo." };
+  }
+  if (msg === "peer_closed") {
+    return { status: 403 as const, error: msg, message: "El docente todavía no publica la coevaluación." };
+  }
+  if (msg === "not_in_team") {
+    return { status: 400 as const, error: msg, message: "No apareces en un equipo de Roles / Equipos." };
   }
   if (msg === "invalid_note") {
     return { status: 400 as const, error: msg, message: "Escribe el motivo y cuántos puntos se restan." };
