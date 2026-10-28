@@ -62,7 +62,6 @@ import { ensureExtraSchema } from "./ensureExtraSchema.js";
 import { ensureImproSchema } from "./ensureImproSchema.js";
 import {
   chooseImproLeader,
-  getImproSession,
   improErrorHttp,
   startImproTimer,
   studentImproAssignment,
@@ -726,13 +725,7 @@ app.get("/student/progress", requireAuth, async (req: AuthedRequest, res) => {
   } catch (err) {
     console.warn("[student/progress] extra lookup failed:", err);
   }
-  let impro = null;
-  try {
-    const improSession = await getImproSession(me.groupId);
-    impro = improSession ? studentImproAssignment(improSession, req.auth!.userId) : null;
-  } catch (err) {
-    console.warn("[student/progress] impro lookup failed:", err);
-  }
+  const impro = null;
   const compilerReleased = myGroup ? await getCompilerReleasedForGroup(myGroup.id) : false;
 
   return res.json({

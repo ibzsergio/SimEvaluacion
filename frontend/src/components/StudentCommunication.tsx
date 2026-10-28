@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { fetchStudentComms, getApiErrorMessage, downloadStudentCalendarFile } from "../lib/api";
-import { POPUP_ANNOUNCEMENT_TITLE, popupPublicText } from "../lib/popupLive";
+import { POPUP_ANNOUNCEMENT_TITLE } from "../lib/popupLive";
 
 export default function StudentCommunication() {
   const [downloading, setDownloading] = useState(false);
@@ -67,19 +67,19 @@ export default function StudentCommunication() {
         </section>
       ) : null}
 
-      {data.announcements.length > 0 ? (
+      {data.announcements.some((a) => a.title !== POPUP_ANNOUNCEMENT_TITLE && a.title !== "Nueva actividad: Pop-Up") ? (
         <section className="glass p-6">
           <h2 className="mb-4 text-lg font-semibold text-white">Avisos del docente</h2>
           <ul className="space-y-3">
-            {data.announcements.map((a) => (
+            {data.announcements
+              .filter((a) => a.title !== POPUP_ANNOUNCEMENT_TITLE && a.title !== "Nueva actividad: Pop-Up")
+              .map((a) => (
               <li
                 key={a.id}
                 className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4"
               >
                 <p className="font-semibold text-white">{a.title}</p>
-                <p className="mt-2 text-sm text-slate-300 whitespace-pre-wrap">
-                  {a.title === POPUP_ANNOUNCEMENT_TITLE ? popupPublicText(a.body) : a.body}
-                </p>
+                <p className="mt-2 text-sm text-slate-300 whitespace-pre-wrap">{a.body}</p>
                 <p className="mt-2 text-xs text-slate-500">{formatDate(a.createdAt)}</p>
               </li>
             ))}

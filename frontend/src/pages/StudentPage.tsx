@@ -7,18 +7,15 @@ import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentExtraCard from "../components/StudentExtraCard";
-import StudentImproCard from "../components/StudentImproCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Top10Ranking from "../components/Top10Ranking";
 import {
   downloadStudentDiploma,
-  fetchStudentComms,
   fetchStudentInterfaceDesign,
   fetchStudentProgress,
   getApiErrorMessage,
 } from "../lib/api";
-import { studentImproFromAnnouncements } from "../lib/popupLive";
 import InterfaceDesignBrief from "../components/InterfaceDesignBrief";
 import StudentInterfacePeer from "../components/StudentInterfacePeer";
 import { formatCalendarDate, formatDateTime, partialLabel } from "../lib/dates";
@@ -43,13 +40,6 @@ export default function StudentPage() {
     refetchOnWindowFocus: true,
     refetchInterval: 20_000,
   });
-  const commsLive = useQuery({
-    queryKey: ["student-comms"],
-    queryFn: fetchStudentComms,
-    staleTime: 4_000,
-    refetchOnWindowFocus: true,
-    refetchInterval: 5_000,
-  });
   const { data, isLoading } = useQuery({
     queryKey: ["student-progress"],
     queryFn: fetchStudentProgress,
@@ -57,12 +47,10 @@ export default function StudentPage() {
     refetchOnWindowFocus: true,
     refetchInterval: (query) => {
       const extra = query.state.data?.extra;
-      const impro = query.state.data?.impro;
       const lectura = query.state.data?.lectura;
-      if (impro?.startedAt || impro?.pausedAt || extra?.startedAt || extra?.pausedAt || lectura?.startedAt) {
+      if (extra?.startedAt || extra?.pausedAt || lectura?.startedAt) {
         return 5000;
       }
-      if (impro && !impro.startedAt) return 8000;
       if (lectura && !lectura.startedAt) return 8000;
       return 30_000;
     },
@@ -76,7 +64,6 @@ export default function StudentPage() {
     );
   }
 
-  const { summary } = data;
   const progress = data.courseProgress;
   const progressPct = progress.percent;
   const partialClosed = data.group?.partialClosed ?? false;
@@ -102,16 +89,23 @@ export default function StudentPage() {
   const interfaceActivity =
     data.activities.find((activity) => activity.name === INTERFACE_ACTIVITY_NAME) ?? null;
   const interfaceStillOpen = interfaceLive.data ? interfaceLive.data.closed !== true : false;
-  const pendingActivities = data.activities.filter(
+  const visibleActivities = data.activities.filter(
+    (activity) => activity.name !== "Pop-Up" && activity.name !== "Sprint improvisado",
+  );
+  const pendingActivities = visibleActivities.filter(
     (a) => a.status === "pending" && !(interfaceStillOpen && a.name === INTERFACE_ACTIVITY_NAME),
   );
-  const gradedActivities = data.activities.filter(
+  const gradedActivities = visibleActivities.filter(
     (a) => a.status === "graded" && !(interfaceStillOpen && a.name === INTERFACE_ACTIVITY_NAME),
   );
+  const visibleSummary = {
+    total: visibleActivities.length,
+    pending: visibleActivities.filter((activity) => activity.status === "pending").length,
+    graded: visibleActivities.filter((activity) => activity.status === "graded").length,
+    overdue: visibleActivities.filter((activity) => activity.status === "pending" && activity.isOverdue).length,
+  };
 
   const greetingName = data.motivation.firstName;
-  const impro =
-    data.impro ?? studentImproFromAnnouncements(data.extra, commsLive.data?.announcements ?? []);
 
   return (
     <Layout
@@ -165,8 +159,6 @@ export default function StudentPage() {
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
-      {impro ? <StudentImproCard impro={impro} /> : null}
-
       {data.extra ? <StudentExtraCard extra={data.extra} /> : null}
 
       <StudentCommunication />
@@ -213,10 +205,10 @@ export default function StudentPage() {
       ) : null}
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Publicadas" value={summary.total} color="text-white" />
-        <StatCard label="Pendientes" value={summary.pending} color="text-amber-300" />
-        <StatCard label="Vencidas" value={summary.overdue} color="text-rose-300" />
-        <StatCard label="Calificadas" value={summary.graded} color="text-emerald-300" />
+        <StatCard label="Publicadas" value={visibleSummary.total} color="text-white" />
+        <StatCard label="Pendientes" value={visibleSummary.pending} color="text-amber-300" />
+        <StatCard label="Vencidas" value={visibleSummary.overdue} color="text-rose-300" />
+        <StatCard label="Calificadas" value={visibleSummary.graded} color="text-emerald-300" />
       </div>
 
       {data.classEngagement ? (
@@ -333,7 +325,7 @@ export default function StudentPage() {
         />
       ) : null}
 
-      {!data.activities.length ? (
+      {!visibleActivities.length ? (
         <section className="glass mt-6 p-8 text-center text-slate-400">
           Todavía no hay actividades publicadas para tu grupo.
         </section>
