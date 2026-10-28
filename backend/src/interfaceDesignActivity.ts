@@ -1,10 +1,10 @@
 import { prisma } from "./prisma.js";
-import { parseClassDayDate } from "./classDayService.js";
+import { formatClassDayIso, parseClassDayDate } from "./classDayService.js";
 import { listTeacherGroups } from "./groups.js";
 
 export const INTERFACE_ACTIVITY_NAME = "Diseño de Interfaces Proyecto";
 export const INTERFACE_MAX_POINTS = 3000;
-export const INTERFACE_CLOSE_ISO = "2026-10-22";
+export const INTERFACE_CLOSE_ISO = "2026-10-28";
 export const INTERFACE_PARTIAL = 2;
 export const INTERFACE_WARNING_POINTS = 50;
 
@@ -17,7 +17,7 @@ export function mexicoTodayIso(now = new Date()) {
   }).format(now);
 }
 
-/** El jueves 22 de octubre la actividad ya está cerrada y se publica a los alumnos. */
+/** El miércoles 28 de octubre la actividad ya está cerrada y se publica el puntaje. */
 export function interfaceDesignClosed(now = new Date()) {
   return mexicoTodayIso(now) >= INTERFACE_CLOSE_ISO;
 }
@@ -31,16 +31,18 @@ export async function ensureInterfaceDesignActivities(teacherId: string) {
   for (const group of groups) {
     const existing = await prisma.activity.findFirst({
       where: { groupId: group.id, name: INTERFACE_ACTIVITY_NAME },
-      select: { id: true, maxPoints: true, releasedToStudents: true },
+      select: { id: true, maxPoints: true, releasedToStudents: true, date: true },
     });
     if (existing) {
       const publish = interfaceDesignClosed() && !existing.releasedToStudents;
-      if (existing.maxPoints !== INTERFACE_MAX_POINTS || publish) {
+      const dateChanged = formatClassDayIso(existing.date) !== INTERFACE_CLOSE_ISO;
+      if (existing.maxPoints !== INTERFACE_MAX_POINTS || publish || dateChanged) {
         await prisma.activity.update({
           where: { id: existing.id },
           data: {
             ...(existing.maxPoints !== INTERFACE_MAX_POINTS ? { maxPoints: INTERFACE_MAX_POINTS } : {}),
             ...(publish ? { releasedToStudents: true } : {}),
+            ...(dateChanged ? { date: activityDate } : {}),
           },
         });
       }

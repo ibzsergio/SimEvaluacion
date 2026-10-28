@@ -1,6 +1,6 @@
 export const INTERFACE_ACTIVITY_NAME = "Diseño de Interfaces Proyecto";
 export const INTERFACE_MAX_POINTS = 3000;
-export const INTERFACE_CLOSE_ISO = "2026-10-22";
+export const INTERFACE_CLOSE_ISO = "2026-10-28";
 export const INTERFACE_WARNING_POINTS = 50;
 
 export const INTERFACE_DAYS = [
@@ -9,6 +9,7 @@ export const INTERFACE_DAYS = [
   { iso: "2026-10-21", label: "Mié 21" },
   { iso: "2026-10-22", label: "Jue 22" },
   { iso: "2026-10-26", label: "Lun 26" },
+  { iso: "2026-10-28", label: "Mié 28" },
 ] as const;
 
 export type InterfaceDay = (typeof INTERFACE_DAYS)[number]["iso"];
