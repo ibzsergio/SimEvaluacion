@@ -148,8 +148,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad de equipo</p>
               <h3 className="mt-1 text-xl font-bold text-white">Diseño de Interfaces Proyecto</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Equipos de Roles / Equipos. Lista de cotejo de 3,000 firmas. Cada alumno coevalúa a los
-                demás equipos; tú publicas esa coevaluación y tu calificación va aparte.
+                Equipos de Roles / Equipos. Lista de cotejo de 3,000 firmas. Los líderes coevalúan entre
+                sí el diseño de cada equipo; tú publicas esa coevaluación y tu calificación va aparte.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-violet-400/40 bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-100">

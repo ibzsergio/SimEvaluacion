@@ -49,10 +49,13 @@ export default function StudentInterfacePeer({
     <section className="glass mb-4 overflow-hidden p-0">
       <div className="bg-gradient-to-r from-cyan-600/30 to-violet-500/10 px-4 py-4 sm:px-5">
         <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-200">Coevaluación</p>
-        <h2 className="mt-1 text-xl font-bold text-white">Evalúa el diseño de los demás equipos</h2>
+        <h2 className="mt-1 text-xl font-bold text-white">
+          {peer.isLeader ? "Evalúa el diseño de los demás equipos" : "Coevaluación del diseño"}
+        </h2>
         <p className="mt-1 text-sm text-slate-200">
-          Todos evalúan a todos. Tu nombre se ve en el equipo que calificas.
-          {peer.isLeader ? " Eres líder: tu cotejo queda marcado como coevaluación del líder." : ""}
+          {peer.isLeader
+            ? "Como líder, cotejas el diseño de cada proyecto, no a las personas. Los demás equipos ven tu nombre."
+            : "Los líderes coevalúan entre sí el diseño de cada equipo. Tú ves qué líder está evaluando el diseño del tuyo."}
         </p>
       </div>
 
@@ -66,7 +69,7 @@ export default function StudentInterfacePeer({
             </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">Promedio de tus compañeros</p>
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">Promedio de los líderes</p>
             <p className="text-lg font-bold text-white">
               {peer.peerAverage == null ? "Aún no hay envíos" : firmas(peer.peerAverage)}
             </p>
@@ -74,12 +77,12 @@ export default function StudentInterfacePeer({
         </div>
 
         <div>
-          <p className="text-sm font-semibold text-white">Quién evalúa a tu equipo</p>
+          <p className="text-sm font-semibold text-white">Líderes que evalúan el diseño de tu equipo</p>
           <p className="mt-0.5 text-xs text-slate-400">
-            Ven tu diseño. Tú no ves su lista: solo si ya enviaron o siguen pendientes.
+            Evalúan el proyecto, no a cada integrante. No ves su lista: solo si ya enviaron o siguen pendientes.
           </p>
           {peer.evaluatingUs.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-400">Todavía no hay otros equipos asignados.</p>
+            <p className="mt-2 text-sm text-slate-400">Todavía no hay otros líderes asignados.</p>
           ) : (
             <ul className="mt-2 space-y-1.5">
               {peer.evaluatingUs.map((person) => (
@@ -99,7 +102,7 @@ export default function StudentInterfacePeer({
                       person.done ? "text-emerald-200" : "text-amber-100"
                     }`}
                   >
-                    {person.done ? "Ya evaluó" : "Pendiente"}
+                    {person.done ? "Ya evaluó el diseño" : "Pendiente"}
                   </span>
                 </li>
               ))}
@@ -107,12 +110,13 @@ export default function StudentInterfacePeer({
           )}
         </div>
 
+        {peer.isLeader ? (
         <div>
-          <p className="text-sm font-semibold text-white">Equipos que debes evaluar</p>
+          <p className="text-sm font-semibold text-white">Diseños que debes evaluar</p>
           <p className="mt-0.5 text-xs text-slate-400">
             {pending === 0
-              ? "Ya enviaste todas. Puedes actualizar una si cambias de opinión."
-              : `Te faltan ${pending} de ${peer.toReview.length}. Lo marcado en verde se cumple y no resta.`}
+              ? "Ya enviaste todos. Puedes actualizar uno si cambias de opinión."
+              : `Te faltan ${pending} de ${peer.toReview.length}. Evalúas el diseño del equipo. Lo marcado en verde se cumple y no resta.`}
           </p>
           {peer.toReview.length === 0 ? (
             <p className="mt-2 text-sm text-slate-400">No hay otros equipos en tu grupo.</p>
@@ -177,7 +181,11 @@ export default function StudentInterfacePeer({
                           onClick={() => mutation.mutate({ targetTeamKey: team.key, missed })}
                           className="min-h-11 w-full rounded-xl bg-cyan-600 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-60"
                         >
-                          {mutation.isPending ? "Enviando..." : dirty || !team.done ? "Enviar coevaluación" : "Actualizar"}
+                          {mutation.isPending
+                            ? "Enviando..."
+                            : dirty || !team.done
+                              ? "Enviar evaluación del diseño"
+                              : "Actualizar"}
                         </button>
                       </div>
                     ) : null}
@@ -187,6 +195,12 @@ export default function StudentInterfacePeer({
             </ul>
           )}
         </div>
+        ) : (
+          <p className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-sm text-slate-300">
+            El líder de tu equipo es quien coevalúa el diseño de los demás. Aquí ves qué líderes están
+            evaluando el diseño del tuyo.
+          </p>
+        )}
 
         {error ? (
           <p className="rounded-xl border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-sm text-rose-100">

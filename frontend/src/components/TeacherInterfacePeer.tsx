@@ -16,22 +16,32 @@ function previewBoard(teams: InterfaceSession["teams"]): InterfacePeerBoard {
         .reduce((acc, note) => acc + note.points, 0);
       const evaluators = teams
         .filter((other) => other.key !== team.key)
-        .flatMap((other) =>
-          other.members.map((member) => ({
-            studentId: member.studentId,
-            displayName: member.displayName,
+        .map((other) => {
+          const leader = other.members.find((member) => member.studentId === other.leaderId);
+          if (!leader) {
+            return {
+              studentId: `sin-lider-${other.key}`,
+              displayName: "Sin líder",
+              teamKey: other.key,
+              teamName: other.name,
+              isLeader: false,
+              done: false,
+              points: null,
+              missed: [] as string[],
+            };
+          }
+          return {
+            studentId: leader.studentId,
+            displayName: leader.displayName,
             teamKey: other.key,
             teamName: other.name,
-            isLeader: other.leaderId === member.studentId,
+            isLeader: true,
             done: false,
             points: null,
             missed: [] as string[],
-          })),
-        )
-        .sort((a, b) => {
-          if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
-          return a.teamName.localeCompare(b.teamName, "es") || a.displayName.localeCompare(b.displayName, "es");
-        });
+          };
+        })
+        .sort((a, b) => a.teamName.localeCompare(b.teamName, "es"));
       return {
         key: team.key,
         name: team.name,
@@ -39,7 +49,7 @@ function previewBoard(teams: InterfaceSession["teams"]): InterfacePeerBoard {
         teacherPoints: Math.max(0, INTERFACE_MAX_POINTS - cut),
         peerAverage: null,
         received: 0,
-        expected: evaluators.length,
+        expected: evaluators.filter((person) => person.isLeader).length,
         evaluators,
       };
     }),
@@ -76,7 +86,7 @@ export default function TeacherInterfacePeer({
     const next = !board.published;
     const ok = window.confirm(
       next
-        ? "¿Publicar la coevaluación? Cada alumno evaluará a los demás equipos y verá quién lo está evaluando. Tu calificación no cambia."
+        ? "¿Publicar la coevaluación? Cada líder evaluará el diseño de los demás equipos. Todos verán qué líder los está evaluando. Tu calificación no cambia."
         : "¿Ocultar la coevaluación? Los alumnos dejan de verla. Lo que ya enviaron se conserva.",
     );
     if (!ok) return;
@@ -88,11 +98,11 @@ export default function TeacherInterfacePeer({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Coevaluación</p>
-          <h2 className="mt-1 text-xl font-bold text-white">Todos evalúan a todos</h2>
+          <h2 className="mt-1 text-xl font-bold text-white">Los líderes evalúan el diseño</h2>
           <p className="mt-1 max-w-3xl text-sm text-slate-400">
-            Cada alumno coteja el diseño de los demás equipos, con la misma lista de{" "}
-            {firmas(INTERFACE_COTEJO_TOTAL)} firmas. El líder aparece marcado. Tu calificación queda
-            aparte y no se mezcla con el promedio de ellos.
+            Cada líder coteja el diseño de interfaces de los demás equipos, con la misma lista de{" "}
+            {firmas(INTERFACE_COTEJO_TOTAL)} firmas. Evalúan el proyecto, no a los alumnos. Tu
+            calificación queda aparte y no se mezcla con el promedio de los líderes.
           </p>
         </div>
         <button
@@ -116,9 +126,9 @@ export default function TeacherInterfacePeer({
       <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-3 text-sm text-cyan-50">
         <p className="font-semibold text-white">Así lo van a ver en su teléfono</p>
         <ul className="mt-2 space-y-1 text-cyan-100/90">
-          <li>Su calificación del docente, aparte del promedio de los compañeros.</li>
-          <li>El nombre de cada persona que evalúa a su equipo, si es líder y si ya envió o sigue pendiente.</li>
-          <li>La lista de cotejo para evaluar a cada equipo que no es el suyo. Nadie evalúa al propio.</li>
+          <li>Su calificación del docente, aparte del promedio de los líderes.</li>
+          <li>El nombre del líder de cada equipo que evalúa su diseño, y si ya envió o sigue pendiente.</li>
+          <li>Solo el líder llena la lista de cotejo del diseño de los demás equipos. Nadie evalúa al propio.</li>
         </ul>
         <p className="mt-2 text-xs text-cyan-100/70">
           {board.published
@@ -159,7 +169,7 @@ export default function TeacherInterfacePeer({
                 </p>
               </div>
               <div className="rounded-xl bg-slate-950/40 px-3 py-2">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">Promedio de ellos</p>
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Promedio de los líderes</p>
                 <p className="text-lg font-bold text-white">
                   {team.peerAverage == null ? "—" : firmas(team.peerAverage)}
                   <span className="text-sm font-medium text-slate-400">
@@ -170,10 +180,10 @@ export default function TeacherInterfacePeer({
               </div>
             </div>
             <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Quién los evalúa
+              Líderes que evalúan este diseño
             </p>
             {team.evaluators.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-400">No hay otros equipos para coevaluar.</p>
+              <p className="mt-2 text-sm text-slate-400">No hay otros líderes para coevaluar este diseño.</p>
             ) : (
               <ul className="mt-2 space-y-1.5">
                 {team.evaluators.map((person) => (
@@ -188,12 +198,14 @@ export default function TeacherInterfacePeer({
                       <span className="text-xs text-slate-400">{person.teamName}</span>
                       <span
                         className={`ml-auto text-xs font-semibold ${
-                          person.done ? "text-emerald-200" : "text-slate-400"
+                          !person.isLeader ? "text-amber-100" : person.done ? "text-emerald-200" : "text-slate-400"
                         }`}
                       >
-                        {person.done
-                          ? `Ya evaluó · ${firmas(person.points ?? 0)}`
-                          : "Pendiente"}
+                        {!person.isLeader
+                          ? "No puede coevaluar"
+                          : person.done
+                            ? `Ya evaluó el diseño · ${firmas(person.points ?? 0)}`
+                            : "Pendiente"}
                       </span>
                     </div>
                     {person.done && person.missed.length > 0 ? (

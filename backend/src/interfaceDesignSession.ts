@@ -269,39 +269,54 @@ function teacherTeamPoints(team: InterfaceTeam) {
   );
 }
 
+function leaderOf(team: InterfaceTeam) {
+  if (!team.leaderId) return null;
+  return team.members.find((member) => member.studentId === team.leaderId) ?? null;
+}
+
 function buildPeerBoard(teams: InterfaceTeam[], reviews: PeerReview[], published: boolean): InterfacePeerBoard {
   const boardTeams = teams.map((team) => {
     const received = reviews.filter((review) => review.targetTeamKey === team.key);
-    const scores = received.map((review) => peerScore(review.missed));
     const evaluators: PeerEvaluator[] = teams
       .filter((other) => other.key !== team.key)
-      .flatMap((other) =>
-        other.members.map((member) => {
-          const review = received.find((item) => item.reviewerId === member.studentId);
+      .map((other) => {
+        const leader = leaderOf(other);
+        if (!leader) {
           return {
-            studentId: member.studentId,
-            displayName: member.displayName,
+            studentId: `sin-lider-${other.key}`,
+            displayName: "Sin líder",
             teamKey: other.key,
             teamName: other.name,
-            isLeader: other.leaderId === member.studentId,
-            done: Boolean(review),
-            points: review ? peerScore(review.missed) : null,
-            missed: review?.missed ?? [],
+            isLeader: false,
+            done: false,
+            points: null,
+            missed: [],
           };
-        }),
-      );
-    evaluators.sort((a, b) => {
-      if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
-      return a.teamName.localeCompare(b.teamName, "es") || a.displayName.localeCompare(b.displayName, "es");
-    });
+        }
+        const review = received.find((item) => item.reviewerId === leader.studentId);
+        return {
+          studentId: leader.studentId,
+          displayName: leader.displayName,
+          teamKey: other.key,
+          teamName: other.name,
+          isLeader: true,
+          done: Boolean(review),
+          points: review ? peerScore(review.missed) : null,
+          missed: review?.missed ?? [],
+        };
+      });
+    evaluators.sort((a, b) => a.teamName.localeCompare(b.teamName, "es"));
+    const scoring = evaluators.filter((person) => person.isLeader && person.points != null);
     return {
       key: team.key,
       name: team.name,
       hex: team.hex,
       teacherPoints: teacherTeamPoints(team),
-      peerAverage: scores.length ? Math.round(scores.reduce((acc, score) => acc + score, 0) / scores.length) : null,
-      received: received.length,
-      expected: evaluators.length,
+      peerAverage: scoring.length
+        ? Math.round(scoring.reduce((acc, person) => acc + (person.points ?? 0), 0) / scoring.length)
+        : null,
+      received: scoring.length,
+      expected: evaluators.filter((person) => person.isLeader).length,
       evaluators,
     };
   });
@@ -430,6 +445,7 @@ export async function submitPeerReview(
   if (!session.released || !session.peer.published) throw new Error("peer_closed");
   const mine = session.teams.find((team) => team.members.some((member) => member.studentId === studentId));
   if (!mine) throw new Error("not_in_team");
+  if (mine.leaderId !== studentId) throw new Error("not_leader");
   const target = session.teams.find((team) => team.key === input.targetTeamKey);
   if (!target) throw new Error("team_not_found");
   if (target.key === mine.key) throw new Error("own_team");
@@ -444,7 +460,7 @@ export async function submitPeerReview(
     reviewerName: me.displayName,
     reviewerTeamKey: mine.key,
     reviewerTeamName: mine.name,
-    isLeader: mine.leaderId === studentId,
+    isLeader: true,
     targetTeamKey: target.key,
     missed,
     updatedAt: new Date().toISOString(),
@@ -610,12 +626,13 @@ export function studentInterfaceView(session: InterfaceSession, studentId: strin
 function studentPeerView(session: InterfaceSession, studentId: string) {
   const mine = session.teams.find((team) => team.members.some((member) => member.studentId === studentId));
   const boardMine = session.peer.teams.find((team) => team.key === mine?.key);
-  const mineReviewTargets = session.peer.teams.filter((team) => team.key !== mine?.key);
+  const isLeader = mine?.leaderId === studentId;
+  const mineReviewTargets = isLeader ? session.peer.teams.filter((team) => team.key !== mine?.key) : [];
   return {
-    isLeader: mine?.leaderId === studentId,
+    isLeader,
     pointsMax: session.peer.pointsMax,
     peerAverage: boardMine?.peerAverage ?? null,
-    evaluatingUs: (boardMine?.evaluators ?? []).map((person) => ({
+    evaluatingUs: (boardMine?.evaluators ?? []).filter((person) => person.isLeader).map((person) => ({
       studentId: person.studentId,
       displayName: person.displayName,
       teamName: person.teamName,
@@ -657,6 +674,9 @@ export function interfaceErrorHttp(msg: string) {
   }
   if (msg === "not_in_team") {
     return { status: 400 as const, error: msg, message: "No apareces en un equipo de Roles / Equipos." };
+  }
+  if (msg === "not_leader") {
+    return { status: 403 as const, error: msg, message: "Solo el líder coevalúa el diseño de los demás equipos." };
   }
   if (msg === "invalid_note") {
     return { status: 400 as const, error: msg, message: "Escribe el motivo y cuántos puntos se restan." };
