@@ -103,6 +103,10 @@ export async function runPythonProgram(
   py.setStdout({ batched: onOutput });
   py.setStderr({ batched: onOutput });
   await py.runPythonAsync(TKINTER_SHIM);
+  // El código corre con exec, no como archivo. Sin esto, __file__ lanza NameError.
+  await py.runPythonAsync(
+    `__file__ = __import__("os").path.join(__import__("os").getcwd(), "programa.py")`,
+  );
   await py.runPythonAsync(sanitizePythonSource(code));
 }
 
