@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchGradesMatrix, getApiErrorMessage, saveGradesBatch } from "../lib/api";
 import { formatCalendarDate, getActivityKindLabel, partialLabel } from "../lib/dates";
-import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
 import type { Activity, GradesMatrix } from "../lib/types";
 
 function cellKey(studentId: string, activityId: string) {
@@ -107,9 +106,7 @@ export default function GradesMatrixPanel({
     setSelectedStudentId(null);
   }, [groupId, partialNumber]);
 
-  const activities = (query.data?.activities ?? []).filter(
-    (activity) => activity.name !== INTERFACE_ACTIVITY_NAME,
-  );
+  const activities = query.data?.activities ?? [];
   const students = query.data?.students ?? [];
   const cells = query.data?.cells ?? {};
 

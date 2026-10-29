@@ -109,7 +109,7 @@ export default function TeacherPage() {
     enabled: !!selectedGroupId,
   });
 
-  const activities = (activitiesQuery.data ?? []).filter((a) => a.name !== INTERFACE_ACTIVITY_NAME);
+  const activities = activitiesQuery.data ?? [];
   const currentPartial = selectedGroup?.currentPartial ?? 1;
   const activityPartialNumbers = useMemo(() => {
     const nums = new Set(activities.map((a) => a.partialNumber ?? 1));
@@ -663,7 +663,8 @@ export default function TeacherPage() {
                   {activityPartialNumbers.map((partialNo, sectionIndex) => {
                     const items = activities.filter((a) => (a.partialNumber ?? 1) === partialNo);
                     const isCurrent = partialNo === currentPartial;
-                    const collapsed = !isCurrent && collapsedPartials[partialNo] !== false;
+                    const hasInterface = items.some((item) => item.name === INTERFACE_ACTIVITY_NAME);
+                    const collapsed = !isCurrent && !hasInterface && collapsedPartials[partialNo] !== false;
                     const showCut = sectionIndex > 0;
                     return (
                       <div key={partialNo}>
@@ -725,6 +726,7 @@ export default function TeacherPage() {
                                   index={index}
                                   active={a.id === activeId}
                                   pendingDelete={deleteMutation.isPending}
+                                  locked={a.name === INTERFACE_ACTIVITY_NAME}
                                   onSelect={() => setSelectedId(a.id)}
                                   onEdit={() => startEditActivity(a)}
                                   onDelete={() => handleDeleteActivity(a)}
@@ -772,6 +774,7 @@ function ActivityListItem({
   index,
   active,
   pendingDelete,
+  locked = false,
   onSelect,
   onEdit,
   onDelete,
@@ -780,6 +783,7 @@ function ActivityListItem({
   index: number;
   active: boolean;
   pendingDelete: boolean;
+  locked?: boolean;
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -807,25 +811,27 @@ function ActivityListItem({
             ) : null}
           </p>
         </button>
-        <div className="flex shrink-0 flex-col gap-1 pt-1">
-          <button
-            type="button"
-            title="Editar"
-            onClick={onEdit}
-            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white"
-          >
-            Editar
-          </button>
-          <button
-            type="button"
-            title="Eliminar"
-            onClick={onDelete}
-            disabled={pendingDelete}
-            className="rounded-lg border border-rose-400/30 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/15 disabled:opacity-50"
-          >
-            Eliminar
-          </button>
-        </div>
+        {locked ? null : (
+          <div className="flex shrink-0 flex-col gap-1 pt-1">
+            <button
+              type="button"
+              title="Editar"
+              onClick={onEdit}
+              className="rounded-lg border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white"
+            >
+              Editar
+            </button>
+            <button
+              type="button"
+              title="Eliminar"
+              onClick={onDelete}
+              disabled={pendingDelete}
+              className="rounded-lg border border-rose-400/30 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/15 disabled:opacity-50"
+            >
+              Eliminar
+            </button>
+          </div>
+        )}
       </div>
     </li>
   );
