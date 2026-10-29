@@ -65,9 +65,14 @@ import {
   interfaceErrorHttp,
   INTERFACE_DAYS,
   removeInterfaceNote,
+  republishInterfaceGradesForGroup,
   setInterfacePeerPublished,
 } from "./interfaceDesignSession.js";
-import { INTERFACE_ACTIVITY_NAME } from "./interfaceDesignActivity.js";
+import {
+  ensureInterfaceDesignActivities,
+  INTERFACE_ACTIVITY_NAME,
+  INTERFACE_PARTIAL,
+} from "./interfaceDesignActivity.js";
 import {
   avionErrorHttp,
   clearAvionCustomTeams,
@@ -1542,10 +1547,22 @@ teacherGroupsRouter.get("/groups/:groupId/grades-matrix", async (req: AuthedRequ
     Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : (group.currentPartial ?? 1);
 
   await removeJunkStudentsForGroup(groupId);
+  try {
+    await ensureInterfaceDesignActivities(req.auth!.userId);
+    await republishInterfaceGradesForGroup(groupId, req.auth!.userId);
+  } catch (err) {
+    console.warn("[grades-matrix] Diseño de Interfaces:", err);
+  }
 
   const [activities, students] = await Promise.all([
     prisma.activity.findMany({
-      where: { groupId, partialNumber, createdById: req.auth!.userId },
+      where: {
+        groupId,
+        OR: [
+          { partialNumber, createdById: req.auth!.userId },
+          ...(partialNumber === INTERFACE_PARTIAL ? [{ name: INTERFACE_ACTIVITY_NAME }] : []),
+        ],
+      },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,

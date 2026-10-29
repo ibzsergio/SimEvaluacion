@@ -83,6 +83,7 @@ import {
 import {
   getInterfaceSession,
   interfaceErrorHttp,
+  republishInterfaceGrades,
   studentInterfaceView,
   submitPeerReview,
 } from "./interfaceDesignSession.js";
@@ -1129,6 +1130,7 @@ void (async () => {
       });
       for (const teacher of teachers) {
         await ensureInterfaceDesignActivities(teacher.id);
+        await republishInterfaceGrades(teacher.id);
       }
     } catch (err) {
       console.warn("[startup] Diseño de Interfaces:", err);

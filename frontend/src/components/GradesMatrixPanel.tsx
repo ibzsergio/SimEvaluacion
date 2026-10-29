@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchGradesMatrix, getApiErrorMessage, saveGradesBatch } from "../lib/api";
+import { fetchActivityGrades, fetchGradesMatrix, getApiErrorMessage, saveGradesBatch } from "../lib/api";
 import { formatCalendarDate, getActivityKindLabel, partialLabel } from "../lib/dates";
+import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
 import type { Activity, GradesMatrix } from "../lib/types";
 
 function cellKey(studentId: string, activityId: string) {
@@ -43,6 +44,7 @@ function ActivityHeaderCells({
                 ? `${activity.name} — este alumno aún no tiene calificación`
                 : activity.name
             }
+            data-activity-id={activity.id}
           >
             <p
               className={`font-bold normal-case tracking-normal lg:text-base ${
@@ -77,10 +79,12 @@ export default function GradesMatrixPanel({
   groupId,
   partialNumber,
   highlightActivityId,
+  pinnedActivity = null,
 }: {
   groupId: string;
   partialNumber: number;
   highlightActivityId: string | null;
+  pinnedActivity?: Activity | null;
 }) {
   const qc = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -91,6 +95,7 @@ export default function GradesMatrixPanel({
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
+  const scrolledActivityRef = useRef("");
 
   const query = useQuery({
     queryKey: ["grades-matrix", groupId, partialNumber],
@@ -106,9 +111,41 @@ export default function GradesMatrixPanel({
     setSelectedStudentId(null);
   }, [groupId, partialNumber]);
 
-  const activities = query.data?.activities ?? [];
+  const rawActivities = query.data?.activities ?? [];
+  const activities = useMemo(() => {
+    const list = [...rawActivities];
+    if (pinnedActivity && !list.some((activity) => activity.id === pinnedActivity.id)) {
+      list.push(pinnedActivity);
+    }
+    const index = list.findIndex((activity) => activity.name === INTERFACE_ACTIVITY_NAME);
+    if (index >= 0 && index < list.length - 1) {
+      const [item] = list.splice(index, 1);
+      if (item) list.push(item);
+    }
+    return list;
+  }, [rawActivities, pinnedActivity]);
+  const needsPinGrades = Boolean(
+    pinnedActivity && !rawActivities.some((activity) => activity.id === pinnedActivity.id),
+  );
+  const pinGrades = useQuery({
+    queryKey: ["activity-grades", pinnedActivity?.id],
+    queryFn: () => fetchActivityGrades(pinnedActivity!.id),
+    enabled: needsPinGrades,
+  });
   const students = query.data?.students ?? [];
-  const cells = query.data?.cells ?? {};
+  const cells = useMemo(() => {
+    const base = query.data?.cells ?? {};
+    if (!needsPinGrades || !pinnedActivity || !pinGrades.data) return base;
+    const next: GradesMatrix["cells"] = { ...base };
+    for (const row of pinGrades.data.rows) {
+      if (!row.grade) continue;
+      next[row.student.id] = {
+        ...next[row.student.id],
+        [pinnedActivity.id]: { points: row.grade.points, gradedAt: row.grade.gradedAt },
+      };
+    }
+    return next;
+  }, [query.data?.cells, needsPinGrades, pinnedActivity, pinGrades.data]);
 
   const filteredStudents = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -248,6 +285,29 @@ export default function GradesMatrixPanel({
 
   const dirtyCount = Object.entries(drafts).filter(([, v]) => v.trim() !== "").length;
 
+  useEffect(() => {
+    const activityId = activities.find((activity) => activity.name === INTERFACE_ACTIVITY_NAME)?.id;
+    if (!activityId) return;
+    const token = `${groupId}:${activityId}`;
+    if (scrolledActivityRef.current === token) return;
+    const frame = requestAnimationFrame(() => {
+      const header = headerScrollRef.current;
+      const body = tableScrollRef.current;
+      const wide = window.matchMedia("(min-width: 1024px)").matches;
+      const scroller = wide && header ? header : body;
+      const cell = scroller?.querySelector(`[data-activity-id="${activityId}"]`) as HTMLElement | null;
+      if (!scroller || !cell) return;
+      const delta = cell.getBoundingClientRect().right - scroller.getBoundingClientRect().right + 16;
+      if (delta > 8) scroller.scrollLeft += delta;
+      if (header && body) {
+        if (scroller === header) body.scrollLeft = header.scrollLeft;
+        else header.scrollLeft = body.scrollLeft;
+      }
+      scrolledActivityRef.current = token;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activities, groupId]);
+
   function syncHeaderScroll(from: "header" | "body") {
     const header = headerScrollRef.current;
     const body = tableScrollRef.current;
@@ -383,6 +443,7 @@ export default function GradesMatrixPanel({
                     return (
                       <td
                         key={activity.id}
+                        data-activity-id={activity.id}
                         className={`px-2 py-2 lg:min-w-[9.5rem] lg:w-[9.5rem] lg:py-1 ${
                           markOwed
                             ? "bg-rose-500/10"

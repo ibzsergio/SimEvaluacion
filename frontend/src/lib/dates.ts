@@ -84,6 +84,7 @@ export function ensurePracticaNumber(name: string, nextNumber: number) {
 }
 export function getActivityKindLabel(index: number, name: string) {
   const text = name ?? "";
+  if (/diseño de interfaces proyecto/i.test(text)) return "SCRUM";
   const practica = text.match(/pr[aá]cti[cç]a\s*[#]?\s*(\d+)/i);
   if (practica) return `Práctica ${practica[1]}`;
   const actividad = text.match(/actividad\s*[#]?\s*(\d+)/i);

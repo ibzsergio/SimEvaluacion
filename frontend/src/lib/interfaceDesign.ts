@@ -122,3 +122,54 @@ export const INTERFACE_CRITERIA = [
     penalty: "−50 c/u",
   },
 ] as const;
+
+export function interfaceDesignClosed(now = new Date()) {
+  const iso = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  return iso >= INTERFACE_CLOSE_ISO;
+}
+
+type InterfaceGradeSource = {
+  peer?: { teams: Array<{ key: string; peerAverage: number | null }> };
+  teams: Array<{
+    key: string;
+    awardedDays: string[];
+    members: Array<{ studentId: string }>;
+    notes: Array<{ points: number; day: string; studentId: string | null }>;
+  }>;
+};
+
+/** Promedio que cuenta: cotejo del docente y, si hay, el de los líderes. */
+export function interfaceGradeRows(session: InterfaceGradeSource, activityId: string) {
+  const closed = interfaceDesignClosed();
+  const rows: Array<{ activityId: string; studentId: string; points: number }> = [];
+  for (const team of session.teams) {
+    const counted =
+      team.awardedDays.length > 0
+        ? team.notes.filter((note) => team.awardedDays.includes(note.day))
+        : closed
+          ? team.notes
+          : [];
+    const teacherCut = counted
+      .filter((note) => !note.studentId)
+      .reduce((acc, note) => acc + note.points, 0);
+    const teacher = Math.max(0, INTERFACE_MAX_POINTS - teacherCut);
+    const peer = session.peer?.teams.find((item) => item.key === team.key)?.peerAverage ?? null;
+    const base = peer == null ? teacher : Math.round((teacher + peer) / 2);
+    for (const member of team.members) {
+      const personal = counted
+        .filter((note) => note.studentId === member.studentId)
+        .reduce((acc, note) => acc + note.points, 0);
+      rows.push({
+        activityId,
+        studentId: member.studentId,
+        points: Math.max(0, Math.min(INTERFACE_MAX_POINTS, base - personal)),
+      });
+    }
+  }
+  return rows;
+}

@@ -1,3 +1,4 @@
+import { listTeacherGroups } from "./groups.js";
 import { prisma } from "./prisma.js";
 import { COLUMN_PALETTE } from "./seatingService.js";
 import {
@@ -177,6 +178,13 @@ function memberPoints(notes: InterfaceNote[], studentId: string) {
 
 function committedNotes(team: Pick<InterfaceTeam, "notes" | "awardedDays">) {
   return team.notes.filter((note) => team.awardedDays.includes(note.day));
+}
+
+/** Días guardados. Si ya cerró y no hubo guardado, cuenta el cotejo marcado. */
+function gradingNotes(team: Pick<InterfaceTeam, "notes" | "awardedDays">) {
+  if (team.awardedDays.length > 0) return committedNotes(team);
+  if (interfaceDesignClosed()) return team.notes;
+  return [];
 }
 
 async function loadTeams(groupId: string, stored: StoredTeam[]): Promise<InterfaceTeam[]> {
@@ -414,7 +422,7 @@ async function applyTeamPoints(
   const activity = await activityForGroup(groupId);
   const activityId = activity?.id;
   if (!activityId) return;
-  const notes = committedNotes(team);
+  const notes = gradingNotes(team);
   const reviews = parsePeerReviews(await readPayload(groupId));
   const base = averageScore(teacherTeamPoints(team, notes), leaderPeerAverage(team.key, allTeams, reviews));
   for (const member of team.members) {
@@ -424,6 +432,24 @@ async function applyTeamPoints(
       teacherId,
       points: Math.max(0, base - personalCut(notes, member.studentId)),
     });
+  }
+}
+
+/** Escribe en Actividades el promedio (docente + líderes) de cada integrante. */
+export async function republishInterfaceGradesForGroup(groupId: string, teacherId: string) {
+  const activity = await activityForGroup(groupId);
+  if (!activity) return;
+  const teams = await loadTeams(groupId, parsePayload(await readPayload(groupId)));
+  if (!interfaceDesignClosed() && !teams.some((team) => team.awardedDays.length > 0)) return;
+  for (const team of teams) {
+    await applyTeamPoints(groupId, teacherId, team, teams);
+  }
+}
+
+export async function republishInterfaceGrades(teacherId: string) {
+  const groups = await listTeacherGroups(teacherId);
+  for (const group of groups) {
+    await republishInterfaceGradesForGroup(group.id, teacherId);
   }
 }
 
@@ -648,7 +674,7 @@ export function studentInterfaceView(session: InterfaceSession, studentId: strin
       notes: [] as InterfaceNote[],
     };
   }
-  const saved = committedNotes(team);
+  const saved = gradingNotes(team);
   const boardMine = session.peer.teams.find((item) => item.key === team.key);
   const teacherOnly = Math.max(0, teacherTeamPoints(team, saved) - personalCut(saved, studentId));
   const finalPoints = Math.max(

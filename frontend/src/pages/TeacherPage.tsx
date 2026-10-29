@@ -25,11 +25,18 @@ import {
   downloadFridayLagReport,
   fetchActivities,
   fetchGroups,
+  fetchInterfaceSession,
   getApiErrorMessage,
+  saveGradesBatch,
   startNextPartial,
   updateActivity,
 } from "../lib/api";
-import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
+import {
+  INTERFACE_ACTIVITY_NAME,
+  INTERFACE_CLOSE_ISO,
+  INTERFACE_MAX_POINTS,
+  interfaceGradeRows,
+} from "../lib/interfaceDesign";
 import { formatGroupCodesPlus, formatTeacherGroupsSubtitle } from "../lib/groups";
 import {
   ensurePracticaNumber,
@@ -44,6 +51,45 @@ import {
   toDateInputValue,
 } from "../lib/dates";
 import type { Activity } from "../lib/types";
+
+const interfaceGradebookDone = new Set<string>();
+const interfaceGradebookBusy = new Set<string>();
+
+async function publishInterfaceGradebook(groupId: string) {
+  if (interfaceGradebookDone.has(groupId) || interfaceGradebookBusy.has(groupId)) return false;
+  interfaceGradebookBusy.add(groupId);
+  try {
+    const list = await fetchActivities(groupId);
+    let activity = list.find((item) => item.name === INTERFACE_ACTIVITY_NAME) ?? null;
+    if (!activity) {
+      activity = await createActivity({
+        groupId,
+        date: INTERFACE_CLOSE_ISO,
+        name: INTERFACE_ACTIVITY_NAME,
+        maxPoints: INTERFACE_MAX_POINTS,
+      });
+    } else if (activity.maxPoints !== INTERFACE_MAX_POINTS || activity.date !== INTERFACE_CLOSE_ISO) {
+      activity = await updateActivity(activity.id, {
+        date: INTERFACE_CLOSE_ISO,
+        name: INTERFACE_ACTIVITY_NAME,
+        maxPoints: INTERFACE_MAX_POINTS,
+      });
+    }
+    const session = await fetchInterfaceSession(groupId);
+    const grades = interfaceGradeRows(session, activity.id);
+    for (let index = 0; index < grades.length; index += 400) {
+      const chunk = grades.slice(index, index + 400);
+      if (chunk.length) await saveGradesBatch(groupId, chunk);
+    }
+    interfaceGradebookDone.add(groupId);
+    return true;
+  } catch (err) {
+    console.warn("[interface-gradebook]", err);
+    return false;
+  } finally {
+    interfaceGradebookBusy.delete(groupId);
+  }
+}
 
 export default function TeacherPage() {
   const qc = useQueryClient();
@@ -78,6 +124,7 @@ export default function TeacherPage() {
   const [formSuccess, setFormSuccess] = useState("");
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [downloadingLag, setDownloadingLag] = useState(false);
+  const [interfaceSyncing, setInterfaceSyncing] = useState(false);
 
   const groupsQuery = useQuery({
     queryKey: ["groups"],
@@ -111,11 +158,44 @@ export default function TeacherPage() {
 
   const activities = activitiesQuery.data ?? [];
   const currentPartial = selectedGroup?.currentPartial ?? 1;
+
+  useEffect(() => {
+    if (tab !== "actividades" || groups.length === 0) return;
+    const pending = groups.filter((group) => !interfaceGradebookDone.has(group.id));
+    if (!pending.length) return;
+    setInterfaceSyncing(true);
+    void (async () => {
+      try {
+        let changed = false;
+        for (const group of pending) {
+          const did = await publishInterfaceGradebook(group.id);
+          if (did) changed = true;
+        }
+        if (changed) {
+          await qc.invalidateQueries({ queryKey: ["activities"] });
+          await qc.invalidateQueries({ queryKey: ["grades-matrix"] });
+        }
+      } finally {
+        setInterfaceSyncing(false);
+      }
+    })();
+  }, [tab, groups, qc]);
+
+  const activitiesForList = useMemo(
+    () =>
+      activities.map((activity) =>
+        activity.name === INTERFACE_ACTIVITY_NAME ? { ...activity, partialNumber: currentPartial } : activity,
+      ),
+    [activities, currentPartial],
+  );
   const activityPartialNumbers = useMemo(() => {
-    const nums = new Set(activities.map((a) => a.partialNumber ?? 1));
+    const nums = new Set(activitiesForList.map((a) => a.partialNumber ?? 1));
     nums.add(currentPartial);
-    return [...nums].sort((a, b) => a - b);
-  }, [activities, currentPartial]);
+    return [
+      currentPartial,
+      ...[...nums].filter((n) => n !== currentPartial).sort((a, b) => a - b),
+    ];
+  }, [activitiesForList, currentPartial]);
   const currentActivities = activities.filter((a) => (a.partialNumber ?? 1) === currentPartial);
   const activeId = selectedId ?? currentActivities[0]?.id ?? null;
   const editingActivity = editingActivityId
@@ -252,7 +332,10 @@ export default function TeacherPage() {
     () => activities.find((a) => a.id === activeId) ?? null,
     [activities, activeId],
   );
-  const matrixPartial = selectedActivity?.partialNumber ?? currentPartial;
+  const matrixPartial =
+    selectedActivity?.name === INTERFACE_ACTIVITY_NAME
+      ? currentPartial
+      : (selectedActivity?.partialNumber ?? currentPartial);
 
   const groupsLabelPlus = formatGroupCodesPlus(groups);
   const groupsSubtitle = formatTeacherGroupsSubtitle(groups);
@@ -661,7 +744,13 @@ export default function TeacherPage() {
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Actividades del grupo</h3>
                 <div className="max-h-[40vh] min-h-0 space-y-4 overflow-auto pr-1 lg:min-h-[32rem] lg:max-h-[40rem]">
                   {activityPartialNumbers.map((partialNo, sectionIndex) => {
-                    const items = activities.filter((a) => (a.partialNumber ?? 1) === partialNo);
+                    const items = activitiesForList
+                      .filter((a) => (a.partialNumber ?? 1) === partialNo)
+                      .sort((a, b) => {
+                        if (a.name === INTERFACE_ACTIVITY_NAME) return -1;
+                        if (b.name === INTERFACE_ACTIVITY_NAME) return 1;
+                        return 0;
+                      });
                     const isCurrent = partialNo === currentPartial;
                     const hasInterface = items.some((item) => item.name === INTERFACE_ACTIVITY_NAME);
                     const collapsed = !isCurrent && !hasInterface && collapsedPartials[partialNo] !== false;
@@ -751,11 +840,17 @@ export default function TeacherPage() {
             </section>
 
             <section className="glass flex min-h-0 min-w-0 flex-col overflow-hidden p-3 sm:p-5">
+              {interfaceSyncing ? (
+                <p className="mb-3 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100">
+                  Publicando Diseño de Interfaces en la tabla de cada grupo…
+                </p>
+              ) : null}
               {selectedGroupId ? (
                 <GradesMatrixPanel
                   groupId={selectedGroupId}
                   partialNumber={matrixPartial}
                   highlightActivityId={activeId}
+                  pinnedActivity={activities.find((a) => a.name === INTERFACE_ACTIVITY_NAME) ?? null}
                 />
               ) : (
                 <p className="text-slate-400">Selecciona un grupo.</p>

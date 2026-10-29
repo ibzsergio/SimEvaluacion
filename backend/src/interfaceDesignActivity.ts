@@ -29,37 +29,59 @@ export async function ensureInterfaceDesignActivities(teacherId: string) {
   if (!activityDate || !groups.length) return;
 
   for (const group of groups) {
+    const lastOrder = await prisma.activity.aggregate({
+      where: { groupId: group.id },
+      _max: { sortOrder: true },
+    });
+    const endOrder = (lastOrder._max.sortOrder ?? -1) + 1;
     const existing = await prisma.activity.findFirst({
       where: { groupId: group.id, name: INTERFACE_ACTIVITY_NAME },
-      select: { id: true, maxPoints: true, releasedToStudents: true, date: true },
+      select: {
+        id: true,
+        maxPoints: true,
+        releasedToStudents: true,
+        date: true,
+        partialNumber: true,
+        sortOrder: true,
+        createdById: true,
+      },
     });
     if (existing) {
       const publish = interfaceDesignClosed() && !existing.releasedToStudents;
       const dateChanged = formatClassDayIso(existing.date) !== INTERFACE_CLOSE_ISO;
-      if (existing.maxPoints !== INTERFACE_MAX_POINTS || publish || dateChanged) {
+      const partialChanged = existing.partialNumber !== INTERFACE_PARTIAL;
+      const ownerChanged = existing.createdById !== teacherId;
+      const moveToEnd = existing.sortOrder < (lastOrder._max.sortOrder ?? existing.sortOrder);
+      if (
+        existing.maxPoints !== INTERFACE_MAX_POINTS ||
+        publish ||
+        dateChanged ||
+        partialChanged ||
+        ownerChanged ||
+        moveToEnd
+      ) {
         await prisma.activity.update({
           where: { id: existing.id },
           data: {
             ...(existing.maxPoints !== INTERFACE_MAX_POINTS ? { maxPoints: INTERFACE_MAX_POINTS } : {}),
             ...(publish ? { releasedToStudents: true } : {}),
             ...(dateChanged ? { date: activityDate } : {}),
+            ...(partialChanged ? { partialNumber: INTERFACE_PARTIAL } : {}),
+            ...(ownerChanged ? { createdById: teacherId } : {}),
+            ...(moveToEnd ? { sortOrder: endOrder } : {}),
           },
         });
       }
       continue;
     }
 
-    const lastOrder = await prisma.activity.aggregate({
-      where: { groupId: group.id },
-      _max: { sortOrder: true },
-    });
     await prisma.activity.create({
       data: {
         date: activityDate,
         name: INTERFACE_ACTIVITY_NAME,
         maxPoints: INTERFACE_MAX_POINTS,
         signatureMax: 0,
-        sortOrder: (lastOrder._max.sortOrder ?? -1) + 1,
+        sortOrder: endOrder,
         partialNumber: INTERFACE_PARTIAL,
         releasedToStudents: interfaceDesignClosed(),
         groupId: group.id,
