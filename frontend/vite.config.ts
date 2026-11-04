@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261104-imagenes",
+        cacheId: "simeval-20261104-maquina",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
@@ -37,6 +37,8 @@ export default defineConfig({
         "popup/valido-puerta.jpg",
         "popup/valido-tira.jpg",
         "popup/invalido-plano.jpg",
+        "maquina/como-queda.jpg",
+        "maquina/recorrido.jpg",
       ],
       manifest: {
         name: "SimEvaluación",

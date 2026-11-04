@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStudentComms } from "../lib/api";
+import MaquinaIllustration from "./MaquinaIllustration";
 import { studentMaquinaFromAnnouncements } from "../lib/maquinaLive";
 import {
   MAQUINA_FIRMAS_MAX,
@@ -75,6 +76,7 @@ export default function StudentMaquinaCard({ extra }: { extra?: StudentExtra | n
           ) : null}
         </div>
 
+        <MaquinaIllustration />
         <p className="text-sm text-slate-300">{MAQUINA_PRODUCTO}</p>
         <ul className="list-disc space-y-1 pl-5 text-sm text-slate-300">
           {MAQUINA_PRODUCTO_DEBE.map((item) => (

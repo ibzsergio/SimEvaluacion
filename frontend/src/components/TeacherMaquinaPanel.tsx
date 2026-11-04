@@ -11,6 +11,7 @@ import {
   startMaquinaTimers,
   updateMaquinaReleased,
 } from "../lib/api";
+import MaquinaIllustration from "./MaquinaIllustration";
 import {
   MAQUINA_FIRMAS_MAX,
   MAQUINA_MATERIALES,
@@ -169,6 +170,9 @@ export default function TeacherMaquinaPanel({
           Grupo {selectedGroup?.code}. Equipos de Roles / Equipos. {minutes} minutos. Parte de{" "}
           {firmasMax.toLocaleString("es-MX")} Firmas. {MAQUINA_PRODUCTO}
         </p>
+        <div className="mt-4">
+          <MaquinaIllustration />
+        </div>
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"
