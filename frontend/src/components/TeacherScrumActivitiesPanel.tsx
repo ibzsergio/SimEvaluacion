@@ -124,7 +124,7 @@ export default function TeacherScrumActivitiesPanel({
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
               La máquina: equipos de Roles / Equipos, 50 minutos. Construyen una máquina de su programa.
-              Cada etapa es un obstáculo. La ficha, canica, moneda o pelota entra y sale como en las fotos. 1000 Firmas. Pop-Up ya no se muestra a los alumnos.
+              Cada etapa es un obstáculo. Al frente se lee Sistema de Alerta Temprana. Al final compiten: gana la pieza que salga primero. 1000 Firmas. Pop-Up ya no se muestra a los alumnos.
             </p>
           </section>
 

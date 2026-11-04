@@ -64,7 +64,7 @@ function visibleCopy(state: MaquinaLiveState) {
     return "El docente pausó el reloj de La máquina. Esperen a que lo reanude.";
   }
   if (state.released) {
-    return "La máquina está liberada. Esperen los 50 minutos. Entrada y salida como en las fotos. Cada etapa es un obstáculo.";
+    return "La máquina está liberada. Esperen los 50 minutos. Al frente va Sistema de Alerta Temprana. Cada etapa es un obstáculo. Al final gana quien salga primero.";
   }
   return "La máquina está en preparación para este grupo.";
 }

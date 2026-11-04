@@ -3,6 +3,7 @@ export const MAQUINA_TITULO = "La máquina";
 export const MAQUINA_PROGRAMA = "Actividad Scrum";
 export const MAQUINA_FIRMAS_MAX = 1000;
 export const MAQUINA_ACTIVITY_NAME = "La máquina";
+export const MAQUINA_PROYECTO = "Sistema de Alerta Temprana";
 
 export const MAQUINA_PRODUCTO =
   "Una máquina de cartón, palos y unicel, con la entrada y la salida como en las fotos. Cada etapa del proyecto es un obstáculo. La ficha, canica, moneda o pelota lo recorre sola.";
@@ -16,12 +17,13 @@ export const MAQUINA_PRODUCTO_DEBE = [
   "Cada etapa del proyecto es un obstáculo en el camino: rampa, curva, arco, pared o hueco. Van en orden, del 1 al 12, y el letrero lleva el nombre de esa etapa.",
   "La ficha, canica, moneda o pelota pasa sola los 12 obstáculos. En cada uno cambia de camino: cae, gira o se desvía.",
   "Salida como en la foto: boca redonda y flecha roja con el letrero SALIDA. La pieza sale por esa boca y se detiene sola.",
-  "Al frente, letras grandes que se leen desde el otro lado del salón: «Entra ___ y sale ___». Los huecos son lo que entra y lo que sale en su programa.",
+  "Al frente, letras grandes que se leen desde el otro lado del salón: «Sistema de Alerta Temprana». No escriban «Entra y sale».",
+  "Cuando todos los equipos terminen, hay competencia. Sueltan al mismo tiempo. Gana la pelota, canica, moneda o ficha que salga primero por la boca de SALIDA. Nadie la empuja.",
   "La misma pieza en todas las pruebas: una ficha, una canica, una moneda o una pelota. Tiene que caber en las dos bocas.",
 ];
 
 export const MAQUINA_MATERIALES = [
-  "Ya en la mesa: hojas de color para ENTRADA, las 12 etapas, SALIDA y la frase, pegamento, diurex y tijeras.",
+  "Ya en la mesa: hojas de color para ENTRADA, las 12 etapas, SALIDA y el nombre Sistema de Alerta Temprana, pegamento, diurex y tijeras.",
   "Al iniciar el reloj pueden salir una sola vez por cartón (base, bocas y paredes), palos de madera (rieles y rampas) y unicel (curvas, arcos y obstáculos).",
   "Una sola pieza, elegida antes de armar: ficha, canica, moneda o pelota. Esa misma se usa en las tres pruebas y en las dos corridas oficiales.",
 ];
@@ -30,7 +32,7 @@ export const MAQUINA_ROLES = [
   {
     id: "product_owner",
     label: "Product Owner",
-    tarea: "Escribe las 12 etapas en el orden del proyecto, con el nombre que ya usan, y llena «Entra ___ y sale ___».",
+    tarea: "Escribe las 12 etapas en orden y el letrero Sistema de Alerta Temprana, en grande.",
   },
   {
     id: "scrum_master",
@@ -45,7 +47,7 @@ export const MAQUINA_ROLES = [
   {
     id: "ui_designer",
     label: "Diseño / UI",
-    tarea: "Corta la flecha verde ENTRADA, el nombre de las 12 etapas, la flecha roja SALIDA y la frase. Se leen desde el otro lado del salón.",
+    tarea: "Corta la flecha verde ENTRADA, el nombre de las 12 etapas, la flecha roja SALIDA y el letrero Sistema de Alerta Temprana. Se leen desde el otro lado del salón.",
   },
   {
     id: "qa_docs",
@@ -61,7 +63,7 @@ export const MAQUINA_SPRINTS = [
     desde: 0,
     hasta: 8,
     detalle:
-      "Escriben las 12 etapas en orden y qué obstáculo será cada una. Completan «Entra ___ y sale ___». Dibujan la boca de entrada y la de salida como en las fotos. Eligen ficha, canica, moneda o pelota.",
+      "Escriben las 12 etapas en orden y qué obstáculo será cada una. El letrero de enfrente dirá Sistema de Alerta Temprana. Dibujan las dos bocas como en las fotos. Eligen ficha, canica, moneda o pelota.",
   },
   {
     id: "obra",
@@ -69,7 +71,7 @@ export const MAQUINA_SPRINTS = [
     desde: 8,
     hasta: 30,
     detalle:
-      "Salen una vez por cartón, palos y unicel. Arman las dos bocas como en las fotos y un obstáculo por etapa. Pegan ENTRADA, los 12 nombres, SALIDA y la frase.",
+      "Salen una vez por cartón, palos y unicel. Arman las dos bocas como en las fotos y un obstáculo por etapa. Pegan ENTRADA, los 12 nombres, SALIDA y Sistema de Alerta Temprana.",
   },
   {
     id: "prueba",
@@ -85,7 +87,7 @@ export const MAQUINA_SPRINTS = [
     desde: 42,
     hasta: 50,
     detalle:
-      "Silencio. Dos corridas frente a otro equipo: sueltan la pieza en la entrada y nadie la toca. Si la empujan, esa corrida no cuenta. El otro equipo dice qué entra, qué sale y si vio las 12 etapas. A los 50, manos arriba.",
+      "Silencio. Dos corridas: sueltan la pieza en la entrada y nadie la toca. Si la empujan, esa corrida no cuenta. A los 50, manos arriba. Cuando todos los equipos hayan terminado, empieza la competencia.",
   },
 ] as const;
 
@@ -97,7 +99,8 @@ export const MAQUINA_PASOS = [
   "Al sonar el inicio salen una sola vez por cartón, palos de madera y unicel. Hojas, pegamento, diurex y tijeras ya están en la mesa.",
   "Miden 40 cm o más de boca a boca antes de las corridas oficiales.",
   "En las dos corridas sueltan la pieza en la entrada y nadie la empuja, sopla ni la guía. Si la tocan, esa corrida no cuenta.",
-  "Otro equipo ve una corrida y dice en una frase qué entra y qué sale.",
+  "Al frente se lee Sistema de Alerta Temprana. No escriban «Entra y sale».",
+  "Cuando todos los equipos terminen, compiten: sueltan al mismo tiempo y gana la pelota, canica, moneda o ficha que salga primero. Nadie la empuja.",
   "Parten de 1000 Firmas. Cada nota del docente resta 250.",
 ];
 
@@ -108,10 +111,10 @@ export type MaquinaNotePreset = {
 };
 
 export const MAQUINA_NOTAS: MaquinaNotePreset[] = [
-  { code: "estaciones", label: "Faltan etapas o la frase no sirve", points: 250 },
+  { code: "estaciones", label: "Faltan etapas o el nombre no se lee", points: 250 },
   { code: "sola", label: "La pieza no viaja sola", points: 250 },
   { code: "salida", label: "No llega en las dos corridas", points: 250 },
-  { code: "explica", label: "El otro equipo no lo explica", points: 250 },
+  { code: "explica", label: "No dice Sistema de Alerta Temprana", points: 250 },
 ];
 
 export function maquinaRoleLabel(role?: string | null) {

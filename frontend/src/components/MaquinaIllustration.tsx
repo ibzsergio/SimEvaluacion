@@ -3,14 +3,14 @@ const EJEMPLOS = [
     src: "/maquina/como-queda.jpg",
     title: "Así debe quedar",
     caption:
-      "Boca de entrada con flecha verde, un obstáculo por etapa y boca de salida con flecha roja, como en la foto.",
+      "Entrada y salida como en la foto. El letrero de enfrente no es «Entra y sale»: escriban Sistema de Alerta Temprana.",
     alt: "Máquina de cartón con boca de entrada, doce obstáculos numerados y boca de salida",
   },
   {
     src: "/maquina/recorrido.jpg",
     title: "Así viaja la pieza",
     caption:
-      "La ficha, canica, moneda o pelota cruza sola cada obstáculo, de la entrada a la salida.",
+      "La ficha, canica, moneda o pelota cruza sola cada obstáculo. En la competencia gana la que salga primero.",
     alt: "La pieza recorre sola los doce obstáculos, de la boca de entrada a la boca de salida",
   },
 ] as const;
