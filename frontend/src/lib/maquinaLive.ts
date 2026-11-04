@@ -129,13 +129,15 @@ export function maquinaSessionFromProjectTeams(base: ExtraSession, state: Maquin
   };
 }
 
-export function maquinaNote(code: string) {
+export function maquinaNote(code: string, custom?: { label: string; points: number }) {
   const preset = MAQUINA_NOTAS.find((item) => item.code === code);
+  const label = custom?.label.trim() || preset?.label || code;
+  const points = custom ? Math.round(custom.points) : (preset?.points ?? 0);
   const note: ExtraNote = {
     id: `maquina-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    code,
-    label: preset?.label ?? code,
-    points: preset?.points ?? 0,
+    code: custom ? "custom" : code,
+    label: label.slice(0, 140),
+    points: Math.max(0, points),
     studentId: null,
     studentName: null,
     at: new Date().toISOString(),

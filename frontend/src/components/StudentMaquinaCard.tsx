@@ -77,6 +77,9 @@ export default function StudentMaquinaCard({ extra }: { extra?: StudentExtra | n
           ) : null}
         </div>
 
+        <p className="rounded-xl border border-rose-400/50 bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-50">
+          Trabajan en orden y dejan limpio su lugar. Si no, −500 Firmas.
+        </p>
         <MaquinaIllustration />
         <p className="text-sm text-slate-300">{MAQUINA_PRODUCTO}</p>
         <h3 className="text-sm font-semibold text-white">Lo que van a construir</h3>

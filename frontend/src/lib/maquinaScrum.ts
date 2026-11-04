@@ -101,7 +101,8 @@ export const MAQUINA_PASOS = [
   "En las dos corridas sueltan la pieza en la entrada y nadie la empuja, sopla ni la guía. Si la tocan, esa corrida no cuenta.",
   "Al frente se lee Sistema de Alerta Temprana. No escriban «Entra y sale».",
   "Cuando todos los equipos terminen, compiten: sueltan al mismo tiempo y gana la pelota, canica, moneda o ficha que salga primero. Nadie la empuja.",
-  "Parten de 1000 Firmas. Cada nota del docente resta 250.",
+  "Trabajan en orden y, al terminar, dejan limpio su lugar. Si no, son −500 Firmas.",
+  "Parten de 1000 Firmas. Cada nota del docente resta lo que marque.",
 ];
 
 export type MaquinaNotePreset = {
@@ -110,7 +111,14 @@ export type MaquinaNotePreset = {
   points: number;
 };
 
+export const MAQUINA_NOTA_LIMPIEZA: MaquinaNotePreset = {
+  code: "limpieza",
+  label: "Desorden o no dejan limpio",
+  points: 500,
+};
+
 export const MAQUINA_NOTAS: MaquinaNotePreset[] = [
+  MAQUINA_NOTA_LIMPIEZA,
   { code: "estaciones", label: "Faltan etapas o el nombre no se lee", points: 250 },
   { code: "sola", label: "La pieza no viaja sola", points: 250 },
   { code: "salida", label: "No llega en las dos corridas", points: 250 },

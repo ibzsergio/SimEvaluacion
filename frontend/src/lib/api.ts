@@ -842,11 +842,18 @@ export async function setMaquinaPaused(groupId: string, paused: boolean) {
   });
 }
 
-export async function addMaquinaNote(groupId: string, payload: { teamKey: string; code: string }) {
+export async function addMaquinaNote(
+  groupId: string,
+  payload: { teamKey: string; code: string; label?: string; points?: number },
+) {
   const base = await projectTeamsForPopup(groupId);
   const team = base.teams.find((item) => item.key === payload.teamKey);
   if (!team) throw new Error("No encontré ese equipo de proyecto.");
-  const note = maquinaNote(payload.code);
+  const custom =
+    payload.code === "custom" && payload.label && payload.points != null
+      ? { label: payload.label, points: payload.points }
+      : undefined;
+  const note = maquinaNote(payload.code, custom);
   return maquinaSession(groupId, (state) => ({
     ...state,
     notes: {

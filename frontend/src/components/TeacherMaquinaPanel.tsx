@@ -16,6 +16,7 @@ import {
   MAQUINA_FIRMAS_MAX,
   MAQUINA_MATERIALES,
   MAQUINA_MINUTOS,
+  MAQUINA_NOTA_LIMPIEZA,
   MAQUINA_NOTAS,
   MAQUINA_PASOS,
   MAQUINA_PRODUCTO,
@@ -99,8 +100,14 @@ export default function TeacherMaquinaPanel({
     onError: (err) => setNoteError(getApiErrorMessage(err)),
   });
 
+  const [customByTeam, setCustomByTeam] = useState<Record<string, { label: string; points: string }>>({});
+  function customOf(teamKey: string) {
+    return customByTeam[teamKey] ?? { label: "", points: "100" };
+  }
+
   const noteMutation = useMutation({
-    mutationFn: (payload: { teamKey: string; code: string }) => addMaquinaNote(selectedGroupId, payload),
+    mutationFn: (payload: { teamKey: string; code: string; label?: string; points?: number }) =>
+      addMaquinaNote(selectedGroupId, payload),
     onSuccess: (data) => {
       setNoteError("");
       qc.setQueryData(["maquina-session", selectedGroupId], data);
@@ -289,8 +296,16 @@ export default function TeacherMaquinaPanel({
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {MAQUINA_NOTAS.map((nota) => (
+                  <button
+                    type="button"
+                    disabled={noteMutation.isPending}
+                    onClick={() => noteMutation.mutate({ teamKey: team.key, code: MAQUINA_NOTA_LIMPIEZA.code })}
+                    className="mt-3 min-h-11 w-full rounded-lg border border-rose-400/60 bg-rose-500/20 px-2 py-2 text-left text-sm font-bold text-rose-50 hover:bg-rose-500/30 disabled:opacity-60"
+                  >
+                    {MAQUINA_NOTA_LIMPIEZA.label} −{MAQUINA_NOTA_LIMPIEZA.points}
+                  </button>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {MAQUINA_NOTAS.filter((nota) => nota.code !== MAQUINA_NOTA_LIMPIEZA.code).map((nota) => (
                       <button
                         key={nota.code}
                         type="button"
@@ -301,6 +316,54 @@ export default function TeacherMaquinaPanel({
                         {nota.label} −{nota.points}
                       </button>
                     ))}
+                  </div>
+                  <p className="mt-3 text-xs font-bold uppercase tracking-wide text-slate-300">Otra nota</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    <input
+                      value={customOf(team.key).label}
+                      onChange={(e) =>
+                        setCustomByTeam((prev) => ({
+                          ...prev,
+                          [team.key]: { ...customOf(team.key), label: e.target.value },
+                        }))
+                      }
+                      placeholder="Escribe cualquier otra cosa"
+                      className="min-w-[8rem] flex-1 rounded-lg border border-white/15 bg-slate-950/70 px-2 py-2 text-sm text-white"
+                    />
+                    <input
+                      value={customOf(team.key).points}
+                      onChange={(e) =>
+                        setCustomByTeam((prev) => ({
+                          ...prev,
+                          [team.key]: { ...customOf(team.key), points: e.target.value },
+                        }))
+                      }
+                      inputMode="numeric"
+                      aria-label="Firmas que resta"
+                      className="w-16 rounded-lg border border-white/15 bg-slate-950/70 px-2 py-2 text-sm text-white"
+                    />
+                    <button
+                      type="button"
+                      disabled={noteMutation.isPending}
+                      onClick={() => {
+                        const custom = customOf(team.key);
+                        const points = Number(custom.points);
+                        if (!custom.label.trim() || !Number.isFinite(points) || points < 1 || points > firmasMax) {
+                          setNoteError(`Escribe el motivo y las firmas a restar, de 1 a ${firmasMax}.`);
+                          return;
+                        }
+                        noteMutation.mutate(
+                          { teamKey: team.key, code: "custom", label: custom.label.trim(), points },
+                          {
+                            onSuccess: () =>
+                              setCustomByTeam((prev) => ({ ...prev, [team.key]: { label: "", points: "100" } })),
+                          },
+                        );
+                      }}
+                      className="min-h-11 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      Anotar
+                    </button>
                   </div>
                   {(team.notes ?? []).length > 0 ? (
                     <ul className="mt-2 space-y-1">
@@ -339,6 +402,9 @@ export default function TeacherMaquinaPanel({
 
       <section className="glass p-4 sm:p-6">
         <h2 className="text-lg font-bold text-white">Lo que van a construir</h2>
+        <p className="mt-3 rounded-xl border border-rose-400/50 bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-50">
+          Trabajan en orden y dejan limpio su lugar. Si no, −500 Firmas.
+        </p>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-slate-300">
           {MAQUINA_PRODUCTO_DEBE.map((item) => (
             <li key={item}>{item}</li>
