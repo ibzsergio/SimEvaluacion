@@ -12,6 +12,7 @@ import {
   runPythonProgram,
   sanitizePythonSource,
 } from "../lib/pyodideRunner";
+import { addPracticeImages, listPracticeImages, removePracticeImage } from "../lib/practiceImages";
 import { useTheme } from "../lib/theme";
 
 const STORAGE_KEY = "simeval_python_tk_code_blank";
@@ -88,6 +89,8 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
   );
   const hostRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
+  const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
     try {
@@ -97,6 +100,12 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
       /* ignore */
     }
   }, [code, title]);
+
+  useEffect(() => {
+    void listPracticeImages()
+      .then((list) => setImages(list.map((image) => image.name)))
+      .catch(() => setImages([]));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,6 +215,25 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
     setMessage("Se descargó el archivo .py. En el teléfono, elígelo en Archivos o Descargas.");
   }
 
+  async function onPickImages(ev: ChangeEvent<HTMLInputElement>) {
+    const picked = [...(ev.target.files ?? [])];
+    ev.target.value = "";
+    if (!picked.length) return;
+    try {
+      const saved = await addPracticeImages(picked);
+      setImages(saved.map((image) => image.name));
+      const names = saved.map((image) => image.name).join(", ");
+      setMessage(`Imágenes listas en la carpeta imagenes: ${names}. En el código usa imagenes/ y ese nombre.`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "No se pudieron guardar las imágenes.");
+    }
+  }
+
+  async function onRemoveImage(name: string) {
+    await removePracticeImage(name);
+    setImages((current) => current.filter((item) => item !== name));
+  }
+
   async function onPickFile(ev: ChangeEvent<HTMLInputElement>) {
     const file = ev.target.files?.[0];
     ev.target.value = "";
@@ -298,6 +326,48 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
           className="hidden"
           onChange={(e) => void onPickFile(e)}
         />
+      </div>
+
+      <div className="mb-3 rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-3">
+        <p className="text-sm font-semibold text-cyan-100">Imágenes de la práctica</p>
+        <p className="mt-1 text-xs leading-relaxed text-slate-300">
+          En iPhone no se puede abrir una carpeta del teléfono. Toca Subir imágenes, elige las fotos
+          (pueden ser varias) y en el programa escribe <span className="text-cyan-100">imagenes/nombre.jpg</span> con
+          el nombre que aparece aquí. Si la foto es HEIC, se guarda como .jpg.
+        </p>
+        <button type="button" onClick={() => imageRef.current?.click()} className={`${secondaryBtn} mt-3`}>
+          Subir imágenes
+        </button>
+        <input
+          ref={imageRef}
+          type="file"
+          accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.gif,.webp,.bmp"
+          multiple
+          className="hidden"
+          onChange={(e) => void onPickImages(e)}
+        />
+        {images.length ? (
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {images.map((name) => (
+              <li
+                key={name}
+                className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/50 px-3 py-1 text-xs text-slate-100"
+              >
+                <span>imagenes/{name}</span>
+                <button
+                  type="button"
+                  onClick={() => void onRemoveImage(name)}
+                  className="text-rose-300"
+                  aria-label={`Quitar ${name}`}
+                >
+                  Quitar
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-xs text-slate-500">Todavía no hay imágenes cargadas.</p>
+        )}
       </div>
 
       {engine === "loading" ? (

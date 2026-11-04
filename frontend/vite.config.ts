@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261029-interfaces",
+        cacheId: "simeval-20261104-imagenes",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

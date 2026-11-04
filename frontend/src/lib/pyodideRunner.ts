@@ -1,3 +1,4 @@
+import { listPracticeImages } from "./practiceImages";
 import { TKINTER_SHIM } from "./pythonTkinterShim";
 
 const PYODIDE_INDEX = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
@@ -6,13 +7,52 @@ type PyodideLike = {
   runPythonAsync: (code: string) => Promise<unknown>;
   setStdout: (opts: { batched: (s: string) => void }) => void;
   setStderr: (opts: { batched: (s: string) => void }) => void;
+  FS: {
+    mkdirTree: (path: string) => void;
+    writeFile: (path: string, data: Uint8Array) => void;
+  };
 };
 
 declare global {
   interface Window {
     loadPyodide?: (opts: { indexURL: string }) => Promise<PyodideLike>;
     __SIMEVAL_TK_HOST?: HTMLElement | null;
+    __SIMEVAL_IMAGE_URLS_JSON?: string;
+    __SIMEVAL_IMAGE_NAMES?: string;
   }
+}
+
+const practiceBlobUrls: string[] = [];
+
+async function syncPracticeImages(py: PyodideLike) {
+  const images = await listPracticeImages();
+  for (const url of practiceBlobUrls) URL.revokeObjectURL(url);
+  practiceBlobUrls.length = 0;
+  const urls: Record<string, string> = {};
+  const cwd = String(await py.runPythonAsync("import os; os.getcwd()"));
+  const folders = ["/imagenes", `${cwd}/imagenes`, cwd, "/home/pyodide", "/home/pyodide/imagenes"];
+  for (const folder of folders) {
+    try {
+      py.FS.mkdirTree(folder);
+    } catch {
+      /* la carpeta ya existe */
+    }
+  }
+  for (const image of images) {
+    const bytes = new Uint8Array(image.bytes);
+    for (const folder of folders) {
+      try {
+        py.FS.writeFile(`${folder}/${image.name}`, bytes);
+      } catch {
+        /* un destino puede no aceptar el archivo */
+      }
+    }
+    const url = URL.createObjectURL(new Blob([bytes], { type: image.type || "image/jpeg" }));
+    practiceBlobUrls.push(url);
+    urls[image.name.toLowerCase()] = url;
+  }
+  window.__SIMEVAL_IMAGE_URLS_JSON = JSON.stringify(urls);
+  window.__SIMEVAL_IMAGE_NAMES = images.map((image) => image.name).join("\n");
 }
 
 let pyodidePromise: Promise<PyodideLike> | null = null;
@@ -103,6 +143,7 @@ export async function runPythonProgram(
   py.setStdout({ batched: onOutput });
   py.setStderr({ batched: onOutput });
   await py.runPythonAsync(TKINTER_SHIM);
+  await syncPracticeImages(py);
   // El código corre con exec, no como archivo. Sin esto, __file__ lanza NameError.
   await py.runPythonAsync(
     `__file__ = __import__("os").path.join(__import__("os").getcwd(), "programa.py")`,

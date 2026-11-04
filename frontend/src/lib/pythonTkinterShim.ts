@@ -239,14 +239,58 @@ class BooleanVar(Variable):
     def get(self):
         return bool(self._value)
 
+import os, json, builtins
+
+def _image_url(path):
+    base = os.path.basename(str(path or "").replace("\\", "/")).lower()
+    if not base:
+        return ""
+    raw = getattr(window, "__SIMEVAL_IMAGE_URLS_JSON", "") or ""
+    try:
+        data = json.loads(str(raw))
+    except Exception:
+        data = {}
+    return str(data.get(base) or "")
+
+def _resolve_image_path(path):
+    text = str(path or "").replace("\\", "/")
+    if text and os.path.isfile(text):
+        return text
+    base = os.path.basename(text)
+    if not base:
+        return text
+    for cand in (
+        os.path.join("imagenes", base),
+        os.path.join("/imagenes", base),
+        os.path.join(os.getcwd(), "imagenes", base),
+        os.path.join(os.getcwd(), base),
+        os.path.join("/home/pyodide/imagenes", base),
+        os.path.join("/home/pyodide", base),
+    ):
+        if os.path.isfile(cand):
+            return cand
+    ext = os.path.splitext(base)[1].lower()
+    if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".heic", ".heif"):
+        return os.path.join("imagenes", base)
+    return text
+
 class PhotoImage:
     def __init__(self, name=None, file=None, data=None, **kw):
-        self.file = file
+        self.file = _resolve_image_path(file) if file else None
         self.data = data
+        self._box = None
+        self._src = ""
+        if data:
+            raw = str(data)
+            self._src = raw if raw.startswith("data:") else ("data:image/png;base64," + raw)
+        elif file:
+            self._src = _image_url(file)
     def zoom(self, *a, **k): return self
     def subsample(self, *a, **k): return self
-    def width(self): return 1
-    def height(self): return 1
+    def width(self):
+        return int(self._box[0]) if self._box else 1
+    def height(self):
+        return int(self._box[1]) if self._box else 1
     def copy(self): return self
 
 class BitmapImage(PhotoImage):
@@ -275,6 +319,7 @@ class _Widget:
         if "command" in kw: self.command = kw["command"]
         if "text" in kw and hasattr(self, "_set_text"): self._set_text(kw["text"])
         if "textvariable" in kw: self._bind_var(kw["textvariable"])
+        if "image" in kw and hasattr(self, "_show_image"): self._show_image(kw["image"])
         _apply_opts(self._el, kw)
         return self
     config = configure
@@ -597,10 +642,46 @@ class Label(_Widget):
                 self._el.style.whiteSpace = "normal"
             except Exception:
                 pass
-        if kw.get("image") and not kw.get("text"):
-            self._el.textContent = "[imagen]"
+        self._photo = None
+        if kw.get("image"):
+            self._show_image(kw.get("image"))
     def _set_text(self, text):
-        self._el.textContent = "" if text is None else str(text)
+        span = self._el.querySelector("span.simeval-label-text")
+        if span is None:
+            span = document.createElement("span")
+            span.className = "simeval-label-text"
+            self._el.appendChild(span)
+        span.textContent = "" if text is None else str(text)
+        span.style.display = "none" if not text else "block"
+    def _show_image(self, photo):
+        self._photo = photo
+        old = self._el.querySelector("img.simeval-photo")
+        if old is not None:
+            old.remove()
+        src = ""
+        box = None
+        if photo is not None:
+            src = getattr(photo, "_src", "") or _image_url(getattr(photo, "file", ""))
+            box = getattr(photo, "_box", None)
+        if not src:
+            if photo is not None and not self.kw.get("text"):
+                self._set_text("No está la imagen. Súbela y usa su nombre dentro de imagenes/.")
+            return
+        img = document.createElement("img")
+        img.className = "simeval-photo"
+        img.alt = os.path.basename(str(getattr(photo, "file", "") or "imagen"))
+        img.style.display = "block"
+        img.style.maxWidth = "100%"
+        img.style.height = "auto"
+        img.style.borderRadius = "8px"
+        if box:
+            try:
+                img.style.maxWidth = str(int(box[0])) + "px"
+                img.style.maxHeight = str(int(box[1])) + "px"
+            except Exception:
+                pass
+        img.src = src
+        self._el.appendChild(img)
 
 class Message(Label):
     pass
@@ -967,7 +1048,23 @@ class Canvas(_Widget):
         ctx.fillText(str(kw.get("text","")), float(x), float(y))
         return self._next()
     def create_image(self, x, y, **kw):
-        return self.create_text(x, y, text="[img]", fill="#64748b")
+        photo = kw.get("image")
+        src = ""
+        if photo is not None:
+            src = getattr(photo, "_src", "") or _image_url(getattr(photo, "file", ""))
+        if not src:
+            return self.create_text(x, y, text="[imagen]", fill="#64748b")
+        img = document.createElement("img")
+        ctx = self._ctx
+        cx = float(x)
+        cy = float(y)
+        def draw(_ev=None):
+            w = img.naturalWidth or 1
+            h = img.naturalHeight or 1
+            ctx.drawImage(img, cx - (w / 2), cy - (h / 2), w, h)
+        _listen(img, "load", draw)
+        img.src = src
+        return self._next()
     def create_arc(self, x1, y1, x2, y2, **kw):
         return self.create_oval(x1, y1, x2, y2, **kw)
     def delete(self, *args):
@@ -1156,11 +1253,34 @@ class _Simple:
         except Exception: return None
 
 simpledialog = _Simple()
+def _practice_image_names():
+    raw = str(getattr(window, "__SIMEVAL_IMAGE_NAMES", "") or "")
+    return [n.strip() for n in raw.split("\n") if n.strip()]
+
+def _askopenfilename(**k):
+    names = _practice_image_names()
+    if not names:
+        print("Primero toca Subir imágenes y elige las fotos de la práctica.")
+        return ""
+    if len(names) == 1:
+        return "imagenes/" + names[0]
+    choice = window.prompt(
+        "Escribe el nombre exacto de la imagen:" + chr(10) + chr(10).join(names),
+        names[0],
+    )
+    if not choice:
+        return ""
+    return "imagenes/" + os.path.basename(str(choice).replace(chr(92), "/"))
+
+def _askopenfilenames(**k):
+    names = _practice_image_names()
+    return tuple("imagenes/" + n for n in names)
+
 filedialog = types.SimpleNamespace(
-    askopenfilename=lambda **k: "",
+    askopenfilename=_askopenfilename,
     asksaveasfilename=lambda **k: "",
-    askdirectory=lambda **k: "",
-    askopenfilenames=lambda **k: (),
+    askdirectory=lambda **k: "imagenes",
+    askopenfilenames=_askopenfilenames,
 )
 colorchooser = types.SimpleNamespace(askcolor=lambda **k: ((255,255,255),"#ffffff"))
 
@@ -1245,4 +1365,73 @@ sys.modules["tkinter.simpledialog"] = simpledialog
 sys.modules["tkinter.filedialog"] = filedialog
 sys.modules["tkinter.colorchooser"] = colorchooser
 sys.modules["tkinter.constants"] = constants
+
+def _simeval_open(file, *args, **kwargs):
+    if isinstance(file, str):
+        file = _resolve_image_path(file) if not os.path.isfile(file) else file
+    return builtins._simeval_open_real(file, *args, **kwargs)
+
+if not getattr(builtins, "_simeval_open_patched", False):
+    builtins._simeval_open_real = builtins.open
+    builtins._simeval_open_patched = True
+builtins.open = _simeval_open
+
+pil = types.ModuleType("PIL")
+image_mod = types.ModuleType("PIL.Image")
+image_mod._simeval = True
+
+class _SimevalImage:
+    def __init__(self, filename):
+        self.filename = _resolve_image_path(filename)
+        self.size = (320, 240)
+        self.mode = "RGB"
+    def resize(self, size, *a, **k):
+        try:
+            self.size = (int(size[0]), int(size[1]))
+        except Exception:
+            pass
+        return self
+    def thumbnail(self, size, *a, **k):
+        return self.resize(size)
+    def convert(self, *a, **k):
+        return self
+    def crop(self, *a, **k):
+        return self
+    def transpose(self, *a, **k):
+        return self
+    def rotate(self, *a, **k):
+        return self
+    def save(self, *a, **k):
+        return None
+
+def _pil_open(fp, *a, **k):
+    if not isinstance(fp, str):
+        fp = getattr(fp, "name", "") or "imagen"
+    return _SimevalImage(fp)
+
+image_mod.open = _pil_open
+image_mod.Image = _SimevalImage
+image_mod.LANCZOS = 1
+image_mod.ANTIALIAS = 1
+image_mod.BICUBIC = 1
+image_mod.BILINEAR = 1
+image_mod.Resampling = types.SimpleNamespace(LANCZOS=1, BICUBIC=1, BILINEAR=1)
+
+itk = types.ModuleType("PIL.ImageTk")
+
+class _ImageTkPhoto(PhotoImage):
+    def __init__(self, image=None, file=None, master=None, **kw):
+        src = file or getattr(image, "filename", None)
+        super().__init__(file=src)
+        size = getattr(image, "size", None)
+        if size:
+            self._box = size
+
+itk.PhotoImage = _ImageTkPhoto
+pil.Image = image_mod
+pil.ImageTk = itk
+pil._simeval = True
+sys.modules["PIL"] = pil
+sys.modules["PIL.Image"] = image_mod
+sys.modules["PIL.ImageTk"] = itk
 `;
