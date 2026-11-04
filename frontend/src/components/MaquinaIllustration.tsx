@@ -2,13 +2,15 @@ const EJEMPLOS = [
   {
     src: "/maquina/como-queda.jpg",
     title: "Así debe quedar",
-    caption: "Entrada, tres estaciones, salida y la frase al frente, en grande.",
+    caption:
+      "Entrada arriba, luego cae, gira y se desvía, y salida abajo. La frase de la foto es un ejemplo: escriban lo que entra y lo que sale en su programa.",
     alt: "Máquina de cartón con entrada, tres estaciones numeradas, salida y el letrero Entra dato y sale resultado",
   },
   {
     src: "/maquina/recorrido.jpg",
     title: "Así viaja la ficha",
-    caption: "Sola: cae, gira y se desvía. Los huecos de la frase los llena su programa.",
+    caption:
+      "Las flechas marcan que baja sola. En su máquina, Cae, Gira y Se desvía llevan también el nombre real de esa parte del programa.",
     alt: "Recorrido de la ficha por las estaciones Entrada, Cae, Gira, Se desvía y Salida",
   },
 ] as const;

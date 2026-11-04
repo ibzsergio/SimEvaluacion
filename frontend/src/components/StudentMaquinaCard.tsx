@@ -9,6 +9,7 @@ import {
   MAQUINA_MINUTOS,
   MAQUINA_PRODUCTO,
   MAQUINA_PRODUCTO_DEBE,
+  MAQUINA_PRODUCTO_NO,
   MAQUINA_SPRINTS,
   MAQUINA_TITULO,
   elapsedSeconds,
@@ -78,11 +79,14 @@ export default function StudentMaquinaCard({ extra }: { extra?: StudentExtra | n
 
         <MaquinaIllustration />
         <p className="text-sm text-slate-300">{MAQUINA_PRODUCTO}</p>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-300">
+        <h3 className="text-sm font-semibold text-white">Lo que van a construir</h3>
+        <ol className="list-decimal space-y-1.5 pl-5 text-sm text-slate-300">
           {MAQUINA_PRODUCTO_DEBE.map((item) => (
             <li key={item}>{item}</li>
           ))}
-        </ul>
+        </ol>
+        <p className="text-sm text-amber-100">{MAQUINA_PRODUCTO_NO}</p>
+        <h3 className="text-sm font-semibold text-white">Material</h3>
         <ul className="list-disc space-y-1 pl-5 text-sm text-slate-400">
           {MAQUINA_MATERIALES.map((item) => (
             <li key={item}>{item}</li>

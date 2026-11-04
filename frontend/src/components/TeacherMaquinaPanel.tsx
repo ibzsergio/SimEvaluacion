@@ -20,6 +20,7 @@ import {
   MAQUINA_PASOS,
   MAQUINA_PRODUCTO,
   MAQUINA_PRODUCTO_DEBE,
+  MAQUINA_PRODUCTO_NO,
   MAQUINA_PROGRAMA,
   MAQUINA_ROLES,
   MAQUINA_SPRINTS,
@@ -338,11 +339,12 @@ export default function TeacherMaquinaPanel({
 
       <section className="glass p-4 sm:p-6">
         <h2 className="text-lg font-bold text-white">Lo que van a construir</h2>
-        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-300">
+        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-slate-300">
           {MAQUINA_PRODUCTO_DEBE.map((item) => (
             <li key={item}>{item}</li>
           ))}
-        </ul>
+        </ol>
+        <p className="mt-3 text-sm text-amber-100">{MAQUINA_PRODUCTO_NO}</p>
         <h3 className="mt-4 text-sm font-semibold text-white">Material</h3>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
           {MAQUINA_MATERIALES.map((item) => (
