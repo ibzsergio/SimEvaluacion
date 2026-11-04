@@ -161,7 +161,7 @@ export default function StudentPage() {
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
-      <StudentMaquinaCard extra={data.extra} />
+      <StudentMaquinaCard extra={data.extra} groupCode={data.group.code} />
 
       {data.extra ? <StudentExtraCard extra={data.extra} /> : null}
 

@@ -29,6 +29,7 @@ import {
   MAQUINA_TITULO,
   elapsedSeconds,
   formatClock,
+  maquinaClock,
   maquinaRoleLabel,
   maquinaSprintAt,
   remainingSeconds,
@@ -147,7 +148,7 @@ export default function TeacherMaquinaPanel({
   function toggleRelease() {
     if (!released) {
       const ok = window.confirm(
-        `¿Liberar La máquina para el grupo ${selectedGroup?.code ?? ""}?\n\nLos alumnos la verán en su teléfono. Son 50 minutos, equipos de Roles / Equipos y 1000 Firmas. Tú inicias el reloj.`,
+        `¿Liberar La máquina para el grupo ${selectedGroup?.code ?? ""}?\n\nLos alumnos la verán en su teléfono. Son 60 minutos, equipos de Roles / Equipos y 1000 Firmas. Tú inicias el reloj.`,
       );
       if (!ok) return;
     }
@@ -242,7 +243,7 @@ export default function TeacherMaquinaPanel({
           </button>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <p className="text-xs text-slate-300">Si el reloj volvió a 50:00, escribe los minutos que ya llevaban.</p>
+          <p className="text-xs text-slate-300">Si el reloj volvió al inicio, escribe los minutos que ya llevaban.</p>
           <input
             value={reponer}
             onChange={(e) => setReponer(e.target.value)}
@@ -269,7 +270,7 @@ export default function TeacherMaquinaPanel({
         </div>
         <p className="mt-3 text-xs text-slate-400">
           {released
-            ? "Los alumnos ya la ven en su teléfono. Iniciar arranca los 50 minutos de este grupo."
+            ? "Los alumnos ya la ven en su teléfono. Iniciar arranca los 60 minutos de este grupo."
             : "Todavía no la ven. Libérala en el grupo que estás viendo."}
           {paused ? " Reloj en pausa." : ""}
         </p>
@@ -294,11 +295,13 @@ export default function TeacherMaquinaPanel({
         ) : (
           <ul className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
             {teams.map((team) => {
-              const remain = remainingSeconds(team.startedAt, minutes, session?.pausedAt);
-              const elapsed = team.startedAt ? elapsedSeconds(team.startedAt, minutes, session?.pausedAt) : 0;
-              const finished = Boolean(team.startedAt) && remain === 0 && !paused;
-              const sprint = team.startedAt
-                ? maquinaSprintAt(elapsedSeconds(team.startedAt, minutes, session?.pausedAt))
+              const clock = maquinaClock(selectedGroup?.code, team.startedAt, session?.pausedAt);
+              const remain = remainingSeconds(clock.startedAt, minutes, clock.pausedAt);
+              const elapsed = clock.startedAt ? elapsedSeconds(clock.startedAt, minutes, clock.pausedAt) : 0;
+              const clockPaused = Boolean(clock.pausedAt);
+              const finished = Boolean(clock.startedAt) && remain === 0 && !clockPaused;
+              const sprint = clock.startedAt
+                ? maquinaSprintAt(elapsedSeconds(clock.startedAt, minutes, clock.pausedAt))
                 : null;
               return (
                 <li
@@ -316,12 +319,12 @@ export default function TeacherMaquinaPanel({
                       </p>
                     </div>
                     <p className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-right font-mono text-sm font-bold text-white">
-                      {!team.startedAt ? (
+                      {!clock.startedAt ? (
                         "Sin reloj"
                       ) : (
                         <>
                           <span className="block text-[10px] font-semibold text-lime-200">Van {formatClock(elapsed)}</span>
-                          {paused ? `Pausa ${formatClock(remain)}` : finished ? "00:00" : formatClock(remain)}
+                          {clockPaused ? `Pausa ${formatClock(remain)}` : finished ? "00:00" : formatClock(remain)}
                         </>
                       )}
                     </p>

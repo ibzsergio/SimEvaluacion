@@ -1,4 +1,16 @@
-export const MAQUINA_MINUTOS = 50;
+export const MAQUINA_MINUTOS = 60;
+/** A las 14:36 el grupo 301 ya llevaba 40 minutos del reloj de 60. */
+export const MAQUINA_GRUPO_301_INICIO = "2026-11-04T19:56:00.000Z";
+
+export function maquinaClock(
+  groupCode: string | null | undefined,
+  startedAt?: string | null,
+  pausedAt?: string | null,
+) {
+  if (groupCode !== "301") return { startedAt: startedAt ?? null, pausedAt: pausedAt ?? null };
+  const paused = pausedAt && pausedAt > MAQUINA_GRUPO_301_INICIO ? pausedAt : null;
+  return { startedAt: MAQUINA_GRUPO_301_INICIO, pausedAt: paused };
+}
 export const MAQUINA_TITULO = "La máquina";
 export const MAQUINA_PROGRAMA = "Actividad Scrum";
 export const MAQUINA_FIRMAS_MAX = 1000;
@@ -37,7 +49,7 @@ export const MAQUINA_ROLES = [
   {
     id: "scrum_master",
     label: "Scrum Master",
-    tarea: "Avisa los cortes de los minutos 8, 30, 42 y 50. En las dos corridas oficiales nadie toca la pieza.",
+    tarea: "Avisa los cortes de los minutos 8, 30, 42 y 60. En las dos corridas oficiales nadie toca la pieza.",
   },
   {
     id: "developer",
@@ -85,9 +97,9 @@ export const MAQUINA_SPRINTS = [
     id: "oficial",
     nombre: "Acto 4 — Dos corridas",
     desde: 42,
-    hasta: 50,
+    hasta: 60,
     detalle:
-      "Silencio. Dos corridas: sueltan la pieza en la entrada y nadie la toca. Si la empujan, esa corrida no cuenta. A los 50, manos arriba. Cuando todos los equipos hayan terminado, empieza la competencia.",
+      "Silencio. Dos corridas: sueltan la pieza en la entrada y nadie la toca. Si la empujan, esa corrida no cuenta. A los 60, manos arriba. Cuando todos los equipos hayan terminado, empieza la competencia.",
   },
 ] as const;
 
@@ -95,7 +107,7 @@ export const MAQUINA_PASOS = [
   "Son los equipos de Roles / Equipos. No se arman equipos nuevos.",
   "La entrada y la salida quedan como en las imágenes: boca redonda, flecha verde ENTRADA y flecha roja SALIDA.",
   "Cada etapa del proyecto es un obstáculo para la ficha, canica, moneda o pelota. El letrero lleva el nombre de esa etapa, en orden del 1 al 12.",
-  "El docente libera la actividad e inicia los 50 minutos de todo el grupo.",
+  "El docente libera la actividad e inicia los 60 minutos de todo el grupo.",
   "Al sonar el inicio salen una sola vez por cartón, palos de madera y unicel. Hojas, pegamento, diurex y tijeras ya están en la mesa.",
   "Miden 40 cm o más de boca a boca antes de las corridas oficiales.",
   "En las dos corridas sueltan la pieza en la entrada y nadie la empuja, sopla ni la guía. Si la tocan, esa corrida no cuenta.",

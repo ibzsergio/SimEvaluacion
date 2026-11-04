@@ -123,7 +123,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              La máquina: equipos de Roles / Equipos, 50 minutos. Construyen una máquina de su programa.
+              La máquina: equipos de Roles / Equipos, 60 minutos. Construyen una máquina de su programa.
               Cada etapa es un obstáculo. Al frente se lee Sistema de Alerta Temprana. Al final compiten: gana la pieza que salga primero. 1000 Firmas. Pop-Up ya no se muestra a los alumnos.
             </p>
           </section>
@@ -137,7 +137,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-lime-300">Actividad Scrum</p>
               <h3 className="mt-1 text-xl font-bold text-white">{MAQUINA_TITULO}</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Equipos de Roles / Equipos. 50 minutos. Construyen una máquina de por lo menos 40 cm. La
+                Equipos de Roles / Equipos. 60 minutos. Construyen una máquina de por lo menos 40 cm. La
                 pieza entra por la boca verde, cruza las 12 etapas como obstáculos y sale por la boca roja. 1000 Firmas.
               </p>
             </div>

@@ -14,6 +14,7 @@ import {
   MAQUINA_TITULO,
   elapsedSeconds,
   formatClock,
+  maquinaClock,
   maquinaRoleLabel,
   maquinaRoleTask,
   maquinaSprintAt,
@@ -21,7 +22,13 @@ import {
 } from "../lib/maquinaScrum";
 import type { StudentExtra } from "../lib/types";
 
-export default function StudentMaquinaCard({ extra }: { extra?: StudentExtra | null }) {
+export default function StudentMaquinaCard({
+  extra,
+  groupCode,
+}: {
+  extra?: StudentExtra | null;
+  groupCode?: string | null;
+}) {
   const [now, setNow] = useState(() => Date.now());
   const comms = useQuery({
     queryKey: ["student-comms"],
@@ -40,13 +47,13 @@ export default function StudentMaquinaCard({ extra }: { extra?: StudentExtra | n
   if (!maquina) return null;
 
   const minutes = maquina.minutes || MAQUINA_MINUTOS;
-  const remain = remainingSeconds(maquina.startedAt, minutes, maquina.pausedAt);
-  const elapsed = maquina.startedAt ? elapsedSeconds(maquina.startedAt, minutes, maquina.pausedAt) : 0;
-  const paused = Boolean(maquina.pausedAt);
-  const done = Boolean(maquina.startedAt) && remain === 0 && !paused;
-  const sprint = maquina.startedAt
-    ? maquinaSprintAt(elapsedSeconds(maquina.startedAt, minutes, maquina.pausedAt))
-    : null;
+  const clock = maquinaClock(groupCode, maquina.startedAt, maquina.pausedAt);
+  const startedAt = clock.startedAt;
+  const remain = remainingSeconds(startedAt, minutes, clock.pausedAt);
+  const elapsed = startedAt ? elapsedSeconds(startedAt, minutes, clock.pausedAt) : 0;
+  const paused = Boolean(clock.pausedAt);
+  const done = Boolean(startedAt) && remain === 0 && !paused;
+  const sprint = startedAt ? maquinaSprintAt(elapsedSeconds(startedAt, minutes, maquina.pausedAt)) : null;
   const firmas = maquina.firmas ?? MAQUINA_FIRMAS_MAX;
 
   return (
@@ -62,21 +69,21 @@ export default function StudentMaquinaCard({ extra }: { extra?: StudentExtra | n
       <div className="space-y-3 px-4 py-4 sm:px-5">
         <div className="rounded-2xl border border-lime-400/30 bg-slate-950/40 px-4 py-3 text-center">
           <p className="font-mono text-4xl font-bold text-white">
-            {!maquina.startedAt ? formatClock(minutes * 60) : paused ? formatClock(remain) : formatClock(remain)}
+            {!startedAt ? formatClock(minutes * 60) : paused ? formatClock(remain) : formatClock(remain)}
           </p>
-          {maquina.startedAt ? (
+          {startedAt ? (
             <p className="mt-1 text-xs font-semibold text-lime-200">Van {formatClock(elapsed)}</p>
           ) : null}
           <p className="mt-1 text-sm text-lime-100">
-            {!maquina.startedAt
-              ? "Esperen a que el docente inicie los 50 minutos."
+            {!startedAt
+              ? "Esperen a que el docente inicie los 60 minutos."
               : paused
                 ? "Reloj en pausa."
                 : done
                   ? "Tiempo agotado. Manos arriba."
                   : sprint?.nombre}
           </p>
-          {sprint && maquina.startedAt && !done ? (
+          {sprint && startedAt && !done ? (
             <p className="mt-1 text-xs text-slate-400">{sprint.detalle}</p>
           ) : null}
         </div>
@@ -119,7 +126,7 @@ export default function StudentMaquinaCard({ extra }: { extra?: StudentExtra | n
           </div>
         )}
 
-        {!maquina.startedAt ? (
+        {!startedAt ? (
           <ol className="list-decimal space-y-1 pl-5 text-xs text-slate-400">
             {MAQUINA_SPRINTS.map((item) => (
               <li key={item.id}>
