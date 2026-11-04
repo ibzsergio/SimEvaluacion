@@ -480,6 +480,7 @@ export type Activity = {
   createdAt?: string;
   partialNumber?: number;
   releasedToStudents?: boolean;
+  sortOrder?: number;
 };
 
 export type GradeRow = {

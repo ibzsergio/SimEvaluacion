@@ -747,9 +747,10 @@ export default function TeacherPage() {
                     const items = activitiesForList
                       .filter((a) => (a.partialNumber ?? 1) === partialNo)
                       .sort((a, b) => {
-                        if (a.name === INTERFACE_ACTIVITY_NAME) return -1;
-                        if (b.name === INTERFACE_ACTIVITY_NAME) return 1;
-                        return 0;
+                        const da = a.date;
+                        const db = b.date;
+                        if (da !== db) return da < db ? -1 : 1;
+                        return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
                       });
                     const isCurrent = partialNo === currentPartial;
                     const hasInterface = items.some((item) => item.name === INTERFACE_ACTIVITY_NAME);

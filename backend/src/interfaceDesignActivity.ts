@@ -29,11 +29,6 @@ export async function ensureInterfaceDesignActivities(teacherId: string) {
   if (!activityDate || !groups.length) return;
 
   for (const group of groups) {
-    const lastOrder = await prisma.activity.aggregate({
-      where: { groupId: group.id },
-      _max: { sortOrder: true },
-    });
-    const endOrder = (lastOrder._max.sortOrder ?? -1) + 1;
     const existing = await prisma.activity.findFirst({
       where: { groupId: group.id, name: INTERFACE_ACTIVITY_NAME },
       select: {
@@ -42,7 +37,6 @@ export async function ensureInterfaceDesignActivities(teacherId: string) {
         releasedToStudents: true,
         date: true,
         partialNumber: true,
-        sortOrder: true,
         createdById: true,
       },
     });
@@ -51,14 +45,12 @@ export async function ensureInterfaceDesignActivities(teacherId: string) {
       const dateChanged = formatClassDayIso(existing.date) !== INTERFACE_CLOSE_ISO;
       const partialChanged = existing.partialNumber !== INTERFACE_PARTIAL;
       const ownerChanged = existing.createdById !== teacherId;
-      const moveToEnd = existing.sortOrder < (lastOrder._max.sortOrder ?? existing.sortOrder);
       if (
         existing.maxPoints !== INTERFACE_MAX_POINTS ||
         publish ||
         dateChanged ||
         partialChanged ||
-        ownerChanged ||
-        moveToEnd
+        ownerChanged
       ) {
         await prisma.activity.update({
           where: { id: existing.id },
@@ -68,27 +60,51 @@ export async function ensureInterfaceDesignActivities(teacherId: string) {
             ...(dateChanged ? { date: activityDate } : {}),
             ...(partialChanged ? { partialNumber: INTERFACE_PARTIAL } : {}),
             ...(ownerChanged ? { createdById: teacherId } : {}),
-            ...(moveToEnd ? { sortOrder: endOrder } : {}),
           },
         });
       }
+      await placeInterfaceByPublishDate(group.id, existing.id);
       continue;
     }
 
-    await prisma.activity.create({
+    const lastOrder = await prisma.activity.aggregate({
+      where: { groupId: group.id },
+      _max: { sortOrder: true },
+    });
+    const created = await prisma.activity.create({
       data: {
         date: activityDate,
         name: INTERFACE_ACTIVITY_NAME,
         maxPoints: INTERFACE_MAX_POINTS,
         signatureMax: 0,
-        sortOrder: endOrder,
+        sortOrder: (lastOrder._max.sortOrder ?? -1) + 1,
         partialNumber: INTERFACE_PARTIAL,
         releasedToStudents: interfaceDesignClosed(),
         groupId: group.id,
         createdById: teacherId,
       },
     });
+    await placeInterfaceByPublishDate(group.id, created.id);
   }
+}
+
+/** La deja entre las actividades de su fecha (28 oct 2026), no al final de la tabla. */
+async function placeInterfaceByPublishDate(groupId: string, activityId: string) {
+  const rows = await prisma.activity.findMany({
+    where: { groupId },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true, date: true, sortOrder: true },
+  });
+  const others = rows.filter((row) => row.id !== activityId);
+  const insertAt = others.findIndex((row) => formatClassDayIso(row.date) > INTERFACE_CLOSE_ISO);
+  const index = insertAt === -1 ? others.length : insertAt;
+  const sequence = [...others.slice(0, index), { id: activityId }, ...others.slice(index)];
+  const updates = sequence.flatMap((row, sortOrder) => {
+    const previous = rows.find((item) => item.id === row.id);
+    if (previous && previous.sortOrder === sortOrder) return [];
+    return [prisma.activity.update({ where: { id: row.id }, data: { sortOrder } })];
+  });
+  if (updates.length) await prisma.$transaction(updates);
 }
 
 /** Libera u oculta la misma actividad en todos los grupos del docente. */

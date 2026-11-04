@@ -1571,6 +1571,7 @@ teacherGroupsRouter.get("/groups/:groupId/grades-matrix", async (req: AuthedRequ
         maxPoints: true,
         createdAt: true,
         partialNumber: true,
+        sortOrder: true,
       },
     }),
     prisma.user.findMany({

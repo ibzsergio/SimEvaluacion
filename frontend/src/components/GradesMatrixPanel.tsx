@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchActivityGrades, fetchGradesMatrix, getApiErrorMessage, saveGradesBatch } from "../lib/api";
-import { formatCalendarDate, getActivityKindLabel, partialLabel } from "../lib/dates";
-import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
+import { calendarDateIso, formatCalendarDate, getActivityKindLabel, partialLabel } from "../lib/dates";
 import type { Activity, GradesMatrix } from "../lib/types";
 
 function cellKey(studentId: string, activityId: string) {
@@ -95,7 +94,6 @@ export default function GradesMatrixPanel({
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
-  const scrolledActivityRef = useRef("");
 
   const query = useQuery({
     queryKey: ["grades-matrix", groupId, partialNumber],
@@ -117,12 +115,12 @@ export default function GradesMatrixPanel({
     if (pinnedActivity && !list.some((activity) => activity.id === pinnedActivity.id)) {
       list.push(pinnedActivity);
     }
-    const index = list.findIndex((activity) => activity.name === INTERFACE_ACTIVITY_NAME);
-    if (index >= 0 && index < list.length - 1) {
-      const [item] = list.splice(index, 1);
-      if (item) list.push(item);
-    }
-    return list;
+    return list.sort((a, b) => {
+      const da = calendarDateIso(a.date);
+      const db = calendarDateIso(b.date);
+      if (da !== db) return da < db ? -1 : 1;
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    });
   }, [rawActivities, pinnedActivity]);
   const needsPinGrades = Boolean(
     pinnedActivity && !rawActivities.some((activity) => activity.id === pinnedActivity.id),
@@ -284,29 +282,6 @@ export default function GradesMatrixPanel({
   }
 
   const dirtyCount = Object.entries(drafts).filter(([, v]) => v.trim() !== "").length;
-
-  useEffect(() => {
-    const activityId = activities.find((activity) => activity.name === INTERFACE_ACTIVITY_NAME)?.id;
-    if (!activityId) return;
-    const token = `${groupId}:${activityId}`;
-    if (scrolledActivityRef.current === token) return;
-    const frame = requestAnimationFrame(() => {
-      const header = headerScrollRef.current;
-      const body = tableScrollRef.current;
-      const wide = window.matchMedia("(min-width: 1024px)").matches;
-      const scroller = wide && header ? header : body;
-      const cell = scroller?.querySelector(`[data-activity-id="${activityId}"]`) as HTMLElement | null;
-      if (!scroller || !cell) return;
-      const delta = cell.getBoundingClientRect().right - scroller.getBoundingClientRect().right + 16;
-      if (delta > 8) scroller.scrollLeft += delta;
-      if (header && body) {
-        if (scroller === header) body.scrollLeft = header.scrollLeft;
-        else header.scrollLeft = body.scrollLeft;
-      }
-      scrolledActivityRef.current = token;
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [activities, groupId]);
 
   function syncHeaderScroll(from: "header" | "body") {
     const header = headerScrollRef.current;

@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261104-iphone-tree",
+        cacheId: "simeval-20261104-interfaces-fecha",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
