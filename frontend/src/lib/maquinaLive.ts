@@ -9,6 +9,8 @@ export type MaquinaLiveState = {
   released: boolean;
   startedAt: string | null;
   pausedAt: string | null;
+  /** Solo el botón Reiniciar reloj lo deja en true, para no recuperar un reloj viejo. */
+  resetClock?: boolean;
   notes: Record<string, ExtraNote[]>;
   awarded: string[];
   teamNames: Record<string, string>;
@@ -42,6 +44,7 @@ export function parseMaquinaState(body: string): MaquinaLiveState | null {
       released: Boolean(parsed.released),
       startedAt: typeof parsed.startedAt === "string" && parsed.startedAt ? parsed.startedAt : null,
       pausedAt: typeof parsed.pausedAt === "string" && parsed.pausedAt ? parsed.pausedAt : null,
+      resetClock: Boolean(parsed.resetClock),
       notes: parsed.notes && typeof parsed.notes === "object" ? parsed.notes : {},
       awarded: Array.isArray(parsed.awarded) ? parsed.awarded.filter((id) => typeof id === "string") : [],
       teamNames:
@@ -78,11 +81,22 @@ export function maquinaStateFromAnnouncements(announcements: AnnouncementLike[],
     .filter((item) => item.title === MAQUINA_ANNOUNCEMENT_TITLE)
     .filter((item) => !groupId || item.groupId === groupId)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  for (const item of matches) {
-    const parsed = parseMaquinaState(item.body);
-    if (parsed) return parsed;
+  const parsed = matches
+    .map((item) => parseMaquinaState(item.body))
+    .filter((item): item is MaquinaLiveState => item != null);
+  if (!parsed.length) return { ...EMPTY_MAQUINA_STATE, notes: {}, awarded: [], teamNames: {} };
+  const newest = parsed[0]!;
+  if (!newest.startedAt && !newest.resetClock) {
+    const clocks = parsed.filter((item) => item.startedAt);
+    const earliest = clocks.reduce<MaquinaLiveState | null>((best, item) => {
+      if (!best?.startedAt) return item;
+      return item.startedAt! < best.startedAt ? item : best;
+    }, null);
+    if (earliest?.startedAt) {
+      return { ...newest, startedAt: earliest.startedAt, pausedAt: newest.pausedAt ?? earliest.pausedAt ?? null };
+    }
   }
-  return { ...EMPTY_MAQUINA_STATE, notes: {}, awarded: [], teamNames: {} };
+  return newest;
 }
 
 export function memberFirmas(notes: ExtraNote[], studentId: string) {

@@ -771,20 +771,27 @@ async function saveMaquinaState(groupId: string, state: MaquinaLiveState) {
   const previous = comms.announcements.filter(
     (item) => item.title === MAQUINA_ANNOUNCEMENT_TITLE && item.groupId === groupId,
   );
-  await Promise.all(previous.map((item) => deleteAnnouncement(item.id)));
-  await createAnnouncement({
+  const fresh = maquinaStateFromAnnouncements(comms.announcements, groupId);
+  const merged: MaquinaLiveState = { ...state };
+  if (!merged.startedAt && fresh.startedAt && !merged.resetClock) {
+    merged.startedAt = fresh.startedAt;
+    merged.pausedAt = merged.pausedAt ?? fresh.pausedAt;
+  }
+  const created = await createAnnouncement({
     title: MAQUINA_ANNOUNCEMENT_TITLE,
-    body: serializeMaquinaState(state),
+    body: serializeMaquinaState(merged),
     groupId,
   });
+  await Promise.all(previous.filter((item) => item.id !== created.id).map((item) => deleteAnnouncement(item.id)));
+  return merged;
 }
 
 async function maquinaSession(groupId: string, mutate?: (state: MaquinaLiveState) => MaquinaLiveState) {
   const [base, comms] = await Promise.all([projectTeamsForPopup(groupId), fetchTeacherComms()]);
   const current = maquinaStateFromAnnouncements(comms.announcements, groupId);
   const next = withMaquinaTeamNames(mutate ? mutate(current) : current, base.teams);
-  if (mutate) await saveMaquinaState(groupId, next);
-  return maquinaSessionFromProjectTeams(base, next);
+  const saved = mutate ? await saveMaquinaState(groupId, next) : next;
+  return maquinaSessionFromProjectTeams(base, saved);
 }
 
 async function writeMaquinaGrades(groupId: string, session: import("./types").ImproSession, teamKey?: string) {
@@ -822,11 +829,23 @@ export async function startMaquinaTimers(groupId: string) {
     released: true,
     pausedAt: null,
     startedAt: state.startedAt ?? new Date().toISOString(),
+    resetClock: false,
+  }));
+}
+
+export async function restoreMaquinaElapsed(groupId: string, elapsedMinutes: number) {
+  const elapsedMs = Math.max(0, Math.round(elapsedMinutes * 60 * 1000));
+  return maquinaSession(groupId, (state) => ({
+    ...state,
+    released: true,
+    pausedAt: null,
+    resetClock: false,
+    startedAt: new Date(Date.now() - elapsedMs).toISOString(),
   }));
 }
 
 export async function resetMaquinaSession(groupId: string) {
-  return maquinaSession(groupId, (state) => ({ ...state, startedAt: null, pausedAt: null }));
+  return maquinaSession(groupId, (state) => ({ ...state, startedAt: null, pausedAt: null, resetClock: true }));
 }
 
 export async function setMaquinaPaused(groupId: string, paused: boolean) {

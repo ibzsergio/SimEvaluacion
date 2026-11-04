@@ -8,6 +8,7 @@ import {
   removeMaquinaNote,
   resetMaquinaSession,
   setMaquinaPaused,
+  restoreMaquinaElapsed,
   startMaquinaTimers,
   updateMaquinaReleased,
 } from "../lib/api";
@@ -48,6 +49,7 @@ export default function TeacherMaquinaPanel({
   const qc = useQueryClient();
   const selectedGroup = groups.find((group) => group.id === selectedGroupId);
   const [noteError, setNoteError] = useState("");
+  const [reponer, setReponer] = useState("");
   const [now, setNow] = useState(() => Date.now());
 
   const sessionQuery = useQuery({
@@ -75,6 +77,16 @@ export default function TeacherMaquinaPanel({
     onSuccess: async (data) => {
       qc.setQueryData(["maquina-session", selectedGroupId], data);
       await qc.invalidateQueries({ queryKey: ["teacher-comms"] });
+    },
+    onError: (err) => setNoteError(getApiErrorMessage(err)),
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: (elapsedMinutes: number) => restoreMaquinaElapsed(selectedGroupId, elapsedMinutes),
+    onSuccess: (data) => {
+      setNoteError("");
+      setReponer("");
+      qc.setQueryData(["maquina-session", selectedGroupId], data);
     },
     onError: (err) => setNoteError(getApiErrorMessage(err)),
   });
@@ -229,6 +241,32 @@ export default function TeacherMaquinaPanel({
             {awardMutation.isPending ? "Guardando..." : "Registrar Firmas de todos"}
           </button>
         </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <p className="text-xs text-slate-300">Si el reloj volvió a 50:00, escribe los minutos que ya llevaban.</p>
+          <input
+            value={reponer}
+            onChange={(e) => setReponer(e.target.value)}
+            inputMode="numeric"
+            placeholder="Min"
+            aria-label="Minutos ya transcurridos"
+            className="w-20 rounded-lg border border-white/15 bg-slate-950/70 px-2 py-2 text-sm text-white"
+          />
+          <button
+            type="button"
+            disabled={restoreMutation.isPending}
+            onClick={() => {
+              const elapsed = Number(reponer);
+              if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed > minutes) {
+                setNoteError(`Escribe los minutos ya transcurridos, de 0 a ${minutes}.`);
+                return;
+              }
+              restoreMutation.mutate(elapsed);
+            }}
+            className="min-h-11 rounded-xl border border-lime-400/40 bg-lime-500/15 px-3 py-2 text-sm font-semibold text-lime-100 disabled:opacity-60"
+          >
+            {restoreMutation.isPending ? "Reponiendo..." : "Reponer tiempo"}
+          </button>
+        </div>
         <p className="mt-3 text-xs text-slate-400">
           {released
             ? "Los alumnos ya la ven en su teléfono. Iniciar arranca los 50 minutos de este grupo."
@@ -257,6 +295,7 @@ export default function TeacherMaquinaPanel({
           <ul className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
             {teams.map((team) => {
               const remain = remainingSeconds(team.startedAt, minutes, session?.pausedAt);
+              const elapsed = team.startedAt ? elapsedSeconds(team.startedAt, minutes, session?.pausedAt) : 0;
               const finished = Boolean(team.startedAt) && remain === 0 && !paused;
               const sprint = team.startedAt
                 ? maquinaSprintAt(elapsedSeconds(team.startedAt, minutes, session?.pausedAt))
@@ -276,8 +315,15 @@ export default function TeacherMaquinaPanel({
                         {team.leaderName ? `Líder: ${team.leaderName}` : "Sin líder"}
                       </p>
                     </div>
-                    <p className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 font-mono text-sm font-bold text-white">
-                      {!team.startedAt ? "Sin reloj" : paused ? `Pausa ${formatClock(remain)}` : finished ? "00:00" : formatClock(remain)}
+                    <p className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-right font-mono text-sm font-bold text-white">
+                      {!team.startedAt ? (
+                        "Sin reloj"
+                      ) : (
+                        <>
+                          <span className="block text-[10px] font-semibold text-lime-200">Van {formatClock(elapsed)}</span>
+                          {paused ? `Pausa ${formatClock(remain)}` : finished ? "00:00" : formatClock(remain)}
+                        </>
+                      )}
                     </p>
                   </div>
                   <p className="mt-1 text-xs text-slate-300">

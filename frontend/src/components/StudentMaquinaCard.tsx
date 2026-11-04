@@ -41,6 +41,7 @@ export default function StudentMaquinaCard({ extra }: { extra?: StudentExtra | n
 
   const minutes = maquina.minutes || MAQUINA_MINUTOS;
   const remain = remainingSeconds(maquina.startedAt, minutes, maquina.pausedAt);
+  const elapsed = maquina.startedAt ? elapsedSeconds(maquina.startedAt, minutes, maquina.pausedAt) : 0;
   const paused = Boolean(maquina.pausedAt);
   const done = Boolean(maquina.startedAt) && remain === 0 && !paused;
   const sprint = maquina.startedAt
@@ -63,6 +64,9 @@ export default function StudentMaquinaCard({ extra }: { extra?: StudentExtra | n
           <p className="font-mono text-4xl font-bold text-white">
             {!maquina.startedAt ? formatClock(minutes * 60) : paused ? formatClock(remain) : formatClock(remain)}
           </p>
+          {maquina.startedAt ? (
+            <p className="mt-1 text-xs font-semibold text-lime-200">Van {formatClock(elapsed)}</p>
+          ) : null}
           <p className="mt-1 text-sm text-lime-100">
             {!maquina.startedAt
               ? "Esperen a que el docente inicie los 50 minutos."
