@@ -250,7 +250,26 @@ def _image_url(path):
         data = json.loads(str(raw))
     except Exception:
         data = {}
-    return str(data.get(base) or "")
+    if base in data:
+        return str(data[base])
+    collapsed = base
+    for ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".heic", ".heif"):
+        for extra in (".jpg", ".jpeg"):
+            if collapsed.endswith(ext + extra):
+                collapsed = collapsed[: -len(extra)]
+    if collapsed.endswith(".jpeg"):
+        collapsed = collapsed[:-5] + ".jpg"
+    if collapsed in data:
+        return str(data[collapsed])
+    stem = collapsed.rsplit(".", 1)[0] if "." in collapsed else collapsed
+    hits = []
+    for ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"):
+        found = data.get(stem + ext)
+        if found and found not in hits:
+            hits.append(found)
+    if len(hits) == 1:
+        return str(hits[0])
+    return ""
 
 def _resolve_image_path(path):
     text = str(path or "").replace("\\", "/")
@@ -504,8 +523,9 @@ class _Widget:
             target = getattr(self, "_inp", None) or getattr(self, "_btn", None) or self._el
             target.focus()
         except Exception: pass
-    def focus(self):
+    def focus(self, *args, **kwargs):
         self.focus_set()
+        return args[0] if args else None
     def lift(self): pass
     def lower(self): pass
     def tkraise(self): pass
@@ -1151,17 +1171,238 @@ class Notebook(Frame):
 class Progressbar(Scale):
     pass
 
-class Treeview(Listbox):
-    def heading(self, *a, **k): pass
-    def column(self, *a, **k): pass
-    def insert(self, parent, index, **kw):
-        iid = kw.get("iid") or ("i" + str(len(self._items)+1))
-        vals = kw.get("values") or kw.get("text") or iid
-        super().insert(END, vals)
+class Treeview(_Widget):
+    def __init__(self, master=None, **kw):
+        super().__init__(master, **kw)
+        cols = kw.get("columns") or ()
+        self._columns = list(cols) if isinstance(cols, (list, tuple)) else [cols]
+        self._rows = {}
+        self._order = []
+        self._focus = ""
+        self._selected = []
+        self._headings = {}
+        box = document.createElement("div")
+        box.style.cssText = "width:100%;max-height:18rem;overflow:auto;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a;"
+        self._box = box
+        self._el.appendChild(box)
+        self._render()
+    def heading(self, column, text=None, **kw):
+        if text is not None:
+            kw["text"] = text
+        if kw:
+            prev = dict(self._headings.get(str(column), {}))
+            prev.update(kw)
+            self._headings[str(column)] = prev
+            self._render()
+        return dict(self._headings.get(str(column), {}))
+    def column(self, column, *a, **k):
+        return {}
+    def _photo_src(self, photo):
+        if photo is None:
+            return ""
+        return getattr(photo, "_src", "") or _image_url(getattr(photo, "file", ""))
+    def insert(self, parent, index, *args, **kw):
+        if args and "iid" not in kw:
+            kw["iid"] = args[0]
+        iid = str(kw.get("iid") or ("i" + str(len(self._order) + 1)))
+        values = kw.get("values") if "values" in kw else ()
+        if not isinstance(values, (list, tuple)):
+            values = (values,)
+        self._rows[iid] = {
+            "text": "" if kw.get("text") is None else str(kw.get("text")),
+            "values": tuple(values),
+            "image": kw.get("image"),
+        }
+        if str(index).lower() == "end":
+            self._order.append(iid)
+        else:
+            try:
+                self._order.insert(int(index), iid)
+            except Exception:
+                self._order.append(iid)
+        self._render()
         return iid
-    def item(self, iid, **kw): return {}
-    def get_children(self, item=""): return ()
-    def selection(self): return self.curselection()
+    def item(self, iid, option=None, **kw):
+        row = self._rows.get(str(iid))
+        if row is None:
+            return {} if option is None else ""
+        if kw:
+            if "text" in kw:
+                row["text"] = "" if kw["text"] is None else str(kw["text"])
+            if "values" in kw:
+                vals = kw["values"]
+                row["values"] = tuple(vals) if isinstance(vals, (list, tuple)) else (vals,)
+            if "image" in kw:
+                row["image"] = kw["image"]
+            self._render()
+        if option is None:
+            return {"text": row["text"], "values": row["values"], "image": row["image"]}
+        key = str(option)
+        if key == "values":
+            return row["values"]
+        return row.get(key, "")
+    def _col_index(self, column):
+        name = str(column)
+        if name in ("#0", "tree"):
+            return -1
+        if name.startswith("#"):
+            try:
+                return int(name[1:]) - 1
+            except Exception:
+                return 0
+        cols = [str(c) for c in self._columns]
+        if name in cols:
+            return cols.index(name)
+        return 0
+    def set(self, iid, column=None, value=None):
+        row = self._rows.get(str(iid))
+        if row is None:
+            return ""
+        if column is None:
+            out = {}
+            cols = [str(c) for c in self._columns]
+            for i, col in enumerate(cols):
+                if i < len(row["values"]):
+                    out[col] = row["values"][i]
+            return out
+        idx = self._col_index(column)
+        if idx < 0:
+            if value is None:
+                return row["text"]
+            row["text"] = str(value)
+            self._render()
+            return row["text"]
+        vals = list(row["values"])
+        while len(vals) <= idx:
+            vals.append("")
+        if value is None:
+            return vals[idx]
+        vals[idx] = value
+        row["values"] = tuple(vals)
+        self._render()
+        return value
+    def get_children(self, item=""):
+        return tuple(self._order)
+    def selection(self):
+        return tuple(self._selected)
+    def selection_set(self, *items):
+        flat = []
+        for it in items:
+            if isinstance(it, (list, tuple)):
+                flat.extend(list(it))
+            else:
+                flat.append(it)
+        self._selected = [str(i) for i in flat if str(i) in self._rows]
+        if self._selected:
+            self._focus = self._selected[-1]
+        self._paint()
+        return self._selected
+    def selection_add(self, *items):
+        for it in items:
+            key = str(it)
+            if key in self._rows and key not in self._selected:
+                self._selected.append(key)
+                self._focus = key
+        self._paint()
+    def selection_remove(self, *items):
+        drop = set(str(it) for it in items)
+        self._selected = [i for i in self._selected if i not in drop]
+        if self._focus in drop:
+            self._focus = self._selected[-1] if self._selected else ""
+        self._paint()
+    def focus(self, item=None, **kwargs):
+        if item is None or str(item) == "":
+            return self._focus
+        self._focus = str(item)
+        if self._focus in self._rows:
+            self._selected = [self._focus]
+            self._paint()
+        return self._focus
+    def delete(self, *items):
+        for iid in items:
+            key = str(iid)
+            self._rows.pop(key, None)
+            self._order = [i for i in self._order if i != key]
+            self._selected = [i for i in self._selected if i != key]
+        if self._focus not in self._rows:
+            self._focus = ""
+        self._render()
+    def exists(self, iid):
+        return str(iid) in self._rows
+    def parent(self, iid):
+        return ""
+    def next(self, iid):
+        try:
+            i = self._order.index(str(iid))
+            return self._order[i + 1]
+        except Exception:
+            return ""
+    def prev(self, iid):
+        try:
+            i = self._order.index(str(iid))
+            return self._order[i - 1] if i > 0 else ""
+        except Exception:
+            return ""
+    def see(self, *a, **k):
+        return None
+    def tag_configure(self, *a, **k):
+        return None
+    def tag_bind(self, *a, **k):
+        return None
+    def move(self, *a, **k):
+        return None
+    def identify_row(self, *a, **k):
+        return self._focus
+    def identify_column(self, *a, **k):
+        return "#0"
+    def bbox(self, *a, **k):
+        return (0, 0, 48, 48)
+    def _paint(self):
+        if not hasattr(self, "_box"):
+            return
+        rows = self._box.querySelectorAll("[data-iid]")
+        for i in range(rows.length):
+            el = rows.item(i)
+            iid = str(el.getAttribute("data-iid") or "")
+            el.style.background = "#e0e7ff" if iid in self._selected or iid == self._focus else "#fff"
+    def _render(self):
+        self._box.innerHTML = ""
+        head = document.createElement("div")
+        head.style.cssText = "display:flex;gap:8px;padding:8px 10px;background:#e2e8f0;font-size:12px;font-weight:800;"
+        labels = [self._headings.get("#0", {}).get("text") or ""]
+        for index, col in enumerate(self._columns):
+            labels.append(self._headings.get(str(col), {}).get("text") or self._headings.get("#" + str(index + 1), {}).get("text") or str(col))
+        head.textContent = "  ·  ".join([str(x) for x in labels if str(x)])
+        if head.textContent:
+            self._box.appendChild(head)
+        for iid in list(self._order):
+            row = self._rows.get(iid)
+            if row is None:
+                continue
+            btn = document.createElement("button")
+            btn.type = "button"
+            btn.setAttribute("data-iid", iid)
+            btn.style.cssText = "display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;border-top:1px solid #e2e8f0;padding:6px 8px;cursor:pointer;font:inherit;color:#0f172a;min-height:52px;"
+            src = self._photo_src(row.get("image"))
+            if src:
+                img = document.createElement("img")
+                img.src = src
+                img.alt = row["text"] or iid
+                img.style.cssText = "width:52px;height:52px;object-fit:cover;border-radius:8px;flex:0 0 auto;background:#f1f5f9;"
+                btn.appendChild(img)
+            label = document.createElement("span")
+            parts = []
+            if row["text"]:
+                parts.append(row["text"])
+            parts.extend([str(v) for v in row["values"]])
+            label.textContent = "  ·  ".join(parts) or iid
+            label.style.cssText = "font-size:14px;line-height:1.3;"
+            btn.appendChild(label)
+            def on_row(_ev=None, iid=iid):
+                self.focus(iid)
+            _listen(btn, "click", on_row)
+            self._box.appendChild(btn)
+        self._paint()
 
 def mainloop(n=0):
     root = getattr(sys.modules["tkinter"], "_ROOT", None)

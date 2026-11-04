@@ -331,9 +331,10 @@ export default function PythonCompilerPanel({ compact }: { compact?: boolean }) 
       <div className="mb-3 rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-3">
         <p className="text-sm font-semibold text-cyan-100">Imágenes de la práctica</p>
         <p className="mt-1 text-xs leading-relaxed text-slate-300">
-          En iPhone no se puede abrir una carpeta del teléfono. Toca Subir imágenes, elige las fotos
-          (pueden ser varias) y en el programa escribe <span className="text-cyan-100">imagenes/nombre.jpg</span> con
-          el nombre que aparece aquí. Si la foto es HEIC, se guarda como .jpg.
+          En iPhone no se puede abrir una carpeta del teléfono. Si la foto se llama blair.png y el
+          teléfono la guarda como blair.png.JPG, aquí queda como blair.png. Toca Subir imágenes, elige
+          las fotos y en el programa usa el nombre del recuadro, por ejemplo{" "}
+          <span className="text-cyan-100">imagenes/blair.png</span>. Si la foto es HEIC, se guarda como .jpg.
         </p>
         <button type="button" onClick={() => imageRef.current?.click()} className={`${secondaryBtn} mt-3`}>
           Subir imágenes

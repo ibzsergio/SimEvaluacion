@@ -25,6 +25,24 @@ function safeImageName(name: string) {
   return clean || "imagen.jpg";
 }
 
+/** iPhone a veces entrega blair.png.JPG. El programa pide blair.png. */
+export function practiceImageName(name: string) {
+  return safeImageName(name)
+    .replace(/\.(png|jpe?g|gif|webp|bmp|heic|heif)\.(jpe?g)$/i, ".$1")
+    .replace(/\.jpeg$/i, ".jpg");
+}
+
+export function practiceImageKeys(name: string) {
+  const lower = practiceImageName(name).toLowerCase();
+  const keys = new Set<string>([lower, name.toLowerCase()]);
+  const stem = lower.replace(/\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i, "");
+  for (const ext of [".png", ".jpg", ".jpeg", ".gif", ".webp"]) {
+    keys.add(stem + ext);
+    keys.add(`${stem}.png${ext}`);
+  }
+  return [...keys];
+}
+
 function loadHtmlImage(url: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
@@ -36,7 +54,7 @@ function loadHtmlImage(url: string) {
 
 /** En iPhone las fotos suelen llegar en HEIC. Safari las puede convertir a JPEG. */
 async function normalizeImage(file: File): Promise<PracticeImage> {
-  const name = safeImageName(file.name);
+  const name = practiceImageName(file.name);
   const type = (file.type || "").toLowerCase();
   const raster = /png|jpe?g|gif|webp|bmp/.test(type) || /\.(png|jpe?g|gif|webp|bmp)$/i.test(name);
   if (raster) {
@@ -63,7 +81,7 @@ async function normalizeImage(file: File): Promise<PracticeImage> {
   }
 }
 
-export async function listPracticeImages(): Promise<PracticeImage[]> {
+async function readAllImages(): Promise<PracticeImage[]> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
@@ -71,6 +89,30 @@ export async function listPracticeImages(): Promise<PracticeImage[]> {
     req.onsuccess = () => resolve((req.result as PracticeImage[]) ?? []);
     req.onerror = () => reject(req.error ?? new Error("No se pudieron leer las imágenes."));
   });
+}
+
+export async function listPracticeImages(): Promise<PracticeImage[]> {
+  const images = await readAllImages();
+  const byName = new Map<string, PracticeImage>();
+  let changed = false;
+  for (const image of images) {
+    const name = practiceImageName(image.name);
+    if (name !== image.name) changed = true;
+    byName.set(name, { ...image, name });
+  }
+  if (!changed && byName.size === images.length) return images;
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    const store = tx.objectStore(STORE);
+    for (const image of images) {
+      if (!byName.has(image.name)) store.delete(image.name);
+    }
+    for (const image of byName.values()) store.put(image);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error("No se pudieron guardar las imágenes."));
+  });
+  return [...byName.values()];
 }
 
 export async function addPracticeImages(files: File[]): Promise<PracticeImage[]> {

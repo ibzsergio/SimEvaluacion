@@ -1,4 +1,4 @@
-import { listPracticeImages } from "./practiceImages";
+import { listPracticeImages, practiceImageKeys } from "./practiceImages";
 import { TKINTER_SHIM } from "./pythonTkinterShim";
 
 const PYODIDE_INDEX = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
@@ -49,7 +49,17 @@ async function syncPracticeImages(py: PyodideLike) {
     }
     const url = URL.createObjectURL(new Blob([bytes], { type: image.type || "image/jpeg" }));
     practiceBlobUrls.push(url);
-    urls[image.name.toLowerCase()] = url;
+    for (const key of practiceImageKeys(image.name)) urls[key] = url;
+    for (const alias of practiceImageKeys(image.name)) {
+      if (alias === image.name) continue;
+      for (const folder of folders) {
+        try {
+          py.FS.writeFile(`${folder}/${alias}`, bytes);
+        } catch {
+          /* el alias ya existe */
+        }
+      }
+    }
   }
   window.__SIMEVAL_IMAGE_URLS_JSON = JSON.stringify(urls);
   window.__SIMEVAL_IMAGE_NAMES = images.map((image) => image.name).join("\n");
