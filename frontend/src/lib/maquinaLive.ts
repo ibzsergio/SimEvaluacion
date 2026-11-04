@@ -58,13 +58,13 @@ export function parseMaquinaState(body: string): MaquinaLiveState | null {
 
 function visibleCopy(state: MaquinaLiveState) {
   if (state.startedAt && !state.pausedAt) {
-    return "El reloj de La máquina ya inició. Salgan una vez por cartón, palos y unicel. La ficha entra arriba, cae, gira, se desvía y sale sola.";
+    return "El reloj de La máquina ya inició. Salgan una vez por cartón, palos y unicel. La ficha recorre sola las 12 etapas del proyecto.";
   }
   if (state.pausedAt) {
     return "El docente pausó el reloj de La máquina. Esperen a que lo reanude.";
   }
   if (state.released) {
-    return "La máquina está liberada. Esperen los 50 minutos. Entrada arriba, tres estaciones (cae, gira y se desvía) con el nombre de su programa, y salida abajo.";
+    return "La máquina está liberada. Esperen los 50 minutos. La ficha entra, pasa por las 12 etapas del proyecto y sale sola.";
   }
   return "La máquina está en preparación para este grupo.";
 }
