@@ -3,15 +3,15 @@ const EJEMPLOS = [
     src: "/maquina/como-queda.jpg",
     title: "Así debe quedar",
     caption:
-      "Entrada, las etapas 1 a 12 en orden y salida. En su máquina cada número lleva el nombre de esa etapa del proyecto.",
-    alt: "Máquina de cartón con entrada, doce etapas numeradas del 1 al 12 y salida",
+      "Boca de entrada con flecha verde, un obstáculo por etapa y boca de salida con flecha roja, como en la foto.",
+    alt: "Máquina de cartón con boca de entrada, doce obstáculos numerados y boca de salida",
   },
   {
     src: "/maquina/recorrido.jpg",
-    title: "Así viaja la ficha",
+    title: "Así viaja la pieza",
     caption:
-      "Las flechas marcan que pasa sola por las 12 etapas. Los huecos de la frase los llena su programa.",
-    alt: "Recorrido de la ficha desde la entrada, por las etapas 1 a 12, hasta la salida",
+      "La ficha, canica, moneda o pelota cruza sola cada obstáculo, de la entrada a la salida.",
+    alt: "La pieza recorre sola los doce obstáculos, de la boca de entrada a la boca de salida",
   },
 ] as const;
 
