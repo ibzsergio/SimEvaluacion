@@ -10,6 +10,7 @@ import {
   BASEDATOS_REGLAS,
   BASEDATOS_TITULO,
   basedatosCheckItems,
+  basedatosProductHeading,
   formatBasedatosSize,
 } from "../lib/basedatosScrum";
 import type { StudentExtra } from "../lib/types";
@@ -104,7 +105,7 @@ export default function StudentBasedatosCard({
         {BASEDATOS_PRODUCTOS.map((product) => (
           <div key={product.id} className="rounded-2xl border border-white/10 px-4 py-3">
             <p className="text-sm font-bold text-white">
-              {product.letra}) {product.titulo}
+              {basedatosProductHeading(product)}
             </p>
             <ul className="mt-2 space-y-2">
               {product.items.map((item) => (
@@ -129,7 +130,7 @@ export default function StudentBasedatosCard({
         <div className="rounded-2xl border border-white/10 px-4 py-3">
           <p className="text-sm font-bold text-white">Subir el PDF</p>
           <p className="mt-1 text-sm text-slate-300">
-            Marca todas las casillas. Así confirmas que el PDF trae los 4 productos. Un integrante lo sube; si lo vuelven a subir, reemplaza el anterior.
+            Marca todas las casillas. Así confirmas que el PDF trae carátula, las cuatro secciones con su título, el script completo y las capturas. Un integrante lo sube; si lo vuelven a subir, reemplaza el anterior.
           </p>
           {delivery ? (
             <p className="mt-2 text-sm text-emerald-100">

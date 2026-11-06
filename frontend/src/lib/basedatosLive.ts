@@ -72,7 +72,7 @@ export function parseBasedatosState(body: string): BasedatosLiveState | null {
 
 function visibleCopy(state: BasedatosLiveState) {
   if (state.released) {
-    return "La base de datos está liberada. Hoy el equipo sube un solo PDF, de máximo 5 MB, con el modelo ER, el modelo relacional, el script y las interfaces.";
+    return "La base de datos está liberada. El PDF abre con carátula. Cada sección lleva su título. El script va completo y las pantallas son capturas de la aplicación ya compilada.";
   }
   return "La base de datos está en preparación para este grupo.";
 }

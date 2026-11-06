@@ -184,7 +184,7 @@ export function registerStudentBasedatosRoutes(app: import("express").Express) {
       if (req.body?.completo !== "si") {
         return res.status(400).json({
           error: "checks_incomplete",
-          message: "Antes de subir, marca que el PDF trae los 4 productos.",
+          message: "Antes de subir, marca que el PDF trae carátula, las secciones con título, el script completo y las capturas.",
         });
       }
       const file = req.file;

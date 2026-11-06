@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261106-basedatos-pdf",
+        cacheId: "simeval-20261106-basedatos-caratula",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

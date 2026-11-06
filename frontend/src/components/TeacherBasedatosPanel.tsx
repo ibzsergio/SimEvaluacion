@@ -19,6 +19,7 @@ import {
   BASEDATOS_PROGRAMA,
   BASEDATOS_REGLAS,
   BASEDATOS_TITULO,
+  basedatosProductHeading,
   basedatosRoleLabel,
   formatBasedatosSize,
 } from "../lib/basedatosScrum";
@@ -169,7 +170,7 @@ export default function TeacherBasedatosPanel({
       {BASEDATOS_PRODUCTOS.map((product) => (
         <section key={product.id} className="glass p-5">
           <h3 className="font-bold text-white">
-            {product.letra}) {product.titulo}
+            {basedatosProductHeading(product)}
           </h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
             {product.items.map((item) => (

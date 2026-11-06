@@ -5,15 +5,25 @@ export const BASEDATOS_FIRMAS_MAX = 3000;
 export const BASEDATOS_PDF_MAX_BYTES = 5 * 1024 * 1024;
 
 export const BASEDATOS_CONTEXTO =
-  "Hoy es el único día. El equipo entrega 4 productos, todos digitales, en un solo PDF. Vale 3000 puntos. Solo se sube un archivo por equipo y no puede pesar más de 5 MB.";
+  "Hoy es el único día. El equipo entrega 4 productos, todos digitales, en un solo PDF. El archivo abre con carátula y cada sección lleva su título. Vale 3000 puntos. Solo se sube un archivo por equipo y no puede pesar más de 5 MB.";
 
 export const BASEDATOS_PRODUCTOS = [
   {
+    id: "caratula",
+    letra: "",
+    titulo: "Carátula",
+    items: [
+      { id: "caratula-primera", text: "El PDF empieza con una carátula." },
+      { id: "caratula-titulo", text: "La carátula lleva el título del proyecto." },
+      { id: "caratula-equipo", text: "La carátula lleva el nombre del equipo, los integrantes, el grupo y la fecha." },
+    ],
+  },
+  {
     id: "er",
     letra: "A",
-    titulo: "Modelo entidad-relación",
+    titulo: "DIAGRAMA ENTIDAD RELACIÓN",
     items: [
-      { id: "er-titulo", text: "Tiene el título del proyecto." },
+      { id: "er-seccion", text: "La sección se llama DIAGRAMA ENTIDAD RELACIÓN y también lleva el título del proyecto." },
       { id: "er-entidades", text: "Están todas las entidades." },
       { id: "er-atributos", text: "Cada entidad muestra sus atributos." },
       { id: "er-pk", text: "Cada entidad marca su llave primaria." },
@@ -24,9 +34,10 @@ export const BASEDATOS_PRODUCTOS = [
   {
     id: "relacional",
     letra: "B",
-    titulo: "Modelo relacional en tablas",
+    titulo: "MODELO RELACIONAL",
     items: [
-      { id: "rel-tablas", text: "Hay una tabla por cada entidad del modelo ER." },
+      { id: "rel-seccion", text: "La sección se llama MODELO RELACIONAL y también lleva el título del proyecto." },
+      { id: "rel-tablas", text: "Hay una tabla por cada entidad del diagrama." },
       { id: "rel-tipos", text: "Cada columna tiene su tipo de dato." },
       { id: "rel-pk", text: "La llave primaria está marcada." },
       { id: "rel-fk", text: "Las llaves foráneas están marcadas." },
@@ -35,32 +46,40 @@ export const BASEDATOS_PRODUCTOS = [
   {
     id: "script",
     letra: "C",
-    titulo: "Script de base de datos",
+    titulo: "SCRIPT DE LA BASE DE DATOS",
     items: [
-      { id: "sql-tablas", text: "El script crea las tablas del modelo relacional." },
-      { id: "sql-llaves", text: "El script incluye las llaves primarias y las foráneas." },
-      { id: "sql-pdf", text: "El script va dentro del mismo PDF." },
+      { id: "sql-seccion", text: "La sección se llama SCRIPT DE LA BASE DE DATOS y también lleva el título del proyecto." },
+      { id: "sql-completo", text: "Va todo el script para crear la base de datos, no solo una parte." },
+      { id: "sql-llaves", text: "Ese script crea todas las tablas, con llaves primarias y foráneas." },
     ],
   },
   {
     id: "interfaces",
     letra: "D",
-    titulo: "Interfaces",
+    titulo: "INTERFACES",
     items: [
-      { id: "ui-alumno", text: "Muestra cómo agregar o administrar un alumno." },
-      { id: "ui-docente", text: "Muestra cómo agregar o administrar un docente." },
-      { id: "ui-pdf", text: "Esas pantallas van en el mismo PDF." },
+      { id: "ui-seccion", text: "La sección se llama INTERFACES y también lleva el título del proyecto." },
+      { id: "ui-todas", text: "Están todas las pantallas del sistema." },
+      { id: "ui-capturas", text: "Son capturas de pantalla tal cual se ven en la aplicación ya compilada." },
+      { id: "ui-alumno", text: "Se ve cómo agregar o administrar un alumno." },
+      { id: "ui-docente", text: "Se ve cómo agregar o administrar un docente." },
     ],
   },
 ] as const;
 
 export const BASEDATOS_REGLAS = [
   "Todo se entrega en digital.",
-  "Los 4 productos van en un solo PDF.",
+  "El PDF abre con carátula.",
+  "Cada sección lleva su título y el título del proyecto.",
+  "Los 4 productos van en ese mismo PDF.",
   "Un archivo por equipo.",
   "El PDF no pasa de 5 MB.",
   "Hoy es el único día.",
 ];
+
+export function basedatosProductHeading(product: { letra: string; titulo: string }) {
+  return product.letra ? `${product.letra}) ${product.titulo}` : product.titulo;
+}
 
 export type BasedatosCheckItem = { id: string; text: string; letra: string; titulo: string };
 

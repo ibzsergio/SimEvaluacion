@@ -140,7 +140,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              La base de datos: hoy, un PDF por equipo, máximo 5 MB, con 4 productos. Vale 3000 puntos. La máquina sigue disponible. Pop-Up ya no se muestra a los alumnos.
+              La base de datos: hoy, un PDF por equipo, máximo 5 MB, con carátula y 4 secciones tituladas. Vale 3000 puntos. La máquina sigue disponible. Pop-Up ya no se muestra a los alumnos.
             </p>
           </section>
 
@@ -153,8 +153,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Actividad Scrum</p>
               <h3 className="mt-1 text-xl font-bold text-white">{BASEDATOS_TITULO}</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Hoy. Un PDF por equipo, máximo 5 MB: modelo ER, modelo relacional, script de la base
-                y las pantallas para administrar alumno y docente. 3000 puntos.
+                Hoy. Un PDF por equipo, máximo 5 MB, con carátula. Cada sección lleva título: diagrama,
+                modelo relacional, el script completo y capturas de todas las pantallas. 3000 puntos.
               </p>
             </div>
             <span
