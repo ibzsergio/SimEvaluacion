@@ -140,7 +140,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              La base de datos: sala de cómputo. Cada integrante, en su computadora, arma una tabla del modelo, cinco registros y una consulta. La máquina sigue disponible. Pop-Up ya no se muestra a los alumnos.
+              La base de datos: sistema de asistencias e incidencias. Cada integrante trabaja una función: quién la hace, qué tablas usa y quién realiza un cambio. La máquina sigue disponible. Pop-Up ya no se muestra a los alumnos.
             </p>
           </section>
 
@@ -153,8 +153,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Actividad Scrum</p>
               <h3 className="mt-1 text-xl font-bold text-white">{BASEDATOS_TITULO}</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Sala de cómputo. El diagrama y el modelo ya son del equipo. Hoy cada quien, en su
-                computadora: una tabla, cinco registros de una primaria y una consulta. 1000 Firmas.
+                Sistema de asistencias e incidencias. El docente pasa lista y reporta conducta. El
+                director ve los 6 grupos, decide y genera la carta compromiso. 1000 Firmas.
               </p>
             </div>
             <span

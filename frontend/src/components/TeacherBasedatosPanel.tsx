@@ -16,10 +16,13 @@ import {
   BASEDATOS_EJEMPLO,
   BASEDATOS_EQUIPO,
   BASEDATOS_FIRMAS_MAX,
+  BASEDATOS_FUNCIONES,
   BASEDATOS_NOTAS,
+  BASEDATOS_PREGUNTAS,
   BASEDATOS_PROGRAMA,
   BASEDATOS_ROLES,
   BASEDATOS_SI_SOBRAN,
+  BASEDATOS_SISTEMA,
   BASEDATOS_TITULO,
   basedatosRoleLabel,
 } from "../lib/basedatosScrum";
@@ -124,7 +127,7 @@ export default function TeacherBasedatosPanel({
             onClick={() => {
               const next = !released;
               const question = next
-                ? `¿Liberar La base de datos para el grupo ${selectedGroup?.code ?? ""}?\n\nCada alumno la verá en su teléfono. Hoy cada quien trabaja en su computadora.`
+                ? `¿Liberar La base de datos para el grupo ${selectedGroup?.code ?? ""}?\n\nCada alumno la verá en su teléfono. Cada quien trabaja una función del sistema de asistencias e incidencias.`
                 : "¿Ocultar La base de datos para este grupo?";
               if (!window.confirm(question)) return;
               releaseMutation.mutate(next);
@@ -154,11 +157,38 @@ export default function TeacherBasedatosPanel({
       </section>
 
       <section className="rounded-3xl border border-sky-400/40 bg-sky-500/10 p-5">
-        <h3 className="text-lg font-bold text-white">Hoy, cada computadora</h3>
-        <p className="mt-1 text-sm text-sky-50">
-          Nadie se queda mirando. El archivo lleva el nombre de quien está sentado ahí.
+        <h3 className="text-lg font-bold text-white">Lo que ya hace el sistema</h3>
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-100">
+          {BASEDATOS_SISTEMA.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="glass p-5">
+        <h3 className="font-bold text-white">Cada función: quién, tablas y el cambio</h3>
+        <p className="mt-1 text-sm text-slate-300">
+          Cada integrante se queda con una. En su archivo contesta quién la realiza, con qué tablas, qué hace la función y, si hay un cambio, quién lo realiza.
         </p>
-        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-100">
+        <ul className="mt-3 space-y-2">
+          {BASEDATOS_FUNCIONES.map((item) => (
+            <li key={item.id} className="rounded-2xl border border-white/10 px-3 py-2">
+              <p className="text-sm font-semibold text-white">{item.nombre}</p>
+              <p className="text-sm text-sky-100">{item.quien}. {item.hace}</p>
+              <p className="mt-1 text-sm text-slate-300">{item.cambio}</p>
+            </li>
+          ))}
+        </ul>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-200">
+          {BASEDATOS_PREGUNTAS.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="glass p-5">
+        <h3 className="font-bold text-white">En cada computadora</h3>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-300">
           {BASEDATOS_CADA_QUIEN.map((item) => (
             <li key={item}>{item}</li>
           ))}
@@ -202,7 +232,7 @@ export default function TeacherBasedatosPanel({
       <section className="glass p-5">
         <h3 className="font-bold text-white">Así se ve el archivo</h3>
         <p className="mt-1 text-sm text-slate-400">
-          Es un ejemplo. La tabla, los campos y los datos tienen que ser los de su modelo y de su escuela.
+          El ejemplo es pasar lista. Cada quien lo cambia por su función y por los nombres de su modelo.
         </p>
         <pre className="mt-3 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-xs leading-relaxed text-slate-100">
           {BASEDATOS_EJEMPLO}

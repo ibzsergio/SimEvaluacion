@@ -72,7 +72,7 @@ export function parseBasedatosState(body: string): BasedatosLiveState | null {
 
 function visibleCopy(state: BasedatosLiveState) {
   if (state.released) {
-    return "La base de datos está liberada. Cada integrante, en su computadora: una tabla del modelo, cinco registros de una primaria y una consulta.";
+    return "La base de datos está liberada. El sistema registra asistencias e incidencias. Cada integrante se queda con una función: quién la hace, qué tablas usa y quién realiza un cambio.";
   }
   return "La base de datos está en preparación para este grupo.";
 }
