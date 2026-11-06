@@ -88,8 +88,8 @@ export const BASEDATOS_CIERRE: Record<string, { iso: string; texto: string }> = 
     texto: "El archivo solo se puede subir hasta las 3:00 p. m. de hoy.",
   },
   "302": {
-    iso: "2026-11-06T13:00:00-06:00",
-    texto: "El archivo solo se puede subir hasta la 1:00 p. m. de hoy.",
+    iso: "2026-11-06T15:00:00-06:00",
+    texto: "El archivo solo se puede subir hasta las 3:00 p. m. de hoy.",
   },
 };
 
