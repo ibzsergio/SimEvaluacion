@@ -493,3 +493,18 @@ model TeamDelivery {
   @@unique([groupId, teamKey])
   @@index([groupId])
 }
+
+/// PDF del examen de cierre de parcial. Uno por alumno.
+model ExamDelivery {
+  id         String   @id @default(cuid())
+  groupId    String
+  studentId  String
+  fileName   String
+  mimeType   String
+  fileData   Bytes
+  sizeBytes  Int
+  uploadedAt DateTime @default(now()) @updatedAt
+
+  @@unique([groupId, studentId])
+  @@index([groupId])
+}

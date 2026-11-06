@@ -1128,6 +1128,48 @@ export async function downloadBasedatosPdf(groupId: string, teamKey: string, fil
   );
 }
 
+export type ExamDeliveryFile = {
+  fileName: string;
+  sizeBytes: number;
+  uploadedAt: string;
+};
+
+export async function fetchStudentExamDelivery() {
+  const { data } = await api.get<{
+    allowed: boolean;
+    uploadOpen: boolean;
+    uploadText: string | null;
+    delivery: ExamDeliveryFile | null;
+  }>("/student/examen/delivery");
+  return data;
+}
+
+export async function uploadExamPdf(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("completo", "si");
+  const { data } = await api.post<{ delivery: ExamDeliveryFile }>("/student/examen/delivery", form);
+  return data.delivery;
+}
+
+export async function fetchTeacherExamDeliveries(groupId: string) {
+  const { data } = await api.get<{
+    groupCode: string;
+    onlyGroup: string;
+    uploadText: string;
+    uploadOpen: boolean;
+    deliveries: Array<ExamDeliveryFile & { studentId: string }>;
+  }>(`/teacher/groups/${groupId}/examen/deliveries`);
+  return data;
+}
+
+export async function downloadExamPdf(groupId: string, studentId: string, fileName: string) {
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/examen/${encodeURIComponent(studentId)}/file`,
+    fileName,
+  );
+}
+
 export async function hideBasedatosSession(groupId: string) {
   return basedatosSession(groupId, (state) => ({ ...state, released: false }));
 }

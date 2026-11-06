@@ -87,6 +87,7 @@ export function getActivityKindLabel(index: number, name: string) {
   if (/diseño de interfaces proyecto/i.test(text)) return "SCRUM";
   if (/^la base de datos$/i.test(text.trim())) return "SCRUM";
   if (/^la máquina$/i.test(text.trim())) return "SCRUM";
+  if (/^examen$/i.test(text.trim())) return "Examen";
   const practica = text.match(/pr[aá]cti[cç]a\s*[#]?\s*(\d+)/i);
   if (practica) return `Práctica ${practica[1]}`;
   const actividad = text.match(/actividad\s*[#]?\s*(\d+)/i);

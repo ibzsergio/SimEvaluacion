@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAvionSession, fetchBasedatosSession, fetchExtraSession, fetchImproSession, fetchMaquinaSession } from "../lib/api";
 import { BASEDATOS_TITULO } from "../lib/basedatosScrum";
+import { EXAMEN_TITULO } from "../lib/examScrum";
 import { IMPRO_TITULO } from "../lib/improScrum";
 import { MAQUINA_TITULO } from "../lib/maquinaScrum";
 import type { ClassGroup } from "../lib/types";
 import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherBasedatosPanel from "./TeacherBasedatosPanel";
+import TeacherExamenPanel from "./TeacherExamenPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
 import TeacherImproPanel from "./TeacherImproPanel";
 import TeacherInterfacePanel from "./TeacherInterfacePanel";
@@ -23,7 +25,7 @@ export default function TeacherScrumActivitiesPanel({
   onSelectGroup: (id: string) => void;
 }) {
   const [current, setCurrent] = useState<
-    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos"
+    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen"
   >("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
@@ -85,7 +87,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "basedatos" ? (
+      {current === "examen" ? (
+        <TeacherExamenPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "basedatos" ? (
         <TeacherBasedatosPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -143,6 +152,24 @@ export default function TeacherScrumActivitiesPanel({
               La base de datos: hoy, un PDF por equipo, máximo 5 MB, con carátula y 4 secciones tituladas. Vale 3000 puntos. La máquina sigue disponible. Pop-Up ya no se muestra a los alumnos.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("examen")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-amber-200">Cierre del parcial</p>
+              <h3 className="mt-1 text-xl font-bold text-white">{EXAMEN_TITULO}</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Solo el grupo 302. Cada alumno sube un PDF de su examen, con carátula, nombre, fecha y
+                margen amarillo. Máximo 3 MB. Hoy, hasta las 5:00 p. m.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">
+              Solo 302
+            </span>
+          </button>
 
           <button
             type="button"

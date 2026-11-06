@@ -62,6 +62,8 @@ import { ensureExtraSchema } from "./ensureExtraSchema.js";
 import { ensureImproSchema } from "./ensureImproSchema.js";
 import { ensureBasedatosSchema } from "./ensureBasedatosSchema.js";
 import { basedatosTeacherRouter, registerStudentBasedatosRoutes } from "./basedatosDelivery.js";
+import { ensureExamSchema } from "./ensureExamSchema.js";
+import { examTeacherRouter, registerStudentExamRoutes } from "./examDelivery.js";
 import {
   chooseImproLeader,
   improErrorHttp,
@@ -339,6 +341,7 @@ app.post("/auth/dev-seed", async (_req, res) => {
 
 app.use("/teacher", teacherGroupsRouter);
 app.use("/teacher", basedatosTeacherRouter);
+app.use("/teacher", examTeacherRouter);
 app.use("/teacher/office-exam", officeExamTeacherRouter);
 app.use("/teacher/comms", commsTeacherRouter);
 
@@ -863,6 +866,7 @@ app.post("/student/avion/leader", requireAuth, requireStudent, studentScrumHidde
 app.post("/student/avion/start", requireAuth, requireStudent, studentScrumHidden);
 
 registerStudentBasedatosRoutes(app);
+registerStudentExamRoutes(app);
 
 app.post("/student/extra/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
   const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
@@ -1147,6 +1151,7 @@ void (async () => {
     await ensureExtraSchema();
     await ensureImproSchema();
     await ensureBasedatosSchema();
+    await ensureExamSchema();
     await dropPythonPracticeSchema();
     await ensureCompilerSchema();
   } catch (err) {
