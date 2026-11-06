@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAvionSession, fetchExtraSession, fetchImproSession, fetchMaquinaSession } from "../lib/api";
+import { fetchAvionSession, fetchBasedatosSession, fetchExtraSession, fetchImproSession, fetchMaquinaSession } from "../lib/api";
+import { BASEDATOS_TITULO } from "../lib/basedatosScrum";
 import { IMPRO_TITULO } from "../lib/improScrum";
 import { MAQUINA_TITULO } from "../lib/maquinaScrum";
 import type { ClassGroup } from "../lib/types";
 import TeacherAvionPanel from "./TeacherAvionPanel";
+import TeacherBasedatosPanel from "./TeacherBasedatosPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
 import TeacherImproPanel from "./TeacherImproPanel";
 import TeacherInterfacePanel from "./TeacherInterfacePanel";
@@ -20,7 +22,9 @@ export default function TeacherScrumActivitiesPanel({
   selectedGroupId: string;
   onSelectGroup: (id: string) => void;
 }) {
-  const [current, setCurrent] = useState<"list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina">("list");
+  const [current, setCurrent] = useState<
+    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos"
+  >("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
     queryFn: () => fetchAvionSession(selectedGroupId),
@@ -45,6 +49,12 @@ export default function TeacherScrumActivitiesPanel({
     enabled: !!selectedGroupId && current === "list",
   });
   const maquinaReleased = maquinaQuery.data?.released ?? false;
+  const basedatosQuery = useQuery({
+    queryKey: ["basedatos-session", selectedGroupId],
+    queryFn: () => fetchBasedatosSession(selectedGroupId),
+    enabled: !!selectedGroupId && current === "list",
+  });
+  const basedatosReleased = basedatosQuery.data?.released ?? false;
 
   return (
     <div>
@@ -75,7 +85,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "maquina" ? (
+      {current === "basedatos" ? (
+        <TeacherBasedatosPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "maquina" ? (
         <TeacherMaquinaPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -123,10 +140,33 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              La máquina: equipos de Roles / Equipos, 60 minutos. Construyen una máquina de su programa.
-              Cada etapa es un obstáculo. Al frente se lee Sistema de Alerta Temprana. Al final compiten: gana la pieza que salga primero. 1000 Firmas. Pop-Up ya no se muestra a los alumnos.
+              La base de datos: sala de cómputo. Cada integrante, en su computadora, arma una tabla del modelo, cinco registros y una consulta. La máquina sigue disponible. Pop-Up ya no se muestra a los alumnos.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("basedatos")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Actividad Scrum</p>
+              <h3 className="mt-1 text-xl font-bold text-white">{BASEDATOS_TITULO}</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Sala de cómputo. El diagrama y el modelo ya son del equipo. Hoy cada quien, en su
+                computadora: una tabla, cinco registros de una primaria y una consulta. 1000 Firmas.
+              </p>
+            </div>
+            <span
+              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                basedatosReleased
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+                  : "border-sky-400/40 bg-sky-500/15 text-sky-100"
+              }`}
+            >
+              {basedatosReleased ? "Liberada en este grupo" : "Lista para liberar"}
+            </span>
+          </button>
 
           <button
             type="button"

@@ -11,6 +11,7 @@ import {
   downloadTeacherCalendarFile,
   uploadSchoolCalendar,
 } from "../lib/api";
+import { BASEDATOS_ANNOUNCEMENT_TITLE, basedatosPublicText } from "../lib/basedatosLive";
 import { MAQUINA_ANNOUNCEMENT_TITLE, maquinaPublicText } from "../lib/maquinaLive";
 import { POPUP_ANNOUNCEMENT_TITLE, popupPublicText } from "../lib/popupLive";
 
@@ -288,7 +289,9 @@ export default function TeacherCommsPanel() {
                     ? popupPublicText(a.body)
                     : a.title === MAQUINA_ANNOUNCEMENT_TITLE
                       ? maquinaPublicText(a.body)
-                      : a.body}
+                      : a.title === BASEDATOS_ANNOUNCEMENT_TITLE
+                        ? basedatosPublicText(a.body)
+                        : a.body}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {a.group?.code ? `Grupo ${a.group.code}` : "Todos"} · {formatDate(a.createdAt)}

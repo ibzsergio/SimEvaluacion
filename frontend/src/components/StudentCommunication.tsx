@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { fetchStudentComms, getApiErrorMessage, downloadStudentCalendarFile } from "../lib/api";
+import { BASEDATOS_ANNOUNCEMENT_TITLE, basedatosPublicText } from "../lib/basedatosLive";
 import { MAQUINA_ANNOUNCEMENT_TITLE, maquinaPublicText } from "../lib/maquinaLive";
 import { POPUP_ANNOUNCEMENT_TITLE } from "../lib/popupLive";
 
@@ -81,7 +82,11 @@ export default function StudentCommunication() {
               >
                 <p className="font-semibold text-white">{a.title}</p>
                 <p className="mt-2 text-sm text-slate-300 whitespace-pre-wrap">
-                  {a.title === MAQUINA_ANNOUNCEMENT_TITLE ? maquinaPublicText(a.body) : a.body}
+                  {a.title === MAQUINA_ANNOUNCEMENT_TITLE
+                    ? maquinaPublicText(a.body)
+                    : a.title === BASEDATOS_ANNOUNCEMENT_TITLE
+                      ? basedatosPublicText(a.body)
+                      : a.body}
                 </p>
                 <p className="mt-2 text-xs text-slate-500">{formatDate(a.createdAt)}</p>
               </li>

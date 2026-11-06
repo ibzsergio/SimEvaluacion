@@ -1,5 +1,6 @@
 import axios from "axios";
 import { IMPRO_FIRMAS_MAX } from "./improScrum";
+import { BASEDATOS_ACTIVITY_NAME, BASEDATOS_FIRMAS_MAX } from "./basedatosScrum";
 import { MAQUINA_ACTIVITY_NAME, MAQUINA_FIRMAS_MAX } from "./maquinaScrum";
 import {
   POPUP_ANNOUNCEMENT_TITLE,
@@ -23,6 +24,16 @@ import {
   withTeamNames as withMaquinaTeamNames,
   type MaquinaLiveState,
 } from "./maquinaLive";
+import {
+  BASEDATOS_ANNOUNCEMENT_TITLE,
+  basedatosGradeRows,
+  basedatosNote,
+  basedatosSessionFromTeams,
+  basedatosStateFromAnnouncements,
+  serializeBasedatosState,
+  withBasedatosTeamNames,
+  type BasedatosLiveState,
+} from "./basedatosLive";
 import type {
   Activity,
   ClassGroup,
@@ -1002,6 +1013,108 @@ export async function saveAvionMarchaPairs(
 export async function chooseStudentAvionLeader(leaderId: string) {
   const { data } = await api.post<{ avion: StudentAvion | null }>("/student/avion/leader", { leaderId });
   return data.avion;
+}
+
+async function saveBasedatosState(groupId: string, state: BasedatosLiveState) {
+  const comms = await fetchTeacherComms();
+  const previous = comms.announcements.filter(
+    (item) => item.title === BASEDATOS_ANNOUNCEMENT_TITLE && item.groupId === groupId,
+  );
+  const created = await createAnnouncement({
+    title: BASEDATOS_ANNOUNCEMENT_TITLE,
+    body: serializeBasedatosState(state),
+    groupId,
+  });
+  await Promise.all(previous.filter((item) => item.id !== created.id).map((item) => deleteAnnouncement(item.id)));
+  return state;
+}
+
+async function basedatosSession(groupId: string, mutate?: (state: BasedatosLiveState) => BasedatosLiveState) {
+  const [base, comms] = await Promise.all([projectTeamsForPopup(groupId), fetchTeacherComms()]);
+  const current = withBasedatosTeamNames(basedatosStateFromAnnouncements(comms.announcements, groupId), base.teams);
+  const next = mutate ? withBasedatosTeamNames(mutate(current), base.teams) : current;
+  if (mutate) await saveBasedatosState(groupId, next);
+  return basedatosSessionFromTeams(base, next);
+}
+
+async function writeBasedatosGrades(groupId: string, session: import("./types").ImproSession, teamKey?: string) {
+  const rows = basedatosGradeRows(session, teamKey);
+  if (rows.length === 0) return;
+  const activities = await fetchActivities(groupId);
+  let activity = activities.find((item) => item.name === BASEDATOS_ACTIVITY_NAME);
+  if (!activity) {
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    activity = await createActivity({
+      groupId,
+      date,
+      name: BASEDATOS_ACTIVITY_NAME,
+      maxPoints: BASEDATOS_FIRMAS_MAX,
+    });
+  }
+  await saveGradesBatch(
+    groupId,
+    rows.map((row) => ({ activityId: activity.id, studentId: row.studentId, points: row.points })),
+  );
+}
+
+export async function fetchBasedatosSession(groupId: string) {
+  return basedatosSession(groupId);
+}
+
+export async function releaseBasedatosSession(groupId: string) {
+  return basedatosSession(groupId, (state) => ({ ...state, released: true }));
+}
+
+export async function hideBasedatosSession(groupId: string) {
+  return basedatosSession(groupId, (state) => ({ ...state, released: false }));
+}
+
+export async function addBasedatosNote(
+  groupId: string,
+  payload: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
+) {
+  const base = await projectTeamsForPopup(groupId);
+  const team = base.teams.find((item) => item.key === payload.teamKey);
+  if (!team) throw new Error("No encontré ese equipo de proyecto.");
+  const member = payload.studentId ? team.members.find((item) => item.studentId === payload.studentId) : null;
+  if (payload.studentId && !member) throw new Error("Esa persona no está en el equipo.");
+  const custom =
+    payload.code === "custom" && payload.label && payload.points != null
+      ? { label: payload.label, points: payload.points }
+      : undefined;
+  const note = basedatosNote(payload.code, member, custom);
+  return basedatosSession(groupId, (state) => ({
+    ...state,
+    notes: {
+      ...state.notes,
+      [payload.teamKey]: [...(state.notes[payload.teamKey] ?? []), note],
+    },
+  }));
+}
+
+export async function removeBasedatosNote(groupId: string, payload: { teamKey: string; noteId: string }) {
+  return basedatosSession(groupId, (state) => ({
+    ...state,
+    notes: {
+      ...state.notes,
+      [payload.teamKey]: (state.notes[payload.teamKey] ?? []).filter((note) => note.id !== payload.noteId),
+    },
+  }));
+}
+
+export async function applyBasedatosFirmas(groupId: string, teamKey?: string) {
+  const preview = await basedatosSession(groupId);
+  const keys = teamKey ? [teamKey] : preview.teams.map((team) => team.key);
+  if (teamKey && !preview.teams.some((team) => team.key === teamKey)) {
+    throw new Error("No encontré ese equipo de proyecto.");
+  }
+  const saved = await basedatosSession(groupId, (state) => ({
+    ...state,
+    awarded: [...new Set([...state.awarded, ...keys])],
+  }));
+  await writeBasedatosGrades(groupId, saved, teamKey);
+  return saved;
 }
 
 export async function startStudentAvionTimer() {
