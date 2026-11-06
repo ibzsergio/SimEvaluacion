@@ -60,6 +60,8 @@ import { ensureTorreSchema } from "./ensureTorreSchema.js";
 import { ensureAvionSchema } from "./ensureAvionSchema.js";
 import { ensureExtraSchema } from "./ensureExtraSchema.js";
 import { ensureImproSchema } from "./ensureImproSchema.js";
+import { ensureBasedatosSchema } from "./ensureBasedatosSchema.js";
+import { basedatosTeacherRouter, registerStudentBasedatosRoutes } from "./basedatosDelivery.js";
 import {
   chooseImproLeader,
   improErrorHttp,
@@ -336,6 +338,7 @@ app.post("/auth/dev-seed", async (_req, res) => {
 });
 
 app.use("/teacher", teacherGroupsRouter);
+app.use("/teacher", basedatosTeacherRouter);
 app.use("/teacher/office-exam", officeExamTeacherRouter);
 app.use("/teacher/comms", commsTeacherRouter);
 
@@ -859,6 +862,8 @@ app.post("/student/torre/start", requireAuth, requireStudent, studentScrumHidden
 app.post("/student/avion/leader", requireAuth, requireStudent, studentScrumHidden);
 app.post("/student/avion/start", requireAuth, requireStudent, studentScrumHidden);
 
+registerStudentBasedatosRoutes(app);
+
 app.post("/student/extra/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
   const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});
   if (!body.success) return res.status(400).json({ error: "invalid_body" });
@@ -1141,6 +1146,7 @@ void (async () => {
     await ensureAvionSchema();
     await ensureExtraSchema();
     await ensureImproSchema();
+    await ensureBasedatosSchema();
     await dropPythonPracticeSchema();
     await ensureCompilerSchema();
   } catch (err) {

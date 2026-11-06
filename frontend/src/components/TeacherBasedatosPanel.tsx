@@ -3,28 +3,24 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addBasedatosNote,
   applyBasedatosFirmas,
+  downloadBasedatosPdf,
   fetchBasedatosSession,
+  fetchTeacherBasedatosDeliveries,
   getApiErrorMessage,
   hideBasedatosSession,
   releaseBasedatosSession,
   removeBasedatosNote,
 } from "../lib/api";
 import {
-  BASEDATOS_BLOQUES,
-  BASEDATOS_CADA_QUIEN,
   BASEDATOS_CONTEXTO,
-  BASEDATOS_EJEMPLO,
-  BASEDATOS_EQUIPO,
   BASEDATOS_FIRMAS_MAX,
-  BASEDATOS_FUNCIONES,
   BASEDATOS_NOTAS,
-  BASEDATOS_PREGUNTAS,
+  BASEDATOS_PRODUCTOS,
   BASEDATOS_PROGRAMA,
-  BASEDATOS_ROLES,
-  BASEDATOS_SI_SOBRAN,
-  BASEDATOS_SISTEMA,
+  BASEDATOS_REGLAS,
   BASEDATOS_TITULO,
   basedatosRoleLabel,
+  formatBasedatosSize,
 } from "../lib/basedatosScrum";
 import type { ClassGroup } from "../lib/types";
 
@@ -49,6 +45,12 @@ export default function TeacherBasedatosPanel({
     queryFn: () => fetchBasedatosSession(selectedGroupId),
     enabled: !!selectedGroupId,
     refetchInterval: 5000,
+  });
+  const deliveriesQuery = useQuery({
+    queryKey: ["basedatos-deliveries", selectedGroupId],
+    queryFn: () => fetchTeacherBasedatosDeliveries(selectedGroupId),
+    enabled: !!selectedGroupId,
+    refetchInterval: 8000,
   });
 
   const session = sessionQuery.data;
@@ -89,7 +91,6 @@ export default function TeacherBasedatosPanel({
     onError: (error) => setNoteError(getApiErrorMessage(error)),
   });
 
-  const teamNotes = BASEDATOS_NOTAS.filter((note) => note.scope === "team");
   const memberNotes = BASEDATOS_NOTAS.filter((note) => note.scope === "member");
 
   return (
@@ -118,7 +119,7 @@ export default function TeacherBasedatosPanel({
         <h2 className="mt-1 text-2xl font-bold text-white">{BASEDATOS_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">{BASEDATOS_CONTEXTO}</p>
         <p className="mt-3 text-sm font-semibold text-sky-100">
-          Grupo {selectedGroup?.code ?? "—"} · {firmasMax.toLocaleString("es-MX")} firmas · equipos de Roles / Equipos
+          Grupo {selectedGroup?.code ?? "—"} · {firmasMax.toLocaleString("es-MX")} puntos · hoy · equipos de Roles / Equipos
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
@@ -127,7 +128,7 @@ export default function TeacherBasedatosPanel({
             onClick={() => {
               const next = !released;
               const question = next
-                ? `¿Liberar La base de datos para el grupo ${selectedGroup?.code ?? ""}?\n\nCada alumno la verá en su teléfono. Cada quien trabaja una función del sistema de asistencias e incidencias.`
+                ? `¿Liberar La base de datos para el grupo ${selectedGroup?.code ?? ""}?\n\nHoy suben un solo PDF por equipo, de máximo 5 MB. Vale 3000 puntos.`
                 : "¿Ocultar La base de datos para este grupo?";
               if (!window.confirm(question)) return;
               releaseMutation.mutate(next);
@@ -142,12 +143,12 @@ export default function TeacherBasedatosPanel({
             type="button"
             disabled={!selectedGroupId || awardMutation.isPending || teams.length === 0}
             onClick={() => {
-              if (!window.confirm("¿Registrar las firmas de todos los equipos en calificaciones?")) return;
+              if (!window.confirm("¿Registrar los puntos de todos los equipos en calificaciones?")) return;
               awardMutation.mutate(undefined);
             }}
             className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white"
           >
-            Registrar firmas del grupo
+            Registrar puntos del grupo
           </button>
         </div>
         {sessionQuery.isError ? (
@@ -157,87 +158,26 @@ export default function TeacherBasedatosPanel({
       </section>
 
       <section className="rounded-3xl border border-sky-400/40 bg-sky-500/10 p-5">
-        <h3 className="text-lg font-bold text-white">Lo que ya hace el sistema</h3>
+        <h3 className="text-lg font-bold text-white">Un solo PDF por equipo</h3>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-100">
-          {BASEDATOS_SISTEMA.map((item) => (
+          {BASEDATOS_REGLAS.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
       </section>
 
-      <section className="glass p-5">
-        <h3 className="font-bold text-white">Cada función: quién, tablas y el cambio</h3>
-        <p className="mt-1 text-sm text-slate-300">
-          Cada integrante se queda con una. En su archivo contesta quién la realiza, con qué tablas, qué hace la función y, si hay un cambio, quién lo realiza.
-        </p>
-        <ul className="mt-3 space-y-2">
-          {BASEDATOS_FUNCIONES.map((item) => (
-            <li key={item.id} className="rounded-2xl border border-white/10 px-3 py-2">
-              <p className="text-sm font-semibold text-white">{item.nombre}</p>
-              <p className="text-sm text-sky-100">{item.quien}. {item.hace}</p>
-              <p className="mt-1 text-sm text-slate-300">{item.cambio}</p>
-            </li>
-          ))}
-        </ul>
-        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-200">
-          {BASEDATOS_PREGUNTAS.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="glass p-5">
-        <h3 className="font-bold text-white">En cada computadora</h3>
-        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-300">
-          {BASEDATOS_CADA_QUIEN.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
-        <p className="mt-3 text-sm text-sky-100">{BASEDATOS_SI_SOBRAN}</p>
-      </section>
-
-      <section className="glass p-5">
-        <h3 className="font-bold text-white">Entrega del equipo (la de ayer)</h3>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
-          {BASEDATOS_EQUIPO.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="glass p-5">
-        <h3 className="font-bold text-white">Encargo extra, según el rol</h3>
-        <ul className="mt-3 space-y-2">
-          {BASEDATOS_ROLES.map((role) => (
-            <li key={role.id} className="rounded-2xl border border-white/10 px-3 py-2">
-              <p className="text-sm font-semibold text-sky-100">{role.label}</p>
-              <p className="mt-1 text-sm text-slate-300">{role.tarea}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="glass p-5">
-        <h3 className="font-bold text-white">Las horas de la sala</h3>
-        <ol className="mt-3 space-y-2">
-          {BASEDATOS_BLOQUES.map((block) => (
-            <li key={block.id} className="rounded-2xl border border-white/10 px-3 py-2">
-              <p className="text-sm font-semibold text-white">{block.nombre}</p>
-              <p className="mt-1 text-sm text-slate-300">{block.detalle}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="glass p-5">
-        <h3 className="font-bold text-white">Así se ve el archivo</h3>
-        <p className="mt-1 text-sm text-slate-400">
-          El ejemplo es pasar lista. Cada quien lo cambia por su función y por los nombres de su modelo.
-        </p>
-        <pre className="mt-3 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-xs leading-relaxed text-slate-100">
-          {BASEDATOS_EJEMPLO}
-        </pre>
-      </section>
+      {BASEDATOS_PRODUCTOS.map((product) => (
+        <section key={product.id} className="glass p-5">
+          <h3 className="font-bold text-white">
+            {product.letra}) {product.titulo}
+          </h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
+            {product.items.map((item) => (
+              <li key={item.id}>{item.text}</li>
+            ))}
+          </ul>
+        </section>
+      ))}
 
       {teams.length === 0 ? (
         <section className="glass p-5 text-sm text-amber-100">
@@ -252,7 +192,7 @@ export default function TeacherBasedatosPanel({
                 <div>
                   <h3 className="text-lg font-bold text-white">{team.name || team.columna}</h3>
                   <p className="text-sm text-slate-400">
-                    {team.awarded ? "Firmas registradas" : "Aún sin registrar"} · {firmasMax.toLocaleString("es-MX")} firmas
+                    {team.awarded ? "Puntos registrados" : "Aún sin registrar"} · {firmasMax.toLocaleString("es-MX")} puntos
                   </p>
                 </div>
                 <button
@@ -264,29 +204,40 @@ export default function TeacherBasedatosPanel({
                   Registrar este equipo
                 </button>
               </div>
+              {(() => {
+                const delivery = (deliveriesQuery.data ?? []).find((item) => item.teamKey === team.key);
+                if (!delivery) {
+                  return <p className="mt-3 text-sm text-amber-100">Todavía no suben el PDF.</p>;
+                }
+                return (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2">
+                    <p className="text-sm text-emerald-50">
+                      {delivery.fileName} · {formatBasedatosSize(delivery.sizeBytes)} · lo subió {delivery.uploadedByName}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        downloadBasedatosPdf(selectedGroupId, team.key, delivery.fileName).catch((error) =>
+                          setNoteError(getApiErrorMessage(error)),
+                        );
+                      }}
+                      className="rounded-lg bg-emerald-400 px-3 py-1 text-xs font-bold text-slate-950"
+                    >
+                      Descargar PDF
+                    </button>
+                  </div>
+                );
+              })()}
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {teamNotes.map((note) => (
-                  <button
-                    key={note.code}
-                    type="button"
-                    disabled={noteMutation.isPending}
-                    onClick={() => noteMutation.mutate({ teamKey: team.key, code: note.code })}
-                    className="rounded-full border border-rose-400/40 px-3 py-1 text-xs font-semibold text-rose-100"
-                  >
-                    {note.label} −{note.points}
-                  </button>
-                ))}
-              </div>
-
-              <ul className="mt-4 space-y-3">
+              <p className="mt-4 text-xs font-bold uppercase tracking-wide text-rose-100">Nota por alumno</p>
+              <ul className="mt-2 space-y-3">
                 {team.members.map((member) => (
                   <li key={member.studentId} className="rounded-2xl border border-white/10 px-3 py-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="font-semibold text-white">{member.displayName}</p>
                         <p className="text-xs text-slate-400">
-                          {basedatosRoleLabel(member.role) || "Sin rol"} · {member.firmas ?? firmasMax} firmas
+                          {basedatosRoleLabel(member.role) || "Sin rol"} · {member.firmas ?? firmasMax} puntos
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">

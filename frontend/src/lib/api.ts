@@ -1037,21 +1037,38 @@ async function basedatosSession(groupId: string, mutate?: (state: BasedatosLiveS
   return basedatosSessionFromTeams(base, next);
 }
 
-async function writeBasedatosGrades(groupId: string, session: import("./types").ImproSession, teamKey?: string) {
-  const rows = basedatosGradeRows(session, teamKey);
-  if (rows.length === 0) return;
+function todayIso() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+async function ensureBasedatosActivity(groupId: string) {
   const activities = await fetchActivities(groupId);
-  let activity = activities.find((item) => item.name === BASEDATOS_ACTIVITY_NAME);
+  const today = todayIso();
+  const activity = activities.find((item) => item.name === BASEDATOS_ACTIVITY_NAME);
   if (!activity) {
-    const now = new Date();
-    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    activity = await createActivity({
+    return createActivity({
       groupId,
-      date,
+      date: today,
       name: BASEDATOS_ACTIVITY_NAME,
       maxPoints: BASEDATOS_FIRMAS_MAX,
     });
   }
+  const date = activity.date.slice(0, 10);
+  if (activity.maxPoints !== BASEDATOS_FIRMAS_MAX || date !== today) {
+    return updateActivity(activity.id, {
+      date: today,
+      name: BASEDATOS_ACTIVITY_NAME,
+      maxPoints: BASEDATOS_FIRMAS_MAX,
+    });
+  }
+  return activity;
+}
+
+async function writeBasedatosGrades(groupId: string, session: import("./types").ImproSession, teamKey?: string) {
+  const rows = basedatosGradeRows(session, teamKey);
+  if (rows.length === 0) return;
+  const activity = await ensureBasedatosActivity(groupId);
   await saveGradesBatch(
     groupId,
     rows.map((row) => ({ activityId: activity.id, studentId: row.studentId, points: row.points })),
@@ -1063,7 +1080,50 @@ export async function fetchBasedatosSession(groupId: string) {
 }
 
 export async function releaseBasedatosSession(groupId: string) {
-  return basedatosSession(groupId, (state) => ({ ...state, released: true }));
+  const session = await basedatosSession(groupId, (state) => ({ ...state, released: true }));
+  await ensureBasedatosActivity(groupId);
+  return session;
+}
+
+export type BasedatosDeliveryFile = {
+  teamKey: string;
+  teamName: string;
+  fileName: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  uploadedByName: string;
+};
+
+export async function fetchStudentBasedatosDelivery() {
+  const { data } = await api.get<{
+    released: boolean;
+    teamKey: string;
+    teamName: string;
+    delivery: BasedatosDeliveryFile | null;
+  }>("/student/basedatos/delivery");
+  return data;
+}
+
+export async function uploadBasedatosPdf(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("completo", "si");
+  const { data } = await api.post<{ delivery: BasedatosDeliveryFile }>("/student/basedatos/delivery", form);
+  return data.delivery;
+}
+
+export async function fetchTeacherBasedatosDeliveries(groupId: string) {
+  const { data } = await api.get<{ deliveries: BasedatosDeliveryFile[] }>(
+    `/teacher/groups/${groupId}/basedatos/deliveries`,
+  );
+  return data.deliveries;
+}
+
+export async function downloadBasedatosPdf(groupId: string, teamKey: string, fileName: string) {
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/basedatos/deliveries/${encodeURIComponent(teamKey)}/file`,
+    fileName,
+  );
 }
 
 export async function hideBasedatosSession(groupId: string) {

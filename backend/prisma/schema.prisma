@@ -476,3 +476,20 @@ model ProjectTeamMember {
 
   @@index([teamId])
 }
+
+/// Un PDF por equipo de proyecto para La base de datos.
+model TeamDelivery {
+  id           String   @id @default(cuid())
+  groupId      String
+  teamKey      String
+  teamName     String
+  fileName     String
+  mimeType     String
+  fileData     Bytes
+  sizeBytes    Int
+  uploadedById String
+  uploadedAt   DateTime @default(now()) @updatedAt
+
+  @@unique([groupId, teamKey])
+  @@index([groupId])
+}
