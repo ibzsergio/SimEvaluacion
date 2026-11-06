@@ -58,7 +58,7 @@ export default function StudentBasedatosCard({
 
   const activity = studentBasedatosFromAnnouncements(extra, comms.data?.announcements ?? [], studentId);
   const cierre = basedatosCierre(groupCode, now);
-  const cerrado = Boolean(cierre && !cierre.open) || deliveryQuery.data?.uploadOpen === false;
+  const cerrado = Boolean(cierre && !cierre.open);
   const checks = useMemo(() => basedatosCheckItems(), []);
   if (!activity) return null;
 
