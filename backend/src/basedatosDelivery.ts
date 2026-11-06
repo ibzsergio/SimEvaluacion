@@ -7,6 +7,23 @@ import { requireNotPreviewStudent } from "./previewStudent.js";
 const PDF_MAX_BYTES = 5 * 1024 * 1024;
 const MARK = "[[basedatos-state]]";
 
+const CIERRE: Record<string, { iso: string; texto: string }> = {
+  "301": {
+    iso: "2026-11-06T15:00:00-06:00",
+    texto: "El archivo solo se puede subir hasta las 3:00 p. m. de hoy.",
+  },
+  "302": {
+    iso: "2026-11-06T12:30:00-06:00",
+    texto: "El archivo solo se puede subir hasta las 12:30 p. m. de hoy.",
+  },
+};
+
+function cierreDeGrupo(code?: string | null, now = Date.now()) {
+  const item = code ? CIERRE[code.trim()] : undefined;
+  if (!item) return null;
+  return { texto: item.texto, until: item.iso, open: now < new Date(item.iso).getTime() };
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: PDF_MAX_BYTES },
@@ -53,8 +70,13 @@ async function studentTeam(studentId: string) {
     },
   });
   if (!member?.student.groupId || member.team.groupId !== member.student.groupId) return null;
+  const group = await prisma.classGroup.findUnique({
+    where: { id: member.student.groupId },
+    select: { code: true },
+  });
   return {
     groupId: member.student.groupId,
+    groupCode: group?.code ?? "",
     teamKey: `project:${member.team.id}`,
     teamName: member.team.name,
     studentName: member.student.displayName,
@@ -157,10 +179,13 @@ export function registerStudentBasedatosRoutes(app: import("express").Express) {
       });
       uploadedByName = uploader?.displayName ?? "Un integrante";
     }
+    const cierre = cierreDeGrupo(team.groupCode);
     return res.json({
       released,
       teamKey: team.teamKey,
       teamName: team.teamName,
+      uploadOpen: cierre ? cierre.open : true,
+      uploadText: cierre?.texto ?? null,
       delivery: row ? publicDelivery(row, uploadedByName) : null,
     });
   });
@@ -204,6 +229,13 @@ export function registerStudentBasedatosRoutes(app: import("express").Express) {
       }
       if (!(await activityReleased(team.groupId))) {
         return res.status(403).json({ error: "not_released", message: "El docente todavía no libera la entrega." });
+      }
+      const cierre = cierreDeGrupo(team.groupCode);
+      if (cierre && !cierre.open) {
+        return res.status(403).json({
+          error: "upload_closed",
+          message: `${cierre.texto} Esa hora ya pasó y ya no se acepta el PDF.`,
+        });
       }
       const saved = await prisma.teamDelivery.upsert({
         where: { groupId_teamKey: { groupId: team.groupId, teamKey: team.teamKey } },

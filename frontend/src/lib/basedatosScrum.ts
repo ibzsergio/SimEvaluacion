@@ -81,6 +81,25 @@ export function basedatosProductHeading(product: { letra: string; titulo: string
   return product.letra ? `${product.letra}) ${product.titulo}` : product.titulo;
 }
 
+/** Hora de Ciudad de México. Después de esta hora el grupo ya no puede subir el PDF. */
+export const BASEDATOS_CIERRE: Record<string, { iso: string; texto: string }> = {
+  "301": {
+    iso: "2026-11-06T15:00:00-06:00",
+    texto: "El archivo solo se puede subir hasta las 3:00 p. m. de hoy.",
+  },
+  "302": {
+    iso: "2026-11-06T12:30:00-06:00",
+    texto: "El archivo solo se puede subir hasta las 12:30 p. m. de hoy.",
+  },
+};
+
+export function basedatosCierre(groupCode?: string | null, now = Date.now()) {
+  const item = groupCode ? BASEDATOS_CIERRE[groupCode.trim()] : undefined;
+  if (!item) return null;
+  const until = new Date(item.iso).getTime();
+  return { texto: item.texto, until, open: now < until };
+}
+
 export type BasedatosCheckItem = { id: string; text: string; letra: string; titulo: string };
 
 export function basedatosCheckItems(): BasedatosCheckItem[] {

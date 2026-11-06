@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addBasedatosNote,
@@ -19,6 +19,7 @@ import {
   BASEDATOS_PROGRAMA,
   BASEDATOS_REGLAS,
   BASEDATOS_TITULO,
+  basedatosCierre,
   basedatosProductHeading,
   basedatosRoleLabel,
   formatBasedatosSize,
@@ -39,7 +40,13 @@ export default function TeacherBasedatosPanel({
   const qc = useQueryClient();
   const selectedGroup = groups.find((group) => group.id === selectedGroupId);
   const [noteError, setNoteError] = useState("");
+  const [now, setNow] = useState(() => Date.now());
   const [custom, setCustom] = useState<Record<string, { label: string; points: string; studentId: string }>>({});
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const sessionQuery = useQuery({
     queryKey: ["basedatos-session", selectedGroupId],
@@ -93,6 +100,7 @@ export default function TeacherBasedatosPanel({
   });
 
   const memberNotes = BASEDATOS_NOTAS.filter((note) => note.scope === "member");
+  const cierre = basedatosCierre(selectedGroup?.code, now);
 
   return (
     <div className="space-y-4">
@@ -122,6 +130,12 @@ export default function TeacherBasedatosPanel({
         <p className="mt-3 text-sm font-semibold text-sky-100">
           Grupo {selectedGroup?.code ?? "—"} · {firmasMax.toLocaleString("es-MX")} puntos · hoy · equipos de Roles / Equipos
         </p>
+        {cierre ? (
+          <p className={`mt-3 rounded-xl px-3 py-2 text-sm font-semibold ${cierre.open ? "bg-amber-500/15 text-amber-50" : "bg-rose-500/15 text-rose-100"}`}>
+            {cierre.texto}
+            {cierre.open ? "" : " Esa hora ya pasó y ya no se acepta el PDF."}
+          </p>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"

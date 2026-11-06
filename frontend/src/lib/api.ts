@@ -1099,6 +1099,8 @@ export async function fetchStudentBasedatosDelivery() {
     released: boolean;
     teamKey: string;
     teamName: string;
+    uploadOpen: boolean;
+    uploadText: string | null;
     delivery: BasedatosDeliveryFile | null;
   }>("/student/basedatos/delivery");
   return data;

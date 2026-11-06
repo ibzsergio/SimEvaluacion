@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchStudentBasedatosDelivery, fetchStudentComms, getApiErrorMessage, uploadBasedatosPdf } from "../lib/api";
 import { studentBasedatosFromAnnouncements } from "../lib/basedatosLive";
@@ -10,6 +10,7 @@ import {
   BASEDATOS_REGLAS,
   BASEDATOS_TITULO,
   basedatosCheckItems,
+  basedatosCierre,
   basedatosProductHeading,
   formatBasedatosSize,
 } from "../lib/basedatosScrum";
@@ -18,11 +19,14 @@ import type { StudentExtra } from "../lib/types";
 export default function StudentBasedatosCard({
   extra,
   studentId,
+  groupCode,
 }: {
   extra?: StudentExtra | null;
   studentId?: string | null;
+  groupCode?: string | null;
 }) {
   const qc = useQueryClient();
+  const [now, setNow] = useState(() => Date.now());
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [file, setFile] = useState<File | null>(null);
   const [localError, setLocalError] = useState("");
@@ -47,7 +51,14 @@ export default function StudentBasedatosCard({
     },
     onError: (error) => setLocalError(getApiErrorMessage(error)),
   });
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const activity = studentBasedatosFromAnnouncements(extra, comms.data?.announcements ?? [], studentId);
+  const cierre = basedatosCierre(groupCode, now);
+  const cerrado = Boolean(cierre && !cierre.open) || deliveryQuery.data?.uploadOpen === false;
   const checks = useMemo(() => basedatosCheckItems(), []);
   if (!activity) return null;
 
@@ -87,6 +98,12 @@ export default function StudentBasedatosCard({
       </div>
 
       <div className="space-y-3 px-4 py-4 sm:px-5">
+        {cierre ? (
+          <p className={`rounded-2xl px-4 py-3 text-sm font-semibold ${cerrado ? "bg-rose-500/15 text-rose-100" : "bg-amber-500/15 text-amber-50"}`}>
+            {cierre.texto}
+            {cerrado ? " Esa hora ya pasó y ya no se acepta el PDF." : ""}
+          </p>
+        ) : null}
         {activity.noTeam ? (
           <p className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
             Aún no estás en un equipo de Roles / Equipos. La entrega es por equipo.
@@ -129,6 +146,12 @@ export default function StudentBasedatosCard({
 
         <div className="rounded-2xl border border-white/10 px-4 py-3">
           <p className="text-sm font-bold text-white">Subir el PDF</p>
+          {cierre ? (
+            <p className={`mt-2 rounded-xl px-3 py-2 text-sm font-semibold ${cerrado ? "bg-rose-500/15 text-rose-100" : "bg-amber-500/15 text-amber-50"}`}>
+              {cierre.texto}
+              {cerrado ? " Esa hora ya pasó y ya no se acepta el PDF." : ""}
+            </p>
+          ) : null}
           <p className="mt-1 text-sm text-slate-300">
             Marca todas las casillas. Así confirmas que el PDF trae carátula, las cuatro secciones con su título, el script completo y las capturas. Un integrante lo sube; si lo vuelven a subir, reemplaza el anterior.
           </p>
@@ -142,7 +165,7 @@ export default function StudentBasedatosCard({
           <input
             type="file"
             accept="application/pdf,.pdf"
-            disabled={!ready || uploadMutation.isPending}
+            disabled={!ready || uploadMutation.isPending || cerrado}
             onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
             className="mt-3 block w-full text-sm text-slate-200 file:mr-3 file:rounded-lg file:border-0 file:bg-sky-500 file:px-3 file:py-2 file:text-sm file:font-bold file:text-slate-950 disabled:opacity-50"
           />
@@ -153,7 +176,7 @@ export default function StudentBasedatosCard({
           ) : null}
           <button
             type="button"
-            disabled={!ready || !file || uploadMutation.isPending || activity.noTeam}
+            disabled={!ready || !file || uploadMutation.isPending || activity.noTeam || cerrado}
             onClick={() => file && uploadMutation.mutate(file)}
             className="mt-3 rounded-xl bg-sky-500 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50"
           >
