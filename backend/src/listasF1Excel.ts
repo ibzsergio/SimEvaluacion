@@ -375,8 +375,6 @@ async function getGroupScaleData(groupId: string, partialNumber: number): Promis
   };
 }
 
-const LISTAS_F1_PARTIAL = 1;
-
 function toLiveScale(preview: ListasF1GroupPreview): ListasF1LiveScale {
   return {
     partialNumber: preview.scalePartial,
@@ -481,8 +479,17 @@ function writeExamAndFinal(
   if (!finalCell.numFmt) finalCell.numFmt = "0.0";
 }
 
-function fillSheetFromPool(sheet: ExcelJS.Worksheet, rows: ListasF1StudentRow[]) {
+function writePartialHeading(sheet: ExcelJS.Worksheet, partialNumber: number) {
+  const cell = sheet.getCell("G7");
+  const current = cellText(cell.value);
+  if (!current || /parcial/i.test(current)) {
+    cell.value = `Parcial:_${partialNumber}_`;
+  }
+}
+
+function fillSheetFromPool(sheet: ExcelJS.Worksheet, rows: ListasF1StudentRow[], partialNumber: number) {
   const excelRows = buildExcelStudentRows(sheet);
+  writePartialHeading(sheet, partialNumber);
   const dateCell = sheet.getCell("F9");
   const current = cellText(dateCell.value);
   if (!current || /fecha/i.test(current)) {
@@ -505,14 +512,16 @@ export async function generateListasF1Excel(teacherId: string): Promise<Buffer |
 
   const groups = await prisma.classGroup.findMany({
     where: { teacherId },
-    select: { id: true, code: true },
+    select: { id: true, code: true, currentPartial: true },
     orderBy: { code: "asc" },
   });
 
-  const allRows: ListasF1StudentRow[] = [];
+  const byCode = new Map<string, { partial: number; rows: ListasF1StudentRow[] }>();
   for (const group of groups) {
-    const preview = await getGroupScaleData(group.id, LISTAS_F1_PARTIAL);
-    if (preview) allRows.push(...preview.rows);
+    const partial = Math.max(1, group.currentPartial ?? 1);
+    const preview = await getGroupScaleData(group.id, partial);
+    if (!preview) continue;
+    byCode.set(group.code.trim(), { partial, rows: preview.rows });
   }
 
   const sheetCodes = new Set<string>([
@@ -520,9 +529,11 @@ export async function generateListasF1Excel(teacherId: string): Promise<Buffer |
     ...groups.map((group) => group.code.trim()),
   ]);
   for (const code of sheetCodes) {
+    const owned = byCode.get(code.trim());
+    if (!owned) continue;
     const sheet = findSheetForGroup(workbook, code);
     if (!sheet) continue;
-    fillSheetFromPool(sheet, allRows);
+    fillSheetFromPool(sheet, owned.rows, owned.partial);
   }
 
   const out = await workbook.xlsx.writeBuffer();

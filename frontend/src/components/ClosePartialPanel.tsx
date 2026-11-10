@@ -138,7 +138,7 @@ export default function ClosePartialPanel({
       setActionError("");
       setActionSuccess(
         `Examen guardado: ${result.saved} calificación(es)${result.cleared ? `, ${result.cleared} en blanco` : ""}.${
-          currentPartial <= 1 && partialClosed ? " Puedes volver a descargar LISTAS F1 para ver el cambio." : ""
+          partialClosed ? " Puedes volver a descargar LISTAS F1 para ver el cambio." : ""
         }`,
       );
       await qc.invalidateQueries({ queryKey: ["listas-f1-preview", selectedGroupId] });
@@ -445,7 +445,7 @@ export default function ClosePartialPanel({
       <div className="mt-5 flex flex-col gap-3 rounded-xl border border-rose-400/20 bg-rose-500/5 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-4">
         <p className="text-xs leading-relaxed text-slate-300 sm:text-sm">
           {currentPartial > 1
-            ? "El parcial anterior ya está cerrado. Esta tabla es del parcial en curso: la escala se mueve con lo que calificas; el examen se captura cuando lo apliques. LISTAS F1 del primero se puede volver a descargar."
+            ? "Esta tabla es del parcial en curso. LISTAS F1 descarga la asistencia, la escala y el examen de este mismo parcial."
             : partialClosed
               ? diplomaEnabled
                 ? "Los diplomas ya están activos. El examen se puede seguir capturando o corrigiendo; luego vuelve a descargar LISTAS F1 si hace falta."
