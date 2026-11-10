@@ -181,21 +181,14 @@ export default function TeacherPage() {
     })();
   }, [tab, groups, qc]);
 
-  const activitiesForList = useMemo(
-    () =>
-      activities.map((activity) =>
-        activity.name === INTERFACE_ACTIVITY_NAME ? { ...activity, partialNumber: currentPartial } : activity,
-      ),
-    [activities, currentPartial],
-  );
   const activityPartialNumbers = useMemo(() => {
-    const nums = new Set(activitiesForList.map((a) => a.partialNumber ?? 1));
+    const nums = new Set(activities.map((a) => a.partialNumber ?? 1));
     nums.add(currentPartial);
     return [
       currentPartial,
       ...[...nums].filter((n) => n !== currentPartial).sort((a, b) => a - b),
     ];
-  }, [activitiesForList, currentPartial]);
+  }, [activities, currentPartial]);
   const currentActivities = activities.filter((a) => (a.partialNumber ?? 1) === currentPartial);
   const activeId = selectedId ?? currentActivities[0]?.id ?? null;
   const editingActivity = editingActivityId
@@ -332,10 +325,7 @@ export default function TeacherPage() {
     () => activities.find((a) => a.id === activeId) ?? null,
     [activities, activeId],
   );
-  const matrixPartial =
-    selectedActivity?.name === INTERFACE_ACTIVITY_NAME
-      ? currentPartial
-      : (selectedActivity?.partialNumber ?? currentPartial);
+  const matrixPartial = selectedActivity?.partialNumber ?? currentPartial;
 
   const groupsLabelPlus = formatGroupCodesPlus(groups);
   const groupsSubtitle = formatTeacherGroupsSubtitle(groups);
@@ -744,7 +734,7 @@ export default function TeacherPage() {
                 <h3 className="mb-2 text-sm font-semibold text-slate-300">Actividades del grupo</h3>
                 <div className="max-h-[40vh] min-h-0 space-y-4 overflow-auto pr-1 lg:min-h-[32rem] lg:max-h-[40rem]">
                   {activityPartialNumbers.map((partialNo, sectionIndex) => {
-                    const items = activitiesForList
+                    const items = activities
                       .filter((a) => (a.partialNumber ?? 1) === partialNo)
                       .sort((a, b) => {
                         const da = a.date;
@@ -753,8 +743,7 @@ export default function TeacherPage() {
                         return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
                       });
                     const isCurrent = partialNo === currentPartial;
-                    const hasInterface = items.some((item) => item.name === INTERFACE_ACTIVITY_NAME);
-                    const collapsed = !isCurrent && !hasInterface && collapsedPartials[partialNo] !== false;
+                    const collapsed = !isCurrent && collapsedPartials[partialNo] !== false;
                     const showCut = sectionIndex > 0;
                     return (
                       <div key={partialNo}>
@@ -851,7 +840,6 @@ export default function TeacherPage() {
                   groupId={selectedGroupId}
                   partialNumber={matrixPartial}
                   highlightActivityId={activeId}
-                  pinnedActivity={activities.find((a) => a.name === INTERFACE_ACTIVITY_NAME) ?? null}
                 />
               ) : (
                 <p className="text-slate-400">Selecciona un grupo.</p>

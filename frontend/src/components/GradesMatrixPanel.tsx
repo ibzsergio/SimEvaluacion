@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchActivityGrades, fetchGradesMatrix, getApiErrorMessage, saveGradesBatch } from "../lib/api";
+import { fetchGradesMatrix, getApiErrorMessage, saveGradesBatch } from "../lib/api";
 import { calendarDateIso, formatCalendarDate, getActivityKindLabel, partialLabel } from "../lib/dates";
 import type { Activity, GradesMatrix } from "../lib/types";
 
@@ -78,12 +78,10 @@ export default function GradesMatrixPanel({
   groupId,
   partialNumber,
   highlightActivityId,
-  pinnedActivity = null,
 }: {
   groupId: string;
   partialNumber: number;
   highlightActivityId: string | null;
-  pinnedActivity?: Activity | null;
 }) {
   const qc = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -109,41 +107,17 @@ export default function GradesMatrixPanel({
     setSelectedStudentId(null);
   }, [groupId, partialNumber]);
 
-  const rawActivities = query.data?.activities ?? [];
   const activities = useMemo(() => {
-    const list = [...rawActivities];
-    if (pinnedActivity && !list.some((activity) => activity.id === pinnedActivity.id)) {
-      list.push(pinnedActivity);
-    }
+    const list = [...(query.data?.activities ?? [])];
     return list.sort((a, b) => {
       const da = calendarDateIso(a.date);
       const db = calendarDateIso(b.date);
       if (da !== db) return da < db ? -1 : 1;
       return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     });
-  }, [rawActivities, pinnedActivity]);
-  const needsPinGrades = Boolean(
-    pinnedActivity && !rawActivities.some((activity) => activity.id === pinnedActivity.id),
-  );
-  const pinGrades = useQuery({
-    queryKey: ["activity-grades", pinnedActivity?.id],
-    queryFn: () => fetchActivityGrades(pinnedActivity!.id),
-    enabled: needsPinGrades,
-  });
+  }, [query.data?.activities]);
   const students = query.data?.students ?? [];
-  const cells = useMemo(() => {
-    const base = query.data?.cells ?? {};
-    if (!needsPinGrades || !pinnedActivity || !pinGrades.data) return base;
-    const next: GradesMatrix["cells"] = { ...base };
-    for (const row of pinGrades.data.rows) {
-      if (!row.grade) continue;
-      next[row.student.id] = {
-        ...next[row.student.id],
-        [pinnedActivity.id]: { points: row.grade.points, gradedAt: row.grade.gradedAt },
-      };
-    }
-    return next;
-  }, [query.data?.cells, needsPinGrades, pinnedActivity, pinGrades.data]);
+  const cells = query.data?.cells ?? {};
 
   const filteredStudents = useMemo(() => {
     const q = search.trim().toLowerCase();
