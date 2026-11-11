@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261111-mysql-telefono",
+        cacheId: "simeval-20261111-cruds-301-1pm",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
