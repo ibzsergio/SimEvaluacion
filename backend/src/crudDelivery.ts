@@ -12,9 +12,9 @@ const TITLES = [TITLE, "TEST"];
 const PUNTOS = 2000;
 const CIERRE: Record<string, { iso: string; texto: string }> = {
   "302": {
-    iso: "2026-11-11T09:20:00-06:00",
+    iso: "2026-11-11T18:00:00-06:00",
     texto:
-      "La entrega y la subida del archivo del grupo 302 se cierran a las 9:20 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+      "La entrega y la subida del archivo del grupo 302 se cierran a las 6:00 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
   },
   "301": {
     iso: "2026-11-11T12:00:00-06:00",
@@ -28,7 +28,7 @@ function crudCierre(groupCode?: string | null, now = Date.now()) {
   if (!item) {
     return {
       texto:
-        "El grupo 302 entrega hasta las 9:20 a. m. El grupo 301 entrega hasta las 12:00 del día. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
+        "El grupo 302 entrega hasta las 6:00 p. m. El grupo 301 entrega hasta las 12:00 del día. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
       open: false,
     };
   }

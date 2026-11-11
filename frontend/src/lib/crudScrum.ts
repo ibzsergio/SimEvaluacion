@@ -6,9 +6,9 @@ export const CRUD_PUNTOS = 2000;
 /** Hora de Ciudad de México. Después de esta hora el grupo ya no puede subir el PDF. */
 export const CRUD_CIERRE: Record<string, { iso: string; texto: string }> = {
   "302": {
-    iso: "2026-11-11T09:20:00-06:00",
+    iso: "2026-11-11T18:00:00-06:00",
     texto:
-      "La entrega y la subida del archivo del grupo 302 se cierran a las 9:20 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+      "La entrega y la subida del archivo del grupo 302 se cierran a las 6:00 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
   },
   "301": {
     iso: "2026-11-11T12:00:00-06:00",
@@ -22,7 +22,7 @@ export function crudCierre(groupCode?: string | null, now = Date.now()) {
   if (!item) {
     return {
       texto:
-        "El grupo 302 entrega hasta las 9:20 a. m. El grupo 301 entrega hasta las 12:00 del día. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
+        "El grupo 302 entrega hasta las 6:00 p. m. El grupo 301 entrega hasta las 12:00 del día. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
       until: 0,
       open: false,
     };
@@ -117,7 +117,7 @@ export const CRUD_TABLAS = [
 ] as const;
 
 export const CRUD_EVIDENCIAS = [
-  "Vale 2000 puntos. El grupo 302 sube hasta las 9:20 a. m. El grupo 301 sube hasta las 12:00 del día. Después de esa hora ya no se acepta el archivo y se pierden los puntos.",
+  "Vale 2000 puntos. El grupo 302 sube hasta las 6:00 p. m. El grupo 301 sube hasta las 12:00 del día. Después de esa hora ya no se acepta el archivo y se pierden los puntos.",
   "Un PDF por equipo, de máximo 12 MB. Lo sube un solo integrante.",
   "Carátula con el equipo, el grupo, la fecha y el reparto del líder: nombre de cada integrante y la tabla que le asignó.",
   "Las tablas son grupos, docentes, alumnos, asistencias e incidencias. La tabla test no se entrega.",
