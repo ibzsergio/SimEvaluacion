@@ -1,4 +1,5 @@
 import { listPracticeImages, practiceImageKeys } from "./practiceImages";
+import { MYSQL_SHIM } from "./pythonMysqlShim";
 import { TKINTER_SHIM } from "./pythonTkinterShim";
 
 const PYODIDE_INDEX = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
@@ -129,6 +130,11 @@ export function sanitizePythonSource(source: string) {
 export function formatPythonError(err: unknown) {
   const text = err instanceof Error ? err.message : String(err);
   const lineMatch = text.match(/File "<exec>", line (\d+)/) ?? text.match(/line (\d+)/i);
+  const indentMatch = text.match(/IndentationError:\s*(.+)/);
+  if (indentMatch) {
+    const line = lineMatch?.[1] ?? "?";
+    return `Error de sangría en la línea ${line}. Lo que va dentro de def tiene que ir corrido a la derecha, con 4 espacios. return, con = y cur = no pueden quedar al mismo nivel que def. Si lo copiaste del PDF, usa el botón Copiar ejemplo: ahí sí vienen los espacios.`;
+  }
   const syntaxMatch = text.match(/SyntaxError:\s*(.+)/);
   if (syntaxMatch) {
     const line = lineMatch?.[1] ?? "?";
@@ -153,6 +159,7 @@ export async function runPythonProgram(
   py.setStdout({ batched: onOutput });
   py.setStderr({ batched: onOutput });
   await py.runPythonAsync(TKINTER_SHIM);
+  await py.runPythonAsync(MYSQL_SHIM);
   await syncPracticeImages(py);
   // El código corre con exec, no como archivo. Sin esto, __file__ lanza NameError.
   await py.runPythonAsync(
