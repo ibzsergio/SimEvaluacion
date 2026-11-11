@@ -91,9 +91,9 @@ export default function StudentCrudCard() {
         ))}
       </ol>
       <p className="mt-4 text-sm text-emerald-100">
-        Si MySQL pide contraseña, escríbanla en <span className="font-semibold">password</span>. El ejemplo usa la base y
-        la tabla que ustedes ya crearon. Para las 5 tablas copian ese archivo, cambian el nombre de la tabla y los
-        campos, y dejan la misma función <span className="font-semibold">conectar()</span>.
+        Si MySQL pide contraseña, escríbanla en <span className="font-semibold">password</span>. El líder reparte las 5
+        tablas. Cada integrante copia el ejemplo, lo conecta a la tabla que le asignaron y escribe su propio script para
+        crear la base 302 y esa tabla.
       </p>
       <div className="mt-4 rounded-2xl border border-white/10 px-4 py-3">
         <p className="text-sm font-bold text-white">Tabla del ejemplo, {CRUD_TABLA_EJEMPLO.nombre}</p>
@@ -108,7 +108,7 @@ export default function StudentCrudCard() {
         </ul>
       </div>
       <div className="mt-4 space-y-3">
-        <p className="text-sm font-bold text-white">Las 5 tablas que crea el equipo</p>
+        <p className="text-sm font-bold text-white">Las 5 tablas que reparte el líder</p>
         {CRUD_TABLAS.map((tabla) => (
           <div key={tabla.nombre} className="rounded-2xl border border-white/10 px-4 py-3">
             <p className="font-semibold text-emerald-100">{tabla.nombre}</p>

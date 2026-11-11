@@ -3,13 +3,13 @@ export const CRUD_PROGRAMA = "Actividad Scrum · equipo de proyecto";
 export const CRUD_PDF_MAX_BYTES = 12 * 1024 * 1024;
 
 export const CRUD_CONTEXTO =
-  "TEST es el ejemplo: solo se conecta a la base 302 y usa la tabla test. El equipo escribe el script que crea la base y las tablas. El CRUD que se entrega es de las otras 5 tablas. Un integrante sube el PDF de todo el equipo.";
+  "TEST es el ejemplo: solo se conecta a la base 302 y usa la tabla test. El líder reparte las 5 tablas. Cada integrante crea la base y la tabla que le tocó, y muestra su CRUD funcionando. Un integrante sube el PDF de todo el equipo.";
 
 export const CRUD_PASOS = [
-  "Escriban el script: crean la base 302, la tabla test y las 5 tablas de abajo.",
-  "El ejemplo solo se conecta. No crea la base ni la tabla.",
-  "Cada una de las 5 tablas tiene su formulario y su CRUD, con la misma conexión.",
-  "Un integrante sube un solo PDF con el script y las capturas de las 5 tablas.",
+  "El líder asigna las 5 tablas: grupos, docentes, alumnos, asistencias e incidencias.",
+  "Cada integrante escribe el script de la base 302 y de la tabla que le asignaron.",
+  "Cada integrante arma el CRUD de su tabla. El ejemplo solo se conecta.",
+  "Un integrante sube un solo PDF. Ahí sale cada compañero trabajando con su tabla, su script y los resultados.",
 ];
 
 export const CRUD_TABLA_EJEMPLO = {
@@ -72,25 +72,28 @@ export const CRUD_TABLAS = [
 
 export const CRUD_EVIDENCIAS = [
   "Un PDF por equipo, de máximo 12 MB. Lo sube un solo integrante.",
-  "Carátula con el nombre del equipo, los integrantes, el grupo y la fecha.",
-  "El script que crea la base 302, la tabla test y las 5 tablas, con los tipos de esta actividad.",
-  "Por cada una de las 5 tablas, cuatro capturas. En cada una se lee el nombre de la tabla y los datos.",
+  "Carátula con el equipo, el grupo, la fecha y el reparto del líder: nombre de cada integrante y la tabla que le asignó.",
+  "Las tablas son grupos, docentes, alumnos, asistencias e incidencias. La tabla test no se entrega.",
+  "Por cada integrante, una sección con su nombre completo y la tabla que le tocó. Si el líder le dio más de una, van todas en su sección.",
+  "En esa sección se ve al integrante trabajando: sale la persona y, en su pantalla, el nombre de su tabla.",
+  "Ahí también se ve el script con el que esa persona generó la base 302 y su tabla. Se lee el CREATE y los tipos de dato.",
+  "Y se ve su CRUD funcionando, en cuatro capturas de esa misma tabla.",
   "Guardar: el formulario con los datos escritos y el registro ya guardado en la lista o en MySQL.",
-  "Consultar: la lista o el SELECT de esa tabla, con los registros a la vista.",
+  "Consultar: la lista o el SELECT, con los registros a la vista.",
   "Actualizar: el mismo registro, con un dato cambiado, y se nota cuál cambió.",
   "Eliminar: la misma lista o consulta, ya sin ese registro.",
-  "La tabla test no se entrega. Si una captura no se lee, esa tabla no cuenta.",
+  "Si no se ve quién trabaja, cuál tabla le tocó, su script o el resultado, esa parte no cuenta.",
 ];
 
 export const CRUD_CHECKS = [
-  { id: "caratula", text: "La carátula trae el equipo, los integrantes, el grupo y la fecha." },
-  { id: "script", text: "El PDF trae el script que crea la base 302, la tabla test y las 5 tablas." },
-  { id: "tablas", text: "Las 5 tablas son grupos, docentes, alumnos, asistencias e incidencias." },
-  { id: "guardar", text: "Por cada una de las 5 tablas hay una captura de Guardar y el registro ya guardado." },
-  { id: "consultar", text: "Por cada una hay una captura de Consultar, con la lista o el SELECT." },
-  { id: "actualizar", text: "Por cada una hay una captura de Actualizar, con un dato cambiado." },
-  { id: "eliminar", text: "Por cada una hay una captura de Eliminar, y ese registro ya no aparece." },
-  { id: "legible", text: "En todas las capturas se lee el nombre de la tabla y los datos." },
+  { id: "reparto", text: "La carátula trae el reparto del líder: cada integrante y la tabla que le asignó." },
+  { id: "trabajando", text: "Por cada integrante se ve a la persona trabajando y, en su pantalla, la tabla que le tocó." },
+  { id: "script", text: "Por cada integrante se ve el script con el que generó la base 302 y su tabla. Se lee el CREATE." },
+  { id: "guardar", text: "Por cada tabla asignada hay una captura de Guardar y el registro ya guardado." },
+  { id: "consultar", text: "Por cada tabla asignada hay una captura de Consultar, con la lista o el SELECT." },
+  { id: "actualizar", text: "Por cada tabla asignada hay una captura de Actualizar, con un dato cambiado." },
+  { id: "eliminar", text: "Por cada tabla asignada hay una captura de Eliminar, y ese registro ya no aparece." },
+  { id: "legible", text: "En todas las capturas se lee el nombre del integrante, el nombre de su tabla y los datos." },
 ] as const;
 
 export function formatCrudSize(bytes: number) {

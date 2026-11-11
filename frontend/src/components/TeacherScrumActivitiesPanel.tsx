@@ -164,7 +164,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              TEST es el ejemplo de conexión. Cada equipo de proyecto escribe el script y entrega el CRUD de 5 tablas. Un integrante sube el PDF.
+              TEST es el ejemplo de conexión. El líder reparte 5 tablas. En el PDF se ve a cada integrante trabajando con la suya, con su script y con el CRUD funcionando.
             </p>
           </section>
 
@@ -177,8 +177,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum</p>
               <h3 className="mt-1 text-xl font-bold text-white">{CRUD_TITULO}</h3>
               <p className="mt-1 text-sm text-slate-400">
-                El ejemplo solo se conecta a la base 302 y a la tabla test. El equipo crea grupos, docentes,
-                alumnos, asistencias e incidencias, y un integrante sube el PDF de todo el equipo.
+                El líder asigna grupos, docentes, alumnos, asistencias e incidencias. Cada integrante crea la base y su
+                tabla. Un compañero sube el PDF donde se ve a todos trabajando y los resultados.
               </p>
             </div>
             <span

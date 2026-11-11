@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261111-crud-equipo",
+        cacheId: "simeval-20261111-crud-integrante",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

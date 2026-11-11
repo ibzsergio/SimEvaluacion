@@ -207,7 +207,8 @@ export function registerStudentCrudRoutes(app: import("express").Express) {
       if (req.body?.completo !== "si") {
         return res.status(400).json({
           error: "checks_incomplete",
-          message: "Antes de subir, marca que el PDF trae el script y las capturas de las 5 tablas.",
+          message:
+            "Antes de subir, marca que el PDF muestra a cada integrante con la tabla que le asignó el líder, su script y el CRUD funcionando.",
         });
       }
       const file = req.file;
