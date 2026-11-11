@@ -1,4 +1,4 @@
-export const CRUD_TITULO = "TEST";
+export const CRUD_TITULO = "CRUDS BD";
 export const CRUD_PROGRAMA = "Actividad Scrum · equipo de proyecto";
 export const CRUD_PDF_MAX_BYTES = 12 * 1024 * 1024;
 export const CRUD_PUNTOS = 2000;

@@ -107,8 +107,8 @@ export default function TeacherCrudPanel({
           onClick={() => {
             const next = !released;
             const question = next
-              ? `¿Liberar TEST para el grupo ${selectedGroup?.code ?? ""}?\n\nEl líder reparte las 5 tablas. En el PDF se ve a cada integrante con su tabla, su script y el CRUD funcionando.`
-              : "¿Ocultar TEST para este grupo?";
+              ? `¿Liberar ${CRUD_TITULO} para el grupo ${selectedGroup?.code ?? ""}?\n\nEl líder reparte las 5 tablas. En el PDF se ve a cada integrante con su tabla, su script y el CRUD funcionando.`
+              : `¿Ocultar ${CRUD_TITULO} para este grupo?`;
             if (!window.confirm(question)) return;
             releaseMutation.mutate(next);
           }}

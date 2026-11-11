@@ -7,7 +7,8 @@ import { requireNotPreviewStudent } from "./previewStudent.js";
 
 const PDF_MAX_BYTES = 12 * 1024 * 1024;
 const MARK = "[[crud-state]]";
-const TITLE = "TEST";
+const TITLE = "CRUDS BD";
+const TITLES = [TITLE, "TEST"];
 const PUNTOS = 2000;
 const CIERRE_ISO = "2026-11-11T09:00:00-06:00";
 const CIERRE_TEXTO =
@@ -40,12 +41,15 @@ async function ensureTestActivity(groupId: string, teacherId: string) {
     select: { currentPartial: true },
   });
   const existing = await prisma.activity.findFirst({
-    where: { groupId, name: TITLE },
-    select: { id: true, maxPoints: true },
+    where: { groupId, name: { in: TITLES } },
+    select: { id: true, name: true, maxPoints: true },
   });
   if (existing) {
-    if (existing.maxPoints !== PUNTOS) {
-      await prisma.activity.update({ where: { id: existing.id }, data: { maxPoints: PUNTOS } });
+    if (existing.name !== TITLE || existing.maxPoints !== PUNTOS) {
+      await prisma.activity.update({
+        where: { id: existing.id },
+        data: { name: TITLE, maxPoints: PUNTOS },
+      });
       await prisma.grade.updateMany({
         where: { activityId: existing.id, points: 1000 },
         data: { points: PUNTOS },
@@ -107,7 +111,7 @@ async function awardTeam(groupId: string, teamKey: string) {
 
 async function activityReleased(groupId: string) {
   const announcements = await prisma.announcement.findMany({
-    where: { groupId, title: TITLE },
+    where: { groupId, title: { in: TITLES } },
     orderBy: { createdAt: "desc" },
     take: 5,
     select: { body: true },
@@ -308,7 +312,7 @@ export function registerStudentCrudRoutes(app: import("express").Express) {
         });
       }
       if (!(await activityReleased(team.groupId))) {
-        return res.status(403).json({ error: "not_released", message: "TEST todavía no está liberada para tu grupo." });
+        return res.status(403).json({ error: "not_released", message: "CRUDS BD todavía no está liberada para tu grupo." });
       }
       if (!crudAbierto()) {
         return res.status(403).json({

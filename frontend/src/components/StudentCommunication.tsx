@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { fetchStudentComms, getApiErrorMessage, downloadStudentCalendarFile } from "../lib/api";
 import { BASEDATOS_ANNOUNCEMENT_TITLE, basedatosPublicText } from "../lib/basedatosLive";
-import { CRUD_ANNOUNCEMENT_TITLE, crudPublicText } from "../lib/crudLive";
+import { CRUD_ANNOUNCEMENT_TITLE, crudPublicText, isCrudAnnouncement } from "../lib/crudLive";
 import { MAQUINA_ANNOUNCEMENT_TITLE, maquinaPublicText } from "../lib/maquinaLive";
 import { POPUP_ANNOUNCEMENT_TITLE } from "../lib/popupLive";
 
@@ -81,13 +81,13 @@ export default function StudentCommunication() {
                 key={a.id}
                 className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4"
               >
-                <p className="font-semibold text-white">{a.title}</p>
+                <p className="font-semibold text-white">{isCrudAnnouncement(a.title) ? CRUD_ANNOUNCEMENT_TITLE : a.title}</p>
                 <p className="mt-2 text-sm text-slate-300 whitespace-pre-wrap">
                   {a.title === MAQUINA_ANNOUNCEMENT_TITLE
                     ? maquinaPublicText(a.body)
                     : a.title === BASEDATOS_ANNOUNCEMENT_TITLE
                       ? basedatosPublicText(a.body)
-                      : a.title === CRUD_ANNOUNCEMENT_TITLE
+                      : isCrudAnnouncement(a.title)
                         ? crudPublicText(a.body)
                         : a.body}
                 </p>

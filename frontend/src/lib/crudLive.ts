@@ -1,6 +1,8 @@
 import type { Announcement } from "./types";
 
-export const CRUD_ANNOUNCEMENT_TITLE = "TEST";
+export const CRUD_ANNOUNCEMENT_TITLE = "CRUDS BD";
+/** El aviso anterior se llamaba TEST. Se sigue leyendo para no perder una liberación ya guardada. */
+export const CRUD_ANNOUNCEMENT_TITLES = [CRUD_ANNOUNCEMENT_TITLE, "TEST"] as const;
 const MARK = "[[crud-state]]";
 
 export type CrudLiveState = {
@@ -11,6 +13,10 @@ export type CrudLiveState = {
 export const EMPTY_CRUD_STATE: CrudLiveState = { v: 1, released: false };
 
 type AnnouncementLike = Pick<Announcement, "title" | "body" | "createdAt" | "groupId">;
+
+export function isCrudAnnouncement(title: string) {
+  return (CRUD_ANNOUNCEMENT_TITLES as readonly string[]).includes(title);
+}
 
 export function crudPublicText(body: string) {
   const idx = body.indexOf(MARK);
@@ -31,9 +37,9 @@ export function parseCrudState(body: string): CrudLiveState | null {
 
 function visibleCopy(state: CrudLiveState) {
   if (state.released) {
-    return "TEST está liberada. El líder reparte las 5 tablas. En el PDF se ve a cada integrante con su tabla, su script y el CRUD funcionando.";
+    return "CRUDS BD está liberada. El líder reparte las 5 tablas. En el PDF se ve a cada integrante con su tabla, su script y el CRUD funcionando.";
   }
-  return "TEST está en preparación para este grupo.";
+  return "CRUDS BD está en preparación para este grupo.";
 }
 
 export function serializeCrudState(state: CrudLiveState) {
@@ -42,7 +48,7 @@ export function serializeCrudState(state: CrudLiveState) {
 
 export function crudStateFromAnnouncements(announcements: AnnouncementLike[], groupId?: string) {
   const matches = announcements
-    .filter((item) => item.title === CRUD_ANNOUNCEMENT_TITLE)
+    .filter((item) => isCrudAnnouncement(item.title))
     .filter((item) => !groupId || item.groupId === groupId)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   for (const item of matches) {

@@ -36,6 +36,7 @@ import {
 } from "./basedatosLive";
 import {
   CRUD_ANNOUNCEMENT_TITLE,
+  isCrudAnnouncement,
   crudStateFromAnnouncements,
   serializeCrudState,
   type CrudLiveState,
@@ -1088,7 +1089,7 @@ export async function fetchBasedatosSession(groupId: string) {
 async function saveCrudState(groupId: string, state: CrudLiveState) {
   const comms = await fetchTeacherComms();
   const previous = comms.announcements.filter(
-    (item) => item.title === CRUD_ANNOUNCEMENT_TITLE && item.groupId === groupId,
+    (item) => isCrudAnnouncement(item.title) && item.groupId === groupId,
   );
   const created = await createAnnouncement({
     title: CRUD_ANNOUNCEMENT_TITLE,

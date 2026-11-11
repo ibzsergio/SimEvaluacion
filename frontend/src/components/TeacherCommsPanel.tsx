@@ -12,7 +12,7 @@ import {
   uploadSchoolCalendar,
 } from "../lib/api";
 import { BASEDATOS_ANNOUNCEMENT_TITLE, basedatosPublicText } from "../lib/basedatosLive";
-import { CRUD_ANNOUNCEMENT_TITLE, crudPublicText } from "../lib/crudLive";
+import { CRUD_ANNOUNCEMENT_TITLE, crudPublicText, isCrudAnnouncement } from "../lib/crudLive";
 import { MAQUINA_ANNOUNCEMENT_TITLE, maquinaPublicText } from "../lib/maquinaLive";
 import { POPUP_ANNOUNCEMENT_TITLE, popupPublicText } from "../lib/popupLive";
 
@@ -271,7 +271,7 @@ export default function TeacherCommsPanel() {
                 className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm"
               >
                 <div className="flex justify-between gap-2">
-                  <p className="font-semibold text-white">{a.title}</p>
+                  <p className="font-semibold text-white">{isCrudAnnouncement(a.title) ? CRUD_ANNOUNCEMENT_TITLE : a.title}</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -292,7 +292,7 @@ export default function TeacherCommsPanel() {
                       ? maquinaPublicText(a.body)
                       : a.title === BASEDATOS_ANNOUNCEMENT_TITLE
                         ? basedatosPublicText(a.body)
-                        : a.title === CRUD_ANNOUNCEMENT_TITLE
+                        : isCrudAnnouncement(a.title)
                           ? crudPublicText(a.body)
                           : a.body}
                 </p>
