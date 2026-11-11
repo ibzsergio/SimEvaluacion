@@ -31,7 +31,7 @@ export function parseCrudState(body: string): CrudLiveState | null {
 
 function visibleCopy(state: CrudLiveState) {
   if (state.released) {
-    return "TEST está liberada. El ejemplo es la tabla test. Cada alumno entrega el CRUD de otras 3 tablas en un PDF.";
+    return "TEST está liberada. El ejemplo solo se conecta. El equipo entrega el script y el CRUD de las 5 tablas en un PDF.";
   }
   return "TEST está en preparación para este grupo.";
 }

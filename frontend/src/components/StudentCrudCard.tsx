@@ -10,6 +10,8 @@ import {
   CRUD_PASOS,
   CRUD_PDF_MAX_BYTES,
   CRUD_PROGRAMA,
+  CRUD_TABLA_EJEMPLO,
+  CRUD_TABLAS,
   CRUD_TITULO,
   formatCrudSize,
 } from "../lib/crudScrum";
@@ -72,7 +74,7 @@ export default function StudentCrudCard() {
     }
     if (next.size > CRUD_PDF_MAX_BYTES) {
       setFile(null);
-      setLocalError("El PDF pesa más de 8 MB. Redúcelo y vuelve a elegirlo.");
+      setLocalError("El PDF pesa más de 12 MB. Redúcelo y vuelve a elegirlo.");
       return;
     }
     setFile(next);
@@ -89,13 +91,41 @@ export default function StudentCrudCard() {
         ))}
       </ol>
       <p className="mt-4 text-sm text-emerald-100">
-        Si tu MySQL pide contraseña, escríbela en <span className="font-semibold">password</span>. Para cada una de tus
-        tres tablas copias el ejemplo, cambias el nombre de la tabla y los campos, y dejas la misma función{" "}
-        <span className="font-semibold">conectar()</span>.
+        Si MySQL pide contraseña, escríbanla en <span className="font-semibold">password</span>. El ejemplo usa la base y
+        la tabla que ustedes ya crearon. Para las 5 tablas copian ese archivo, cambian el nombre de la tabla y los
+        campos, y dejan la misma función <span className="font-semibold">conectar()</span>.
       </p>
+      <div className="mt-4 rounded-2xl border border-white/10 px-4 py-3">
+        <p className="text-sm font-bold text-white">Tabla del ejemplo, {CRUD_TABLA_EJEMPLO.nombre}</p>
+        <p className="mt-1 text-sm text-slate-300">{CRUD_TABLA_EJEMPLO.uso}</p>
+        <ul className="mt-2 space-y-1 text-sm text-slate-100">
+          {CRUD_TABLA_EJEMPLO.atributos.map((atributo) => (
+            <li key={atributo.campo}>
+              <span className="font-semibold">{atributo.campo}</span> {atributo.tipo}
+              {atributo.nota ? ` · ${atributo.nota}` : ""}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="mt-4 space-y-3">
+        <p className="text-sm font-bold text-white">Las 5 tablas que crea el equipo</p>
+        {CRUD_TABLAS.map((tabla) => (
+          <div key={tabla.nombre} className="rounded-2xl border border-white/10 px-4 py-3">
+            <p className="font-semibold text-emerald-100">{tabla.nombre}</p>
+            <ul className="mt-2 space-y-1 text-sm text-slate-100">
+              {tabla.atributos.map((atributo) => (
+                <li key={atributo.campo}>
+                  <span className="font-semibold">{atributo.campo}</span> {atributo.tipo}
+                  {atributo.nota ? ` · ${atributo.nota}` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
       <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950">
         <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Ejemplo · formulario TEST · tabla test</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Ejemplo · solo se conecta</p>
           <button
             type="button"
             onClick={() => void copyCode()}
@@ -137,12 +167,15 @@ export default function StudentCrudCard() {
 
       <div className="mt-4 rounded-2xl border border-white/10 px-4 py-3">
         <p className="text-sm font-bold text-white">Subir mis evidencias</p>
+        <p className="mt-2 text-sm text-slate-300">
+          Equipo {deliveryQuery.data?.teamName ?? "de proyecto"}. Un integrante sube el archivo de todos.
+        </p>
         {delivery ? (
           <p className="mt-2 text-sm text-emerald-100">
-            Ya está tu archivo {delivery.fileName} ({formatCrudSize(delivery.sizeBytes)}). Si lo vuelves a subir, reemplaza el anterior.
+            Ya está el archivo {delivery.fileName} ({formatCrudSize(delivery.sizeBytes)}), lo subió {delivery.uploadedByName}. Si lo vuelven a subir, reemplaza el anterior.
           </p>
         ) : (
-          <p className="mt-2 text-sm text-emerald-100">Todavía no subes el PDF de tus 3 tablas.</p>
+          <p className="mt-2 text-sm text-emerald-100">El equipo todavía no sube el PDF de las 5 tablas.</p>
         )}
         <input
           type="file"

@@ -4,7 +4,7 @@ import { prisma } from "./prisma.js";
 import { requireAuth, requireStudent, requireTeacher, type AuthedRequest } from "./middleware.js";
 import { requireNotPreviewStudent } from "./previewStudent.js";
 
-const PDF_MAX_BYTES = 8 * 1024 * 1024;
+const PDF_MAX_BYTES = 12 * 1024 * 1024;
 const MARK = "[[crud-state]]";
 const TITLE = "TEST";
 
@@ -45,20 +45,41 @@ async function activityReleased(groupId: string) {
   return false;
 }
 
-async function studentContext(studentId: string) {
-  const student = await prisma.user.findFirst({
-    where: { id: studentId, role: "STUDENT" },
-    select: { id: true, groupId: true },
+async function studentTeam(studentId: string) {
+  const member = await prisma.projectTeamMember.findUnique({
+    where: { studentId },
+    include: {
+      student: { select: { id: true, groupId: true, displayName: true } },
+      team: { select: { id: true, name: true, groupId: true } },
+    },
   });
-  if (!student?.groupId) return null;
-  return { studentId: student.id, groupId: student.groupId };
+  if (!member?.student.groupId || member.team.groupId !== member.student.groupId) return null;
+  return {
+    groupId: member.student.groupId,
+    teamKey: `project:${member.team.id}`,
+    teamName: member.team.name,
+    studentName: member.student.displayName,
+  };
 }
 
-function publicFile(row: { fileName: string; sizeBytes: number; uploadedAt: Date }) {
+function publicDelivery(
+  row: {
+    teamKey: string;
+    teamName: string;
+    fileName: string;
+    sizeBytes: number;
+    uploadedAt: Date;
+    uploadedById: string;
+  },
+  uploadedByName: string,
+) {
   return {
+    teamKey: row.teamKey,
+    teamName: row.teamName,
     fileName: row.fileName,
     sizeBytes: row.sizeBytes,
     uploadedAt: row.uploadedAt.toISOString(),
+    uploadedByName,
   };
 }
 
@@ -72,30 +93,55 @@ crudTeacherRouter.get("/groups/:groupId/crud/deliveries", async (req: AuthedRequ
     select: { id: true, code: true },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
-  const rows = await prisma.crudDelivery.findMany({
-    where: { groupId },
-    select: { studentId: true, fileName: true, sizeBytes: true, uploadedAt: true },
-    orderBy: { uploadedAt: "desc" },
+  const [rows, teams] = await Promise.all([
+    prisma.crudDelivery.findMany({
+      where: { groupId },
+      select: { teamKey: true, teamName: true, fileName: true, sizeBytes: true, uploadedAt: true, uploadedById: true },
+      orderBy: { uploadedAt: "desc" },
+    }),
+    prisma.projectTeam.findMany({
+      where: { groupId },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        members: {
+          select: {
+            student: { select: { id: true, displayName: true, listNumber: true } },
+          },
+        },
+      },
+    }),
+  ]);
+  const names = await prisma.user.findMany({
+    where: { id: { in: rows.map((row) => row.uploadedById) } },
+    select: { id: true, displayName: true },
   });
+  const nameById = new Map(names.map((user) => [user.id, user.displayName]));
   return res.json({
     groupCode: group.code,
-    deliveries: rows.map((row) => ({ studentId: row.studentId, ...publicFile(row) })),
+    teams: teams.map((team) => ({
+      key: `project:${team.id}`,
+      name: team.name,
+      members: team.members.map((member) => member.student),
+    })),
+    deliveries: rows.map((row) => publicDelivery(row, nameById.get(row.uploadedById) ?? "Un integrante")),
   });
 });
 
-crudTeacherRouter.get("/groups/:groupId/crud/:studentId/file", async (req: AuthedRequest, res) => {
+crudTeacherRouter.get("/groups/:groupId/crud/:teamKey/file", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
-  const studentId = String(req.params.studentId);
+  const teamKey = String(req.params.teamKey);
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId: req.auth!.userId },
     select: { id: true },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
   const row = await prisma.crudDelivery.findUnique({
-    where: { groupId_studentId: { groupId, studentId } },
+    where: { groupId_teamKey: { groupId, teamKey } },
   });
   if (!row) {
-    return res.status(404).json({ error: "delivery_not_found", message: "Este alumno todavía no sube sus evidencias." });
+    return res.status(404).json({ error: "delivery_not_found", message: "Este equipo todavía no sube sus evidencias." });
   }
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${safeFileName(row.fileName)}"`);
@@ -104,15 +150,39 @@ crudTeacherRouter.get("/groups/:groupId/crud/:studentId/file", async (req: Authe
 
 export function registerStudentCrudRoutes(app: import("express").Express) {
   app.get("/student/crud/delivery", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
-    const student = await studentContext(req.auth!.userId);
-    if (!student) return res.status(400).json({ error: "student_without_group", message: "No tienes grupo asignado." });
-    const released = await activityReleased(student.groupId);
-    if (!released) return res.json({ allowed: false, delivery: null });
+    const team = await studentTeam(req.auth!.userId);
+    if (!team) {
+      return res.status(400).json({
+        error: "no_team",
+        message: "No estás en un equipo de proyecto. Pide al docente que te asigne en Roles / Equipos.",
+      });
+    }
+    const released = await activityReleased(team.groupId);
     const row = await prisma.crudDelivery.findUnique({
-      where: { groupId_studentId: { groupId: student.groupId, studentId: student.studentId } },
-      select: { fileName: true, sizeBytes: true, uploadedAt: true },
+      where: { groupId_teamKey: { groupId: team.groupId, teamKey: team.teamKey } },
+      select: {
+        teamKey: true,
+        teamName: true,
+        fileName: true,
+        sizeBytes: true,
+        uploadedAt: true,
+        uploadedById: true,
+      },
     });
-    return res.json({ allowed: true, delivery: row ? publicFile(row) : null });
+    let uploadedByName = "";
+    if (row) {
+      const uploader = await prisma.user.findUnique({
+        where: { id: row.uploadedById },
+        select: { displayName: true },
+      });
+      uploadedByName = uploader?.displayName ?? "Un integrante";
+    }
+    return res.json({
+      allowed: released,
+      teamKey: team.teamKey,
+      teamName: team.teamName,
+      delivery: row ? publicDelivery(row, uploadedByName) : null,
+    });
   });
 
   app.post(
@@ -126,7 +196,7 @@ export function registerStudentCrudRoutes(app: import("express").Express) {
         if (code === "LIMIT_FILE_SIZE") {
           return res.status(400).json({
             error: "pdf_too_big",
-            message: "El PDF pesa más de 8 MB. Redúcelo y vuelve a subirlo.",
+            message: "El PDF pesa más de 12 MB. Redúcelo y vuelve a subirlo.",
           });
         }
         if (err) return res.status(400).json({ error: "upload_failed", message: "No se pudo leer el archivo." });
@@ -137,42 +207,50 @@ export function registerStudentCrudRoutes(app: import("express").Express) {
       if (req.body?.completo !== "si") {
         return res.status(400).json({
           error: "checks_incomplete",
-          message:
-            "Antes de subir, marca que el PDF trae carátula y, por cada tabla, las capturas de guardar, consultar, actualizar y eliminar.",
+          message: "Antes de subir, marca que el PDF trae el script y las capturas de las 5 tablas.",
         });
       }
       const file = req.file;
-      if (!file) return res.status(400).json({ error: "pdf_required", message: "Selecciona el PDF con las evidencias de tus 3 tablas." });
+      if (!file) return res.status(400).json({ error: "pdf_required", message: "Selecciona el PDF del equipo." });
       if (file.size > PDF_MAX_BYTES) {
-        return res.status(400).json({ error: "pdf_too_big", message: "El PDF pesa más de 8 MB. Redúcelo y vuelve a subirlo." });
+        return res.status(400).json({ error: "pdf_too_big", message: "El PDF pesa más de 12 MB. Redúcelo y vuelve a subirlo." });
       }
       if (!isPdf(file)) {
         return res.status(400).json({ error: "pdf_only", message: "Solo se puede subir un archivo PDF." });
       }
-      const student = await studentContext(req.auth!.userId);
-      if (!student) return res.status(400).json({ error: "student_without_group", message: "No tienes grupo asignado." });
-      if (!(await activityReleased(student.groupId))) {
+      const team = await studentTeam(req.auth!.userId);
+      if (!team) {
+        return res.status(400).json({
+          error: "no_team",
+          message: "No estás en un equipo de proyecto. Pide al docente que te asigne en Roles / Equipos.",
+        });
+      }
+      if (!(await activityReleased(team.groupId))) {
         return res.status(403).json({ error: "not_released", message: "TEST todavía no está liberada para tu grupo." });
       }
       const saved = await prisma.crudDelivery.upsert({
-        where: { groupId_studentId: { groupId: student.groupId, studentId: student.studentId } },
+        where: { groupId_teamKey: { groupId: team.groupId, teamKey: team.teamKey } },
         create: {
-          groupId: student.groupId,
-          studentId: student.studentId,
+          groupId: team.groupId,
+          teamKey: team.teamKey,
+          teamName: team.teamName,
           fileName: safeFileName(file.originalname || "evidencias-crud.pdf"),
           mimeType: "application/pdf",
           fileData: file.buffer,
           sizeBytes: file.size,
+          uploadedById: req.auth!.userId,
         },
         update: {
+          teamName: team.teamName,
           fileName: safeFileName(file.originalname || "evidencias-crud.pdf"),
           mimeType: "application/pdf",
           fileData: file.buffer,
           sizeBytes: file.size,
+          uploadedById: req.auth!.userId,
           uploadedAt: new Date(),
         },
       });
-      return res.json({ delivery: publicFile(saved) });
+      return res.json({ delivery: publicDelivery(saved, team.studentName) });
     },
   );
 }

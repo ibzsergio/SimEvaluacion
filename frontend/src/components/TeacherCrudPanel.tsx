@@ -3,13 +3,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   downloadCrudPdf,
   fetchCrudSession,
-  fetchGroupStudents,
   fetchTeacherCrudDeliveries,
   getApiErrorMessage,
   hideCrudSession,
   releaseCrudSession,
 } from "../lib/api";
-import { CRUD_CODIGO, CRUD_CONTEXTO, CRUD_EVIDENCIAS, CRUD_PASOS, CRUD_PROGRAMA, CRUD_TITULO, formatCrudSize } from "../lib/crudScrum";
+import {
+  CRUD_CODIGO,
+  CRUD_CONTEXTO,
+  CRUD_EVIDENCIAS,
+  CRUD_PASOS,
+  CRUD_PROGRAMA,
+  CRUD_TABLA_EJEMPLO,
+  CRUD_TABLAS,
+  CRUD_TITULO,
+  formatCrudSize,
+} from "../lib/crudScrum";
 import type { ClassGroup } from "../lib/types";
 
 export default function TeacherCrudPanel({
@@ -38,25 +47,15 @@ export default function TeacherCrudPanel({
     },
   });
   const released = sessionQuery.data?.released ?? false;
-  const studentsQuery = useQuery({
-    queryKey: ["group-students", selectedGroupId],
-    queryFn: () => fetchGroupStudents(selectedGroupId),
-    enabled: !!selectedGroupId,
-  });
   const deliveriesQuery = useQuery({
     queryKey: ["crud-deliveries", selectedGroupId],
     queryFn: () => fetchTeacherCrudDeliveries(selectedGroupId),
     enabled: !!selectedGroupId,
     refetchInterval: 10_000,
   });
-  const students = [...(studentsQuery.data?.students ?? [])].sort((a, b) => {
-    const left = a.listNumber ?? 999;
-    const right = b.listNumber ?? 999;
-    if (left !== right) return left - right;
-    return a.displayName.localeCompare(b.displayName, "es");
-  });
-  const byStudent = new Map((deliveriesQuery.data?.deliveries ?? []).map((item) => [item.studentId, item]));
-  const delivered = students.filter((student) => byStudent.has(student.id)).length;
+  const teams = [...(deliveriesQuery.data?.teams ?? [])].sort((a, b) => a.name.localeCompare(b.name, "es"));
+  const byTeam = new Map((deliveriesQuery.data?.deliveries ?? []).map((item) => [item.teamKey, item]));
+  const delivered = teams.filter((team) => byTeam.has(team.key)).length;
 
   return (
     <div className="space-y-4">
@@ -84,7 +83,7 @@ export default function TeacherCrudPanel({
         <h2 className="mt-1 text-2xl font-bold text-white">{CRUD_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">{CRUD_CONTEXTO}</p>
         <p className="mt-3 text-sm font-semibold text-emerald-100">
-          Grupo {selectedGroup?.code ?? "—"} · individual · base 302 · 3 tablas
+          Grupo {selectedGroup?.code ?? "—"} · equipo de proyecto · base 302 · 5 tablas
         </p>
         <button
           type="button"
@@ -92,7 +91,7 @@ export default function TeacherCrudPanel({
           onClick={() => {
             const next = !released;
             const question = next
-              ? `¿Liberar TEST para el grupo ${selectedGroup?.code ?? ""}?\n\nEl ejemplo es la tabla test. Cada alumno sube un PDF con el CRUD de otras 3 tablas.`
+              ? `¿Liberar TEST para el grupo ${selectedGroup?.code ?? ""}?\n\nEl ejemplo solo se conecta. Cada equipo escribe el script y un integrante sube el PDF de las 5 tablas.`
               : "¿Ocultar TEST para este grupo?";
             if (!window.confirm(question)) return;
             releaseMutation.mutate(next);
@@ -104,7 +103,7 @@ export default function TeacherCrudPanel({
           {released ? "Ocultar a los alumnos" : "Liberar a los alumnos"}
         </button>
         <p className="mt-3 text-sm text-slate-300">
-          {delivered} de {students.length} alumnos ya subieron su PDF.
+          {delivered} de {teams.length} equipos ya subieron su PDF.
         </p>
         {sessionQuery.isError ? (
           <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(sessionQuery.error)}</p>
@@ -131,33 +130,55 @@ export default function TeacherCrudPanel({
             <li key={paso}>{paso}</li>
           ))}
         </ol>
+        <p className="mt-4 text-sm font-semibold text-white">
+          {CRUD_TABLA_EJEMPLO.nombre}: {CRUD_TABLA_EJEMPLO.uso}
+        </p>
+        <ul className="mt-1 space-y-1 text-sm text-slate-100">
+          {CRUD_TABLA_EJEMPLO.atributos.map((atributo) => (
+            <li key={atributo.campo}>
+              {atributo.campo} {atributo.tipo}
+              {atributo.nota ? ` · ${atributo.nota}` : ""}
+            </li>
+          ))}
+        </ul>
+        {CRUD_TABLAS.map((tabla) => (
+          <div key={tabla.nombre} className="mt-3">
+            <p className="text-sm font-semibold text-white">{tabla.nombre}</p>
+            <ul className="mt-1 space-y-1 text-sm text-slate-100">
+              {tabla.atributos.map((atributo) => (
+                <li key={atributo.campo}>
+                  {atributo.campo} {atributo.tipo}
+                  {atributo.nota ? ` · ${atributo.nota}` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
         <pre className="mt-4 max-h-96 overflow-auto rounded-2xl bg-slate-950 p-3 text-xs leading-relaxed text-emerald-100">
           {CRUD_CODIGO}
         </pre>
       </section>
 
-      {students.map((student) => {
-        const file = byStudent.get(student.id);
+      {teams.map((team) => {
+        const file = byTeam.get(team.key);
         return (
-          <section key={student.id} className="glass flex flex-wrap items-center justify-between gap-3 p-4">
+          <section key={team.key} className="glass flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
-              <p className="font-semibold text-white">
-                {student.listNumber != null ? `${student.listNumber}. ` : ""}
-                {student.displayName}
-              </p>
+              <p className="font-semibold text-white">{team.name}</p>
+              <p className="text-sm text-slate-400">{team.members.map((member) => member.displayName).join(", ")}</p>
               {file ? (
                 <p className="text-sm text-emerald-100">
-                  {file.fileName} · {formatCrudSize(file.sizeBytes)}
+                  {file.fileName} · {formatCrudSize(file.sizeBytes)} · lo subió {file.uploadedByName}
                 </p>
               ) : (
-                <p className="text-sm text-slate-400">Todavía no sube el PDF.</p>
+                <p className="text-sm text-slate-400">Todavía no suben el PDF.</p>
               )}
             </div>
             {file ? (
               <button
                 type="button"
                 onClick={() => {
-                  downloadCrudPdf(selectedGroupId, student.id, file.fileName).catch((err) =>
+                  downloadCrudPdf(selectedGroupId, team.key, file.fileName).catch((err) =>
                     setDownloadError(getApiErrorMessage(err)),
                   );
                 }}

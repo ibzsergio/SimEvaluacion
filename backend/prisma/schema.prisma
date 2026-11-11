@@ -509,16 +509,19 @@ model ExamDelivery {
   @@index([groupId])
 }
 
+/// Un PDF por equipo de proyecto para TEST. El ejemplo no se entrega.
 model CrudDelivery {
-  id         String   @id @default(cuid())
-  groupId    String
-  studentId  String
-  fileName   String
-  mimeType   String
-  fileData   Bytes
-  sizeBytes  Int
-  uploadedAt DateTime @default(now()) @updatedAt
+  id           String   @id @default(cuid())
+  groupId      String
+  teamKey      String
+  teamName     String
+  fileName     String
+  mimeType     String
+  fileData     Bytes
+  sizeBytes    Int
+  uploadedById String
+  uploadedAt   DateTime @default(now()) @updatedAt
 
-  @@unique([groupId, studentId])
+  @@unique([groupId, teamKey])
   @@index([groupId])
 }

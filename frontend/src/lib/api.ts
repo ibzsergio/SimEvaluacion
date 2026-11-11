@@ -1206,13 +1206,21 @@ export async function downloadExamPdf(groupId: string, studentId: string, fileNa
 }
 
 export type CrudDeliveryFile = {
+  teamKey: string;
+  teamName: string;
   fileName: string;
   sizeBytes: number;
   uploadedAt: string;
+  uploadedByName: string;
 };
 
 export async function fetchStudentCrudDelivery() {
-  const { data } = await api.get<{ allowed: boolean; delivery: CrudDeliveryFile | null }>("/student/crud/delivery");
+  const { data } = await api.get<{
+    allowed: boolean;
+    teamKey: string;
+    teamName: string;
+    delivery: CrudDeliveryFile | null;
+  }>("/student/crud/delivery");
   return data;
 }
 
@@ -1227,14 +1235,19 @@ export async function uploadCrudPdf(file: File) {
 export async function fetchTeacherCrudDeliveries(groupId: string) {
   const { data } = await api.get<{
     groupCode: string;
-    deliveries: Array<CrudDeliveryFile & { studentId: string }>;
+    teams: Array<{
+      key: string;
+      name: string;
+      members: Array<{ id: string; displayName: string; listNumber: number | null }>;
+    }>;
+    deliveries: CrudDeliveryFile[];
   }>(`/teacher/groups/${groupId}/crud/deliveries`);
   return data;
 }
 
-export async function downloadCrudPdf(groupId: string, studentId: string, fileName: string) {
+export async function downloadCrudPdf(groupId: string, teamKey: string, fileName: string) {
   await downloadTeacherBlob(
-    `/teacher/groups/${groupId}/crud/${encodeURIComponent(studentId)}/file`,
+    `/teacher/groups/${groupId}/crud/${encodeURIComponent(teamKey)}/file`,
     fileName,
   );
 }
