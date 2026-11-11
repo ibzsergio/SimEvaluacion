@@ -9,24 +9,24 @@ import {
   CRUD_EVIDENCIAS,
   CRUD_PASOS,
   CRUD_PDF_MAX_BYTES,
-  CRUD_CIERRE_TEXTO,
   CRUD_PROGRAMA,
   CRUD_PUNTOS,
   CRUD_TABLA_EJEMPLO,
   CRUD_TABLAS,
   CRUD_TITULO,
-  crudAbierto,
+  crudCierre,
   formatCrudSize,
 } from "../lib/crudScrum";
 
-export default function StudentCrudCard() {
+export default function StudentCrudCard({ groupCode }: { groupCode?: string | null }) {
   const qc = useQueryClient();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [localError, setLocalError] = useState("");
   const [now, setNow] = useState(() => Date.now());
-  const abierto = crudAbierto(now);
+  const cierre = crudCierre(groupCode, now);
+  const abierto = cierre.open;
   const comms = useQuery({
     queryKey: ["student-comms"],
     queryFn: fetchStudentComms,
@@ -97,8 +97,8 @@ export default function StudentCrudCard() {
         Vale {CRUD_PUNTOS.toLocaleString("es-MX")} puntos.
       </p>
       <p className={`mt-2 rounded-xl px-3 py-2 text-sm font-bold ${abierto ? "bg-rose-500 text-white" : "bg-rose-950 text-rose-100"}`}>
-        {CRUD_CIERRE_TEXTO}
-        {abierto ? "" : " Esa hora ya pasó."}
+        {cierre.texto}
+        {cierre.until > 0 && !abierto ? " Esa hora ya pasó." : ""}
       </p>
       <p className="mt-2 text-sm leading-relaxed text-slate-200">{CRUD_CONTEXTO}</p>
       <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-slate-100">

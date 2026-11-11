@@ -10,12 +10,29 @@ const MARK = "[[crud-state]]";
 const TITLE = "CRUDS BD";
 const TITLES = [TITLE, "TEST"];
 const PUNTOS = 2000;
-const CIERRE_ISO = "2026-11-11T09:00:00-06:00";
-const CIERRE_TEXTO =
-  "La entrega y la subida del archivo se cierran a las 9:00 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.";
+const CIERRE: Record<string, { iso: string; texto: string }> = {
+  "302": {
+    iso: "2026-11-11T09:20:00-06:00",
+    texto:
+      "La entrega y la subida del archivo del grupo 302 se cierran a las 9:20 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+  },
+  "301": {
+    iso: "2026-11-11T12:00:00-06:00",
+    texto:
+      "La entrega y la subida del archivo del grupo 301 se cierran a las 12:00 del día de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+  },
+};
 
-function crudAbierto(now = Date.now()) {
-  return now < new Date(CIERRE_ISO).getTime();
+function crudCierre(groupCode?: string | null, now = Date.now()) {
+  const item = groupCode ? CIERRE[groupCode.trim()] : undefined;
+  if (!item) {
+    return {
+      texto:
+        "El grupo 302 entrega hasta las 9:20 a. m. El grupo 301 entrega hasta las 12:00 del día. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
+      open: false,
+    };
+  }
+  return { texto: item.texto, open: now < new Date(item.iso).getTime() };
 }
 
 const upload = multer({
@@ -133,13 +150,14 @@ async function studentTeam(studentId: string) {
   const member = await prisma.projectTeamMember.findUnique({
     where: { studentId },
     include: {
-      student: { select: { id: true, groupId: true, displayName: true } },
+      student: { select: { id: true, groupId: true, displayName: true, group: { select: { code: true } } } },
       team: { select: { id: true, name: true, groupId: true } },
     },
   });
   if (!member?.student.groupId || member.team.groupId !== member.student.groupId) return null;
   return {
     groupId: member.student.groupId,
+    groupCode: member.student.group?.code ?? "",
     teamKey: `project:${member.team.id}`,
     teamName: member.team.name,
     studentName: member.student.displayName,
@@ -314,10 +332,11 @@ export function registerStudentCrudRoutes(app: import("express").Express) {
       if (!(await activityReleased(team.groupId))) {
         return res.status(403).json({ error: "not_released", message: "CRUDS BD todavía no está liberada para tu grupo." });
       }
-      if (!crudAbierto()) {
+      const cierre = crudCierre(team.groupCode);
+      if (!cierre.open) {
         return res.status(403).json({
           error: "upload_closed",
-          message: `${CIERRE_TEXTO} Esa hora ya pasó.`,
+          message: `${cierre.texto} Esa hora ya pasó.`,
         });
       }
       const saved = await prisma.crudDelivery.upsert({

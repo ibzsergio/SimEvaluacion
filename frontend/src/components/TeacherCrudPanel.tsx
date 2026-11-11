@@ -9,7 +9,6 @@ import {
   releaseCrudSession,
 } from "../lib/api";
 import {
-  CRUD_CIERRE_TEXTO,
   CRUD_CODIGO,
   CRUD_CONTEXTO,
   CRUD_EVIDENCIAS,
@@ -19,7 +18,7 @@ import {
   CRUD_TABLA_EJEMPLO,
   CRUD_TABLAS,
   CRUD_TITULO,
-  crudAbierto,
+  crudCierre,
   formatCrudSize,
 } from "../lib/crudScrum";
 import type { ClassGroup } from "../lib/types";
@@ -38,7 +37,8 @@ export default function TeacherCrudPanel({
   const qc = useQueryClient();
   const [downloadError, setDownloadError] = useState("");
   const [now, setNow] = useState(() => Date.now());
-  const abierto = crudAbierto(now);
+  const cierre = crudCierre(groups.find((group) => group.id === selectedGroupId)?.code, now);
+  const abierto = cierre.open && cierre.until > 0;
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 15_000);
     return () => window.clearInterval(id);
@@ -92,11 +92,11 @@ export default function TeacherCrudPanel({
         <h2 className="mt-1 text-2xl font-bold text-white">{CRUD_TITULO}</h2>
         <p className="mt-2 text-sm text-slate-300">{CRUD_CONTEXTO}</p>
         <p className="mt-3 rounded-xl bg-amber-400 px-3 py-2 text-sm font-bold text-slate-950">
-          Vale {CRUD_PUNTOS.toLocaleString("es-MX")} puntos. Si el PDF entra antes de las 9:00 a. m., el equipo los recibe.
+          Vale {CRUD_PUNTOS.toLocaleString("es-MX")} puntos. Si el PDF entra antes de la hora de su grupo, el equipo los recibe.
         </p>
         <p className={`mt-2 rounded-xl px-3 py-2 text-sm font-bold ${abierto ? "bg-rose-500 text-white" : "bg-rose-950 text-rose-100"}`}>
-          {CRUD_CIERRE_TEXTO}
-          {abierto ? "" : " Esa hora ya pasó."}
+          {cierre.texto}
+          {cierre.until > 0 && !abierto ? " Esa hora ya pasó." : ""}
         </p>
         <p className="mt-3 text-sm font-semibold text-emerald-100">
           Grupo {selectedGroup?.code ?? "—"} · equipo de proyecto · base 302 · 5 tablas
