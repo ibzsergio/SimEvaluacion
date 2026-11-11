@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchStudentComms, fetchStudentCrudDelivery, getApiErrorMessage, uploadCrudPdf } from "../lib/api";
 import { studentCrudReleased } from "../lib/crudLive";
@@ -9,10 +9,13 @@ import {
   CRUD_EVIDENCIAS,
   CRUD_PASOS,
   CRUD_PDF_MAX_BYTES,
+  CRUD_CIERRE_TEXTO,
   CRUD_PROGRAMA,
+  CRUD_PUNTOS,
   CRUD_TABLA_EJEMPLO,
   CRUD_TABLAS,
   CRUD_TITULO,
+  crudAbierto,
   formatCrudSize,
 } from "../lib/crudScrum";
 
@@ -22,6 +25,8 @@ export default function StudentCrudCard() {
   const [copied, setCopied] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [localError, setLocalError] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+  const abierto = crudAbierto(now);
   const comms = useQuery({
     queryKey: ["student-comms"],
     queryFn: fetchStudentComms,
@@ -45,6 +50,10 @@ export default function StudentCrudCard() {
     },
     onError: (error) => setLocalError(getApiErrorMessage(error)),
   });
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
   if (!released) return null;
   if (deliveryQuery.data && deliveryQuery.data.allowed === false) return null;
 
@@ -84,6 +93,13 @@ export default function StudentCrudCard() {
     <section className="glass mb-6 border border-emerald-400/30 p-4 sm:p-6">
       <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-200">{CRUD_PROGRAMA}</p>
       <h2 className="mt-1 text-2xl font-bold text-white">{CRUD_TITULO}</h2>
+      <p className="mt-3 rounded-xl bg-amber-400 px-3 py-2 text-sm font-bold text-slate-950">
+        Vale {CRUD_PUNTOS.toLocaleString("es-MX")} puntos.
+      </p>
+      <p className={`mt-2 rounded-xl px-3 py-2 text-sm font-bold ${abierto ? "bg-rose-500 text-white" : "bg-rose-950 text-rose-100"}`}>
+        {CRUD_CIERRE_TEXTO}
+        {abierto ? "" : " Esa hora ya pasó."}
+      </p>
       <p className="mt-2 text-sm leading-relaxed text-slate-200">{CRUD_CONTEXTO}</p>
       <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-slate-100">
         {CRUD_PASOS.map((paso) => (
@@ -180,7 +196,7 @@ export default function StudentCrudCard() {
         <input
           type="file"
           accept="application/pdf,.pdf"
-          disabled={!ready || uploadMutation.isPending}
+          disabled={!ready || !abierto || uploadMutation.isPending}
           onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
           className="mt-3 block w-full text-sm text-slate-200 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-500 file:px-3 file:py-2 file:text-sm file:font-bold file:text-slate-950 disabled:opacity-50"
         />
@@ -191,13 +207,17 @@ export default function StudentCrudCard() {
         ) : null}
         <button
           type="button"
-          disabled={!ready || !file || uploadMutation.isPending}
+          disabled={!ready || !file || !abierto || uploadMutation.isPending}
           onClick={() => file && uploadMutation.mutate(file)}
           className="mt-3 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50"
         >
           {uploadMutation.isPending ? "Subiendo…" : delivery ? "Reemplazar PDF" : "Subir PDF"}
         </button>
-        {!ready ? <p className="mt-2 text-sm text-slate-400">Marca todas las casillas para poder elegir el archivo.</p> : null}
+        {!abierto ? (
+          <p className="mt-2 text-sm font-semibold text-rose-200">Ya no se acepta el archivo. El equipo pierde los 1000 puntos.</p>
+        ) : !ready ? (
+          <p className="mt-2 text-sm text-slate-400">Marca todas las casillas para poder elegir el archivo.</p>
+        ) : null}
         {localError ? <p className="mt-2 text-sm text-rose-200">{localError}</p> : null}
         {deliveryQuery.isError ? <p className="mt-2 text-sm text-rose-200">{getApiErrorMessage(deliveryQuery.error)}</p> : null}
       </div>

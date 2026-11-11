@@ -1,12 +1,21 @@
 import { Router } from "express";
 import multer from "multer";
 import { prisma } from "./prisma.js";
+import { todayClassDayDate } from "./classDayService.js";
 import { requireAuth, requireStudent, requireTeacher, type AuthedRequest } from "./middleware.js";
 import { requireNotPreviewStudent } from "./previewStudent.js";
 
 const PDF_MAX_BYTES = 12 * 1024 * 1024;
 const MARK = "[[crud-state]]";
 const TITLE = "TEST";
+const PUNTOS = 1000;
+const CIERRE_ISO = "2026-11-11T09:00:00-06:00";
+const CIERRE_TEXTO =
+  "La entrega y la subida del archivo se cierran a las 9:00 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 1000 puntos.";
+
+function crudAbierto(now = Date.now()) {
+  return now < new Date(CIERRE_ISO).getTime();
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -23,6 +32,73 @@ function isPdf(file: Express.Multer.File) {
 function safeFileName(name: string) {
   const clean = name.replace(/[^\w.\- ()áéíóúÁÉÍÓÚñÑ]+/g, "_").slice(0, 120);
   return clean.toLowerCase().endsWith(".pdf") ? clean : `${clean}.pdf`;
+}
+
+async function ensureTestActivity(groupId: string, teacherId: string) {
+  const group = await prisma.classGroup.findUnique({
+    where: { id: groupId },
+    select: { currentPartial: true },
+  });
+  const existing = await prisma.activity.findFirst({
+    where: { groupId, name: TITLE },
+    select: { id: true, maxPoints: true },
+  });
+  if (existing) {
+    if (existing.maxPoints !== PUNTOS) {
+      await prisma.activity.update({ where: { id: existing.id }, data: { maxPoints: PUNTOS } });
+    }
+    return existing.id;
+  }
+  const lastOrder = await prisma.activity.aggregate({
+    where: { groupId },
+    _max: { sortOrder: true },
+  });
+  const created = await prisma.activity.create({
+    data: {
+      date: todayClassDayDate(),
+      name: TITLE,
+      maxPoints: PUNTOS,
+      signatureMax: 0,
+      sortOrder: (lastOrder._max.sortOrder ?? -1) + 1,
+      partialNumber: group?.currentPartial ?? 1,
+      releasedToStudents: true,
+      groupId,
+      createdById: teacherId,
+    },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+async function awardTeam(groupId: string, teamKey: string) {
+  const teamId = teamKey.startsWith("project:") ? teamKey.slice("project:".length) : "";
+  const [team, group] = await Promise.all([
+    prisma.projectTeam.findFirst({
+      where: { id: teamId, groupId },
+      select: { members: { select: { studentId: true } } },
+    }),
+    prisma.classGroup.findUnique({
+      where: { id: groupId },
+      select: { teacherId: true },
+    }),
+  ]);
+  if (!team || !group) return;
+  const activityId = await ensureTestActivity(groupId, group.teacherId);
+  const gradedAt = new Date();
+  for (const member of team.members) {
+    await prisma.grade.upsert({
+      where: { activityId_studentId: { activityId, studentId: member.studentId } },
+      update: { points: PUNTOS, signatures: 0, gradedById: group.teacherId },
+      create: {
+        activityId,
+        studentId: member.studentId,
+        points: PUNTOS,
+        signatures: 0,
+        gradedById: group.teacherId,
+        gradedAt,
+      },
+    });
+  }
 }
 
 async function activityReleased(groupId: string) {
@@ -229,6 +305,12 @@ export function registerStudentCrudRoutes(app: import("express").Express) {
       if (!(await activityReleased(team.groupId))) {
         return res.status(403).json({ error: "not_released", message: "TEST todavía no está liberada para tu grupo." });
       }
+      if (!crudAbierto()) {
+        return res.status(403).json({
+          error: "upload_closed",
+          message: `${CIERRE_TEXTO} Esa hora ya pasó.`,
+        });
+      }
       const saved = await prisma.crudDelivery.upsert({
         where: { groupId_teamKey: { groupId: team.groupId, teamKey: team.teamKey } },
         create: {
@@ -251,6 +333,7 @@ export function registerStudentCrudRoutes(app: import("express").Express) {
           uploadedAt: new Date(),
         },
       });
+      await awardTeam(team.groupId, team.teamKey);
       return res.json({ delivery: publicDelivery(saved, team.studentName) });
     },
   );
