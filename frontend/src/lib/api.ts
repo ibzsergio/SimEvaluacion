@@ -34,6 +34,12 @@ import {
   withBasedatosTeamNames,
   type BasedatosLiveState,
 } from "./basedatosLive";
+import {
+  CRUD_ANNOUNCEMENT_TITLE,
+  crudStateFromAnnouncements,
+  serializeCrudState,
+  type CrudLiveState,
+} from "./crudLive";
 import type {
   Activity,
   ClassGroup,
@@ -1077,6 +1083,35 @@ async function writeBasedatosGrades(groupId: string, session: import("./types").
 
 export async function fetchBasedatosSession(groupId: string) {
   return basedatosSession(groupId);
+}
+
+async function saveCrudState(groupId: string, state: CrudLiveState) {
+  const comms = await fetchTeacherComms();
+  const previous = comms.announcements.filter(
+    (item) => item.title === CRUD_ANNOUNCEMENT_TITLE && item.groupId === groupId,
+  );
+  const created = await createAnnouncement({
+    title: CRUD_ANNOUNCEMENT_TITLE,
+    body: serializeCrudState(state),
+    groupId,
+  });
+  await Promise.all(previous.filter((item) => item.id !== created.id).map((item) => deleteAnnouncement(item.id)));
+  return state;
+}
+
+export async function fetchCrudSession(groupId: string) {
+  const comms = await fetchTeacherComms();
+  return crudStateFromAnnouncements(comms.announcements, groupId);
+}
+
+export async function releaseCrudSession(groupId: string) {
+  const current = await fetchCrudSession(groupId);
+  return saveCrudState(groupId, { ...current, v: 1, released: true });
+}
+
+export async function hideCrudSession(groupId: string) {
+  const current = await fetchCrudSession(groupId);
+  return saveCrudState(groupId, { ...current, v: 1, released: false });
 }
 
 export async function releaseBasedatosSession(groupId: string) {

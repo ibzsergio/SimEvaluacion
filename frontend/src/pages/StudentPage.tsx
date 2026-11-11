@@ -8,6 +8,7 @@ import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentExtraCard from "../components/StudentExtraCard";
 import StudentBasedatosCard from "../components/StudentBasedatosCard";
+import StudentCrudCard from "../components/StudentCrudCard";
 import StudentExamenCard from "../components/StudentExamenCard";
 import StudentMaquinaCard from "../components/StudentMaquinaCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
@@ -162,6 +163,8 @@ export default function StudentPage() {
       )}
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
+
+      <StudentCrudCard />
 
       <StudentExamenCard groupCode={data.group?.code} />
 

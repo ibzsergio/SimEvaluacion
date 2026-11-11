@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAvionSession, fetchBasedatosSession, fetchExtraSession, fetchImproSession, fetchMaquinaSession } from "../lib/api";
+import { fetchAvionSession, fetchBasedatosSession, fetchCrudSession, fetchExtraSession, fetchImproSession, fetchMaquinaSession } from "../lib/api";
 import { BASEDATOS_TITULO } from "../lib/basedatosScrum";
+import { CRUD_TITULO } from "../lib/crudScrum";
 import { EXAMEN_TITULO } from "../lib/examScrum";
 import { IMPRO_TITULO } from "../lib/improScrum";
 import { MAQUINA_TITULO } from "../lib/maquinaScrum";
 import type { ClassGroup } from "../lib/types";
 import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherBasedatosPanel from "./TeacherBasedatosPanel";
+import TeacherCrudPanel from "./TeacherCrudPanel";
 import TeacherExamenPanel from "./TeacherExamenPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
 import TeacherImproPanel from "./TeacherImproPanel";
@@ -25,7 +27,7 @@ export default function TeacherScrumActivitiesPanel({
   onSelectGroup: (id: string) => void;
 }) {
   const [current, setCurrent] = useState<
-    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen"
+    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud"
   >("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
@@ -57,6 +59,12 @@ export default function TeacherScrumActivitiesPanel({
     enabled: !!selectedGroupId && current === "list",
   });
   const basedatosReleased = basedatosQuery.data?.released ?? false;
+  const crudQuery = useQuery({
+    queryKey: ["crud-session", selectedGroupId],
+    queryFn: () => fetchCrudSession(selectedGroupId),
+    enabled: !!selectedGroupId && current === "list",
+  });
+  const crudReleased = crudQuery.data?.released ?? false;
 
   return (
     <div>
@@ -87,7 +95,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "examen" ? (
+      {current === "crud" ? (
+        <TeacherCrudPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "examen" ? (
         <TeacherExamenPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -149,9 +164,33 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              La base de datos: hoy, un PDF por equipo, máximo 5 MB, con carátula y 4 secciones tituladas. Vale 3000 puntos. La máquina sigue disponible. Pop-Up ya no se muestra a los alumnos.
+              TEST es individual: un formulario y el CRUD de 3 tablas en la base 302. La base de datos del proyecto sigue en su PDF por equipo.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("crud")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum</p>
+              <h3 className="mt-1 text-xl font-bold text-white">{CRUD_TITULO}</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Individual. El formulario de ejemplo se llama TEST, la base se llama 302 y la tabla de ejemplo es test.
+                Cada alumno hace 3 tablas en esa misma base, con su conexión y su CRUD.
+              </p>
+            </div>
+            <span
+              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                crudReleased
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+                  : "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+              }`}
+            >
+              {crudReleased ? "Liberada en este grupo" : "Lista para liberar"}
+            </span>
+          </button>
 
           <button
             type="button"
