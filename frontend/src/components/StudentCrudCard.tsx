@@ -214,7 +214,7 @@ export default function StudentCrudCard() {
           {uploadMutation.isPending ? "Subiendo…" : delivery ? "Reemplazar PDF" : "Subir PDF"}
         </button>
         {!abierto ? (
-          <p className="mt-2 text-sm font-semibold text-rose-200">Ya no se acepta el archivo. El equipo pierde los 1000 puntos.</p>
+          <p className="mt-2 text-sm font-semibold text-rose-200">Ya no se acepta el archivo. El equipo pierde los 2000 puntos.</p>
         ) : !ready ? (
           <p className="mt-2 text-sm text-slate-400">Marca todas las casillas para poder elegir el archivo.</p>
         ) : null}

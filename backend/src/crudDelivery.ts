@@ -8,10 +8,10 @@ import { requireNotPreviewStudent } from "./previewStudent.js";
 const PDF_MAX_BYTES = 12 * 1024 * 1024;
 const MARK = "[[crud-state]]";
 const TITLE = "TEST";
-const PUNTOS = 1000;
+const PUNTOS = 2000;
 const CIERRE_ISO = "2026-11-11T09:00:00-06:00";
 const CIERRE_TEXTO =
-  "La entrega y la subida del archivo se cierran a las 9:00 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 1000 puntos.";
+  "La entrega y la subida del archivo se cierran a las 9:00 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.";
 
 function crudAbierto(now = Date.now()) {
   return now < new Date(CIERRE_ISO).getTime();
@@ -46,6 +46,10 @@ async function ensureTestActivity(groupId: string, teacherId: string) {
   if (existing) {
     if (existing.maxPoints !== PUNTOS) {
       await prisma.activity.update({ where: { id: existing.id }, data: { maxPoints: PUNTOS } });
+      await prisma.grade.updateMany({
+        where: { activityId: existing.id, points: 1000 },
+        data: { points: PUNTOS },
+      });
     }
     return existing.id;
   }
@@ -166,9 +170,10 @@ crudTeacherRouter.get("/groups/:groupId/crud/deliveries", async (req: AuthedRequ
   const groupId = String(req.params.groupId);
   const group = await prisma.classGroup.findFirst({
     where: { id: groupId, teacherId: req.auth!.userId },
-    select: { id: true, code: true },
+    select: { id: true, code: true, teacherId: true },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
+  await ensureTestActivity(group.id, group.teacherId);
   const [rows, teams] = await Promise.all([
     prisma.crudDelivery.findMany({
       where: { groupId },

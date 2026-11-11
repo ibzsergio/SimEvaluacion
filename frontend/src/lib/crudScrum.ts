@@ -1,10 +1,10 @@
 export const CRUD_TITULO = "TEST";
 export const CRUD_PROGRAMA = "Actividad Scrum · equipo de proyecto";
 export const CRUD_PDF_MAX_BYTES = 12 * 1024 * 1024;
-export const CRUD_PUNTOS = 1000;
+export const CRUD_PUNTOS = 2000;
 export const CRUD_CIERRE_ISO = "2026-11-11T09:00:00-06:00";
 export const CRUD_CIERRE_TEXTO =
-  "La entrega y la subida del archivo se cierran a las 9:00 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 1000 puntos.";
+  "La entrega y la subida del archivo se cierran a las 9:00 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.";
 
 export function crudAbierto(now = Date.now()) {
   return now < new Date(CRUD_CIERRE_ISO).getTime();
@@ -79,7 +79,7 @@ export const CRUD_TABLAS = [
 ] as const;
 
 export const CRUD_EVIDENCIAS = [
-  "Vale 1000 puntos. La subida cierra a las 9:00 a. m. de hoy. Después ya no se acepta el archivo y se pierden los puntos.",
+  "Vale 2000 puntos. La subida cierra a las 9:00 a. m. de hoy. Después ya no se acepta el archivo y se pierden los puntos.",
   "Un PDF por equipo, de máximo 12 MB. Lo sube un solo integrante.",
   "Carátula con el equipo, el grupo, la fecha y el reparto del líder: nombre de cada integrante y la tabla que le asignó.",
   "Las tablas son grupos, docentes, alumnos, asistencias e incidencias. La tabla test no se entrega.",
