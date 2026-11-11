@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchStudentComms, fetchStudentCrudDelivery, getApiErrorMessage, uploadCrudPdf } from "../lib/api";
-import { studentCrudReleased } from "../lib/crudLive";
+import { crudStateFromAnnouncements, studentCrudReleased } from "../lib/crudLive";
 import {
   CRUD_CHECKS,
   CRUD_CODIGO,
@@ -15,10 +15,17 @@ import {
   CRUD_TABLAS,
   CRUD_TITULO,
   crudCierre,
+  crudPuntosDe,
   formatCrudSize,
 } from "../lib/crudScrum";
 
-export default function StudentCrudCard({ groupCode }: { groupCode?: string | null }) {
+export default function StudentCrudCard({
+  groupCode,
+  studentId,
+}: {
+  groupCode?: string | null;
+  studentId?: string | null;
+}) {
   const qc = useQueryClient();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
@@ -59,6 +66,8 @@ export default function StudentCrudCard({ groupCode }: { groupCode?: string | nu
 
   const ready = CRUD_CHECKS.every((item) => checked[item.id]);
   const delivery = deliveryQuery.data?.delivery ?? null;
+  const teamNotes = crudStateFromAnnouncements(comms.data?.announcements ?? []).notes[deliveryQuery.data?.teamKey ?? ""] ?? [];
+  const myNotes = teamNotes.filter((note) => !note.studentId || note.studentId === studentId);
 
   async function copyCode() {
     try {
@@ -213,6 +222,23 @@ export default function StudentCrudCard({ groupCode }: { groupCode?: string | nu
         >
           {uploadMutation.isPending ? "Subiendo…" : delivery ? "Reemplazar PDF" : "Subir PDF"}
         </button>
+        {myNotes.length > 0 ? (
+          <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+            <p className="font-semibold">
+              {studentId && delivery
+                ? `${crudPuntosDe(teamNotes, studentId).toLocaleString("es-MX")} de ${CRUD_PUNTOS.toLocaleString("es-MX")} puntos`
+                : "El docente anotó una resta"}
+            </p>
+            <ul className="mt-1 space-y-1">
+              {myNotes.map((note) => (
+                <li key={note.id}>
+                  −{note.points} {note.label}
+                  {note.studentName ? "" : " · equipo"}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {!abierto ? (
           <p className="mt-2 text-sm font-semibold text-rose-200">Ya no se acepta el archivo. El equipo pierde los 2000 puntos.</p>
         ) : !ready ? (

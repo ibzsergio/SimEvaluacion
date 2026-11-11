@@ -67,10 +67,6 @@ async function ensureTestActivity(groupId: string, teacherId: string) {
         where: { id: existing.id },
         data: { name: TITLE, maxPoints: PUNTOS },
       });
-      await prisma.grade.updateMany({
-        where: { activityId: existing.id, points: 1000 },
-        data: { points: PUNTOS },
-      });
     }
     return existing.id;
   }
@@ -95,6 +91,39 @@ async function ensureTestActivity(groupId: string, teacherId: string) {
   return created.id;
 }
 
+type CrudNote = { points?: number; studentId?: string | null };
+
+async function teamNotes(groupId: string, teamKey: string): Promise<CrudNote[]> {
+  const announcements = await prisma.announcement.findMany({
+    where: { groupId, title: { in: TITLES } },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    select: { body: true },
+  });
+  for (const item of announcements) {
+    const idx = item.body.indexOf(MARK);
+    if (idx < 0) continue;
+    try {
+      const parsed = JSON.parse(item.body.slice(idx + MARK.length).trim()) as {
+        v?: number;
+        notes?: Record<string, CrudNote[]>;
+      };
+      if (parsed?.v !== 1 || !parsed.notes) continue;
+      return Array.isArray(parsed.notes[teamKey]) ? parsed.notes[teamKey] : [];
+    } catch {
+      /* el aviso siguiente puede sí tener las notas */
+    }
+  }
+  return [];
+}
+
+function pointsFor(notes: CrudNote[], studentId: string) {
+  const cut = notes
+    .filter((note) => !note.studentId || note.studentId === studentId)
+    .reduce((acc, note) => acc + Math.max(0, Math.round(Number(note.points) || 0)), 0);
+  return Math.max(0, PUNTOS - cut);
+}
+
 async function awardTeam(groupId: string, teamKey: string) {
   const teamId = teamKey.startsWith("project:") ? teamKey.slice("project:".length) : "";
   const [team, group] = await Promise.all([
@@ -109,15 +138,17 @@ async function awardTeam(groupId: string, teamKey: string) {
   ]);
   if (!team || !group) return;
   const activityId = await ensureTestActivity(groupId, group.teacherId);
+  const notes = await teamNotes(groupId, teamKey);
   const gradedAt = new Date();
   for (const member of team.members) {
+    const points = pointsFor(notes, member.studentId);
     await prisma.grade.upsert({
       where: { activityId_studentId: { activityId, studentId: member.studentId } },
-      update: { points: PUNTOS, signatures: 0, gradedById: group.teacherId },
+      update: { points, signatures: 0, gradedById: group.teacherId },
       create: {
         activityId,
         studentId: member.studentId,
-        points: PUNTOS,
+        points,
         signatures: 0,
         gradedById: group.teacherId,
         gradedAt,

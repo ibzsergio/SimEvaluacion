@@ -37,10 +37,12 @@ import {
 import {
   CRUD_ANNOUNCEMENT_TITLE,
   isCrudAnnouncement,
+  crudNote,
   crudStateFromAnnouncements,
   serializeCrudState,
   type CrudLiveState,
 } from "./crudLive";
+import { crudPuntosDe } from "./crudScrum";
 import type {
   Activity,
   ClassGroup,
@@ -1113,6 +1115,67 @@ export async function releaseCrudSession(groupId: string) {
 export async function hideCrudSession(groupId: string) {
   const current = await fetchCrudSession(groupId);
   return saveCrudState(groupId, { ...current, v: 1, released: false });
+}
+
+async function syncCrudNoteGrades(groupId: string, teamKey: string) {
+  const [comms, deliveries, activities, base] = await Promise.all([
+    fetchTeacherComms(),
+    fetchTeacherCrudDeliveries(groupId),
+    fetchActivities(groupId),
+    projectTeamsForPopup(groupId),
+  ]);
+  if (!deliveries.deliveries.some((item) => item.teamKey === teamKey)) return;
+  const activity = activities.find((item) => item.name === "CRUDS BD" || item.name === "TEST");
+  const team = base.teams.find((item) => item.key === teamKey);
+  if (!activity || !team) return;
+  const notes = crudStateFromAnnouncements(comms.announcements, groupId).notes[teamKey] ?? [];
+  await saveGradesBatch(
+    groupId,
+    team.members.map((member) => ({
+      activityId: activity.id,
+      studentId: member.studentId,
+      points: crudPuntosDe(notes, member.studentId),
+    })),
+  );
+}
+
+export async function addCrudNote(
+  groupId: string,
+  payload: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
+) {
+  const base = await projectTeamsForPopup(groupId);
+  const team = base.teams.find((item) => item.key === payload.teamKey);
+  if (!team) throw new Error("No encontré ese equipo de proyecto.");
+  const member = payload.studentId ? team.members.find((item) => item.studentId === payload.studentId) : null;
+  if (payload.studentId && !member) throw new Error("Esa persona no está en el equipo.");
+  const custom =
+    payload.code === "custom" && payload.label && payload.points != null
+      ? { label: payload.label, points: payload.points }
+      : undefined;
+  const note = crudNote(payload.code, member, custom);
+  const current = await fetchCrudSession(groupId);
+  const saved = await saveCrudState(groupId, {
+    ...current,
+    notes: {
+      ...current.notes,
+      [payload.teamKey]: [...(current.notes[payload.teamKey] ?? []), note],
+    },
+  });
+  await syncCrudNoteGrades(groupId, payload.teamKey);
+  return saved;
+}
+
+export async function removeCrudNote(groupId: string, payload: { teamKey: string; noteId: string }) {
+  const current = await fetchCrudSession(groupId);
+  const saved = await saveCrudState(groupId, {
+    ...current,
+    notes: {
+      ...current.notes,
+      [payload.teamKey]: (current.notes[payload.teamKey] ?? []).filter((note) => note.id !== payload.noteId),
+    },
+  });
+  await syncCrudNoteGrades(groupId, payload.teamKey);
+  return saved;
 }
 
 export async function releaseBasedatosSession(groupId: string) {

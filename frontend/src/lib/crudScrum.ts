@@ -35,6 +35,19 @@ export function crudAbierto(groupCode?: string | null, now = Date.now()) {
   return crudCierre(groupCode, now).open;
 }
 
+export const CRUD_NOTAS = [
+  { code: "no_trabaja", label: "No está trabajando", points: 500, scope: "member" },
+  { code: "no_participa", label: "No participa", points: 500, scope: "member" },
+  { code: "ruido", label: "Está haciendo ruido", points: 300, scope: "member" },
+] as const;
+
+export function crudPuntosDe(notes: Array<{ points: number; studentId?: string | null }>, studentId: string) {
+  const cut = notes
+    .filter((note) => !note.studentId || note.studentId === studentId)
+    .reduce((acc, note) => acc + Math.max(0, note.points), 0);
+  return Math.max(0, CRUD_PUNTOS - cut);
+}
+
 export const CRUD_CONTEXTO =
   "TEST es el ejemplo: solo se conecta a la base 302 y usa la tabla test. El líder reparte las 5 tablas. Cada integrante crea la base y la tabla que le tocó, y muestra su CRUD funcionando. Un integrante sube el PDF de todo el equipo.";
 
