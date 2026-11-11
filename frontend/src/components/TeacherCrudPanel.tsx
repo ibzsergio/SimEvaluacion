@@ -1,6 +1,15 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchCrudSession, getApiErrorMessage, hideCrudSession, releaseCrudSession } from "../lib/api";
-import { CRUD_CODIGO, CRUD_CONTEXTO, CRUD_PASOS, CRUD_PROGRAMA, CRUD_TITULO } from "../lib/crudScrum";
+import {
+  downloadCrudPdf,
+  fetchCrudSession,
+  fetchGroupStudents,
+  fetchTeacherCrudDeliveries,
+  getApiErrorMessage,
+  hideCrudSession,
+  releaseCrudSession,
+} from "../lib/api";
+import { CRUD_CODIGO, CRUD_CONTEXTO, CRUD_EVIDENCIAS, CRUD_PASOS, CRUD_PROGRAMA, CRUD_TITULO, formatCrudSize } from "../lib/crudScrum";
 import type { ClassGroup } from "../lib/types";
 
 export default function TeacherCrudPanel({
@@ -15,6 +24,7 @@ export default function TeacherCrudPanel({
   hideGroupPicker?: boolean;
 }) {
   const qc = useQueryClient();
+  const [downloadError, setDownloadError] = useState("");
   const selectedGroup = groups.find((group) => group.id === selectedGroupId);
   const sessionQuery = useQuery({
     queryKey: ["crud-session", selectedGroupId],
@@ -28,6 +38,25 @@ export default function TeacherCrudPanel({
     },
   });
   const released = sessionQuery.data?.released ?? false;
+  const studentsQuery = useQuery({
+    queryKey: ["group-students", selectedGroupId],
+    queryFn: () => fetchGroupStudents(selectedGroupId),
+    enabled: !!selectedGroupId,
+  });
+  const deliveriesQuery = useQuery({
+    queryKey: ["crud-deliveries", selectedGroupId],
+    queryFn: () => fetchTeacherCrudDeliveries(selectedGroupId),
+    enabled: !!selectedGroupId,
+    refetchInterval: 10_000,
+  });
+  const students = [...(studentsQuery.data?.students ?? [])].sort((a, b) => {
+    const left = a.listNumber ?? 999;
+    const right = b.listNumber ?? 999;
+    if (left !== right) return left - right;
+    return a.displayName.localeCompare(b.displayName, "es");
+  });
+  const byStudent = new Map((deliveriesQuery.data?.deliveries ?? []).map((item) => [item.studentId, item]));
+  const delivered = students.filter((student) => byStudent.has(student.id)).length;
 
   return (
     <div className="space-y-4">
@@ -63,7 +92,7 @@ export default function TeacherCrudPanel({
           onClick={() => {
             const next = !released;
             const question = next
-              ? `¿Liberar TEST para el grupo ${selectedGroup?.code ?? ""}?\n\nCada alumno hace el formulario y el CRUD de 3 tablas en la base 302.`
+              ? `¿Liberar TEST para el grupo ${selectedGroup?.code ?? ""}?\n\nEl ejemplo es la tabla test. Cada alumno sube un PDF con el CRUD de otras 3 tablas.`
               : "¿Ocultar TEST para este grupo?";
             if (!window.confirm(question)) return;
             releaseMutation.mutate(next);
@@ -74,9 +103,25 @@ export default function TeacherCrudPanel({
         >
           {released ? "Ocultar a los alumnos" : "Liberar a los alumnos"}
         </button>
+        <p className="mt-3 text-sm text-slate-300">
+          {delivered} de {students.length} alumnos ya subieron su PDF.
+        </p>
         {sessionQuery.isError ? (
           <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(sessionQuery.error)}</p>
         ) : null}
+        {downloadError ? <p className="mt-3 text-sm text-rose-200">{downloadError}</p> : null}
+        {deliveriesQuery.isError ? (
+          <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(deliveriesQuery.error)}</p>
+        ) : null}
+      </section>
+
+      <section className="rounded-3xl border border-emerald-400/40 bg-emerald-500/10 p-5">
+        <h3 className="text-lg font-bold text-white">Qué tienen que subir</h3>
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-100">
+          {CRUD_EVIDENCIAS.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
       </section>
 
       <section className="rounded-3xl border border-emerald-400/40 bg-emerald-500/10 p-5">
@@ -90,6 +135,40 @@ export default function TeacherCrudPanel({
           {CRUD_CODIGO}
         </pre>
       </section>
+
+      {students.map((student) => {
+        const file = byStudent.get(student.id);
+        return (
+          <section key={student.id} className="glass flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <p className="font-semibold text-white">
+                {student.listNumber != null ? `${student.listNumber}. ` : ""}
+                {student.displayName}
+              </p>
+              {file ? (
+                <p className="text-sm text-emerald-100">
+                  {file.fileName} · {formatCrudSize(file.sizeBytes)}
+                </p>
+              ) : (
+                <p className="text-sm text-slate-400">Todavía no sube el PDF.</p>
+              )}
+            </div>
+            {file ? (
+              <button
+                type="button"
+                onClick={() => {
+                  downloadCrudPdf(selectedGroupId, student.id, file.fileName).catch((err) =>
+                    setDownloadError(getApiErrorMessage(err)),
+                  );
+                }}
+                className="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-slate-950"
+              >
+                Descargar PDF
+              </button>
+            ) : null}
+          </section>
+        );
+      })}
     </div>
   );
 }

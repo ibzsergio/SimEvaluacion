@@ -508,3 +508,17 @@ model ExamDelivery {
   @@unique([groupId, studentId])
   @@index([groupId])
 }
+
+model CrudDelivery {
+  id         String   @id @default(cuid())
+  groupId    String
+  studentId  String
+  fileName   String
+  mimeType   String
+  fileData   Bytes
+  sizeBytes  Int
+  uploadedAt DateTime @default(now()) @updatedAt
+
+  @@unique([groupId, studentId])
+  @@index([groupId])
+}

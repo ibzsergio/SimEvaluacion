@@ -1205,6 +1205,40 @@ export async function downloadExamPdf(groupId: string, studentId: string, fileNa
   );
 }
 
+export type CrudDeliveryFile = {
+  fileName: string;
+  sizeBytes: number;
+  uploadedAt: string;
+};
+
+export async function fetchStudentCrudDelivery() {
+  const { data } = await api.get<{ allowed: boolean; delivery: CrudDeliveryFile | null }>("/student/crud/delivery");
+  return data;
+}
+
+export async function uploadCrudPdf(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("completo", "si");
+  const { data } = await api.post<{ delivery: CrudDeliveryFile }>("/student/crud/delivery", form);
+  return data.delivery;
+}
+
+export async function fetchTeacherCrudDeliveries(groupId: string) {
+  const { data } = await api.get<{
+    groupCode: string;
+    deliveries: Array<CrudDeliveryFile & { studentId: string }>;
+  }>(`/teacher/groups/${groupId}/crud/deliveries`);
+  return data;
+}
+
+export async function downloadCrudPdf(groupId: string, studentId: string, fileName: string) {
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/crud/${encodeURIComponent(studentId)}/file`,
+    fileName,
+  );
+}
+
 export async function hideBasedatosSession(groupId: string) {
   return basedatosSession(groupId, (state) => ({ ...state, released: false }));
 }
