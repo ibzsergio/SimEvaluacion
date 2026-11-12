@@ -113,58 +113,144 @@ export function sqlScrumActivity(key: SqlScrumKey) {
   return found;
 }
 
-export type SqlScrumGithubPaso = { quien: string; texto: string };
+export type SqlScrumGithubPaso = { quien: string; titulo: string; lineas: string[]; ejemplo?: string };
 
 export function sqlScrumGithub(key: SqlScrumKey): { carpeta: string; pasos: SqlScrumGithubPaso[] } {
   const actividad = key === "bd2" ? "II" : "III";
   const carpeta = key === "bd2" ? "actividad-ii" : "actividad-iii";
   const tablas =
     key === "bd2"
-      ? "PRENDAS, PEDIDOS o ENTREGAS, de la base UNIFORME"
-      : "EQUIPOS, SERVICIOS, ORDENES o PAGOS, de la base TALLER";
+      ? "PRENDAS, PEDIDOS o ENTREGAS. La base se llama UNIFORME."
+      : "EQUIPOS, SERVICIOS, ORDENES o PAGOS. La base se llama TALLER.";
+  const nombre = "ana-lopez";
   return {
     carpeta,
     pasos: [
       {
         quien: "El líder",
-        texto: `Reparte una tabla a cada integrante. En esta actividad las tablas son ${tablas}. Anota el nombre de la persona y la tabla que le tocó. Cada quien trabaja solo su tabla.`,
+        titulo: "Reparte una tabla",
+        lineas: [
+          `Las tablas de esta actividad son: ${tablas}`,
+          "Escribe en una hoja el nombre de cada integrante y la tabla que le toca.",
+          "Una persona trabaja una sola tabla.",
+        ],
       },
       {
-        quien: "Cada integrante, en su computadora",
-        texto:
-          "Prepara dos cosas de la tabla que le tocó. Primera: script.sql, el script que crea la base de datos y su tabla, con el llenado y los cambios. Segunda: app.py, otra aplicación de Tkinter que se conecta a esa base y a esa tabla, y hace el CRUD: guardar, consultar, actualizar y eliminar.",
+        quien: "Cada integrante",
+        titulo: "Prepara dos archivos en su computadora, antes de abrir GitHub",
+        lineas: [
+          "script.sql es el script de su tabla: crea la base, crea la tabla, la llena y hace los cambios.",
+          "app.py es otra aplicación, la de Tkinter. Se conecta a esa misma base y a esa tabla.",
+          "En esa aplicación se debe poder guardar, consultar, actualizar y eliminar.",
+          "Deja los dos archivos abiertos. Después vas a copiar todo el texto.",
+        ],
       },
       {
         quien: "Un integrante",
-        texto:
-          "Entra a github.com e inicia sesión. Arriba a la derecha pulsa + y elige New repository. En Repository name escribe bd-302-equipo- y el número del equipo. Ejemplo: bd-302-equipo-1. Elige Public. Marca Add a README. Pulsa Create repository. Es un solo proyecto para todo el equipo y para las dos actividades. Si ya lo crearon en la otra actividad, no creen otro: abran el mismo.",
+        titulo: "Entra a GitHub",
+        lineas: [
+          "Abre el navegador y escribe github.com.",
+          "Arriba a la derecha pulsa Sign in e inicia sesión con la cuenta que ya creó.",
+          "Cuando ya entró, arriba a la derecha se ve su foto.",
+        ],
       },
       {
         quien: "Ese mismo integrante",
-        texto:
-          "Dentro del repositorio pulsa Settings, luego Collaborators y luego Add people. Escribe el usuario de GitHub de cada compañero y el del docente. Pulsa Add.",
+        titulo: "Crea el proyecto del equipo",
+        lineas: [
+          "Junto a su foto hay un signo +. Púlsalo.",
+          "En el menú que se abre, pulsa New repository.",
+          "En la caja Repository name escribe el nombre del proyecto. Cambia el número final por el de su equipo.",
+          "Marca el círculo que dice Public.",
+          "Marca la casilla Add a README.",
+          "Pulsa el botón verde Create repository.",
+          "Si la otra actividad ya creó este proyecto, no creen otro. Abran el que ya existe y sigan con el siguiente paso.",
+        ],
+        ejemplo: "bd-302-equipo-1",
+      },
+      {
+        quien: "Ese mismo integrante",
+        titulo: "Invita a cada compañero",
+        lineas: [
+          "Arriba se ven unas pestañas. Pulsa Settings.",
+          "En el menú de la izquierda busca la palabra Collaborators. Si no la ves, pulsa Access y ahí aparece.",
+          "Pulsa el botón Add people.",
+          "Escribe el usuario de GitHub de un compañero. El usuario es el nombre de su cuenta, el que va después de github.com/.",
+          "Pulsa Add.",
+          "Haz lo mismo con cada compañero y también con el docente.",
+        ],
       },
       {
         quien: "Cada compañero",
-        texto:
-          "Entra a github.com con su cuenta. Abre la campana de notificaciones y acepta la invitación. También puede aceptarla en el correo. Si no acepta, no puede subir su carpeta.",
+        titulo: "Acepta la invitación con su propia cuenta",
+        lineas: [
+          "Entra a github.com e inicia sesión con su cuenta, no con la del líder.",
+          "Arriba a la derecha pulsa la campana.",
+          "Abre el aviso de invitación y pulsa Accept invitation.",
+          "Si la campana está vacía, abre el correo con el que creó la cuenta y acepta desde ahí.",
+          "Al aceptar, debe ver el proyecto del equipo. Si no lo ve, todavía no puede subir sus archivos.",
+        ],
       },
       {
         quien: "Cada integrante",
-        texto: `Abre el repositorio del equipo. Pulsa Add file y después Create new file. En el nombre escribe ${carpeta}/sunombre/script.sql. Ejemplo: ${carpeta}/ana/script.sql. Pega su script.sql y pulsa Commit changes. El commit debe quedar con su usuario.`,
+        titulo: "Sube su script.sql",
+        lineas: [
+          "Abre el proyecto del equipo.",
+          "Arriba a la derecha de la lista de archivos hay un botón gris que dice Add file. Púlsalo.",
+          "Pulsa Create new file.",
+          "En la caja del nombre, la de hasta arriba, escribe la ruta completa. Las diagonales crean las carpetas.",
+          "Su nombre va en minúsculas, sin acentos. El espacio se cambia por un guion. Ana López escribe ana-lopez.",
+          "Haz clic en el cuadro grande de abajo y pega todo el texto de script.sql.",
+          "Baja hasta el final de la página. Pulsa el botón verde Commit changes.",
+          "Si se abre una ventana, pulsa otra vez el botón verde Commit changes. Ahí queda guardado con tu usuario.",
+        ],
+        ejemplo: `${carpeta}/${nombre}/script.sql`,
       },
       {
         quien: "Cada integrante",
-        texto: `Otra vez Add file y Create new file. Ahora el nombre es ${carpeta}/sunombre/app.py. Ejemplo: ${carpeta}/ana/app.py. Pega su aplicación de Tkinter y pulsa Commit changes, otra vez con su usuario. Su carpeta queda con los dos archivos: el script de su tabla y el CRUD que se conecta a ella.`,
+        titulo: "Sube su app.py en la misma carpeta",
+        lineas: [
+          "Regresa a la página principal del proyecto.",
+          "Otra vez pulsa Add file y después Create new file.",
+          "En la caja del nombre escribe la misma carpeta y termina en app.py.",
+          "Pega todo el programa de Tkinter en el cuadro grande.",
+          "Baja y pulsa Commit changes. Si sale la ventana, pulsa Commit changes otra vez.",
+        ],
+        ejemplo: `${carpeta}/${nombre}/app.py`,
+      },
+      {
+        quien: "Cada integrante",
+        titulo: "Comprueba su carpeta",
+        lineas: [
+          "En la página principal del proyecto pulsa la carpeta de esta actividad.",
+          "Entra a la carpeta con su nombre.",
+          "Ahí deben verse dos archivos: script.sql y app.py.",
+          "Junto a cada archivo debe aparecer su usuario de GitHub.",
+        ],
+        ejemplo: `${carpeta}/${nombre}/`,
       },
       {
         quien: "El líder",
-        texto:
-          "Abre README.md, pulsa el lápiz y escribe el nombre del equipo, el enlace del repositorio y la lista: persona, usuario de GitHub y tabla que le tocó. Pulsa Commit changes.",
+        titulo: "Anota en el README quién hizo cada tabla",
+        lineas: [
+          "En la lista de archivos pulsa README.md.",
+          "Pulsa el ícono del lápiz. Se llama Edit this file.",
+          "Escribe el nombre del equipo.",
+          "Escribe el enlace del proyecto: es la dirección que se ve arriba en el navegador y empieza con https://github.com/.",
+          "Escribe una línea por persona: su nombre, su usuario de GitHub y la tabla que le tocó.",
+          "Baja y pulsa Commit changes dos veces, igual que al subir un archivo.",
+        ],
       },
       {
-        quien: "El integrante que sube el PDF",
-        texto: `El PDF es aparte del proyecto. Un solo archivo, de máximo 8 MB. La portada lleva el enlace del repositorio. Después, de cada integrante, las evidencias de que su Tkinter funciona con la base y con la tabla que le tocó. En SimEvaluación marca las casillas y sube ese PDF de la actividad ${actividad}.`,
+        quien: "Un integrante",
+        titulo: `Sube el PDF de la actividad ${actividad} en SimEvaluación`,
+        lineas: [
+          "El PDF es otro archivo. Se entrega aquí, en la plataforma, aparte de GitHub.",
+          "La portada lleva el enlace del proyecto.",
+          "Después van las evidencias de cada integrante: su Tkinter funcionando con la base y con la tabla que le tocó.",
+          "Es un solo PDF y pesa 8 MB o menos.",
+          "Marca todas las casillas de abajo y pulsa Subir PDF.",
+        ],
       },
     ],
   };
@@ -178,7 +264,7 @@ export function sqlScrumGithubChecks(key: SqlScrumKey) {
     { id: "github-tabla", text: "El líder repartió una tabla por integrante y el README dice quién tiene cuál." },
     {
       id: "github-carpeta",
-      text: `Cada integrante tiene su carpeta ${carpeta}/sunombre/ con script.sql y con app.py, y el commit está a su nombre.`,
+      text: `Cada integrante tiene su carpeta ${carpeta}/su-nombre/ con script.sql y con app.py, y junto al archivo aparece su usuario.`,
     },
     { id: "github-enlace", text: "La portada del PDF trae el enlace del repositorio y las evidencias del CRUD de cada tabla." },
   ];
