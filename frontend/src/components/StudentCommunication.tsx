@@ -3,6 +3,7 @@ import { useState } from "react";
 import { fetchStudentComms, getApiErrorMessage, downloadStudentCalendarFile } from "../lib/api";
 import { BASEDATOS_ANNOUNCEMENT_TITLE, basedatosPublicText } from "../lib/basedatosLive";
 import { CRUD_ANNOUNCEMENT_TITLE, crudPublicText, isCrudAnnouncement } from "../lib/crudLive";
+import { isSqlScrumAnnouncement, sqlScrumPublicText } from "../lib/sqlScrumLive";
 import { MAQUINA_ANNOUNCEMENT_TITLE, maquinaPublicText } from "../lib/maquinaLive";
 import { POPUP_ANNOUNCEMENT_TITLE } from "../lib/popupLive";
 
@@ -89,7 +90,9 @@ export default function StudentCommunication() {
                       ? basedatosPublicText(a.body)
                       : isCrudAnnouncement(a.title)
                         ? crudPublicText(a.body)
-                        : a.body}
+                        : isSqlScrumAnnouncement(a.title)
+                          ? sqlScrumPublicText(a.body)
+                          : a.body}
                 </p>
                 <p className="mt-2 text-xs text-slate-500">{formatDate(a.createdAt)}</p>
               </li>

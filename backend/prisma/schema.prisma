@@ -525,3 +525,21 @@ model CrudDelivery {
   @@unique([groupId, teamKey])
   @@index([groupId])
 }
+
+/// Un PDF por equipo para ACTIVIDAD BASE DE DATOS II y III.
+model SqlScrumDelivery {
+  id           String   @id @default(cuid())
+  activityKey  String
+  groupId      String
+  teamKey      String
+  teamName     String
+  fileName     String
+  mimeType     String
+  fileData     Bytes
+  sizeBytes    Int
+  uploadedById String
+  uploadedAt   DateTime @default(now()) @updatedAt
+
+  @@unique([activityKey, groupId, teamKey])
+  @@index([groupId, activityKey])
+}

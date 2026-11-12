@@ -43,6 +43,8 @@ import {
   type CrudLiveState,
 } from "./crudLive";
 import { crudPuntosDe } from "./crudScrum";
+import { sqlScrumPuntosDe, type SqlScrumKey } from "./sqlScrum";
+import { serializeSqlScrumState, sqlScrumNote, sqlScrumStateFromAnnouncements, sqlScrumTitle } from "./sqlScrumLive";
 import type {
   Activity,
   ClassGroup,
@@ -1163,6 +1165,132 @@ export async function addCrudNote(
   });
   await syncCrudNoteGrades(groupId, payload.teamKey);
   return saved;
+}
+
+async function saveSqlScrumState(groupId: string, key: SqlScrumKey, notes: import("./sqlScrumLive").SqlScrumLiveState["notes"]) {
+  const title = sqlScrumTitle(key);
+  const comms = await fetchTeacherComms();
+  const previous = comms.announcements.filter((item) => item.title === title && item.groupId === groupId);
+  const created = await createAnnouncement({
+    title,
+    body: serializeSqlScrumState(key, { v: 1, notes }),
+    groupId,
+  });
+  await Promise.all(previous.filter((item) => item.id !== created.id).map((item) => deleteAnnouncement(item.id)));
+}
+
+async function syncSqlScrumGrades(groupId: string, key: SqlScrumKey, teamKey: string) {
+  const [comms, deliveries, activities, base] = await Promise.all([
+    fetchTeacherComms(),
+    fetchTeacherSqlDeliveries(groupId, key),
+    fetchActivities(groupId),
+    projectTeamsForPopup(groupId),
+  ]);
+  if (!deliveries.deliveries.some((item) => item.teamKey === teamKey)) return;
+  const title = sqlScrumTitle(key);
+  const activity = activities.find((item) => item.name === title);
+  const team = base.teams.find((item) => item.key === teamKey);
+  if (!activity || !team) return;
+  const notes = sqlScrumStateFromAnnouncements(comms.announcements, key, groupId).notes[teamKey] ?? [];
+  await saveGradesBatch(
+    groupId,
+    team.members.map((member) => ({
+      activityId: activity.id,
+      studentId: member.studentId,
+      points: sqlScrumPuntosDe(notes, member.studentId),
+    })),
+  );
+}
+
+export async function addSqlScrumNote(
+  groupId: string,
+  key: SqlScrumKey,
+  payload: { teamKey: string; code: string; label?: string; points?: number; studentId?: string | null },
+) {
+  const base = await projectTeamsForPopup(groupId);
+  const team = base.teams.find((item) => item.key === payload.teamKey);
+  if (!team) throw new Error("No encontré ese equipo de proyecto.");
+  const member = payload.studentId ? team.members.find((item) => item.studentId === payload.studentId) : null;
+  if (payload.studentId && !member) throw new Error("Esa persona no está en el equipo.");
+  const custom =
+    payload.code === "custom" && payload.label && payload.points != null
+      ? { label: payload.label, points: payload.points }
+      : undefined;
+  const note = sqlScrumNote(payload.code, member, custom);
+  const comms = await fetchTeacherComms();
+  const current = sqlScrumStateFromAnnouncements(comms.announcements, key, groupId);
+  const notes = {
+    ...current.notes,
+    [payload.teamKey]: [...(current.notes[payload.teamKey] ?? []), note],
+  };
+  await saveSqlScrumState(groupId, key, notes);
+  await syncSqlScrumGrades(groupId, key, payload.teamKey);
+  return { v: 1 as const, notes };
+}
+
+export async function removeSqlScrumNote(
+  groupId: string,
+  key: SqlScrumKey,
+  payload: { teamKey: string; noteId: string },
+) {
+  const comms = await fetchTeacherComms();
+  const current = sqlScrumStateFromAnnouncements(comms.announcements, key, groupId);
+  const notes = {
+    ...current.notes,
+    [payload.teamKey]: (current.notes[payload.teamKey] ?? []).filter((note) => note.id !== payload.noteId),
+  };
+  await saveSqlScrumState(groupId, key, notes);
+  await syncSqlScrumGrades(groupId, key, payload.teamKey);
+  return { v: 1 as const, notes };
+}
+
+export type SqlScrumDeliveryFile = {
+  teamKey: string;
+  teamName: string;
+  fileName: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  uploadedByName: string;
+};
+
+export async function fetchStudentSqlDelivery(key: SqlScrumKey) {
+  const { data } = await api.get<{
+    allowed: boolean;
+    teamKey: string;
+    teamName: string;
+    uploadOpen: boolean;
+    uploadText: string;
+    delivery: SqlScrumDeliveryFile | null;
+  }>(`/student/sql-scrum/${key}/delivery`);
+  return data;
+}
+
+export async function uploadSqlPdf(key: SqlScrumKey, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("completo", "si");
+  const { data } = await api.post<{ delivery: SqlScrumDeliveryFile }>(`/student/sql-scrum/${key}/delivery`, form);
+  return data.delivery;
+}
+
+export async function fetchTeacherSqlDeliveries(groupId: string, key: SqlScrumKey) {
+  const { data } = await api.get<{
+    groupCode: string;
+    teams: Array<{
+      key: string;
+      name: string;
+      members: Array<{ id: string; displayName: string; listNumber: number | null }>;
+    }>;
+    deliveries: SqlScrumDeliveryFile[];
+  }>(`/teacher/groups/${groupId}/sql-scrum/${key}/deliveries`);
+  return data;
+}
+
+export async function downloadSqlPdf(groupId: string, key: SqlScrumKey, teamKey: string, fileName: string) {
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/sql-scrum/${key}/${encodeURIComponent(teamKey)}/file`,
+    fileName,
+  );
 }
 
 export async function removeCrudNote(groupId: string, payload: { teamKey: string; noteId: string }) {

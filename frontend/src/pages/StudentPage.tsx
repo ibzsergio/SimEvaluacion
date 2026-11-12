@@ -9,6 +9,7 @@ import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentExtraCard from "../components/StudentExtraCard";
 import StudentBasedatosCard from "../components/StudentBasedatosCard";
 import StudentCrudCard from "../components/StudentCrudCard";
+import StudentSqlScrumCard from "../components/StudentSqlScrumCard";
 import StudentExamenCard from "../components/StudentExamenCard";
 import StudentMaquinaCard from "../components/StudentMaquinaCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
@@ -163,6 +164,9 @@ export default function StudentPage() {
       )}
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
+
+      <StudentSqlScrumCard activityKey="bd2" groupCode={data.group?.code} studentId={user?.id} />
+      <StudentSqlScrumCard activityKey="bd3" groupCode={data.group?.code} studentId={user?.id} />
 
       <StudentCrudCard groupCode={data.group?.code} studentId={user?.id} />
 

@@ -10,6 +10,7 @@ import type { ClassGroup } from "../lib/types";
 import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherBasedatosPanel from "./TeacherBasedatosPanel";
 import TeacherCrudPanel from "./TeacherCrudPanel";
+import TeacherSqlScrumPanel from "./TeacherSqlScrumPanel";
 import TeacherExamenPanel from "./TeacherExamenPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
 import TeacherImproPanel from "./TeacherImproPanel";
@@ -27,7 +28,7 @@ export default function TeacherScrumActivitiesPanel({
   onSelectGroup: (id: string) => void;
 }) {
   const [current, setCurrent] = useState<
-    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud"
+    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3"
   >("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
@@ -95,7 +96,15 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "crud" ? (
+      {current === "bd2" || current === "bd3" ? (
+        <TeacherSqlScrumPanel
+          activityKey={current}
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "crud" ? (
         <TeacherCrudPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -164,9 +173,43 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              CRUDS BD. TEST es solo el ejemplo de conexión. El líder reparte 5 tablas. En el PDF se ve a cada integrante trabajando con la suya, con su script y con el CRUD funcionando.
+              Hoy están publicadas ACTIVIDAD BASE DE DATOS II y III. El grupo 301 sube hasta las 10:00 a. m. y el 302 hasta las 12:00. Un PDF por equipo, 2000 puntos.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("bd2")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum · hoy</p>
+              <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD BASE DE DATOS II</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Base UNIFORME. Crean, actualizan, eliminan y agregan ENTREGAS. Un PDF por equipo. 2000 puntos.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-100">
+              Publicada
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("bd3")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum · hoy</p>
+              <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD BASE DE DATOS III</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Base TALLER. Crean, actualizan, eliminan y agregan PAGOS. Un PDF por equipo. 2000 puntos.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-100">
+              Publicada
+            </span>
+          </button>
 
           <button
             type="button"
