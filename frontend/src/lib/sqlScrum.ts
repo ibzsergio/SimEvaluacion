@@ -115,66 +115,71 @@ export function sqlScrumActivity(key: SqlScrumKey) {
 
 export type SqlScrumGithubPaso = { quien: string; texto: string };
 
-export function sqlScrumGithub(key: SqlScrumKey): { archivo: string; pasos: SqlScrumGithubPaso[] } {
+export function sqlScrumGithub(key: SqlScrumKey): { carpeta: string; pasos: SqlScrumGithubPaso[] } {
   const actividad = key === "bd2" ? "II" : "III";
-  const archivo = key === "bd2" ? "ii-tunombre.sql" : "iii-tunombre.sql";
-  const parte =
+  const carpeta = key === "bd2" ? "actividad-ii" : "actividad-iii";
+  const tablas =
     key === "bd2"
-      ? "Pega la parte que te tocó de la base UNIFORME: crear y llenar PRENDAS, los cambios de PEDIDOS, o la tabla ENTREGAS."
-      : "Pega la parte que te tocó de la base TALLER: crear y llenar EQUIPOS o SERVICIOS, los cambios de ORDENES, o la tabla PAGOS.";
+      ? "PRENDAS, PEDIDOS o ENTREGAS, de la base UNIFORME"
+      : "EQUIPOS, SERVICIOS, ORDENES o PAGOS, de la base TALLER";
   return {
-    archivo,
+    carpeta,
     pasos: [
       {
-        quien: "El integrante que sube",
-        texto:
-          "Entra a github.com e inicia sesión. Arriba a la derecha pulsa el signo + y elige New repository.",
+        quien: "El líder",
+        texto: `Reparte una tabla a cada integrante. En esta actividad las tablas son ${tablas}. Anota el nombre de la persona y la tabla que le tocó. Cada quien trabaja solo su tabla.`,
       },
       {
-        quien: "El integrante que sube",
+        quien: "Cada integrante, en su computadora",
         texto:
-          "En Repository name escribe bd-302-equipo- y el número de su equipo. Ejemplo: bd-302-equipo-1. Elige Public. Marca Add a README. Pulsa Create repository. El equipo usa un solo repositorio para la actividad II y la III. Si ya lo crearon en la otra actividad, no creen otro: abran el mismo.",
+          "Prepara dos cosas de la tabla que le tocó. Primera: script.sql, el script que crea la base de datos y su tabla, con el llenado y los cambios. Segunda: app.py, otra aplicación de Tkinter que se conecta a esa base y a esa tabla, y hace el CRUD: guardar, consultar, actualizar y eliminar.",
       },
       {
-        quien: "El integrante que sube",
+        quien: "Un integrante",
         texto:
-          "Dentro del repositorio pulsa Settings. En el menú de la izquierda pulsa Collaborators y después Add people. Escribe el usuario de GitHub de cada compañero y también el del docente. Pulsa Add.",
+          "Entra a github.com e inicia sesión. Arriba a la derecha pulsa + y elige New repository. En Repository name escribe bd-302-equipo- y el número del equipo. Ejemplo: bd-302-equipo-1. Elige Public. Marca Add a README. Pulsa Create repository. Es un solo proyecto para todo el equipo y para las dos actividades. Si ya lo crearon en la otra actividad, no creen otro: abran el mismo.",
       },
       {
-        quien: "Cada compañero",
+        quien: "Ese mismo integrante",
         texto:
-          "Entra a github.com con su cuenta. Abre la campana de notificaciones y acepta la invitación. También puede aceptarla en el correo. Si no acepta, no puede subir su archivo.",
-      },
-      {
-        quien: "El integrante que sube",
-        texto:
-          "Regresa al repositorio. Pulsa Add file y después Upload files. Sube los archivos .py del programa de Tkinter. Abajo escribe «subo el programa de Tkinter» y pulsa Commit changes.",
-      },
-      {
-        quien: "El integrante que sube",
-        texto:
-          "Abre el archivo README.md y pulsa el lápiz. Escribe el nombre del equipo, el usuario de GitHub de cada integrante y el enlace del repositorio. Pulsa Commit changes.",
+          "Dentro del repositorio pulsa Settings, luego Collaborators y luego Add people. Escribe el usuario de GitHub de cada compañero y el del docente. Pulsa Add.",
       },
       {
         quien: "Cada compañero",
-        texto: `Abre el mismo repositorio. Pulsa Add file y después Create new file. El nombre del archivo es ${archivo}. Ejemplo: ${archivo.replace("tunombre", "ana")}. ${parte} Abajo escribe «mi parte de la actividad ${actividad}» y pulsa Commit changes. El commit debe quedar con su usuario. Esa es su participación.`,
+        texto:
+          "Entra a github.com con su cuenta. Abre la campana de notificaciones y acepta la invitación. También puede aceptarla en el correo. Si no acepta, no puede subir su carpeta.",
       },
       {
-        quien: "El integrante que sube",
+        quien: "Cada integrante",
+        texto: `Abre el repositorio del equipo. Pulsa Add file y después Create new file. En el nombre escribe ${carpeta}/sunombre/script.sql. Ejemplo: ${carpeta}/ana/script.sql. Pega su script.sql y pulsa Commit changes. El commit debe quedar con su usuario.`,
+      },
+      {
+        quien: "Cada integrante",
+        texto: `Otra vez Add file y Create new file. Ahora el nombre es ${carpeta}/sunombre/app.py. Ejemplo: ${carpeta}/ana/app.py. Pega su aplicación de Tkinter y pulsa Commit changes, otra vez con su usuario. Su carpeta queda con los dos archivos: el script de su tabla y el CRUD que se conecta a ella.`,
+      },
+      {
+        quien: "El líder",
         texto:
-          "Arma un solo PDF, de máximo 8 MB. La portada lleva el enlace del repositorio. Después van las evidencias en Tkinter de cada tabla. En SimEvaluación marca las casillas y sube ese PDF. Si lo vuelven a subir, reemplaza el anterior.",
+          "Abre README.md, pulsa el lápiz y escribe el nombre del equipo, el enlace del repositorio y la lista: persona, usuario de GitHub y tabla que le tocó. Pulsa Commit changes.",
+      },
+      {
+        quien: "El integrante que sube el PDF",
+        texto: `El PDF es aparte del proyecto. Un solo archivo, de máximo 8 MB. La portada lleva el enlace del repositorio. Después, de cada integrante, las evidencias de que su Tkinter funciona con la base y con la tabla que le tocó. En SimEvaluación marca las casillas y sube ese PDF de la actividad ${actividad}.`,
       },
     ],
   };
 }
 
 export function sqlScrumGithubChecks(key: SqlScrumKey) {
-  const archivo = key === "bd2" ? "ii-tunombre.sql" : "iii-tunombre.sql";
+  const carpeta = key === "bd2" ? "actividad-ii" : "actividad-iii";
   return [
-    { id: "github-repo", text: "El repositorio bd-302-equipo-… existe. Si ya lo crearon en la otra actividad, usaron el mismo." },
-    { id: "github-invitacion", text: "Cada compañero aceptó la invitación y puede abrir el repositorio." },
-    { id: "github-py", text: "En el repositorio ya están los archivos .py de Tkinter y el README con los usuarios y el enlace." },
-    { id: "github-commit", text: `Cada compañero tiene su commit en ${archivo}, con su usuario de GitHub.` },
-    { id: "github-enlace", text: "La portada del PDF trae el enlace del repositorio." },
+    { id: "github-repo", text: "Hay un solo repositorio del equipo, bd-302-equipo-…. La actividad II y la III están en ese mismo proyecto." },
+    { id: "github-invitacion", text: "Cada integrante aceptó la invitación y puede abrir el repositorio." },
+    { id: "github-tabla", text: "El líder repartió una tabla por integrante y el README dice quién tiene cuál." },
+    {
+      id: "github-carpeta",
+      text: `Cada integrante tiene su carpeta ${carpeta}/sunombre/ con script.sql y con app.py, y el commit está a su nombre.`,
+    },
+    { id: "github-enlace", text: "La portada del PDF trae el enlace del repositorio y las evidencias del CRUD de cada tabla." },
   ];
 }
