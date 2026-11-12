@@ -6,10 +6,12 @@ import {
   SQL_SCRUM_PUNTOS,
   sqlScrumActivity,
   sqlScrumCierre,
+  sqlScrumGithubChecks,
   sqlScrumPuntosDe,
   type SqlScrumKey,
 } from "../lib/sqlScrum";
 import { sqlScrumStateFromAnnouncements } from "../lib/sqlScrumLive";
+import SqlScrumGithubSteps from "./SqlScrumGithubSteps";
 
 export default function StudentSqlScrumCard({
   activityKey,
@@ -57,7 +59,8 @@ export default function StudentSqlScrumCard({
   const code = groupCode?.trim();
   if (code !== "301" && code !== "302") return null;
 
-  const ready = activity.checks.every((item) => checked[item.id]);
+  const checks = code === "302" ? [...activity.checks, ...sqlScrumGithubChecks(activityKey)] : activity.checks;
+  const ready = checks.every((item) => checked[item.id]);
   const delivery = deliveryQuery.data?.delivery ?? null;
   const teamNotes =
     sqlScrumStateFromAnnouncements(comms.data?.announcements ?? [], activityKey).notes[deliveryQuery.data?.teamKey ?? ""] ??
@@ -100,8 +103,9 @@ export default function StudentSqlScrumCard({
           <li key={paso}>{paso}</li>
         ))}
       </ol>
+      {code === "302" ? <SqlScrumGithubSteps activityKey={activityKey} /> : null}
       <ul className="mt-4 space-y-2">
-        {activity.checks.map((item) => (
+        {checks.map((item) => (
           <li key={item.id}>
             <label className="flex items-start gap-2 text-sm text-slate-100">
               <input

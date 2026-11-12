@@ -112,3 +112,69 @@ export function sqlScrumActivity(key: SqlScrumKey) {
   if (!found) throw new Error("Actividad no encontrada.");
   return found;
 }
+
+export type SqlScrumGithubPaso = { quien: string; texto: string };
+
+export function sqlScrumGithub(key: SqlScrumKey): { archivo: string; pasos: SqlScrumGithubPaso[] } {
+  const actividad = key === "bd2" ? "II" : "III";
+  const archivo = key === "bd2" ? "ii-tunombre.sql" : "iii-tunombre.sql";
+  const parte =
+    key === "bd2"
+      ? "Pega la parte que te tocó de la base UNIFORME: crear y llenar PRENDAS, los cambios de PEDIDOS, o la tabla ENTREGAS."
+      : "Pega la parte que te tocó de la base TALLER: crear y llenar EQUIPOS o SERVICIOS, los cambios de ORDENES, o la tabla PAGOS.";
+  return {
+    archivo,
+    pasos: [
+      {
+        quien: "El integrante que sube",
+        texto:
+          "Entra a github.com e inicia sesión. Arriba a la derecha pulsa el signo + y elige New repository.",
+      },
+      {
+        quien: "El integrante que sube",
+        texto:
+          "En Repository name escribe bd-302-equipo- y el número de su equipo. Ejemplo: bd-302-equipo-1. Elige Public. Marca Add a README. Pulsa Create repository. El equipo usa un solo repositorio para la actividad II y la III. Si ya lo crearon en la otra actividad, no creen otro: abran el mismo.",
+      },
+      {
+        quien: "El integrante que sube",
+        texto:
+          "Dentro del repositorio pulsa Settings. En el menú de la izquierda pulsa Collaborators y después Add people. Escribe el usuario de GitHub de cada compañero y también el del docente. Pulsa Add.",
+      },
+      {
+        quien: "Cada compañero",
+        texto:
+          "Entra a github.com con su cuenta. Abre la campana de notificaciones y acepta la invitación. También puede aceptarla en el correo. Si no acepta, no puede subir su archivo.",
+      },
+      {
+        quien: "El integrante que sube",
+        texto:
+          "Regresa al repositorio. Pulsa Add file y después Upload files. Sube los archivos .py del programa de Tkinter. Abajo escribe «subo el programa de Tkinter» y pulsa Commit changes.",
+      },
+      {
+        quien: "El integrante que sube",
+        texto:
+          "Abre el archivo README.md y pulsa el lápiz. Escribe el nombre del equipo, el usuario de GitHub de cada integrante y el enlace del repositorio. Pulsa Commit changes.",
+      },
+      {
+        quien: "Cada compañero",
+        texto: `Abre el mismo repositorio. Pulsa Add file y después Create new file. El nombre del archivo es ${archivo}. Ejemplo: ${archivo.replace("tunombre", "ana")}. ${parte} Abajo escribe «mi parte de la actividad ${actividad}» y pulsa Commit changes. El commit debe quedar con su usuario. Esa es su participación.`,
+      },
+      {
+        quien: "El integrante que sube",
+        texto:
+          "Arma un solo PDF, de máximo 8 MB. La portada lleva el enlace del repositorio. Después van las evidencias en Tkinter de cada tabla. En SimEvaluación marca las casillas y sube ese PDF. Si lo vuelven a subir, reemplaza el anterior.",
+      },
+    ],
+  };
+}
+
+export function sqlScrumGithubChecks(key: SqlScrumKey) {
+  const archivo = key === "bd2" ? "ii-tunombre.sql" : "iii-tunombre.sql";
+  return [
+    { id: "github-repo", text: "El repositorio bd-302-equipo-… existe. Si ya lo crearon en la otra actividad, usaron el mismo." },
+    { id: "github-invitacion", text: "Cada compañero aceptó la invitación y puede abrir el repositorio." },
+    { id: "github-py", text: "En el repositorio ya están los archivos .py de Tkinter y el README con los usuarios y el enlace." },
+    { id: "github-commit", text: `Cada compañero tiene su commit en ${archivo}, con su usuario de GitHub.` },
+    { id: "github-enlace", text: "La portada del PDF trae el enlace del repositorio." },
+  ];
+}

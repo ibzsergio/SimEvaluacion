@@ -18,6 +18,7 @@ import {
 } from "../lib/sqlScrum";
 import { sqlScrumStateFromAnnouncements } from "../lib/sqlScrumLive";
 import type { ClassGroup } from "../lib/types";
+import SqlScrumGithubSteps from "./SqlScrumGithubSteps";
 
 export default function TeacherSqlScrumPanel({
   activityKey,
@@ -114,6 +115,7 @@ export default function TeacherSqlScrumPanel({
             <li key={paso}>{paso}</li>
           ))}
         </ol>
+        {selectedGroup?.code?.trim() === "302" ? <SqlScrumGithubSteps activityKey={activityKey} /> : null}
         {noteError ? <p className="mt-3 text-sm text-rose-200">{noteError}</p> : null}
         {downloadError ? <p className="mt-3 text-sm text-rose-200">{downloadError}</p> : null}
         {deliveriesQuery.isError ? <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(deliveriesQuery.error)}</p> : null}
