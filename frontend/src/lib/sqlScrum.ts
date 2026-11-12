@@ -1,7 +1,7 @@
 export type SqlScrumKey = "bd2" | "bd3";
 
 export const SQL_SCRUM_PUNTOS = 2000;
-export const SQL_SCRUM_PDF_MAX_BYTES = 12 * 1024 * 1024;
+export const SQL_SCRUM_PDF_MAX_BYTES = 8 * 1024 * 1024;
 
 export const SQL_SCRUM_NOTAS = [
   { code: "no_trabaja", label: "No está trabajando", points: 500 },
@@ -56,45 +56,53 @@ export const SQL_SCRUM_ACTIVITIES: SqlScrumActivity[] = [
     key: "bd2",
     title: "ACTIVIDAD BASE DE DATOS II",
     contexto:
-      "Igual que CRUDS BD: es por equipo de proyecto, vale 2000 puntos y un solo integrante sube un PDF de máximo 12 MB. La base se llama UNIFORME. No se combinan las tablas.",
+      "Es por equipo de proyecto y vale 2000 puntos. La base se llama UNIFORME. No se combinan las tablas. El PDF lleva portada y, de cada tabla, evidencias en Tkinter de su creación, de sus movimientos y de sus resultados. Un solo integrante sube un solo PDF, de máximo 8 MB.",
     pasos: [
+      "Elaborar una portada del equipo.",
       "Crear la base UNIFORME y las tablas PRENDAS y PEDIDOS, y llenarlas con los datos de la hoja.",
       "Actualizar la Playera de $150.00 a $200.00 y los montos de los pedidos de esa prenda.",
       "Actualizar la talla de la Falda: pasa de CH a M.",
       "Eliminar los pedidos con monto menor a $400.00 y eliminar el pedido 7009.",
       "Crear la tabla ENTREGAS y llenarla solo con los 2 registros de la hoja: 7001 Entregado y 7002 Pendiente.",
-      "Un integrante sube el PDF con el script y las tablas ya modificadas.",
+      "De cada tabla (PRENDAS, PEDIDOS y ENTREGAS) incluir evidencias en Tkinter de su creación, de sus movimientos y del resultado.",
+      "Un integrante sube un solo PDF, de máximo 8 MB, con la portada y esas evidencias.",
     ],
     checks: [
-      { id: "base", text: "El PDF trae el script que crea la base UNIFORME y las tablas PRENDAS y PEDIDOS, con el llenado." },
+      { id: "portada", text: "El PDF abre con la portada del equipo." },
+      { id: "base", text: "Se ve la creación de la base UNIFORME y de las tablas PRENDAS y PEDIDOS, con el llenado." },
       { id: "playera", text: "Se ve la Playera en $200.00 y los montos de sus pedidos ya actualizados." },
       { id: "falda", text: "Se ve la Falda con talla M." },
       { id: "bajas", text: "Ya no están los pedidos con monto menor a $400.00 ni el pedido 7009." },
       { id: "entregas", text: "Está la tabla ENTREGAS con los 2 registros: 7001 Entregado y 7002 Pendiente." },
-      { id: "legible", text: "El script y los resultados se leen. Si no se ve el cambio, esa parte no cuenta." },
+      { id: "tkinter", text: "De cada tabla hay evidencias en Tkinter: la creación, los movimientos y el resultado." },
+      { id: "archivo", text: "Es un solo PDF y pesa 8 MB o menos." },
     ],
   },
   {
     key: "bd3",
     title: "ACTIVIDAD BASE DE DATOS III",
     contexto:
-      "Igual que CRUDS BD: es por equipo de proyecto, vale 2000 puntos y un solo integrante sube un PDF de máximo 12 MB. La base se llama TALLER. No se combinan las tablas.",
+      "Es por equipo de proyecto y vale 2000 puntos. La base se llama TALLER. No se combinan las tablas. El PDF lleva portada y, de cada tabla, evidencias en Tkinter de su creación, de sus movimientos y de sus resultados. Un solo integrante sube un solo PDF, de máximo 8 MB.",
     pasos: [
+      "Elaborar una portada del equipo.",
       "Crear la base TALLER y las tablas EQUIPOS, SERVICIOS y ORDENES, y llenarlas con los datos de la hoja.",
       "Actualizar la Tablet: la marca pasa de Lenovo a Samsung.",
       "Actualizar el Teclado de $160.00 a $210.00 y los montos de sus órdenes.",
       "Actualizar el Cargador de $300.00 a $280.00 y los montos de sus órdenes.",
       "Eliminar las órdenes con monto menor a $400.00 y eliminar la orden 8006.",
       "Crear la tabla PAGOS y llenarla solo con los 3 registros de la hoja: 8001 Efectivo, 8002 Tarjeta y 8008 Efectivo.",
-      "Un integrante sube el PDF con el script y las tablas ya modificadas.",
+      "De cada tabla (EQUIPOS, SERVICIOS, ORDENES y PAGOS) incluir evidencias en Tkinter de su creación, de sus movimientos y del resultado.",
+      "Un integrante sube un solo PDF, de máximo 8 MB, con la portada y esas evidencias.",
     ],
     checks: [
-      { id: "base", text: "El PDF trae el script que crea la base TALLER y las tablas EQUIPOS, SERVICIOS y ORDENES, con el llenado." },
+      { id: "portada", text: "El PDF abre con la portada del equipo." },
+      { id: "base", text: "Se ve la creación de la base TALLER y de las tablas EQUIPOS, SERVICIOS y ORDENES, con el llenado." },
       { id: "tablet", text: "Se ve la Tablet con marca Samsung." },
       { id: "precios", text: "El Teclado está en $210.00, el Cargador en $280.00, y los montos de sus órdenes ya cambiaron." },
       { id: "bajas", text: "Ya no están las órdenes con monto menor a $400.00 ni la orden 8006." },
       { id: "pagos", text: "Está la tabla PAGOS con los 3 registros: 8001 Efectivo, 8002 Tarjeta y 8008 Efectivo." },
-      { id: "legible", text: "El script y los resultados se leen. Si no se ve el cambio, esa parte no cuenta." },
+      { id: "tkinter", text: "De cada tabla hay evidencias en Tkinter: la creación, los movimientos y el resultado." },
+      { id: "archivo", text: "Es un solo PDF y pesa 8 MB o menos." },
     ],
   },
 ];

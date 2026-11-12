@@ -173,7 +173,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Hoy están publicadas ACTIVIDAD BASE DE DATOS II y III. El grupo 301 sube hasta las 10:00 a. m. y el 302 hasta las 12:00. Un PDF por equipo, 2000 puntos.
+              Hoy están publicadas ACTIVIDAD BASE DE DATOS II y III. El grupo 301 sube hasta las 10:00 a. m. y el 302 hasta las 12:00. Un solo PDF por equipo, máximo 8 MB, con portada y evidencias en Tkinter. 2000 puntos.
             </p>
           </section>
 
@@ -186,7 +186,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD BASE DE DATOS II</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Base UNIFORME. Crean, actualizan, eliminan y agregan ENTREGAS. Un PDF por equipo. 2000 puntos.
+                Base UNIFORME. Portada y evidencias en Tkinter de cada tabla. Un solo PDF, máximo 8 MB. 2000 puntos.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-100">
@@ -203,7 +203,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD BASE DE DATOS III</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Base TALLER. Crean, actualizan, eliminan y agregan PAGOS. Un PDF por equipo. 2000 puntos.
+                Base TALLER. Portada y evidencias en Tkinter de cada tabla. Un solo PDF, máximo 8 MB. 2000 puntos.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-100">

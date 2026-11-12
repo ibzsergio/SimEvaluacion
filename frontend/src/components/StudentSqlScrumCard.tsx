@@ -76,7 +76,7 @@ export default function StudentSqlScrumCard({
     }
     if (next.size > SQL_SCRUM_PDF_MAX_BYTES) {
       setFile(null);
-      setLocalError("El PDF pesa más de 12 MB. Redúcelo y vuelve a elegirlo.");
+      setLocalError("El PDF pesa más de 8 MB. Redúcelo y vuelve a elegirlo.");
       return;
     }
     setFile(next);
@@ -117,7 +117,7 @@ export default function StudentSqlScrumCard({
       <div className="mt-4 rounded-2xl border border-white/10 px-4 py-3">
         <p className="text-sm font-semibold text-white">
           {deliveryQuery.data?.teamName ? `Equipo ${deliveryQuery.data.teamName}. ` : ""}
-          Un integrante sube el PDF. Si lo vuelven a subir, reemplaza el anterior.
+          Un integrante sube un solo PDF, de máximo 8 MB. Si lo vuelven a subir, reemplaza el anterior.
         </p>
         {delivery ? (
           <p className="mt-2 text-sm text-emerald-100">

@@ -5,7 +5,7 @@ import { todayClassDayDate } from "./classDayService.js";
 import { requireAuth, requireStudent, requireTeacher, type AuthedRequest } from "./middleware.js";
 import { requireNotPreviewStudent } from "./previewStudent.js";
 
-const PDF_MAX_BYTES = 12 * 1024 * 1024;
+const PDF_MAX_BYTES = 8 * 1024 * 1024;
 const PUNTOS = 2000;
 
 const ACTIVITIES = {
@@ -291,7 +291,7 @@ export function registerStudentSqlScrumRoutes(app: import("express").Express) {
     upload.single("file")(req, res, (err: unknown) => {
       const code = (err as { code?: string } | null)?.code;
       if (code === "LIMIT_FILE_SIZE") {
-        return res.status(400).json({ error: "pdf_too_big", message: "El PDF pesa más de 12 MB. Redúcelo y vuelve a subirlo." });
+        return res.status(400).json({ error: "pdf_too_big", message: "El PDF pesa más de 8 MB. Redúcelo y vuelve a subirlo." });
       }
       if (err) return res.status(400).json({ error: "upload_failed", message: "No se pudo leer el archivo." });
       next();
@@ -302,13 +302,13 @@ export function registerStudentSqlScrumRoutes(app: import("express").Express) {
     if (req.body?.completo !== "si") {
       return res.status(400).json({
         error: "checks_incomplete",
-        message: "Antes de subir, marca que el PDF trae el script y los resultados que pide la actividad.",
+        message: "Antes de subir, marca que el PDF trae la portada y las evidencias en Tkinter de cada tabla.",
       });
     }
     const file = req.file;
     if (!file) return res.status(400).json({ error: "pdf_required", message: "Selecciona el PDF del equipo." });
     if (file.size > PDF_MAX_BYTES) {
-      return res.status(400).json({ error: "pdf_too_big", message: "El PDF pesa más de 12 MB. Redúcelo y vuelve a subirlo." });
+      return res.status(400).json({ error: "pdf_too_big", message: "El PDF pesa más de 8 MB. Redúcelo y vuelve a subirlo." });
     }
     if (!isPdf(file)) return res.status(400).json({ error: "pdf_only", message: "Solo se puede subir un archivo PDF." });
     const team = await studentTeam(req.auth!.userId);
