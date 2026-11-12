@@ -11,14 +11,14 @@ export const SQL_SCRUM_NOTAS = [
 
 const CIERRE: Record<string, { iso: string; texto: string }> = {
   "301": {
-    iso: "2026-11-12T10:00:00-06:00",
+    iso: "2026-11-12T15:00:00-06:00",
     texto:
-      "La entrega y la subida del archivo del grupo 301 se cierran a las 10:00 a. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+      "La entrega y la subida del archivo del grupo 301 se cierran a las 3:00 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
   },
   "302": {
-    iso: "2026-11-12T13:00:00-06:00",
+    iso: "2026-11-12T15:00:00-06:00",
     texto:
-      "La entrega y la subida del archivo del grupo 302 se cierran a la 1:00 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+      "La entrega y la subida del archivo del grupo 302 se cierran a las 3:00 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
   },
 };
 
@@ -27,7 +27,7 @@ export function sqlScrumCierre(groupCode?: string | null, now = Date.now()) {
   if (!item) {
     return {
       texto:
-        "El grupo 301 entrega hasta las 10:00 a. m. El grupo 302 entrega hasta la 1:00 p. m. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
+        "Los grupos 301 y 302 entregan hasta las 3:00 p. m. de hoy. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
       until: 0,
       open: false,
     };
