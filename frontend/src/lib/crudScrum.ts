@@ -6,14 +6,14 @@ export const CRUD_PUNTOS = 2000;
 /** Hora de Ciudad de México. Después de esta hora el grupo ya no puede subir el PDF. */
 export const CRUD_CIERRE: Record<string, { iso: string; texto: string }> = {
   "302": {
-    iso: "2026-11-11T18:00:00-06:00",
+    iso: "2026-11-11T20:30:00-06:00",
     texto:
-      "La entrega y la subida del archivo del grupo 302 se cierran a las 6:00 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+      "La entrega y la subida del archivo del grupo 302 se cierran a las 8:30 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
   },
   "301": {
-    iso: "2026-11-11T18:00:00-06:00",
+    iso: "2026-11-11T20:30:00-06:00",
     texto:
-      "La entrega y la subida del archivo del grupo 301 se cierran a las 6:00 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+      "La entrega y la subida del archivo del grupo 301 se cierran a las 8:30 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
   },
 };
 
@@ -22,7 +22,7 @@ export function crudCierre(groupCode?: string | null, now = Date.now()) {
   if (!item) {
     return {
       texto:
-        "Los grupos 301 y 302 entregan hasta las 6:00 p. m. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
+        "Los grupos 301 y 302 entregan hasta las 8:30 p. m. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
       until: 0,
       open: false,
     };
@@ -117,7 +117,7 @@ export const CRUD_TABLAS = [
 ] as const;
 
 export const CRUD_EVIDENCIAS = [
-  "Vale 2000 puntos. Los grupos 301 y 302 suben hasta las 6:00 p. m. de hoy. Después de esa hora ya no se acepta el archivo y se pierden los puntos.",
+  "Vale 2000 puntos. Los grupos 301 y 302 suben hasta las 8:30 p. m. de hoy. Después de esa hora ya no se acepta el archivo y se pierden los puntos.",
   "Un PDF por equipo, de máximo 12 MB. Lo sube un solo integrante.",
   "Carátula con el equipo, el grupo, la fecha y el reparto del líder: nombre de cada integrante y la tabla que le asignó.",
   "Las tablas son grupos, docentes, alumnos, asistencias e incidencias. La tabla test no se entrega.",
