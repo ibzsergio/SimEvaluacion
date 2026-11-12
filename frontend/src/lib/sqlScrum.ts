@@ -56,7 +56,7 @@ export const SQL_SCRUM_ACTIVITIES: SqlScrumActivity[] = [
     key: "bd2",
     title: "ACTIVIDAD BASE DE DATOS II",
     contexto:
-      "Es por equipo de proyecto y vale 2000 puntos. La base se llama UNIFORME. No se combinan las tablas. El PDF lleva portada y, de cada tabla, evidencias en Tkinter de su creación, de sus movimientos y de sus resultados. Un solo integrante sube un solo PDF, de máximo 8 MB.",
+      "La hacen el grupo 301 y el grupo 302. Es por equipo de proyecto y vale 2000 puntos. La base se llama UNIFORME. No se combinan las tablas. El PDF lleva portada y, de cada tabla, evidencias en Tkinter de su creación, de sus movimientos y de sus resultados. Un solo integrante sube un solo PDF, de máximo 8 MB.",
     pasos: [
       "Elaborar una portada del equipo.",
       "Crear la base UNIFORME y las tablas PRENDAS y PEDIDOS, y llenarlas con los datos de la hoja.",
@@ -82,7 +82,7 @@ export const SQL_SCRUM_ACTIVITIES: SqlScrumActivity[] = [
     key: "bd3",
     title: "ACTIVIDAD BASE DE DATOS III",
     contexto:
-      "Es por equipo de proyecto y vale 2000 puntos. La base se llama TALLER. No se combinan las tablas. El PDF lleva portada y, de cada tabla, evidencias en Tkinter de su creación, de sus movimientos y de sus resultados. Un solo integrante sube un solo PDF, de máximo 8 MB.",
+      "La hacen el grupo 301 y el grupo 302. Es por equipo de proyecto y vale 2000 puntos. La base se llama TALLER. No se combinan las tablas. El PDF lleva portada y, de cada tabla, evidencias en Tkinter de su creación, de sus movimientos y de sus resultados. Un solo integrante sube un solo PDF, de máximo 8 MB.",
     pasos: [
       "Elaborar una portada del equipo.",
       "Crear la base TALLER y las tablas EQUIPOS, SERVICIOS y ORDENES, y llenarlas con los datos de la hoja.",

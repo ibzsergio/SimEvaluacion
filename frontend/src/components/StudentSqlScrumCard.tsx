@@ -54,7 +54,8 @@ export default function StudentSqlScrumCard({
     return () => window.clearInterval(id);
   }, []);
 
-  if (groupCode !== "301" && groupCode !== "302") return null;
+  const code = groupCode?.trim();
+  if (code !== "301" && code !== "302") return null;
 
   const ready = activity.checks.every((item) => checked[item.id]);
   const delivery = deliveryQuery.data?.delivery ?? null;

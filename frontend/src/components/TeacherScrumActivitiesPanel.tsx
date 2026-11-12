@@ -173,7 +173,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Hoy están publicadas ACTIVIDAD BASE DE DATOS II y III. El grupo 301 sube hasta las 10:00 a. m. y el 302 hasta las 12:00. Un solo PDF por equipo, máximo 8 MB, con portada y evidencias en Tkinter. 2000 puntos.
+              El grupo 301 y el grupo 302 hacen las dos: ACTIVIDAD BASE DE DATOS II y ACTIVIDAD BASE DE DATOS III. El 301 sube cada una hasta las 10:00 a. m. y el 302 hasta las 12:00. Un solo PDF por actividad, máximo 8 MB. 2000 puntos.
             </p>
           </section>
 
