@@ -163,7 +163,7 @@ export const TKINTER_GIT_REQUISITOS = [
 ];
 
 export const TKINTER_GIT_PDF_MAX_BYTES = 8 * 1024 * 1024;
-export const TKINTER_GIT_INSTRUCTIVO = "/instructivo-tkinter-git.pdf";
+export const TKINTER_GIT_INSTRUCTIVO = "/instructivo-tkinter-git.pdf?v=2";
 
 export type TkinterGitResponse = {
   groupCode: string;
@@ -270,17 +270,30 @@ export type GitPaso = { quien: string; titulo: string; lineas: string[]; comando
 export function pasosGit(repo: string): GitPaso[] {
   return [
     {
-      quien: "Todos",
-      titulo: "Instala Git si la computadora no lo tiene",
+      quien: "Todos, antes de empezar",
+      titulo: "Comprueba si la computadora tiene Git",
       lineas: [
-        "Abre la carpeta donde vas a trabajar. Haz clic en la barra de la dirección, escribe powershell y pulsa Enter.",
+        "Esto es lo primero. Antes de crear la carpeta y antes de escribir el programa.",
+        "Abre PowerShell: clic en la barra de la dirección de una carpeta, escribe powershell y pulsa Enter.",
         "Escribe el comando de abajo y pulsa Enter.",
-        "Si aparece un número, por ejemplo git version 2.45.0, Git ya está. Sigue al paso del usuario.",
-        "Si dice que git no se reconoce, entra a https://git-scm.com/download/win y baja Git para Windows.",
+        "Si aparece un número, por ejemplo git version 2.45.0, Git ya está. Sigue.",
+        "Si dice que git no se reconoce, todavía no está. Entra a https://git-scm.com/download/win y baja Git para Windows.",
         "En el instalador pulsa Next hasta el final. En la pantalla de PATH deja la opción que dice Git from the command line.",
-        "Al terminar, cierra esa ventana negra y ábrela otra vez en la misma carpeta. Vuelve a probar git --version.",
+        "Cierra esa ventana negra, ábrela otra vez y vuelve a escribir git --version. Tiene que salir el número antes de seguir.",
       ],
       comandos: ["git --version"],
+    },
+    {
+      quien: "Todos, si van a usar el teléfono",
+      titulo: "Comprueba si el teléfono tiene Git",
+      lineas: [
+        "También se hace al inicio. El celular no trae Git y la aplicación GitHub no lo instala.",
+        "Android: busca la aplicación Termux. Si no está, Git no está en el teléfono. Si está, ábrela y escribe git --version.",
+        "Si Termux dice not found, Git no está. Escribe pkg update, luego pkg install git, y vuelve a probar git --version hasta que salga un número.",
+        "Termux se baja de F-Droid, no de la versión vieja de Play Store.",
+        "iPhone: busca la aplicación Working Copy. Si no está instalada, Git no está en el teléfono. Si abre, Git ya viene dentro de esa aplicación. Ahí no se escribe git --version.",
+        "Si no van a usar comandos y solo van a editar en el navegador, pueden seguir sin instalar Git. La comprobación igual se hace primero, para saber cuál camino les toca.",
+      ],
     },
     {
       quien: "Todos, en cada computadora",
