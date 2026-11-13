@@ -1286,6 +1286,16 @@ export async function fetchTeacherSqlDeliveries(groupId: string, key: SqlScrumKe
   return data;
 }
 
+export async function fetchStudentTkinterGit() {
+  const { data } = await api.get<import("./tkinterGit").TkinterGitResponse>("/student/tkinter-git");
+  return data;
+}
+
+export async function fetchTeacherTkinterGit(groupId: string) {
+  const { data } = await api.get<import("./tkinterGit").TkinterGitResponse>(`/teacher/groups/${groupId}/tkinter-git`);
+  return data;
+}
+
 export async function downloadSqlPdf(groupId: string, key: SqlScrumKey, teamKey: string, fileName: string) {
   await downloadTeacherBlob(
     `/teacher/groups/${groupId}/sql-scrum/${key}/${encodeURIComponent(teamKey)}/file`,

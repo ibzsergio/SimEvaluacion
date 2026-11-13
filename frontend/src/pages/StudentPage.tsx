@@ -10,6 +10,7 @@ import StudentExtraCard from "../components/StudentExtraCard";
 import StudentBasedatosCard from "../components/StudentBasedatosCard";
 import StudentCrudCard from "../components/StudentCrudCard";
 import StudentSqlScrumCard from "../components/StudentSqlScrumCard";
+import StudentTkinterGitCard from "../components/StudentTkinterGitCard";
 import StudentExamenCard from "../components/StudentExamenCard";
 import StudentMaquinaCard from "../components/StudentMaquinaCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
@@ -164,6 +165,8 @@ export default function StudentPage() {
       )}
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
+
+      <StudentTkinterGitCard groupCode={data.group?.code} studentId={user?.id} />
 
       <StudentSqlScrumCard activityKey="bd2" groupCode={data.group?.code} studentId={user?.id} />
       <StudentSqlScrumCard activityKey="bd3" groupCode={data.group?.code} studentId={user?.id} />

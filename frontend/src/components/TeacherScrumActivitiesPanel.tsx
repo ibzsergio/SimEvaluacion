@@ -11,6 +11,7 @@ import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherBasedatosPanel from "./TeacherBasedatosPanel";
 import TeacherCrudPanel from "./TeacherCrudPanel";
 import TeacherSqlScrumPanel from "./TeacherSqlScrumPanel";
+import TeacherTkinterGitPanel from "./TeacherTkinterGitPanel";
 import TeacherExamenPanel from "./TeacherExamenPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
 import TeacherImproPanel from "./TeacherImproPanel";
@@ -28,7 +29,7 @@ export default function TeacherScrumActivitiesPanel({
   onSelectGroup: (id: string) => void;
 }) {
   const [current, setCurrent] = useState<
-    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3"
+    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3" | "tkinter-git"
   >("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
@@ -96,7 +97,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "bd2" || current === "bd3" ? (
+      {current === "tkinter-git" ? (
+        <TeacherTkinterGitPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "bd2" || current === "bd3" ? (
         <TeacherSqlScrumPanel
           activityKey={current}
           groups={groups}
@@ -176,6 +184,24 @@ export default function TeacherScrumActivitiesPanel({
               El grupo 301 y el grupo 302 hacen las dos: ACTIVIDAD BASE DE DATOS II y ACTIVIDAD BASE DE DATOS III. Los grupos 301 y 302 suben cada una hasta las 3:00 p. m. En el 302, el líder reparte una tabla por integrante y todo el equipo junta su script y su Tkinter en un solo proyecto de GitHub, además del PDF. 2000 puntos.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("tkinter-git")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Actividad Scrum · hoy</p>
+              <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD TKINTER EN GIT</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Cada equipo tiene un programa distinto. El líder sube programa.py. Los demás lo clonan, cambian su
+                parte y la suben a la rama main.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full border border-sky-400/40 bg-sky-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-sky-100">
+              Publicada
+            </span>
+          </button>
 
           <button
             type="button"
