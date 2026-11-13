@@ -194,12 +194,12 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD TKINTER EN GIT</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Cada equipo tiene un programa distinto. El líder sube programa.py. Los demás lo clonan, cambian su
-                parte y la suben a la rama main.
+                Cada equipo tiene un programa distinto, con base de datos y CRUD. La liberas cuando quieras. Un
+                integrante sube el PDF.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">
-              Solo docente
+              La liberas tú
             </span>
           </button>
 

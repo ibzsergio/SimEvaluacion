@@ -947,6 +947,10 @@ export async function fetchTkinterGitSession(groupId: string) {
   return tkinterGitSession(groupId);
 }
 
+export async function updateTkinterGitReleased(groupId: string, released: boolean) {
+  return tkinterGitSession(groupId, (state) => ({ ...state, released }));
+}
+
 export async function startTkinterGitTimer(groupId: string) {
   return tkinterGitSession(groupId, (state) => ({
     ...state,
@@ -1416,6 +1420,35 @@ export async function fetchTeacherSqlDeliveries(groupId: string, key: SqlScrumKe
 export async function fetchStudentTkinterGit() {
   const { data } = await api.get<import("./tkinterGit").TkinterGitResponse>("/student/tkinter-git");
   return data;
+}
+
+export async function fetchStudentTkinterGitDelivery() {
+  const { data } = await api.get<{
+    released: boolean;
+    teamKey: string;
+    teamName: string;
+    delivery: { teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string } | null;
+  }>("/student/tkinter-git/delivery");
+  return data;
+}
+
+export async function uploadTkinterGitPdf(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("completo", "si");
+  const { data } = await api.post<{ delivery: { fileName: string; uploadedByName: string } }>("/student/tkinter-git/delivery", form);
+  return data.delivery;
+}
+
+export async function fetchTeacherTkinterGitDeliveries(groupId: string) {
+  const { data } = await api.get<{
+    deliveries: Array<{ teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string }>;
+  }>(`/teacher/groups/${groupId}/tkinter-git/deliveries`);
+  return data;
+}
+
+export async function downloadTkinterGitPdf(groupId: string, teamKey: string, fileName: string) {
+  await downloadTeacherBlob(`/teacher/groups/${groupId}/tkinter-git/${encodeURIComponent(teamKey)}/file`, fileName);
 }
 
 export async function fetchTeacherTkinterGit(groupId: string) {

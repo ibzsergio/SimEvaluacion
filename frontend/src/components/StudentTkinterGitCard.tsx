@@ -1,6 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchStudentTkinterGit, getApiErrorMessage } from "../lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import {
+  fetchStudentTkinterGit,
+  fetchStudentTkinterGitDelivery,
+  getApiErrorMessage,
+  uploadTkinterGitPdf,
+} from "../lib/api";
+import {
+  TKINTER_GIT_PDF_MAX_BYTES,
+  TKINTER_GIT_REQUISITOS,
   TKINTER_GIT_TITULO,
   cambioDe,
   cambiosDelEquipo,
@@ -18,29 +26,63 @@ export default function StudentTkinterGitCard({
 }) {
   const code = groupCode?.trim();
   const visible = code === "301" || code === "302";
+  const queryClient = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState("");
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
   const query = useQuery({
     queryKey: ["student-tkinter-git"],
     queryFn: fetchStudentTkinterGit,
     enabled: visible,
     retry: false,
+    refetchInterval: visible ? 15_000 : false,
+  });
+  const released = Boolean(query.data?.released);
+  const deliveryQuery = useQuery({
+    queryKey: ["student-tkinter-git-delivery"],
+    queryFn: fetchStudentTkinterGitDelivery,
+    enabled: visible && released,
+    retry: false,
+  });
+  const uploadMutation = useMutation({
+    mutationFn: uploadTkinterGitPdf,
+    onSuccess: async () => {
+      setUploadError("");
+      if (fileRef.current) fileRef.current.value = "";
+      await queryClient.invalidateQueries({ queryKey: ["student-tkinter-git-delivery"] });
+    },
+    onError: (err) => setUploadError(getApiErrorMessage(err)),
   });
 
-  if (!visible) return null;
+  if (!visible || !released) return null;
 
   const team = query.data?.teams.find((item) => item.id === query.data?.myTeamId) ?? null;
+  const yo = team?.members.find((member) => member.id === studentId) ?? null;
   const programa = team && query.data ? programaDelEquipo(query.data.teams, team.id, code) : null;
   const repo = team ? nombreRepositorio(code, team.name) : "tkinter-equipo";
   const mio = team && studentId ? cambioDe(team.members, studentId) : null;
   const lista = team ? cambiosDelEquipo(team.members) : [];
+  const checks = [
+    { id: "portada", label: "La portada dice de qué trata el programa y trae el enlace del repositorio." },
+    { id: "base", label: "Se ve la base de datos que guarda lo que genera la aplicación." },
+    { id: "py", label: "Se ve programa.py con la cadena de conexión, el Tkinter y el CRUD." },
+    { id: "nombres", label: "Cada integrante dejó su comentario en el código y su nombre en el commit." },
+  ];
+  const ready = checks.every((item) => checked[item.id]);
 
   return (
     <section className="glass mb-6 border border-sky-400/30 p-4 sm:p-6">
       <p className="text-[11px] font-bold uppercase tracking-widest text-sky-200">Actividad Scrum · equipo de proyecto</p>
       <h2 className="mt-1 text-2xl font-bold text-white">{TKINTER_GIT_TITULO}</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-200">
-        Cada equipo hace un programa distinto de Tkinter. El programa de tu equipo está abajo. El líder lo sube a
-        GitHub y los demás lo clonan, lo cambian y suben ese cambio a la rama main.
+        Cada equipo hace un programa distinto. Abajo dice de qué trata el de tu equipo. En programa.py van la cadena
+        de conexión, la aplicación de Tkinter y el CRUD. La evidencia es un PDF de máximo 8 MB. Lo sube un integrante.
       </p>
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-100">
+        {TKINTER_GIT_REQUISITOS.map((linea) => (
+          <li key={linea}>{linea}</li>
+        ))}
+      </ul>
       {query.isError ? <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(query.error)}</p> : null}
       {query.isSuccess && !team ? (
         <p className="mt-3 text-sm text-amber-100">Todavía no estás en un equipo de proyecto. Pide al docente que te asigne.</p>
@@ -65,7 +107,10 @@ export default function StudentTkinterGitCard({
           <h3 className="mt-1 text-lg font-bold text-white">{mio.titulo}</h3>
           <p className="mt-2 text-sm text-slate-100">{mio.detalle}</p>
           <p className="mt-2 text-sm text-emerald-100">
-            El mensaje de tu commit es: <span className="font-mono">{mio.commit}</span>
+            El mensaje de tu commit es: <span className="font-mono">{mio.commit} - {yo?.displayName ?? "Tu nombre"}</span>
+          </p>
+          <p className="mt-2 text-sm text-slate-100">
+            En el código, arriba de tu cambio: <span className="font-mono"># {yo?.displayName ?? "Tu nombre"}: {mio.titulo}</span>
           </p>
         </div>
       ) : null}
@@ -81,6 +126,53 @@ export default function StudentTkinterGitCard({
           ))}
         </ul>
       ) : null}
+      <div className="mt-4 rounded-2xl border border-white/10 p-4">
+        <p className="text-sm font-semibold text-white">Evidencia del equipo</p>
+        <p className="mt-1 text-sm text-slate-300">
+          Un solo PDF, de 8 MB o menos. Marca todo antes de elegir el archivo. Si lo vuelven a subir, reemplaza el anterior.
+        </p>
+        <ul className="mt-3 space-y-2">
+          {checks.map((item) => (
+            <li key={item.id}>
+              <label className="flex items-start gap-2 text-sm text-slate-100">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={Boolean(checked[item.id])}
+                  onChange={(event) => setChecked((prev) => ({ ...prev, [item.id]: event.target.checked }))}
+                />
+                <span>{item.label}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {deliveryQuery.data?.delivery ? (
+          <p className="mt-2 text-sm text-emerald-100">
+            Ya está: {deliveryQuery.data.delivery.fileName}. Lo subió {deliveryQuery.data.delivery.uploadedByName}.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-amber-100">El equipo todavía no sube el PDF.</p>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          disabled={!ready || uploadMutation.isPending}
+          className="mt-3 block w-full text-sm text-slate-200 disabled:opacity-50"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            if (file.size > TKINTER_GIT_PDF_MAX_BYTES) {
+              setUploadError("El PDF pesa más de 8 MB. Redúcelo y vuelve a subirlo.");
+              event.target.value = "";
+              return;
+            }
+            uploadMutation.mutate(file);
+          }}
+        />
+        {uploadMutation.isPending ? <p className="mt-2 text-sm text-slate-300">Subiendo...</p> : null}
+        {uploadError ? <p className="mt-2 text-sm text-rose-200">{uploadError}</p> : null}
+      </div>
       <TkinterGitGuide repo={repo} />
     </section>
   );

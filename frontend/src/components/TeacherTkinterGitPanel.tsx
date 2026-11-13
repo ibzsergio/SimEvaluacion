@@ -1,20 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addTkinterGitNote,
   applyTkinterGitFirmas,
+  downloadTkinterGitPdf,
+  fetchTeacherTkinterGitDeliveries,
   fetchTkinterGitSession,
   getApiErrorMessage,
   removeTkinterGitNote,
-  resetTkinterGitTimer,
-  restoreTkinterGitElapsed,
-  setTkinterGitPaused,
-  startTkinterGitTimer,
+  updateTkinterGitReleased,
 } from "../lib/api";
-import { elapsedSeconds, formatClock, maquinaRoleLabel, remainingSeconds } from "../lib/maquinaScrum";
+import { maquinaRoleLabel } from "../lib/maquinaScrum";
 import {
   TKINTER_GIT_FIRMAS,
-  TKINTER_GIT_MINUTOS,
   TKINTER_GIT_NOTA_REPO,
   TKINTER_GIT_NOTAS,
   TKINTER_GIT_TITULO,
@@ -38,8 +36,7 @@ export default function TeacherTkinterGitPanel({
   const qc = useQueryClient();
   const selectedGroup = groups.find((group) => group.id === selectedGroupId);
   const [noteError, setNoteError] = useState("");
-  const [reponer, setReponer] = useState("");
-  const [now, setNow] = useState(() => Date.now());
+  const [downloadError, setDownloadError] = useState("");
   const [customByTeam, setCustomByTeam] = useState<Record<string, { label: string; points: string }>>({});
   const sessionQuery = useQuery({
     queryKey: ["tkinter-git-session", selectedGroupId],
@@ -47,16 +44,16 @@ export default function TeacherTkinterGitPanel({
     enabled: !!selectedGroupId,
     refetchInterval: 3000,
   });
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-  void now;
+  const deliveriesQuery = useQuery({
+    queryKey: ["tkinter-git-deliveries", selectedGroupId],
+    queryFn: () => fetchTeacherTkinterGitDeliveries(selectedGroupId),
+    enabled: !!selectedGroupId,
+    refetchInterval: 10_000,
+  });
 
   const session = sessionQuery.data;
   const teams = session?.teams ?? [];
-  const paused = Boolean(session?.pausedAt);
-  const minutes = session?.minutes ?? TKINTER_GIT_MINUTOS;
+  const released = Boolean(session?.released);
   const firmasMax = session?.firmasMax ?? TKINTER_GIT_FIRMAS;
   const code = selectedGroup?.code?.trim() ?? "";
   const ordered = [...teams].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "es", { numeric: true }));
@@ -68,29 +65,10 @@ export default function TeacherTkinterGitPanel({
     qc.setQueryData(["tkinter-git-session", selectedGroupId], data);
   }
 
-  const startMutation = useMutation({
-    mutationFn: () => startTkinterGitTimer(selectedGroupId),
+  const releaseMutation = useMutation({
+    mutationFn: (next: boolean) => updateTkinterGitReleased(selectedGroupId, next),
     onSuccess: (data) => {
       setNoteError("");
-      saveSession(data);
-    },
-    onError: (err) => setNoteError(getApiErrorMessage(err)),
-  });
-  const pauseMutation = useMutation({
-    mutationFn: (next: boolean) => setTkinterGitPaused(selectedGroupId, next),
-    onSuccess: saveSession,
-    onError: (err) => setNoteError(getApiErrorMessage(err)),
-  });
-  const resetMutation = useMutation({
-    mutationFn: () => resetTkinterGitTimer(selectedGroupId),
-    onSuccess: saveSession,
-    onError: (err) => setNoteError(getApiErrorMessage(err)),
-  });
-  const restoreMutation = useMutation({
-    mutationFn: (elapsedMinutes: number) => restoreTkinterGitElapsed(selectedGroupId, elapsedMinutes),
-    onSuccess: (data) => {
-      setNoteError("");
-      setReponer("");
       saveSession(data);
     },
     onError: (err) => setNoteError(getApiErrorMessage(err)),
@@ -142,38 +120,32 @@ export default function TeacherTkinterGitPanel({
       )}
 
       <section className="glass mb-6 p-4 sm:p-6">
-        <p className="text-xs font-bold uppercase tracking-widest text-lime-300">Actividad Scrum · solo docente</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-lime-300">Actividad Scrum · la liberas tú</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{TKINTER_GIT_TITULO}</h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
-          Grupo {selectedGroup?.code ?? "—"}. Equipos de proyecto. {minutes} minutos. Parte de {firmasMax.toLocaleString("es-MX")} Firmas.
-          Los alumnos todavía no la ven.
+          Grupo {selectedGroup?.code ?? "—"}. Equipos de proyecto. Parte de {firmasMax.toLocaleString("es-MX")} Firmas.
+          Un integrante sube el PDF del equipo. {released ? "Los alumnos ya la ven." : "Los alumnos todavía no la ven."}
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => startMutation.mutate()}
-            disabled={startMutation.isPending || teams.length === 0}
-            className="min-h-11 rounded-xl bg-lime-600 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-lime-500 disabled:opacity-60"
-          >
-            {startMutation.isPending ? "Iniciando..." : `Iniciar ${minutes} minutos`}
-          </button>
-          <button
-            type="button"
-            onClick={() => pauseMutation.mutate(!paused)}
-            disabled={pauseMutation.isPending}
-            className="min-h-11 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-100 disabled:opacity-60"
-          >
-            {pauseMutation.isPending ? "Guardando..." : paused ? "Reanudar" : "Pausar"}
-          </button>
-          <button
-            type="button"
+            disabled={releaseMutation.isPending || !selectedGroupId}
             onClick={() => {
-              if (window.confirm("¿Reiniciar el reloj? Las notas de Firmas se conservan.")) resetMutation.mutate();
+              if (!released) {
+                const ok = window.confirm(
+                  `¿Liberar ${TKINTER_GIT_TITULO} para el grupo ${selectedGroup?.code ?? ""}?\n\nLos alumnos verán su programa, las instrucciones de Git y podrán subir el PDF.`,
+                );
+                if (!ok) return;
+              }
+              releaseMutation.mutate(!released);
             }}
-            disabled={resetMutation.isPending}
-            className="min-h-11 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 disabled:opacity-60"
+            className={`min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60 ${
+              released
+                ? "border border-amber-400/40 bg-amber-500/20 text-amber-100"
+                : "bg-emerald-600 text-white hover:bg-emerald-500"
+            }`}
           >
-            Reiniciar reloj
+            {releaseMutation.isPending ? "Guardando..." : released ? "Ocultar a los alumnos" : "Liberar actividad"}
           </button>
           <button
             type="button"
@@ -184,44 +156,15 @@ export default function TeacherTkinterGitPanel({
             {awardMutation.isPending ? "Guardando..." : "Registrar Firmas de todos"}
           </button>
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <p className="text-xs text-slate-300">Si el reloj volvió al inicio, escribe los minutos que ya llevaban.</p>
-          <input
-            value={reponer}
-            onChange={(event) => setReponer(event.target.value)}
-            inputMode="numeric"
-            placeholder="Min"
-            aria-label="Minutos ya transcurridos"
-            className="w-20 rounded-lg border border-white/15 bg-slate-950/70 px-2 py-2 text-sm text-white"
-          />
-          <button
-            type="button"
-            disabled={restoreMutation.isPending}
-            onClick={() => {
-              const elapsed = Number(reponer);
-              if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed > minutes) {
-                setNoteError(`Escribe los minutos ya transcurridos, de 0 a ${minutes}.`);
-                return;
-              }
-              restoreMutation.mutate(elapsed);
-            }}
-            className="min-h-11 rounded-xl border border-lime-400/40 bg-lime-500/15 px-3 py-2 text-sm font-semibold text-lime-100 disabled:opacity-60"
-          >
-            {restoreMutation.isPending ? "Reponiendo..." : "Reponer tiempo"}
-          </button>
-        </div>
-        <p className="mt-3 text-xs text-slate-400">
-          Los alumnos no la ven. El reloj es de este grupo.
-          {paused ? " Reloj en pausa." : ""}
-        </p>
         {noteError ? (
           <p className="mt-3 rounded-xl border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-sm text-rose-100">{noteError}</p>
         ) : null}
+        {downloadError ? <p className="mt-3 text-sm text-rose-200">{downloadError}</p> : null}
         {sessionQuery.isError ? <p className="mt-3 text-sm text-rose-300">{getApiErrorMessage(sessionQuery.error)}</p> : null}
       </section>
 
       <section className="glass mb-6 p-4 sm:p-6">
-        <h2 className="text-xl font-bold text-white">Equipos, reloj y notas</h2>
+        <h2 className="text-xl font-bold text-white">Equipos y notas</h2>
         {sessionQuery.isLoading ? (
           <p className="mt-4 text-sm text-slate-400">Cargando equipos...</p>
         ) : teams.length === 0 ? (
@@ -231,11 +174,8 @@ export default function TeacherTkinterGitPanel({
         ) : (
           <ul className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
             {ordered.map((team) => {
-              const remain = remainingSeconds(team.startedAt, minutes, session?.pausedAt);
-              const elapsed = team.startedAt ? elapsedSeconds(team.startedAt, minutes, session?.pausedAt) : 0;
-              const clockPaused = Boolean(session?.pausedAt);
-              const finished = Boolean(team.startedAt) && remain === 0 && !clockPaused;
               const teamId = team.key.startsWith("project:") ? team.key.slice("project:".length) : team.key;
+              const file = (deliveriesQuery.data?.deliveries ?? []).find((item) => item.teamKey === team.key);
               const programa = programaDelEquipo(
                 ordered.map((item) => ({ id: item.key.startsWith("project:") ? item.key.slice("project:".length) : item.key })),
                 teamId,
@@ -257,16 +197,21 @@ export default function TeacherTkinterGitPanel({
                         {team.leaderName ? `Líder: ${team.leaderName}` : "Sin líder"}
                       </p>
                     </div>
-                    <p className="rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-right font-mono text-sm font-bold text-white">
-                      {!team.startedAt ? (
-                        "Sin reloj"
-                      ) : (
-                        <>
-                          <span className="block text-[10px] font-semibold text-lime-200">Van {formatClock(elapsed)}</span>
-                          {clockPaused ? `Pausa ${formatClock(remain)}` : finished ? "00:00" : formatClock(remain)}
-                        </>
-                      )}
-                    </p>
+                    {file ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          downloadTkinterGitPdf(selectedGroupId, team.key, file.fileName).catch((err) =>
+                            setDownloadError(getApiErrorMessage(err)),
+                          );
+                        }}
+                        className="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-slate-950"
+                      >
+                        Descargar PDF
+                      </button>
+                    ) : (
+                      <p className="text-xs text-slate-400">Sin PDF</p>
+                    )}
                   </div>
                   <p className="mt-1 text-xs text-slate-300">
                     {programa?.titulo ?? "Programa del equipo"}

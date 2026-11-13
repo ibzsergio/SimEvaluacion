@@ -152,8 +152,21 @@ export type TkinterMiembro = {
   isLeader: boolean;
 };
 
+export const TKINTER_GIT_REQUISITOS = [
+  "El programa trata del tema que le tocó al equipo. La ventana, las cajas y los botones sirven para ese tema.",
+  "El equipo crea una base de datos para guardar los datos que genere la aplicación.",
+  "En programa.py va la cadena de conexión a esa base.",
+  "En ese mismo archivo va la aplicación de Tkinter que resuelve el problema.",
+  "La aplicación hace el CRUD: guardar, consultar, actualizar y eliminar esos datos en la base.",
+  "Cada integrante participa en algo. Arriba de su cambio deja un comentario con su nombre y lo que hizo.",
+  "El commit lleva el nombre del cambio y el nombre del integrante.",
+];
+
+export const TKINTER_GIT_PDF_MAX_BYTES = 8 * 1024 * 1024;
+
 export type TkinterGitResponse = {
   groupCode: string;
+  released?: boolean;
   myTeamId?: string | null;
   teams: TkinterEquipo[];
 };
@@ -174,7 +187,7 @@ export type CambioGit = {
 const CAMBIO_LIDER: CambioGit = {
   titulo: "Sube el programa inicial",
   detalle:
-    "Crea programa.py con la ventana, las cajas, los botones y el resultado que pide el programa del equipo. Tiene que abrirse y hacer lo principal. Luego súbelo a GitHub.",
+    "Crea la base de datos y programa.py. En el archivo van la cadena de conexión, la aplicación de Tkinter del problema del equipo y el CRUD. Arriba de tu parte deja un comentario con tu nombre. Luego súbelo a GitHub.",
   commit: "Subo el programa inicial",
 };
 
@@ -350,7 +363,7 @@ export function pasosGit(repo: string): GitPaso[] {
         "git branch -M main",
         "git add programa.py",
         "git status",
-        'git commit -m "Subo el programa inicial"',
+        'git commit -m "Subo el programa inicial - Ana Lopez"',
         "git status",
         `git remote add origin https://github.com/TU-USUARIO/${repo}.git`,
         "git push -u origin main",
@@ -395,15 +408,16 @@ export function pasosGit(repo: string): GitPaso[] {
         "La rama se llama main. Todos suben ahí. origin es el proyecto de GitHub.",
         "Entra una sola persona a la vez. Si dos editan juntos, los cambios se pisan.",
         "Antes de tocar el archivo, baja lo último con git pull.",
-        "Abre programa.py, haz solo el cambio que te toca y guárdalo.",
-        "Luego add, commit y push. En el commit escribe el mensaje de tu cambio, el que está en tu tarjeta, no el de otra persona.",
+        "Abre programa.py y haz el cambio que te toca.",
+        "Justo arriba de ese cambio escribe un comentario con tu nombre y lo que hiciste. Ejemplo: # Ana Lopez: agrego el boton Limpiar.",
+        "En el commit van el nombre del cambio y tu nombre. Cambia Ana Lopez por el tuyo.",
         "git status al final debe decir working tree clean.",
         "Recarga GitHub. Tu usuario debe aparecer junto al último cambio de programa.py.",
       ],
       comandos: [
         "git pull origin main",
         "git add programa.py",
-        'git commit -m "Agrego el boton Limpiar"',
+        'git commit -m "Agrego el boton Limpiar - Ana Lopez"',
         "git push origin main",
         "git status",
       ],
@@ -418,6 +432,17 @@ export function pasosGit(repo: string): GitPaso[] {
         "Después abre el programa y revisa que tu cambio siga ahí.",
       ],
       comandos: ["git pull origin main --no-edit", "git push origin main"],
+    },
+    {
+      quien: "Un integrante",
+      titulo: "Sube el PDF del equipo",
+      lineas: [
+        "El PDF es la evidencia. Lo sube un solo integrante, de preferencia el líder.",
+        "La portada dice de qué trata el programa y trae el enlace del repositorio.",
+        "Después se ven la base de datos, la cadena de conexión y el CRUD funcionando en Tkinter.",
+        "También se ve el comentario de cada integrante dentro de programa.py.",
+        "Es un solo PDF y pesa 8 MB o menos. Si lo vuelven a subir, reemplaza el anterior.",
+      ],
     },
   ];
 }

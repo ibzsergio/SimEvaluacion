@@ -5,6 +5,7 @@ const MARK = "[[tkinter-git-state]]";
 
 export type TkinterGitLiveState = {
   v: 1;
+  released: boolean;
   startedAt: string | null;
   pausedAt: string | null;
   resetClock?: boolean;
@@ -14,6 +15,7 @@ export type TkinterGitLiveState = {
 
 const EMPTY: TkinterGitLiveState = {
   v: 1,
+  released: false,
   startedAt: null,
   pausedAt: null,
   notes: {},
@@ -30,6 +32,7 @@ export function parseTkinterGitState(body: string): TkinterGitLiveState | null {
     if (!parsed || parsed.v !== 1) return null;
     return {
       v: 1,
+      released: Boolean(parsed.released),
       startedAt: typeof parsed.startedAt === "string" && parsed.startedAt ? parsed.startedAt : null,
       pausedAt: typeof parsed.pausedAt === "string" && parsed.pausedAt ? parsed.pausedAt : null,
       resetClock: Boolean(parsed.resetClock),
@@ -42,7 +45,10 @@ export function parseTkinterGitState(body: string): TkinterGitLiveState | null {
 }
 
 export function serializeTkinterGitState(state: TkinterGitLiveState) {
-  return `${TKINTER_GIT_TITULO} está en preparación. Los alumnos todavía no la ven.\n\n${MARK}\n${JSON.stringify(state)}`;
+  const visible = state.released
+    ? `${TKINTER_GIT_TITULO} está liberada. Un integrante sube el PDF del equipo.`
+    : `${TKINTER_GIT_TITULO} está en preparación. Los alumnos todavía no la ven.`;
+  return `${visible}\n\n${MARK}\n${JSON.stringify(state)}`;
 }
 
 export function tkinterGitStateFromAnnouncements(announcements: AnnouncementLike[], groupId?: string) {
@@ -77,7 +83,7 @@ export function tkinterGitSessionFromTeams(base: ExtraSession, state: TkinterGit
   });
   return {
     ...base,
-    released: false,
+    released: state.released,
     releasedAt: null,
     paused: Boolean(state.pausedAt),
     pausedAt: state.pausedAt,

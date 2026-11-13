@@ -7,6 +7,7 @@ import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentExamenCard from "../components/StudentExamenCard";
+import StudentTkinterGitCard from "../components/StudentTkinterGitCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Top10Ranking from "../components/Top10Ranking";
@@ -153,6 +154,7 @@ export default function StudentPage() {
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
       <StudentExamenCard groupCode={data.group?.code} />
+      <StudentTkinterGitCard groupCode={data.group?.code} studentId={user?.id} />
 
       <StudentCommunication />
 
