@@ -13,6 +13,7 @@ import {
 import { maquinaRoleLabel } from "../lib/maquinaScrum";
 import {
   TKINTER_GIT_FIRMAS,
+  TKINTER_GIT_INSTRUCTIVO,
   TKINTER_GIT_NOTA_REPO,
   TKINTER_GIT_NOTAS,
   TKINTER_GIT_TITULO,
@@ -126,6 +127,13 @@ export default function TeacherTkinterGitPanel({
           Grupo {selectedGroup?.code ?? "—"}. Equipos de proyecto. Parte de {firmasMax.toLocaleString("es-MX")} Firmas.
           Un integrante sube el PDF del equipo. {released ? "Los alumnos ya la ven." : "Los alumnos todavía no la ven."}
         </p>
+        <a
+          href={TKINTER_GIT_INSTRUCTIVO}
+          download="Instructivo-Tkinter-en-Git.pdf"
+          className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-sky-400/40 bg-sky-500/15 px-4 py-2.5 text-sm font-semibold text-sky-100"
+        >
+          Descargar instructivo (PDF)
+        </a>
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"

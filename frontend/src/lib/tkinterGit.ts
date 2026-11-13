@@ -163,6 +163,7 @@ export const TKINTER_GIT_REQUISITOS = [
 ];
 
 export const TKINTER_GIT_PDF_MAX_BYTES = 8 * 1024 * 1024;
+export const TKINTER_GIT_INSTRUCTIVO = "/instructivo-tkinter-git.pdf";
 
 export type TkinterGitResponse = {
   groupCode: string;

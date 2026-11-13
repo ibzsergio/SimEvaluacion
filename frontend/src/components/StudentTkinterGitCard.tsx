@@ -7,6 +7,7 @@ import {
   uploadTkinterGitPdf,
 } from "../lib/api";
 import {
+  TKINTER_GIT_INSTRUCTIVO,
   TKINTER_GIT_PDF_MAX_BYTES,
   TKINTER_GIT_REQUISITOS,
   TKINTER_GIT_TITULO,
@@ -75,9 +76,17 @@ export default function StudentTkinterGitCard({
       <p className="text-[11px] font-bold uppercase tracking-widest text-sky-200">Actividad Scrum · equipo de proyecto</p>
       <h2 className="mt-1 text-2xl font-bold text-white">{TKINTER_GIT_TITULO}</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-200">
-        Cada equipo hace un programa distinto. Abajo dice de qué trata el de tu equipo. En programa.py van la cadena
-        de conexión, la aplicación de Tkinter y el CRUD. La evidencia es un PDF de máximo 8 MB. Lo sube un integrante.
+        Cada equipo hace un programa distinto. Abajo dice de qué trata el de tu equipo. El instructivo completo está
+        en un solo PDF: los pasos, cómo guardar, comprometer y subir cada cambio, los errores y cómo hacerlo en
+        Android o en iPhone.
       </p>
+      <a
+        href={TKINTER_GIT_INSTRUCTIVO}
+        download="Instructivo-Tkinter-en-Git.pdf"
+        className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-sky-400"
+      >
+        Descargar instructivo (PDF)
+      </a>
       <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-100">
         {TKINTER_GIT_REQUISITOS.map((linea) => (
           <li key={linea}>{linea}</li>
@@ -128,6 +137,7 @@ export default function StudentTkinterGitCard({
       ) : null}
       <div className="mt-4 rounded-2xl border border-white/10 p-4">
         <p className="text-sm font-semibold text-white">Evidencia del equipo</p>
+        <p className="mt-1 text-sm text-amber-100">Este archivo es otro PDF. No subas el instructivo.</p>
         <p className="mt-1 text-sm text-slate-300">
           Un solo PDF, de 8 MB o menos. Marca todo antes de elegir el archivo. Si lo vuelven a subir, reemplaza el anterior.
         </p>
