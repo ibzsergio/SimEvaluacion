@@ -1427,9 +1427,15 @@ export async function fetchStudentTkinterGitDelivery() {
     released: boolean;
     teamKey: string;
     teamName: string;
+    repoUrl: string | null;
     delivery: { teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string } | null;
   }>("/student/tkinter-git/delivery");
   return data;
+}
+
+export async function saveTkinterGitRepo(url: string) {
+  const { data } = await api.post<{ repoUrl: string }>("/student/tkinter-git/repo", { url });
+  return data.repoUrl;
 }
 
 export async function uploadTkinterGitPdf(file: File) {
@@ -1443,6 +1449,7 @@ export async function uploadTkinterGitPdf(file: File) {
 export async function fetchTeacherTkinterGitDeliveries(groupId: string) {
   const { data } = await api.get<{
     deliveries: Array<{ teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string }>;
+    links: Record<string, string>;
   }>(`/teacher/groups/${groupId}/tkinter-git/deliveries`);
   return data;
 }

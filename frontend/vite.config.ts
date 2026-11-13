@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261113-git-comprobar",
+        cacheId: "simeval-20261113-git-302-liga",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

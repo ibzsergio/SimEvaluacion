@@ -163,7 +163,19 @@ export const TKINTER_GIT_REQUISITOS = [
 ];
 
 export const TKINTER_GIT_PDF_MAX_BYTES = 8 * 1024 * 1024;
-export const TKINTER_GIT_INSTRUCTIVO = "/instructivo-tkinter-git.pdf?v=2";
+export const TKINTER_GIT_INSTRUCTIVO = "/instructivo-tkinter-git.pdf?v=3";
+export const TKINTER_GIT_DOCENTE = "ibzsergio";
+export const TKINTER_GIT_CIERRE_302 = "2026-11-13T15:00:00-06:00";
+
+export function tkinterGitCierre(groupCode?: string | null, now = Date.now()) {
+  if (groupCode?.trim() !== "302") return { open: true, texto: "" };
+  const until = new Date(TKINTER_GIT_CIERRE_302).getTime();
+  return {
+    open: now < until,
+    texto:
+      "El grupo 302 sube el PDF hasta las 3:00 p. m. del viernes 13 de noviembre. Después de esa hora ya no se recibe el archivo.",
+  };
+}
 
 export type TkinterGitResponse = {
   groupCode: string;
@@ -345,7 +357,8 @@ export function pasosGit(repo: string): GitPaso[] {
         "En el menú izquierdo busca Collaborators. Si no está, pulsa Access y ahí aparece.",
         "Pulsa Add people.",
         "Escribe el usuario de GitHub de un compañero, el nombre que va después de github.com/, y pulsa Add.",
-        "Repite con cada integrante y con el docente.",
+        "Repite con cada integrante.",
+        "Agrega también al docente. Su usuario es ibzsergio. Escríbelo igual, en Add people, y pulsa Add.",
         "Cada compañero entra a GitHub con su cuenta, abre la campana y pulsa Accept invitation.",
       ],
     },

@@ -8,6 +8,9 @@ const PDF_MAX_BYTES = 8 * 1024 * 1024;
 const ACTIVITY_KEY = "git";
 const ACTIVITY_TITLE = "ACTIVIDAD TKINTER EN GIT";
 const MARK = "[[tkinter-git-state]]";
+const CIERRE_302 = "2026-11-13T15:00:00-06:00";
+const MENSAJE_CIERRE =
+  "Ya pasó la hora. El grupo 302 puede subir el PDF hasta las 3:00 p. m. del viernes 13 de noviembre.";
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: PDF_MAX_BYTES } });
 
 type TeamRow = {
@@ -115,6 +118,67 @@ async function equipoDelAlumno(studentId: string) {
   };
 }
 
+function subidaAbierta(groupCode: string, now = Date.now()) {
+  if (groupCode.trim() !== "302") return true;
+  return now < new Date(CIERRE_302).getTime();
+}
+
+function ligaValida(raw: unknown) {
+  const url = String(raw ?? "").trim();
+  if (url.length < 18 || url.length > 300) return null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (parsed.protocol !== "https:") return null;
+    if (host !== "github.com" && host !== "www.github.com") return null;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const owner = parts[0];
+    const repo = parts[1];
+    if (!owner || !repo) return null;
+    return `https://github.com/${owner}/${repo.replace(/\.git$/i, "")}`;
+  } catch {
+    return null;
+  }
+}
+
+function ligasDe(body: string) {
+  const idx = body.indexOf(MARK);
+  if (idx < 0) return {} as Record<string, string>;
+  try {
+    const parsed = JSON.parse(body.slice(idx + MARK.length).trim()) as { repoLinks?: Record<string, unknown> };
+    const links = parsed.repoLinks;
+    if (!links || typeof links !== "object") return {};
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(links)) {
+      const url = ligaValida(value);
+      if (url) out[key] = url;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function ponerLiga(body: string, teamKey: string, url: string) {
+  const idx = body.indexOf(MARK);
+  if (idx < 0) return null;
+  try {
+    const parsed = JSON.parse(body.slice(idx + MARK.length).trim()) as { v?: number; repoLinks?: Record<string, string> };
+    if (parsed?.v !== 1) return null;
+    parsed.repoLinks = { ...(parsed.repoLinks ?? {}), [teamKey]: url };
+    return `${body.slice(0, idx + MARK.length)}\n${JSON.stringify(parsed)}`;
+  } catch {
+    return null;
+  }
+}
+
+async function anuncioDelGrupo(groupId: string) {
+  return prisma.announcement.findFirst({
+    where: { groupId, title: ACTIVITY_TITLE },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 function entregaPublica(
   row: { teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: Date },
   uploadedByName: string,
@@ -146,8 +210,10 @@ tkinterGitTeacherRouter.get("/groups/:groupId/tkinter-git/deliveries", async (re
     select: { id: true, displayName: true },
   });
   const nameById = new Map(names.map((user) => [user.id, user.displayName]));
+  const anuncio = await anuncioDelGrupo(groupId);
   return res.json({
     deliveries: rows.map((row) => entregaPublica(row, nameById.get(row.uploadedById) ?? "Un integrante")),
+    links: anuncio ? ligasDe(anuncio.body) : {},
   });
 });
 
@@ -200,6 +266,8 @@ export function registerStudentTkinterGitRoutes(app: import("express").Express) 
       });
     }
     const released = await actividadLiberada(team.groupId);
+    const anuncio = await anuncioDelGrupo(team.groupId);
+    const repoUrl = anuncio ? ligasDe(anuncio.body)[team.teamKey] ?? null : null;
     const row = await prisma.sqlScrumDelivery.findUnique({
       where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY, groupId: team.groupId, teamKey: team.teamKey } },
       select: { teamKey: true, teamName: true, fileName: true, sizeBytes: true, uploadedAt: true, uploadedById: true },
@@ -213,8 +281,42 @@ export function registerStudentTkinterGitRoutes(app: import("express").Express) 
       released,
       teamKey: team.teamKey,
       teamName: team.teamName,
+      repoUrl,
       delivery: row ? entregaPublica(row, uploadedByName) : null,
     });
+  });
+
+  app.post("/student/tkinter-git/repo", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
+    const team = await equipoDelAlumno(req.auth!.userId);
+    if (!team) {
+      return res.status(400).json({
+        error: "no_team",
+        message: "No estás en un equipo de proyecto. Pide al docente que te asigne en Roles / Equipos.",
+      });
+    }
+    if (team.groupCode.trim() !== "302") {
+      return res.status(403).json({ error: "wrong_group", message: "La liga del repositorio la entrega el grupo 302." });
+    }
+    if (!subidaAbierta(team.groupCode)) {
+      return res.status(403).json({ error: "closed", message: MENSAJE_CIERRE });
+    }
+    const url = ligaValida(req.body?.url);
+    if (!url) {
+      return res.status(400).json({
+        error: "invalid_url",
+        message: "Pega la liga completa del repositorio. Tiene que empezar con https://github.com/ y traer el usuario y el nombre del proyecto.",
+      });
+    }
+    const anuncio = await anuncioDelGrupo(team.groupId);
+    if (!anuncio) {
+      return res.status(400).json({ error: "not_ready", message: "El docente todavía no prepara la actividad. Pídele que la abra y vuelve a guardar la liga." });
+    }
+    const next = ponerLiga(anuncio.body, team.teamKey, url);
+    if (!next) {
+      return res.status(400).json({ error: "not_ready", message: "No se pudo guardar la liga. Recarga la página e inténtalo de nuevo." });
+    }
+    await prisma.announcement.update({ where: { id: anuncio.id }, data: { body: next } });
+    return res.json({ repoUrl: url });
   });
 
   app.post(
@@ -254,6 +356,19 @@ export function registerStudentTkinterGitRoutes(app: import("express").Express) 
       }
       if (!(await actividadLiberada(team.groupId))) {
         return res.status(403).json({ error: "not_released", message: "El docente todavía no libera la actividad." });
+      }
+      if (!subidaAbierta(team.groupCode)) {
+        return res.status(403).json({ error: "closed", message: MENSAJE_CIERRE });
+      }
+      if (team.groupCode.trim() === "302") {
+        const anuncio = await anuncioDelGrupo(team.groupId);
+        const repoUrl = anuncio ? ligasDe(anuncio.body)[team.teamKey] : undefined;
+        if (!repoUrl) {
+          return res.status(400).json({
+            error: "repo_required",
+            message: "Primero guarda la liga del repositorio y agrega a ibzsergio como colaborador.",
+          });
+        }
       }
       const saved = await prisma.sqlScrumDelivery.upsert({
         where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY, groupId: team.groupId, teamKey: team.teamKey } },

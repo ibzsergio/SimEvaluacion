@@ -11,6 +11,7 @@ export type TkinterGitLiveState = {
   resetClock?: boolean;
   notes: Record<string, ExtraNote[]>;
   awarded: string[];
+  repoLinks: Record<string, string>;
 };
 
 const EMPTY: TkinterGitLiveState = {
@@ -20,6 +21,7 @@ const EMPTY: TkinterGitLiveState = {
   pausedAt: null,
   notes: {},
   awarded: [],
+  repoLinks: {},
 };
 
 type AnnouncementLike = Pick<Announcement, "title" | "body" | "createdAt" | "groupId">;
@@ -38,6 +40,12 @@ export function parseTkinterGitState(body: string): TkinterGitLiveState | null {
       resetClock: Boolean(parsed.resetClock),
       notes: parsed.notes && typeof parsed.notes === "object" ? parsed.notes : {},
       awarded: Array.isArray(parsed.awarded) ? parsed.awarded.filter((id) => typeof id === "string") : [],
+      repoLinks:
+        parsed.repoLinks && typeof parsed.repoLinks === "object"
+          ? Object.fromEntries(
+              Object.entries(parsed.repoLinks).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+            )
+          : {},
     };
   } catch {
     return null;

@@ -1,16 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   fetchStudentTkinterGit,
   fetchStudentTkinterGitDelivery,
   getApiErrorMessage,
+  saveTkinterGitRepo,
   uploadTkinterGitPdf,
 } from "../lib/api";
 import {
+  TKINTER_GIT_DOCENTE,
   TKINTER_GIT_INSTRUCTIVO,
   TKINTER_GIT_PDF_MAX_BYTES,
   TKINTER_GIT_REQUISITOS,
   TKINTER_GIT_TITULO,
+  tkinterGitCierre,
   cambioDe,
   cambiosDelEquipo,
   nombreRepositorio,
@@ -30,6 +33,10 @@ export default function StudentTkinterGitCard({
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState("");
+  const [liga, setLiga] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+  const es302 = code === "302";
+  const cierre = tkinterGitCierre(code, now);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const query = useQuery({
     queryKey: ["student-tkinter-git"],
@@ -45,6 +52,20 @@ export default function StudentTkinterGitCard({
     enabled: visible && released,
     retry: false,
   });
+  const linkMutation = useMutation({
+    mutationFn: saveTkinterGitRepo,
+    onSuccess: async () => {
+      setUploadError("");
+      setLiga("");
+      await queryClient.invalidateQueries({ queryKey: ["student-tkinter-git-delivery"] });
+    },
+    onError: (err) => setUploadError(getApiErrorMessage(err)),
+  });
+  useEffect(() => {
+    if (!es302) return;
+    const id = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, [es302]);
   const uploadMutation = useMutation({
     mutationFn: uploadTkinterGitPdf,
     onSuccess: async () => {
@@ -135,6 +156,49 @@ export default function StudentTkinterGitCard({
           ))}
         </ul>
       ) : null}
+      {es302 ? (
+        <div className="mt-4 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4">
+          <p className="text-sm font-semibold text-amber-50">{cierre.texto}</p>
+          <p className="mt-3 text-sm text-white">
+            Agreguen al docente como colaborador. Su usuario de GitHub es{" "}
+            <span className="font-mono font-bold text-amber-100">{TKINTER_GIT_DOCENTE}</span>.
+          </p>
+          <p className="mt-1 text-sm text-slate-100">
+            En el repositorio: Settings, Collaborators, Add people, escriban {TKINTER_GIT_DOCENTE} y pulsen Add.
+          </p>
+          <a
+            href={`https://github.com/${TKINTER_GIT_DOCENTE}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-block text-sm font-semibold text-sky-200 underline"
+          >
+            github.com/{TKINTER_GIT_DOCENTE}
+          </a>
+          <p className="mt-4 text-sm font-semibold text-white">Liga del repositorio del equipo</p>
+          {deliveryQuery.data?.repoUrl ? (
+            <a href={deliveryQuery.data.repoUrl} target="_blank" rel="noreferrer" className="mt-1 block text-sm text-emerald-200 underline">
+              {deliveryQuery.data.repoUrl}
+            </a>
+          ) : (
+            <p className="mt-1 text-sm text-amber-100">Todavía no guardan la liga. Sin ella no se puede subir el PDF.</p>
+          )}
+          <input
+            value={liga}
+            onChange={(event) => setLiga(event.target.value)}
+            disabled={!cierre.open || linkMutation.isPending}
+            placeholder="https://github.com/usuario/tkinter-302-equipo-1"
+            className="mt-2 w-full rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white disabled:opacity-50"
+          />
+          <button
+            type="button"
+            disabled={!cierre.open || linkMutation.isPending || liga.trim().length < 18}
+            onClick={() => linkMutation.mutate(liga.trim())}
+            className="mt-2 min-h-11 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50"
+          >
+            {linkMutation.isPending ? "Guardando..." : "Guardar liga"}
+          </button>
+        </div>
+      ) : null}
       <div className="mt-4 rounded-2xl border border-white/10 p-4">
         <p className="text-sm font-semibold text-white">Evidencia del equipo</p>
         <p className="mt-1 text-sm text-amber-100">Este archivo es otro PDF. No subas el instructivo.</p>
@@ -167,7 +231,7 @@ export default function StudentTkinterGitCard({
           ref={fileRef}
           type="file"
           accept="application/pdf,.pdf"
-          disabled={!ready || uploadMutation.isPending}
+          disabled={!ready || uploadMutation.isPending || !cierre.open || (es302 && !deliveryQuery.data?.repoUrl)}
           className="mt-3 block w-full text-sm text-slate-200 disabled:opacity-50"
           onChange={(event) => {
             const file = event.target.files?.[0];
@@ -180,6 +244,7 @@ export default function StudentTkinterGitCard({
             uploadMutation.mutate(file);
           }}
         />
+        {es302 && !cierre.open ? <p className="mt-2 text-sm text-rose-200">Ya pasó la hora. El archivo ya no se puede subir.</p> : null}
         {uploadMutation.isPending ? <p className="mt-2 text-sm text-slate-300">Subiendo...</p> : null}
         {uploadError ? <p className="mt-2 text-sm text-rose-200">{uploadError}</p> : null}
       </div>

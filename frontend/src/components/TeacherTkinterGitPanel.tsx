@@ -12,6 +12,7 @@ import {
 } from "../lib/api";
 import { maquinaRoleLabel } from "../lib/maquinaScrum";
 import {
+  TKINTER_GIT_DOCENTE,
   TKINTER_GIT_FIRMAS,
   TKINTER_GIT_INSTRUCTIVO,
   TKINTER_GIT_NOTA_REPO,
@@ -19,6 +20,7 @@ import {
   TKINTER_GIT_TITULO,
   nombreRepositorio,
   programaDelEquipo,
+  tkinterGitCierre,
 } from "../lib/tkinterGit";
 import type { ClassGroup } from "../lib/types";
 import TkinterGitGuide from "./TkinterGitGuide";
@@ -127,6 +129,12 @@ export default function TeacherTkinterGitPanel({
           Grupo {selectedGroup?.code ?? "—"}. Equipos de proyecto. Parte de {firmasMax.toLocaleString("es-MX")} Firmas.
           Un integrante sube el PDF del equipo. {released ? "Los alumnos ya la ven." : "Los alumnos todavía no la ven."}
         </p>
+        {code === "302" ? (
+          <p className="mt-2 max-w-3xl text-sm text-amber-100">
+            {tkinterGitCierre("302").texto} Cada equipo guarda la liga de su repositorio y te agrega como colaborador:{" "}
+            <span className="font-mono font-bold">{TKINTER_GIT_DOCENTE}</span>.
+          </p>
+        ) : null}
         <a
           href={TKINTER_GIT_INSTRUCTIVO}
           download="Instructivo-Tkinter-en-Git.pdf"
@@ -184,6 +192,7 @@ export default function TeacherTkinterGitPanel({
             {ordered.map((team) => {
               const teamId = team.key.startsWith("project:") ? team.key.slice("project:".length) : team.key;
               const file = (deliveriesQuery.data?.deliveries ?? []).find((item) => item.teamKey === team.key);
+              const liga = deliveriesQuery.data?.links?.[team.key];
               const programa = programaDelEquipo(
                 ordered.map((item) => ({ id: item.key.startsWith("project:") ? item.key.slice("project:".length) : item.key })),
                 teamId,
@@ -226,6 +235,15 @@ export default function TeacherTkinterGitPanel({
                     {team.awarded ? " · Firmas guardadas" : ""}
                   </p>
                   <p className="mt-1 font-mono text-[11px] text-emerald-200">{repo}</p>
+                  {code === "302" ? (
+                    liga ? (
+                      <a href={liga} target="_blank" rel="noreferrer" className="mt-1 block text-xs text-sky-200 underline">
+                        {liga}
+                      </a>
+                    ) : (
+                      <p className="mt-1 text-xs text-amber-100">Sin liga del repositorio</p>
+                    )
+                  ) : null}
                   <ul className="mt-3 space-y-0.5 text-xs text-slate-300">
                     {team.members.map((member) => (
                       <li key={member.studentId} className="flex justify-between gap-2">
