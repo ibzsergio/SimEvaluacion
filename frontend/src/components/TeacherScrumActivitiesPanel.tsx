@@ -181,7 +181,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              El grupo 301 y el grupo 302 hacen las dos: ACTIVIDAD BASE DE DATOS II y ACTIVIDAD BASE DE DATOS III. Los grupos 301 y 302 suben cada una hasta las 3:00 p. m. En el 302, el líder reparte una tabla por integrante y todo el equipo junta su script y su Tkinter en un solo proyecto de GitHub, además del PDF. 2000 puntos.
+              El grupo 301 y el grupo 302 hacen las dos: ACTIVIDAD BASE DE DATOS II y ACTIVIDAD BASE DE DATOS III. Los dos grupos suben cada una hasta las 5:00 p. m. de hoy, viernes 13 de noviembre. En el 302, el líder reparte una tabla por integrante y todo el equipo junta su script y su Tkinter en un solo proyecto de GitHub, además del PDF. 2000 puntos.
             </p>
           </section>
 

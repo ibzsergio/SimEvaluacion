@@ -25,14 +25,14 @@ type ActivityKey = keyof typeof ACTIVITIES;
 
 const CIERRE: Record<string, { iso: string; texto: string }> = {
   "301": {
-    iso: "2026-11-12T15:00:00-06:00",
+    iso: "2026-11-13T17:00:00-06:00",
     texto:
-      "La entrega y la subida del archivo del grupo 301 se cierran a las 3:00 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+      "La entrega y la subida del archivo del grupo 301 se cierran a las 5:00 p. m. de hoy, viernes 13 de noviembre. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
   },
   "302": {
-    iso: "2026-11-12T15:00:00-06:00",
+    iso: "2026-11-13T17:00:00-06:00",
     texto:
-      "La entrega y la subida del archivo del grupo 302 se cierran a las 3:00 p. m. de hoy. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
+      "La entrega y la subida del archivo del grupo 302 se cierran a las 5:00 p. m. de hoy, viernes 13 de noviembre. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
   },
 };
 
@@ -44,7 +44,7 @@ function cierreDe(groupCode?: string | null, now = Date.now()) {
   const item = groupCode ? CIERRE[groupCode.trim()] : undefined;
   if (!item) {
     return {
-      texto: "Los grupos 301 y 302 entregan hasta las 3:00 p. m. de hoy.",
+      texto: "Los grupos 301 y 302 entregan hasta las 5:00 p. m. de hoy, viernes 13 de noviembre.",
       open: false,
     };
   }

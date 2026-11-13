@@ -7,6 +7,7 @@ import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentExamenCard from "../components/StudentExamenCard";
+import StudentSqlScrumCard from "../components/StudentSqlScrumCard";
 import StudentTkinterGitCard from "../components/StudentTkinterGitCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import PythonCompilerPanel from "../components/PythonCompilerPanel";
@@ -92,8 +93,6 @@ export default function StudentPage() {
   const scrumHidden = new Set([
     "CRUDS BD",
     "TEST",
-    "ACTIVIDAD BASE DE DATOS II",
-    "ACTIVIDAD BASE DE DATOS III",
     "ACTIVIDAD TKINTER EN GIT",
     "La máquina",
     "La base de datos",
@@ -154,6 +153,8 @@ export default function StudentPage() {
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
       <StudentExamenCard groupCode={data.group?.code} />
+      <StudentSqlScrumCard activityKey="bd2" groupCode={data.group?.code} studentId={user?.id} />
+      <StudentSqlScrumCard activityKey="bd3" groupCode={data.group?.code} studentId={user?.id} />
       <StudentTkinterGitCard groupCode={data.group?.code} studentId={user?.id} />
 
       <StudentCommunication />
