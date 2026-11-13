@@ -14,6 +14,15 @@ import {
   withTeamNames,
   type PopupLiveState,
 } from "./popupLive";
+import { TKINTER_GIT_FIRMAS, TKINTER_GIT_TITULO } from "./tkinterGit";
+import {
+  serializeTkinterGitState,
+  tkinterGitGradeRows,
+  tkinterGitNote,
+  tkinterGitSessionFromTeams,
+  tkinterGitStateFromAnnouncements,
+  type TkinterGitLiveState,
+} from "./tkinterGitLive";
 import {
   MAQUINA_ANNOUNCEMENT_TITLE,
   maquinaGradeRows,
@@ -912,6 +921,124 @@ export async function removeMaquinaNote(groupId: string, payload: { teamKey: str
       [payload.teamKey]: (state.notes[payload.teamKey] ?? []).filter((note) => note.id !== payload.noteId),
     },
   }));
+}
+
+async function saveTkinterGitState(groupId: string, state: TkinterGitLiveState) {
+  const comms = await fetchTeacherComms();
+  const previous = comms.announcements.filter((item) => item.title === TKINTER_GIT_TITULO && item.groupId === groupId);
+  const created = await createAnnouncement({
+    title: TKINTER_GIT_TITULO,
+    body: serializeTkinterGitState(state),
+    groupId,
+  });
+  await Promise.all(previous.filter((item) => item.id !== created.id).map((item) => deleteAnnouncement(item.id)));
+  return state;
+}
+
+async function tkinterGitSession(groupId: string, mutate?: (state: TkinterGitLiveState) => TkinterGitLiveState) {
+  const [base, comms] = await Promise.all([projectTeamsForPopup(groupId), fetchTeacherComms()]);
+  const current = tkinterGitStateFromAnnouncements(comms.announcements, groupId);
+  const next = mutate ? mutate(current) : current;
+  const saved = mutate ? await saveTkinterGitState(groupId, next) : next;
+  return tkinterGitSessionFromTeams(base, saved);
+}
+
+export async function fetchTkinterGitSession(groupId: string) {
+  return tkinterGitSession(groupId);
+}
+
+export async function startTkinterGitTimer(groupId: string) {
+  return tkinterGitSession(groupId, (state) => ({
+    ...state,
+    pausedAt: null,
+    startedAt: state.startedAt ?? new Date().toISOString(),
+    resetClock: false,
+  }));
+}
+
+export async function setTkinterGitPaused(groupId: string, paused: boolean) {
+  return tkinterGitSession(groupId, (state) => {
+    if (paused) return { ...state, pausedAt: state.pausedAt ?? new Date().toISOString() };
+    if (!state.pausedAt || !state.startedAt) return { ...state, pausedAt: null };
+    const pauseMs = Math.max(0, Date.now() - new Date(state.pausedAt).getTime());
+    return {
+      ...state,
+      pausedAt: null,
+      startedAt: new Date(new Date(state.startedAt).getTime() + pauseMs).toISOString(),
+    };
+  });
+}
+
+export async function resetTkinterGitTimer(groupId: string) {
+  return tkinterGitSession(groupId, (state) => ({ ...state, startedAt: null, pausedAt: null, resetClock: true }));
+}
+
+export async function restoreTkinterGitElapsed(groupId: string, elapsedMinutes: number) {
+  const elapsedMs = Math.max(0, Math.round(elapsedMinutes * 60 * 1000));
+  return tkinterGitSession(groupId, (state) => ({
+    ...state,
+    pausedAt: null,
+    resetClock: false,
+    startedAt: new Date(Date.now() - elapsedMs).toISOString(),
+  }));
+}
+
+export async function addTkinterGitNote(
+  groupId: string,
+  payload: { teamKey: string; code: string; label?: string; points?: number },
+) {
+  const base = await projectTeamsForPopup(groupId);
+  const team = base.teams.find((item) => item.key === payload.teamKey);
+  if (!team) throw new Error("No encontré ese equipo de proyecto.");
+  const custom =
+    payload.code === "custom" && payload.label && payload.points != null
+      ? { label: payload.label, points: payload.points }
+      : undefined;
+  const note = tkinterGitNote(payload.code, custom);
+  return tkinterGitSession(groupId, (state) => ({
+    ...state,
+    notes: {
+      ...state.notes,
+      [payload.teamKey]: [...(state.notes[payload.teamKey] ?? []), note],
+    },
+  }));
+}
+
+export async function removeTkinterGitNote(groupId: string, payload: { teamKey: string; noteId: string }) {
+  return tkinterGitSession(groupId, (state) => ({
+    ...state,
+    notes: {
+      ...state.notes,
+      [payload.teamKey]: (state.notes[payload.teamKey] ?? []).filter((note) => note.id !== payload.noteId),
+    },
+  }));
+}
+
+export async function applyTkinterGitFirmas(groupId: string, teamKey?: string) {
+  const preview = await tkinterGitSession(groupId);
+  const keys = teamKey ? [teamKey] : preview.teams.map((team) => team.key);
+  if (teamKey && !preview.teams.some((team) => team.key === teamKey)) {
+    throw new Error("No encontré ese equipo de proyecto.");
+  }
+  const saved = await tkinterGitSession(groupId, (state) => ({
+    ...state,
+    awarded: [...new Set([...state.awarded, ...keys])],
+  }));
+  const rows = tkinterGitGradeRows(saved, teamKey);
+  if (rows.length > 0) {
+    const activities = await fetchActivities(groupId);
+    let activity = activities.find((item) => item.name === TKINTER_GIT_TITULO);
+    if (!activity) {
+      const now = new Date();
+      const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      activity = await createActivity({ groupId, date, name: TKINTER_GIT_TITULO, maxPoints: TKINTER_GIT_FIRMAS });
+    }
+    await saveGradesBatch(
+      groupId,
+      rows.map((row) => ({ activityId: activity.id, studentId: row.studentId, points: row.points })),
+    );
+  }
+  return saved;
 }
 
 export async function applyMaquinaFirmas(groupId: string, teamKey?: string) {

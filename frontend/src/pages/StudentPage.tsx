@@ -6,13 +6,7 @@ import StudentCommunication from "../components/StudentCommunication";
 import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
-import StudentExtraCard from "../components/StudentExtraCard";
-import StudentBasedatosCard from "../components/StudentBasedatosCard";
-import StudentCrudCard from "../components/StudentCrudCard";
-import StudentSqlScrumCard from "../components/StudentSqlScrumCard";
-import StudentTkinterGitCard from "../components/StudentTkinterGitCard";
 import StudentExamenCard from "../components/StudentExamenCard";
-import StudentMaquinaCard from "../components/StudentMaquinaCard";
 import StudentSkillSurveyPanel from "../components/StudentSkillSurveyPanel";
 import PythonCompilerPanel from "../components/PythonCompilerPanel";
 import Top10Ranking from "../components/Top10Ranking";
@@ -22,8 +16,6 @@ import {
   fetchStudentProgress,
   getApiErrorMessage,
 } from "../lib/api";
-import InterfaceDesignBrief from "../components/InterfaceDesignBrief";
-import StudentInterfacePeer from "../components/StudentInterfacePeer";
 import { formatCalendarDate, formatDateTime, partialLabel } from "../lib/dates";
 import { INTERFACE_ACTIVITY_NAME } from "../lib/interfaceDesign";
 import { getDiplomaEncouragement, getDiplomaHeadline, getExemptionStatus } from "../lib/exemption";
@@ -92,14 +84,24 @@ export default function StudentPage() {
     exemption: getExemptionStatus(entry.place, partialClosed, currentPartial),
   }));
 
-  const interfaceActivity =
-    data.activities.find((activity) => activity.name === INTERFACE_ACTIVITY_NAME) ?? null;
   const interfaceStillOpen = interfaceLive.data ? interfaceLive.data.closed !== true : false;
   const visibleActivities = data.activities.filter(
     (activity) => activity.name !== "Pop-Up" && activity.name !== "Sprint improvisado",
   );
+  const scrumHidden = new Set([
+    "CRUDS BD",
+    "TEST",
+    "ACTIVIDAD BASE DE DATOS II",
+    "ACTIVIDAD BASE DE DATOS III",
+    "ACTIVIDAD TKINTER EN GIT",
+    "La máquina",
+    "La base de datos",
+  ]);
   const pendingActivities = visibleActivities.filter(
-    (a) => a.status === "pending" && !(interfaceStillOpen && a.name === INTERFACE_ACTIVITY_NAME),
+    (a) =>
+      a.status === "pending" &&
+      !scrumHidden.has(a.name) &&
+      !(interfaceStillOpen && a.name === INTERFACE_ACTIVITY_NAME),
   );
   const gradedActivities = visibleActivities.filter(
     (a) => a.status === "graded" && !(interfaceStillOpen && a.name === INTERFACE_ACTIVITY_NAME),
@@ -134,22 +136,6 @@ export default function StudentPage() {
       ) : null}
       <StudentMotivationCard motivation={motivation} />
 
-      {interfaceLive.data || interfaceActivity ? (
-        <InterfaceDesignBrief
-          mode="student"
-          teamName={interfaceLive.data?.teamName}
-          points={interfaceLive.data?.points ?? interfaceActivity?.grade?.points ?? null}
-          notes={interfaceLive.data?.notes ?? []}
-        />
-      ) : null}
-      {interfaceLive.data?.peer ? (
-        <StudentInterfacePeer
-          teacherPoints={interfaceLive.data.teacherPoints ?? interfaceLive.data.points ?? interfaceActivity?.grade?.points ?? null}
-          finalPoints={interfaceLive.data.points ?? interfaceActivity?.grade?.points ?? null}
-          peer={interfaceLive.data.peer}
-        />
-      ) : null}
-
       <StudentSkillSurveyPanel />
 
       {data.seating ? (
@@ -166,20 +152,7 @@ export default function StudentPage() {
 
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
-      <StudentTkinterGitCard groupCode={data.group?.code} studentId={user?.id} />
-
-      <StudentSqlScrumCard activityKey="bd2" groupCode={data.group?.code} studentId={user?.id} />
-      <StudentSqlScrumCard activityKey="bd3" groupCode={data.group?.code} studentId={user?.id} />
-
-      <StudentCrudCard groupCode={data.group?.code} studentId={user?.id} />
-
       <StudentExamenCard groupCode={data.group?.code} />
-
-      <StudentBasedatosCard extra={data.extra} studentId={user?.id} groupCode={data.group?.code} />
-
-      <StudentMaquinaCard extra={data.extra} groupCode={data.group.code} />
-
-      {data.extra ? <StudentExtraCard extra={data.extra} /> : null}
 
       <StudentCommunication />
 

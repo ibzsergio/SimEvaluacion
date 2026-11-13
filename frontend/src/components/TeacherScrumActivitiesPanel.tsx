@@ -198,8 +198,8 @@ export default function TeacherScrumActivitiesPanel({
                 parte y la suben a la rama main.
               </p>
             </div>
-            <span className="shrink-0 rounded-full border border-sky-400/40 bg-sky-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-sky-100">
-              Publicada
+            <span className="shrink-0 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">
+              Solo docente
             </span>
           </button>
 

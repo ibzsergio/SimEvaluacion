@@ -1,4 +1,20 @@
 export const TKINTER_GIT_TITULO = "ACTIVIDAD TKINTER EN GIT";
+export const TKINTER_GIT_MINUTOS = 60;
+export const TKINTER_GIT_FIRMAS = 1000;
+
+export const TKINTER_GIT_NOTA_REPO = {
+  code: "repo",
+  label: "No está el proyecto en GitHub",
+  points: 500,
+};
+
+export const TKINTER_GIT_NOTAS = [
+  TKINTER_GIT_NOTA_REPO,
+  { code: "clone", label: "Alguien no clonó o no tiene commit", points: 250 },
+  { code: "usuario", label: "El commit está a nombre de otra persona", points: 250 },
+  { code: "abre", label: "El programa no abre", points: 250 },
+  { code: "cambio", label: "No hizo el cambio que le toca", points: 250 },
+];
 
 export type TkinterPrograma = {
   titulo: string;

@@ -4,8 +4,21 @@ import { fetchStudentComms, getApiErrorMessage, downloadStudentCalendarFile } fr
 import { BASEDATOS_ANNOUNCEMENT_TITLE, basedatosPublicText } from "../lib/basedatosLive";
 import { CRUD_ANNOUNCEMENT_TITLE, crudPublicText, isCrudAnnouncement } from "../lib/crudLive";
 import { isSqlScrumAnnouncement, sqlScrumPublicText } from "../lib/sqlScrumLive";
+import { TKINTER_GIT_TITULO } from "../lib/tkinterGit";
 import { MAQUINA_ANNOUNCEMENT_TITLE, maquinaPublicText } from "../lib/maquinaLive";
 import { POPUP_ANNOUNCEMENT_TITLE } from "../lib/popupLive";
+
+function scrumAnnouncementHidden(title: string) {
+  return (
+    title === POPUP_ANNOUNCEMENT_TITLE ||
+    title === "Nueva actividad: Pop-Up" ||
+    title === MAQUINA_ANNOUNCEMENT_TITLE ||
+    title === BASEDATOS_ANNOUNCEMENT_TITLE ||
+    title === TKINTER_GIT_TITULO ||
+    isCrudAnnouncement(title) ||
+    isSqlScrumAnnouncement(title)
+  );
+}
 
 export default function StudentCommunication() {
   const [downloading, setDownloading] = useState(false);
@@ -71,12 +84,12 @@ export default function StudentCommunication() {
         </section>
       ) : null}
 
-      {data.announcements.some((a) => a.title !== POPUP_ANNOUNCEMENT_TITLE && a.title !== "Nueva actividad: Pop-Up") ? (
+      {data.announcements.some((a) => !scrumAnnouncementHidden(a.title)) ? (
         <section className="glass p-6">
           <h2 className="mb-4 text-lg font-semibold text-white">Avisos del docente</h2>
           <ul className="space-y-3">
             {data.announcements
-              .filter((a) => a.title !== POPUP_ANNOUNCEMENT_TITLE && a.title !== "Nueva actividad: Pop-Up")
+              .filter((a) => !scrumAnnouncementHidden(a.title))
               .map((a) => (
               <li
                 key={a.id}
