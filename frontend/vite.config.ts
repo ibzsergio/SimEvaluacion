@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261117-tkinter-20",
+        cacheId: "simeval-20261117-bd-20",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
