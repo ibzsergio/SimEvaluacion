@@ -129,10 +129,16 @@ export default function TeacherTkinterGitPanel({
           Grupo {selectedGroup?.code ?? "—"}. Equipos de proyecto. Parte de {firmasMax.toLocaleString("es-MX")} Firmas.
           Un integrante sube el PDF del equipo. {released ? "Los alumnos ya la ven." : "Los alumnos todavía no la ven."}
         </p>
-        {code === "302" ? (
+        {code === "301" || code === "302" ? (
           <p className="mt-2 max-w-3xl text-sm text-amber-100">
-            {tkinterGitCierre("302").texto} Cada equipo guarda la liga de su repositorio y te agrega como colaborador:{" "}
-            <span className="font-mono font-bold">{TKINTER_GIT_DOCENTE}</span>.
+            {tkinterGitCierre(code).texto}
+            {code === "302" ? (
+              <>
+                {" "}
+                Cada equipo guarda la liga de su repositorio y te agrega como colaborador:{" "}
+                <span className="font-mono font-bold">{TKINTER_GIT_DOCENTE}</span>.
+              </>
+            ) : null}
           </p>
         ) : null}
         <a

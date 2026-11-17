@@ -8,9 +8,9 @@ const PDF_MAX_BYTES = 8 * 1024 * 1024;
 const ACTIVITY_KEY = "git";
 const ACTIVITY_TITLE = "ACTIVIDAD TKINTER EN GIT";
 const MARK = "[[tkinter-git-state]]";
-const CIERRE_302 = "2026-11-13T17:00:00-06:00";
+const CIERRE = "2026-11-17T20:00:00-06:00";
 const MENSAJE_CIERRE =
-  "Ya pasó la hora. El grupo 302 puede subir el PDF hasta las 5:00 p. m. del viernes 13 de noviembre.";
+  "Ya pasó la hora. El PDF se recibe hasta las 8:00 p. m. de hoy, martes 17 de noviembre.";
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: PDF_MAX_BYTES } });
 
 type TeamRow = {
@@ -119,8 +119,9 @@ async function equipoDelAlumno(studentId: string) {
 }
 
 function subidaAbierta(groupCode: string, now = Date.now()) {
-  if (groupCode.trim() !== "302") return true;
-  return now < new Date(CIERRE_302).getTime();
+  const code = groupCode.trim();
+  if (code !== "301" && code !== "302") return false;
+  return now < new Date(CIERRE).getTime();
 }
 
 function ligaValida(raw: unknown) {

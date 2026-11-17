@@ -62,10 +62,10 @@ export default function StudentTkinterGitCard({
     onError: (err) => setUploadError(getApiErrorMessage(err)),
   });
   useEffect(() => {
-    if (!es302) return;
+    if (!visible) return;
     const id = window.setInterval(() => setNow(Date.now()), 15_000);
     return () => window.clearInterval(id);
-  }, [es302]);
+  }, [visible]);
   const uploadMutation = useMutation({
     mutationFn: uploadTkinterGitPdf,
     onSuccess: async () => {
@@ -199,6 +199,9 @@ export default function StudentTkinterGitCard({
           </button>
         </div>
       ) : null}
+      {!es302 && cierre.texto ? (
+        <p className="mt-4 rounded-xl bg-amber-400 px-3 py-2 text-sm font-bold text-slate-950">{cierre.texto}</p>
+      ) : null}
       <div className="mt-4 rounded-2xl border border-white/10 p-4">
         <p className="text-sm font-semibold text-white">Evidencia del equipo</p>
         <p className="mt-1 text-sm text-amber-100">Este archivo es otro PDF. No subas el instructivo.</p>
@@ -244,7 +247,7 @@ export default function StudentTkinterGitCard({
             uploadMutation.mutate(file);
           }}
         />
-        {es302 && !cierre.open ? <p className="mt-2 text-sm text-rose-200">Ya pasó la hora. El archivo ya no se puede subir.</p> : null}
+        {!cierre.open ? <p className="mt-2 text-sm text-rose-200">Ya pasó la hora. El archivo ya no se puede subir.</p> : null}
         {uploadMutation.isPending ? <p className="mt-2 text-sm text-slate-300">Subiendo...</p> : null}
         {uploadError ? <p className="mt-2 text-sm text-rose-200">{uploadError}</p> : null}
       </div>

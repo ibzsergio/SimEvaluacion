@@ -165,15 +165,15 @@ export const TKINTER_GIT_REQUISITOS = [
 export const TKINTER_GIT_PDF_MAX_BYTES = 8 * 1024 * 1024;
 export const TKINTER_GIT_INSTRUCTIVO = "/instructivo-tkinter-git.pdf?v=3";
 export const TKINTER_GIT_DOCENTE = "ibzsergio";
-export const TKINTER_GIT_CIERRE_302 = "2026-11-13T17:00:00-06:00";
+export const TKINTER_GIT_CIERRE = "2026-11-17T20:00:00-06:00";
 
 export function tkinterGitCierre(groupCode?: string | null, now = Date.now()) {
-  if (groupCode?.trim() !== "302") return { open: true, texto: "" };
-  const until = new Date(TKINTER_GIT_CIERRE_302).getTime();
+  const code = groupCode?.trim();
+  if (code !== "301" && code !== "302") return { open: false, texto: "" };
+  const until = new Date(TKINTER_GIT_CIERRE).getTime();
   return {
     open: now < until,
-    texto:
-      "El grupo 302 sube el PDF hasta las 5:00 p. m. del viernes 13 de noviembre. Después de esa hora ya no se recibe el archivo.",
+    texto: `El grupo ${code} sube el PDF hasta las 8:00 p. m. de hoy, martes 17 de noviembre. Después de esa hora ya no se recibe el archivo.`,
   };
 }
 
