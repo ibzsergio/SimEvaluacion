@@ -28,7 +28,7 @@ export default function StudentSqlScrumCard({
   const [file, setFile] = useState<File | null>(null);
   const [localError, setLocalError] = useState("");
   const [now, setNow] = useState(() => Date.now());
-  const cierre = sqlScrumCierre(groupCode, now);
+  const cierre = sqlScrumCierre(groupCode, now, activityKey);
   const abierto = cierre.open;
   const comms = useQuery({
     queryKey: ["student-comms"],

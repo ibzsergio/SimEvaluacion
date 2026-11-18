@@ -23,32 +23,25 @@ const ACTIVITIES = {
 
 type ActivityKey = keyof typeof ACTIVITIES;
 
-const CIERRE: Record<string, { iso: string; texto: string }> = {
-  "301": {
-    iso: "2026-11-17T20:00:00-06:00",
-    texto:
-      "La entrega y la subida del archivo del grupo 301 se cierran a las 8:00 p. m. de hoy, martes 17 de noviembre. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
-  },
-  "302": {
-    iso: "2026-11-17T20:00:00-06:00",
-    texto:
-      "La entrega y la subida del archivo del grupo 302 se cierran a las 8:00 p. m. de hoy, martes 17 de noviembre. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
-  },
+const CIERRE_ISO: Record<ActivityKey, string> = {
+  bd2: "2026-11-17T20:00:00-06:00",
+  bd3: "2026-11-18T14:00:00-06:00",
 };
 
 function activityOf(key: string): (typeof ACTIVITIES)[ActivityKey] | null {
   return key in ACTIVITIES ? ACTIVITIES[key as ActivityKey] : null;
 }
 
-function cierreDe(groupCode?: string | null, now = Date.now()) {
-  const item = groupCode ? CIERRE[groupCode.trim()] : undefined;
-  if (!item) {
-    return {
-      texto: "Los grupos 301 y 302 entregan hasta las 8:00 p. m. de hoy, martes 17 de noviembre.",
-      open: false,
-    };
-  }
-  return { texto: item.texto, open: now < new Date(item.iso).getTime() };
+function cierreDe(groupCode: string | null | undefined, activityKey: ActivityKey, now = Date.now()) {
+  const code = groupCode?.trim();
+  const nombre = activityKey === "bd3" ? "ACTIVIDAD BASE DE DATOS III" : "ACTIVIDAD BASE DE DATOS II";
+  const hora =
+    activityKey === "bd3"
+      ? "2:00 p. m. de hoy, miércoles 18 de noviembre"
+      : "8:00 p. m. del martes 17 de noviembre";
+  const texto = `La entrega y la subida del archivo de ${nombre} del grupo ${code || "—"} se cierran a las ${hora}. Después ya no se puede subir y el equipo pierde los 2000 puntos.`;
+  if (code !== "301" && code !== "302") return { texto, open: false };
+  return { texto, open: now < new Date(CIERRE_ISO[activityKey]).getTime() };
 }
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: PDF_MAX_BYTES } });
@@ -276,7 +269,7 @@ export function registerStudentSqlScrumRoutes(app: import("express").Express) {
       const uploader = await prisma.user.findUnique({ where: { id: row.uploadedById }, select: { displayName: true } });
       uploadedByName = uploader?.displayName ?? "Un integrante";
     }
-    const cierre = cierreDe(team.groupCode);
+    const cierre = cierreDe(team.groupCode, activity.key);
     return res.json({
       allowed: true,
       teamKey: team.teamKey,
@@ -318,34 +311,46 @@ export function registerStudentSqlScrumRoutes(app: import("express").Express) {
         message: "No estás en un equipo de proyecto. Pide al docente que te asigne en Roles / Equipos.",
       });
     }
-    const cierre = cierreDe(team.groupCode);
+    const cierre = cierreDe(team.groupCode, activity.key);
     if (!cierre.open) {
       return res.status(403).json({ error: "upload_closed", message: `${cierre.texto} Esa hora ya pasó.` });
     }
-    const saved = await prisma.sqlScrumDelivery.upsert({
-      where: { activityKey_groupId_teamKey: { activityKey: activity.key, groupId: team.groupId, teamKey: team.teamKey } },
-      create: {
-        activityKey: activity.key,
-        groupId: team.groupId,
-        teamKey: team.teamKey,
-        teamName: team.teamName,
-        fileName: safeFileName(file.originalname || "actividad.pdf"),
-        mimeType: "application/pdf",
-        fileData: file.buffer,
-        sizeBytes: file.size,
-        uploadedById: req.auth!.userId,
-      },
-      update: {
-        teamName: team.teamName,
-        fileName: safeFileName(file.originalname || "actividad.pdf"),
-        mimeType: "application/pdf",
-        fileData: file.buffer,
-        sizeBytes: file.size,
-        uploadedById: req.auth!.userId,
-      },
-    });
-    await awardTeam(team.groupId, activity, team.teamKey);
-    const uploader = await prisma.user.findUnique({ where: { id: req.auth!.userId }, select: { displayName: true } });
-    return res.json({ delivery: publicDelivery(saved, uploader?.displayName ?? "Un integrante") });
+    try {
+      const saved = await prisma.sqlScrumDelivery.upsert({
+        where: { activityKey_groupId_teamKey: { activityKey: activity.key, groupId: team.groupId, teamKey: team.teamKey } },
+        create: {
+          activityKey: activity.key,
+          groupId: team.groupId,
+          teamKey: team.teamKey,
+          teamName: team.teamName,
+          fileName: safeFileName(file.originalname || "actividad.pdf"),
+          mimeType: "application/pdf",
+          fileData: file.buffer,
+          sizeBytes: file.size,
+          uploadedById: req.auth!.userId,
+        },
+        update: {
+          teamName: team.teamName,
+          fileName: safeFileName(file.originalname || "actividad.pdf"),
+          mimeType: "application/pdf",
+          fileData: file.buffer,
+          sizeBytes: file.size,
+          uploadedById: req.auth!.userId,
+        },
+      });
+      try {
+        await awardTeam(team.groupId, activity, team.teamKey);
+      } catch (err) {
+        console.error("sql scrum award failed", err);
+      }
+      const uploader = await prisma.user.findUnique({ where: { id: req.auth!.userId }, select: { displayName: true } });
+      return res.json({ delivery: publicDelivery(saved, uploader?.displayName ?? "Un integrante") });
+    } catch (err) {
+      console.error("sql scrum upload failed", err);
+      return res.status(500).json({
+        error: "upload_failed",
+        message: "No se pudo guardar el PDF. Si pesa cerca de 8 MB, redúcelo y vuelve a subirlo. Si el aviso sigue, espera un minuto e inténtalo otra vez.",
+      });
+    }
   });
 }

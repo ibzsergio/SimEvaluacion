@@ -9,31 +9,31 @@ export const SQL_SCRUM_NOTAS = [
   { code: "ruido", label: "Está haciendo ruido", points: 300 },
 ] as const;
 
-const CIERRE: Record<string, { iso: string; texto: string }> = {
-  "301": {
-    iso: "2026-11-17T20:00:00-06:00",
-    texto:
-      "La entrega y la subida del archivo del grupo 301 se cierran a las 8:00 p. m. de hoy, martes 17 de noviembre. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
-  },
-  "302": {
-    iso: "2026-11-17T20:00:00-06:00",
-    texto:
-      "La entrega y la subida del archivo del grupo 302 se cierran a las 8:00 p. m. de hoy, martes 17 de noviembre. Después ya no se puede subir y el equipo pierde los 2000 puntos.",
-  },
+const CIERRE_ISO: Record<SqlScrumKey, string> = {
+  bd2: "2026-11-17T20:00:00-06:00",
+  bd3: "2026-11-18T14:00:00-06:00",
 };
 
-export function sqlScrumCierre(groupCode?: string | null, now = Date.now()) {
-  const item = groupCode ? CIERRE[groupCode.trim()] : undefined;
-  if (!item) {
+export function sqlScrumCierre(groupCode?: string | null, now = Date.now(), activityKey: SqlScrumKey = "bd2") {
+  const code = groupCode?.trim();
+  const nombre = activityKey === "bd3" ? "ACTIVIDAD BASE DE DATOS III" : "ACTIVIDAD BASE DE DATOS II";
+  const hora =
+    activityKey === "bd3"
+      ? "2:00 p. m. de hoy, miércoles 18 de noviembre"
+      : "8:00 p. m. del martes 17 de noviembre";
+  if (code !== "301" && code !== "302") {
     return {
-      texto:
-        "Los grupos 301 y 302 entregan hasta las 8:00 p. m. de hoy, martes 17 de noviembre. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.",
+      texto: `Los grupos 301 y 302 entregan ${nombre} hasta las ${hora}. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.`,
       until: 0,
       open: false,
     };
   }
-  const until = new Date(item.iso).getTime();
-  return { texto: item.texto, until, open: now < until };
+  const until = new Date(CIERRE_ISO[activityKey]).getTime();
+  return {
+    texto: `La entrega y la subida del archivo de ${nombre} del grupo ${code} se cierran a las ${hora}. Después ya no se puede subir y el equipo pierde los 2000 puntos.`,
+    until,
+    open: now < until,
+  };
 }
 
 export function sqlScrumPuntosDe(notes: Array<{ points: number; studentId?: string | null }>, studentId: string) {

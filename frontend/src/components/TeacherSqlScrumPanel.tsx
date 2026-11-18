@@ -40,7 +40,7 @@ export default function TeacherSqlScrumPanel({
   const [custom, setCustom] = useState<Record<string, { label: string; points: string; studentId: string }>>({});
   const [now, setNow] = useState(() => Date.now());
   const selectedGroup = groups.find((group) => group.id === selectedGroupId);
-  const cierre = sqlScrumCierre(selectedGroup?.code, now);
+  const cierre = sqlScrumCierre(selectedGroup?.code, now, activityKey);
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 15_000);
     return () => window.clearInterval(id);
