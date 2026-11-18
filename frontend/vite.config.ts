@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261118-repo-pdf2",
+        cacheId: "simeval-20261118-repo-horas",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

@@ -9,13 +9,16 @@ import {
   removeRepoProyectoNote,
 } from "../lib/api";
 import {
+  formatoHoraClase,
   formatoReloj,
+  REPO_PROYECTO_CIERRE,
   REPO_PROYECTO_DOCENTE,
   REPO_PROYECTO_NOTAS,
-  REPO_PROYECTO_PUNTOS,
   REPO_PROYECTO_TITULO,
   repoAbierto,
+  repoEntrega,
   repoRestante,
+  repoTramos,
 } from "../lib/repoProyecto";
 import type { ClassGroup } from "../lib/types";
 
@@ -89,11 +92,15 @@ export default function TeacherRepoProyectoPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad Scrum · publicada</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{REPO_PROYECTO_TITULO}</h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
-          Grupo {selectedGroup?.code ?? "—"}. {REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos. El líder inicia 2
-          horas 30 minutos y puede anotar quién no está trabajando, está fuera del equipo o no asistió. Esas notas no
-          restan solas: tú las ves y publicas la calificación. Te agregan como colaborador:{" "}
+          Grupo {selectedGroup?.code ?? "—"}. El líder inicia 2 horas 30 minutos. Tú publicas la calificación. La máxima
+          es la de la hora en que quedó el PDF, menos tus notas. {REPO_PROYECTO_CIERRE} Te agregan como colaborador:{" "}
           <span className="font-mono font-bold text-violet-100">{REPO_PROYECTO_DOCENTE}</span>.
         </p>
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-200">
+          {repoTramos(selectedGroup?.code).map((tramo) => (
+            <li key={tramo.until}>{tramo.texto}</li>
+          ))}
+        </ul>
         {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
         {query.isError ? <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(query.error)}</p> : null}
       </section>
@@ -102,6 +109,7 @@ export default function TeacherRepoProyectoPanel({
         {(query.data?.teams ?? []).map((team) => {
           const file = deliveries.find((item) => item.teamKey === team.teamKey);
           const abierto = repoAbierto(team.startedAt, now);
+          const tope = file ? repoEntrega(selectedGroup?.code, file.uploadedAt) : null;
           return (
             <li key={team.teamKey} className="glass p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -125,6 +133,13 @@ export default function TeacherRepoProyectoPanel({
               ) : (
                 <p className="mt-2 text-sm text-amber-100">Sin liga</p>
               )}
+              {tope ? (
+                <p className="mt-2 text-sm font-semibold text-amber-100">
+                  PDF de las {formatoHoraClase(file?.uploadedAt ?? now)}. Máxima {tope.points.toLocaleString("es-MX")} si cumplen con todo.
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-slate-400">Sin PDF la calificación queda en 0.</p>
+              )}
               {file ? (
                 <button
                   type="button"
@@ -133,9 +148,7 @@ export default function TeacherRepoProyectoPanel({
                 >
                   Descargar PDF
                 </button>
-              ) : (
-                <p className="mt-2 text-xs text-slate-400">Sin PDF</p>
-              )}
+              ) : null}
               <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-400/10 p-3">
                 <p className="text-xs font-bold uppercase tracking-widest text-amber-100">Notas del líder</p>
                 {(team.leaderNotes ?? []).length > 0 ? (
@@ -208,8 +221,9 @@ export default function TeacherRepoProyectoPanel({
                 type="button"
                 disabled={gradeMutation.isPending}
                 onClick={() => {
+                  const maximo = tope?.points ?? 0;
                   const ok = window.confirm(
-                    `¿Publicar la calificación de ${team.teamName}?\n\nQuedará en ${REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos menos las notas que tú hayas puesto. Las notas del líder no restan solas.`,
+                    `¿Publicar la calificación de ${team.teamName}?\n\nLa máxima es ${maximo.toLocaleString("es-MX")}, por la hora del PDF. Quedará en esa máxima menos las notas que tú hayas puesto.`,
                   );
                   if (ok) gradeMutation.mutate(team.teamKey);
                 }}

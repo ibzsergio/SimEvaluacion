@@ -11,15 +11,17 @@ import {
 } from "../lib/api";
 import {
   formatoReloj,
+  REPO_PROYECTO_CIERRE,
   REPO_PROYECTO_DOCENTE,
   REPO_PROYECTO_INSTRUCTIVO,
   REPO_PROYECTO_NOTAS_LIDER,
   REPO_PROYECTO_PDF_MAX_BYTES,
-  REPO_PROYECTO_PUNTOS,
   REPO_PROYECTO_TABLAS,
   REPO_PROYECTO_TITULO,
   repoAbierto,
+  repoEntrega,
   repoRestante,
+  repoTramos,
 } from "../lib/repoProyecto";
 
 const CHECKS = [
@@ -99,16 +101,37 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
   const abierto = repoAbierto(startedAt, now);
   const restante = repoRestante(startedAt, now);
   const ready = CHECKS.every((item) => checked[item.id]);
-  const puedeSubir = abierto && Boolean(data?.link);
+  const entrega = repoEntrega(code, now);
+  const guardada = data?.delivery?.uploadedAt ? repoEntrega(code, data.delivery.uploadedAt) : null;
+  const puedeSubir = abierto && Boolean(data?.link) && entrega.open;
 
   return (
     <section className="glass mb-6 border border-violet-400/30 p-4 sm:p-6">
       <p className="text-[11px] font-bold uppercase tracking-widest text-violet-200">Actividad Scrum · equipo de proyecto</p>
       <h2 className="mt-1 text-2xl font-bold text-white">{REPO_PROYECTO_TITULO}</h2>
       <p className="mt-3 rounded-xl bg-amber-400 px-3 py-2 text-sm font-bold text-slate-950">
-        Vale {REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos. El tiempo máximo es 2 horas 30 minutos. La calificación
-        la publica el docente.
+        El cronómetro dura 2 horas 30 minutos. La calificación la publica el docente y la máxima depende de la hora del PDF.
       </p>
+      <div className="mt-3 rounded-xl border border-rose-300/40 bg-rose-500/15 p-3 text-sm text-rose-50">
+        <p className="font-bold">Grupo {code}. Hoy, miércoles 18 de noviembre.</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          {repoTramos(code).map((tramo) => (
+            <li key={tramo.until}>{tramo.texto}</li>
+          ))}
+        </ul>
+        <p className="mt-2 font-semibold">{REPO_PROYECTO_CIERRE}</p>
+        <p className="mt-2">
+          {entrega.open
+            ? `Si suben el PDF en este momento y cumplen con todo, la máxima es ${entrega.points.toLocaleString("es-MX")}.`
+            : "En este momento ya no se acepta el PDF."}
+        </p>
+        {guardada ? (
+          <p className="mt-2">
+            El archivo guardado queda con máxima de {guardada.points.toLocaleString("es-MX")}. Si lo reemplazan, cuenta la
+            hora del archivo nuevo.
+          </p>
+        ) : null}
+      </div>
       <a
         href={REPO_PROYECTO_INSTRUCTIVO}
         download="Repositorio Proyecto en GitHub.pdf"
@@ -320,10 +343,12 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
                 uploadMutation.mutate(file);
               }}
             />
-            {!startedAt ? (
+            {!entrega.open ? (
+              <p className="mt-2 text-sm font-semibold text-rose-200">{REPO_PROYECTO_CIERRE}</p>
+            ) : !startedAt ? (
               <p className="mt-2 text-sm font-semibold text-rose-200">Sin el cronómetro del líder no se puede subir el PDF.</p>
             ) : !abierto ? (
-              <p className="mt-2 text-sm font-semibold text-rose-200">Se acabó el tiempo. Ya no se acepta el PDF.</p>
+              <p className="mt-2 text-sm font-semibold text-rose-200">Se acabó el tiempo del cronómetro. Ya no se acepta el PDF.</p>
             ) : !data.link ? (
               <p className="mt-2 text-sm text-amber-100">Guarda primero la liga del repositorio.</p>
             ) : null}

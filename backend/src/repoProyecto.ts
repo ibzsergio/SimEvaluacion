@@ -123,6 +123,26 @@ function ligaValida(raw: unknown) {
   }
 }
 
+const TRAMOS = {
+  "302": ["2026-11-18T09:30:00-06:00", "2026-11-18T13:00:00-06:00", "2026-11-18T17:00:00-06:00"],
+  "301": ["2026-11-18T12:30:00-06:00", "2026-11-18T15:00:00-06:00", "2026-11-18T17:00:00-06:00"],
+} as const;
+const TRAMO_PUNTOS = [3000, 2000, 1000];
+const CIERRE_MENSAJE = "Después de las 5:00 p. m. de hoy, miércoles 18 de noviembre, ya no se acepta el PDF.";
+
+function entregaDe(groupCode: string, at: number | Date = Date.now()) {
+  const code = groupCode.trim();
+  const tramos = code === "301" || code === "302" ? TRAMOS[code] : null;
+  const ms = at instanceof Date ? at.getTime() : at;
+  if (!tramos) return { open: false, points: 0 };
+  for (let i = 0; i < tramos.length; i += 1) {
+    const until = tramos[i];
+    const points = TRAMO_PUNTOS[i];
+    if (until && points !== undefined && ms < new Date(until).getTime()) return { open: true, points };
+  }
+  return { open: false, points: 0 };
+}
+
 function abierto(startedAt: string | null, now = Date.now()) {
   if (!startedAt) return false;
   return now < new Date(startedAt).getTime() + DURACION_MS;
@@ -202,11 +222,11 @@ async function equipoDelAlumno(studentId: string) {
   };
 }
 
-function puntosDe(notas: Nota[], studentId: string) {
+function puntosDe(notas: Nota[], studentId: string, max: number) {
   const corte = notas
     .filter((nota) => !nota.studentId || nota.studentId === studentId)
     .reduce((acc, nota) => acc + Math.max(0, nota.points), 0);
-  return Math.max(0, PUNTOS - corte);
+  return Math.max(0, max - corte);
 }
 
 async function ensureActivity(groupId: string, teacherId: string) {
@@ -246,14 +266,19 @@ async function aplicarPuntos(groupId: string, teamKey: string, estado: Estado) {
       where: { id: teamId, groupId },
       select: { members: { select: { studentId: true } } },
     }),
-    prisma.classGroup.findUnique({ where: { id: groupId }, select: { teacherId: true } }),
+    prisma.classGroup.findUnique({ where: { id: groupId }, select: { teacherId: true, code: true } }),
   ]);
   if (!team || !group) return;
+  const delivery = await prisma.sqlScrumDelivery.findUnique({
+    where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY, groupId, teamKey } },
+    select: { uploadedAt: true },
+  });
+  const max = delivery ? entregaDe(group.code, delivery.uploadedAt).points : 0;
   const activityId = await ensureActivity(groupId, group.teacherId);
   const notas = estado.notes[teamKey] ?? [];
   const gradedAt = new Date();
   for (const member of team.members) {
-    const points = puntosDe(notas, member.studentId);
+    const points = puntosDe(notas, member.studentId, max);
     await prisma.grade.upsert({
       where: { activityId_studentId: { activityId, studentId: member.studentId } },
       update: { points, signatures: 0, gradedById: group.teacherId },
@@ -599,6 +624,9 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
       const startedAt = estado.clocks[team.teamKey] ?? null;
       if (!startedAt) {
         return res.status(403).json({ error: "not_started", message: "El líder no ha iniciado el cronómetro. Sin eso no se puede subir el PDF." });
+      }
+      if (!entregaDe(team.groupCode).open) {
+        return res.status(403).json({ error: "closed", message: CIERRE_MENSAJE });
       }
       if (!abierto(startedAt)) {
         return res.status(403).json({ error: "closed", message: "Se acabaron las 2 horas 30 minutos. Ya no se recibe el PDF." });
