@@ -69,6 +69,7 @@ import { ensureSqlScrumSchema } from "./ensureSqlScrumSchema.js";
 import { crudTeacherRouter, registerStudentCrudRoutes } from "./crudDelivery.js";
 import { registerStudentSqlScrumRoutes, sqlScrumTeacherRouter } from "./sqlScrumDelivery.js";
 import { registerStudentTkinterGitRoutes, tkinterGitTeacherRouter } from "./tkinterGit.js";
+import { registerStudentRepoProyectoRoutes, repoProyectoTeacherRouter } from "./repoProyecto.js";
 import {
   chooseImproLeader,
   improErrorHttp,
@@ -350,6 +351,7 @@ app.use("/teacher", examTeacherRouter);
 app.use("/teacher", crudTeacherRouter);
 app.use("/teacher", sqlScrumTeacherRouter);
 app.use("/teacher", tkinterGitTeacherRouter);
+app.use("/teacher", repoProyectoTeacherRouter);
 app.use("/teacher/office-exam", officeExamTeacherRouter);
 app.use("/teacher/comms", commsTeacherRouter);
 
@@ -878,6 +880,7 @@ registerStudentExamRoutes(app);
 registerStudentCrudRoutes(app);
 registerStudentSqlScrumRoutes(app);
 registerStudentTkinterGitRoutes(app);
+registerStudentRepoProyectoRoutes(app);
 
 app.post("/student/extra/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
   const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});

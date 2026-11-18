@@ -11,6 +11,7 @@ import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherBasedatosPanel from "./TeacherBasedatosPanel";
 import TeacherCrudPanel from "./TeacherCrudPanel";
 import TeacherSqlScrumPanel from "./TeacherSqlScrumPanel";
+import TeacherRepoProyectoPanel from "./TeacherRepoProyectoPanel";
 import TeacherTkinterGitPanel from "./TeacherTkinterGitPanel";
 import TeacherExamenPanel from "./TeacherExamenPanel";
 import TeacherExtraPanel from "./TeacherExtraPanel";
@@ -29,7 +30,7 @@ export default function TeacherScrumActivitiesPanel({
   onSelectGroup: (id: string) => void;
 }) {
   const [current, setCurrent] = useState<
-    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3" | "tkinter-git"
+    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3" | "tkinter-git" | "repo-proyecto"
   >("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
@@ -97,7 +98,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "tkinter-git" ? (
+      {current === "repo-proyecto" ? (
+        <TeacherRepoProyectoPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "tkinter-git" ? (
         <TeacherTkinterGitPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -184,6 +192,24 @@ export default function TeacherScrumActivitiesPanel({
               El grupo 301 y el grupo 302 hacen las dos: ACTIVIDAD BASE DE DATOS II y ACTIVIDAD BASE DE DATOS III. ACTIVIDAD BASE DE DATOS II cerró a las 8:00 p. m. del martes 17. ACTIVIDAD BASE DE DATOS III se recibe hasta las 2:00 p. m. de hoy, miércoles 18 de noviembre. En el 302, el líder reparte una tabla por integrante y todo el equipo junta su script y su Tkinter en un solo proyecto de GitHub, además del PDF. 2000 puntos.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("repo-proyecto")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad Scrum · hoy</p>
+              <h3 className="mt-1 text-xl font-bold text-white">Repositorio Proyecto en GitHub</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                El líder inicia 2 horas 30 minutos. Un integrante sube el proyecto, los demás clonan y colaboran. PDF de
+                máximo 8 MB. 3000 puntos.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full border border-violet-400/40 bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-100">
+              Publicada
+            </span>
+          </button>
 
           <button
             type="button"

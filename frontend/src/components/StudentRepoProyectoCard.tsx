@@ -1,0 +1,228 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import {
+  fetchStudentRepoProyecto,
+  getApiErrorMessage,
+  saveRepoProyectoLink,
+  startRepoProyectoClock,
+  uploadRepoProyectoPdf,
+} from "../lib/api";
+import {
+  formatoReloj,
+  REPO_PROYECTO_DOCENTE,
+  REPO_PROYECTO_PDF_MAX_BYTES,
+  REPO_PROYECTO_PUNTOS,
+  REPO_PROYECTO_TABLAS,
+  REPO_PROYECTO_TITULO,
+  repoAbierto,
+  repoRestante,
+} from "../lib/repoProyecto";
+
+const CHECKS = [
+  { id: "caratula", label: "La primera hoja es la carátula de Canva, con los datos del equipo, el nombre del proyecto y el título Repositorio Proyecto en GitHub." },
+  { id: "repo", label: "Se ve cómo crearon el repositorio y la liga." },
+  { id: "integrantes", label: "Cada integrante tiene un separador con su nombre y sus evidencias: la clonación y sus cambios." },
+  { id: "crud", label: "Se ven los CRUD funcionando y guardando en la base de XAMPP." },
+  { id: "git", label: "Se ven los comandos básicos de Git al subir cambios y, al final, los commits de cada integrante." },
+];
+
+export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: string | null }) {
+  const code = groupCode?.trim();
+  const visible = code === "301" || code === "302";
+  const queryClient = useQueryClient();
+  const [now, setNow] = useState(() => Date.now());
+  const [liga, setLiga] = useState("");
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState("");
+  const query = useQuery({
+    queryKey: ["student-repo-proyecto"],
+    queryFn: fetchStudentRepoProyecto,
+    enabled: visible,
+    retry: false,
+    refetchInterval: visible ? 10_000 : false,
+  });
+  const startMutation = useMutation({
+    mutationFn: startRepoProyectoClock,
+    onSuccess: async () => {
+      setError("");
+      await queryClient.invalidateQueries({ queryKey: ["student-repo-proyecto"] });
+    },
+    onError: (err) => setError(getApiErrorMessage(err)),
+  });
+  const linkMutation = useMutation({
+    mutationFn: saveRepoProyectoLink,
+    onSuccess: async () => {
+      setError("");
+      setLiga("");
+      await queryClient.invalidateQueries({ queryKey: ["student-repo-proyecto"] });
+    },
+    onError: (err) => setError(getApiErrorMessage(err)),
+  });
+  const uploadMutation = useMutation({
+    mutationFn: uploadRepoProyectoPdf,
+    onSuccess: async () => {
+      setError("");
+      await queryClient.invalidateQueries({ queryKey: ["student-repo-proyecto"] });
+    },
+    onError: (err) => setError(getApiErrorMessage(err)),
+  });
+  useEffect(() => {
+    if (!visible) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [visible]);
+
+  if (!visible) return null;
+  const data = query.data;
+  const startedAt = data?.startedAt ?? null;
+  const abierto = repoAbierto(startedAt, now);
+  const restante = repoRestante(startedAt, now);
+  const ready = CHECKS.every((item) => checked[item.id]);
+  const puedeSubir = abierto && Boolean(data?.link);
+
+  return (
+    <section className="glass mb-6 border border-violet-400/30 p-4 sm:p-6">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-violet-200">Actividad Scrum · equipo de proyecto</p>
+      <h2 className="mt-1 text-2xl font-bold text-white">{REPO_PROYECTO_TITULO}</h2>
+      <p className="mt-3 rounded-xl bg-amber-400 px-3 py-2 text-sm font-bold text-slate-950">
+        Vale {REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos. El tiempo máximo es 2 horas 30 minutos.
+      </p>
+      {query.isError ? <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(query.error)}</p> : null}
+      {data ? (
+        <>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-center">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              {data.teamName} · {startedAt ? (abierto ? "Tiempo corriendo" : "Tiempo terminado") : "El cronómetro no ha iniciado"}
+            </p>
+            <p className="mt-2 font-mono text-4xl font-bold text-white">{formatoReloj(restante)}</p>
+            {!startedAt ? (
+              data.isLeader ? (
+                <button
+                  type="button"
+                  disabled={startMutation.isPending || !data.hasLeader}
+                  onClick={() => {
+                    const ok = window.confirm(
+                      "Al iniciar, corren 2 horas 30 minutos para todo el equipo.\n\nEl cronómetro no se reinicia. Cuando llegue a cero ya no se puede subir el PDF.",
+                    );
+                    if (ok) startMutation.mutate();
+                  }}
+                  className="mt-3 min-h-11 rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-400 disabled:opacity-50"
+                >
+                  {startMutation.isPending ? "Iniciando..." : "Iniciar cronómetro"}
+                </button>
+              ) : (
+                <p className="mt-3 text-sm text-amber-100">
+                  {data.hasLeader
+                    ? "Solo el líder puede iniciar el cronómetro. Hasta entonces el equipo no puede subir el PDF."
+                    : "Este equipo no tiene líder. Pide al docente que lo nombre en Roles / Equipos."}
+                </p>
+              )
+            ) : null}
+          </div>
+
+          <div className="mt-4 space-y-2 text-sm leading-relaxed text-slate-100">
+            <p>Un solo integrante sube a GitHub el proyecto de lo que llevan hasta el momento. Los demás lo clonan y colaboran.</p>
+            <p>
+              El líder reparte tablas. Cada quien hace un fragmento de código o el CRUD de la tabla que le tocó. Pueden ser{" "}
+              {REPO_PROYECTO_TABLAS.join(", ")} u otra tabla del proyecto.
+            </p>
+            <p>
+              En el repositorio se tiene que ver qué subió cada integrante. El commit lleva el cambio y su nombre. Ejemplo:{" "}
+              <span className="font-mono">Agrego el CRUD de alumno - Ana Lopez</span>.
+            </p>
+            <p>
+              Agreguen al docente como colaborador. Su usuario es{" "}
+              <span className="font-mono font-bold text-violet-100">{REPO_PROYECTO_DOCENTE}</span>. En GitHub: Settings,
+              Collaborators, Add people, escriban {REPO_PROYECTO_DOCENTE}.
+            </p>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-white/10 p-4">
+            <p className="text-sm font-semibold text-white">Liga del repositorio</p>
+            {data.link ? (
+              <a href={data.link} target="_blank" rel="noreferrer" className="mt-1 block text-sm text-emerald-200 underline">
+                {data.link}
+              </a>
+            ) : (
+              <p className="mt-1 text-sm text-amber-100">Todavía no guardan la liga.</p>
+            )}
+            <input
+              value={liga}
+              onChange={(event) => setLiga(event.target.value)}
+              disabled={!abierto || linkMutation.isPending}
+              placeholder="https://github.com/usuario/nombre-del-proyecto"
+              className="mt-2 w-full rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white disabled:opacity-50"
+            />
+            <button
+              type="button"
+              disabled={!abierto || linkMutation.isPending || liga.trim().length < 18}
+              onClick={() => linkMutation.mutate(liga.trim())}
+              className="mt-2 min-h-11 rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {linkMutation.isPending ? "Guardando..." : "Guardar liga"}
+            </button>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-white/10 p-4">
+            <p className="text-sm font-semibold text-white">PDF del equipo, máximo 8 MB</p>
+            <p className="mt-1 text-sm text-slate-300">
+              Lo sube el líder o un integrante. Primero la carátula de Canva. Después, un separador con el nombre de cada
+              integrante y sus capturas: clonación, cambios o CRUD, el CRUD guardando en XAMPP y los comandos de Git. Al
+              final, el líder muestra los commits de cada integrante.
+            </p>
+            {data.delivery ? (
+              <p className="mt-2 text-sm text-emerald-100">
+                Ya está: {data.delivery.fileName}. Lo subió {data.delivery.uploadedByName}.
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-amber-100">El equipo todavía no sube el PDF.</p>
+            )}
+            <ul className="mt-3 space-y-2">
+              {CHECKS.map((item) => (
+                <li key={item.id}>
+                  <label className="flex items-start gap-2 text-sm text-slate-100">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={Boolean(checked[item.id])}
+                      disabled={!puedeSubir}
+                      onChange={(event) => setChecked((prev) => ({ ...prev, [item.id]: event.target.checked }))}
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              disabled={!puedeSubir || !ready || uploadMutation.isPending}
+              className="mt-3 block w-full text-sm text-slate-200 disabled:opacity-50"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                if (file.size > REPO_PROYECTO_PDF_MAX_BYTES) {
+                  setError("El PDF pesa más de 8 MB. Redúcelo y vuelve a subirlo.");
+                  return;
+                }
+                uploadMutation.mutate(file);
+              }}
+            />
+            {!startedAt ? (
+              <p className="mt-2 text-sm font-semibold text-rose-200">Sin el cronómetro del líder no se puede subir el PDF.</p>
+            ) : !abierto ? (
+              <p className="mt-2 text-sm font-semibold text-rose-200">Se acabó el tiempo. Ya no se acepta el PDF.</p>
+            ) : !data.link ? (
+              <p className="mt-2 text-sm text-amber-100">Guarda primero la liga del repositorio.</p>
+            ) : null}
+            {uploadMutation.isPending ? <p className="mt-2 text-sm text-slate-300">Subiendo...</p> : null}
+          </div>
+          {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
+        </>
+      ) : query.isLoading ? (
+        <p className="mt-3 text-sm text-slate-400">Cargando el equipo...</p>
+      ) : null}
+    </section>
+  );
+}

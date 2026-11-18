@@ -1458,6 +1458,81 @@ export async function downloadTkinterGitPdf(groupId: string, teamKey: string, fi
   await downloadTeacherBlob(`/teacher/groups/${groupId}/tkinter-git/${encodeURIComponent(teamKey)}/file`, fileName);
 }
 
+export type RepoProyectoStudent = {
+  groupCode: string;
+  teamKey: string;
+  teamName: string;
+  isLeader: boolean;
+  hasLeader: boolean;
+  members: Array<{ id: string; displayName: string; isLeader: boolean }>;
+  startedAt: string | null;
+  endsAt: string | null;
+  link: string | null;
+  delivery: { fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string } | null;
+};
+
+export async function fetchStudentRepoProyecto() {
+  const { data } = await api.get<RepoProyectoStudent>("/student/repo-proyecto");
+  return data;
+}
+
+export async function startRepoProyectoClock() {
+  const { data } = await api.post<{ startedAt: string; endsAt: string }>("/student/repo-proyecto/start");
+  return data;
+}
+
+export async function saveRepoProyectoLink(url: string) {
+  const { data } = await api.post<{ link: string }>("/student/repo-proyecto/repo", { url });
+  return data.link;
+}
+
+export async function uploadRepoProyectoPdf(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("completo", "si");
+  const { data } = await api.post<{ delivery: { fileName: string; uploadedByName: string } }>("/student/repo-proyecto/delivery", form);
+  return data.delivery;
+}
+
+export type RepoProyectoTeacher = {
+  groupCode: string;
+  teams: Array<{
+    teamKey: string;
+    teamName: string;
+    leaderId: string | null;
+    startedAt: string | null;
+    endsAt: string | null;
+    link: string | null;
+    notes: Array<{ id: string; code: string; label: string; points: number; studentId: string | null; studentName: string | null }>;
+    members: Array<{ id: string; displayName: string; isLeader: boolean }>;
+  }>;
+  deliveries: Array<{ teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string }>;
+};
+
+export async function fetchTeacherRepoProyecto(groupId: string) {
+  const { data } = await api.get<RepoProyectoTeacher>(`/teacher/groups/${groupId}/repo-proyecto`);
+  return data;
+}
+
+export async function addRepoProyectoNote(
+  groupId: string,
+  payload: { teamKey: string; code?: string; label?: string; points?: number; studentId?: string; studentName?: string },
+) {
+  await api.post(`/teacher/groups/${groupId}/repo-proyecto/notes`, payload);
+}
+
+export async function removeRepoProyectoNote(groupId: string, payload: { teamKey: string; noteId: string }) {
+  await api.post(`/teacher/groups/${groupId}/repo-proyecto/notes/remove`, payload);
+}
+
+export async function applyRepoProyectoGrades(groupId: string, teamKey?: string) {
+  await api.post(`/teacher/groups/${groupId}/repo-proyecto/grades`, teamKey ? { teamKey } : {});
+}
+
+export async function downloadRepoProyectoPdf(groupId: string, teamKey: string, fileName: string) {
+  await downloadTeacherBlob(`/teacher/groups/${groupId}/repo-proyecto/${encodeURIComponent(teamKey)}/file`, fileName);
+}
+
 export async function fetchTeacherTkinterGit(groupId: string) {
   const { data } = await api.get<import("./tkinterGit").TkinterGitResponse>(`/teacher/groups/${groupId}/tkinter-git`);
   return data;
