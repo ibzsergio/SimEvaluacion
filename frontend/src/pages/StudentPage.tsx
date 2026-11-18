@@ -154,10 +154,10 @@ export default function StudentPage() {
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
       <StudentExamenCard groupCode={data.group?.code} />
-      <StudentSqlScrumCard activityKey="bd2" groupCode={data.group?.code} studentId={user?.id} />
-      <StudentSqlScrumCard activityKey="bd3" groupCode={data.group?.code} studentId={user?.id} />
       <StudentRepoProyectoCard groupCode={data.group?.code} />
-      <StudentTkinterGitCard groupCode={data.group?.code} studentId={user?.id} />
+      <StudentSqlScrumCard activityKey="bd2" groupCode={data.group?.code} studentId={user?.id} past />
+      <StudentSqlScrumCard activityKey="bd3" groupCode={data.group?.code} studentId={user?.id} past />
+      <StudentTkinterGitCard groupCode={data.group?.code} studentId={user?.id} past />
 
       <StudentCommunication />
 

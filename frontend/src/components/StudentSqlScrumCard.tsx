@@ -17,10 +17,12 @@ export default function StudentSqlScrumCard({
   activityKey,
   groupCode,
   studentId,
+  past = false,
 }: {
   activityKey: SqlScrumKey;
   groupCode?: string | null;
   studentId?: string | null;
+  past?: boolean;
 }) {
   const activity = sqlScrumActivity(activityKey);
   const qc = useQueryClient();
@@ -86,8 +88,8 @@ export default function StudentSqlScrumCard({
     setFile(next);
   }
 
-  return (
-    <section className="glass mb-6 border border-emerald-400/30 p-4 sm:p-6">
+  const card = (
+    <section className={`glass border border-emerald-400/30 p-4 sm:p-6 ${past ? "" : "mb-6"}`}>
       <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-200">Actividad Scrum · equipo de proyecto</p>
       <h2 className="mt-1 text-2xl font-bold text-white">{activity.title}</h2>
       <p className="mt-3 rounded-xl bg-amber-400 px-3 py-2 text-sm font-bold text-slate-950">
@@ -173,5 +175,15 @@ export default function StudentSqlScrumCard({
         {deliveryQuery.isError ? <p className="mt-2 text-sm text-rose-200">{getApiErrorMessage(deliveryQuery.error)}</p> : null}
       </div>
     </section>
+  );
+  if (!past) return card;
+  return (
+    <details className="mb-6">
+      <summary className="glass cursor-pointer list-none border border-white/10 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Actividad Scrum anterior</p>
+        <p className="mt-1 text-lg font-bold text-white">{activity.title}</p>
+      </summary>
+      <div className="mt-2">{card}</div>
+    </details>
   );
 }

@@ -3,7 +3,7 @@ import multer from "multer";
 import { prisma } from "./prisma.js";
 import { todayClassDayDate } from "./classDayService.js";
 import { requireAuth, requireStudent, requireTeacher, type AuthedRequest } from "./middleware.js";
-import { requireNotPreviewStudent } from "./previewStudent.js";
+import { getPreviewViewGroup, isPreviewControlNumber, requireNotPreviewStudent } from "./previewStudent.js";
 
 const PDF_MAX_BYTES = 8 * 1024 * 1024;
 const PUNTOS = 3000;
@@ -413,10 +413,37 @@ repoProyectoTeacherRouter.get("/groups/:groupId/repo-proyecto/:teamKey/file", as
   return res.send(Buffer.from(row.fileData));
 });
 
+async function vistaDePrueba(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { controlNumber: true, group: { select: { teacherId: true } } },
+  });
+  if (!user?.group || !isPreviewControlNumber(user.controlNumber)) return null;
+  const view = await getPreviewViewGroup(user.group.teacherId);
+  const code = view?.code;
+  if (code !== "301" && code !== "302") return null;
+  return {
+    preview: true,
+    groupCode: code,
+    teamKey: "preview",
+    teamName: "Vista de prueba",
+    isLeader: false,
+    hasLeader: true,
+    members: [],
+    startedAt: null,
+    endsAt: null,
+    link: null,
+    leaderNotes: [],
+    delivery: null,
+  };
+}
+
 export function registerStudentRepoProyectoRoutes(app: import("express").Express) {
   app.get("/student/repo-proyecto", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
     const team = await equipoDelAlumno(req.auth!.userId);
     if (!team) {
+      const vista = await vistaDePrueba(req.auth!.userId);
+      if (vista) return res.json(vista);
       return res.status(400).json({
         error: "no_team",
         message: "No estás en un equipo de proyecto. Pide al docente que te asigne en Roles / Equipos.",

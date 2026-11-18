@@ -1459,6 +1459,7 @@ export async function downloadTkinterGitPdf(groupId: string, teamKey: string, fi
 }
 
 export type RepoProyectoStudent = {
+  preview?: boolean;
   groupCode: string;
   teamKey: string;
   teamName: string;

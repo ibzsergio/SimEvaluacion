@@ -24,9 +24,11 @@ import TkinterGitGuide from "./TkinterGitGuide";
 export default function StudentTkinterGitCard({
   groupCode,
   studentId,
+  past = false,
 }: {
   groupCode?: string | null;
   studentId?: string | null;
+  past?: boolean;
 }) {
   const code = groupCode?.trim();
   const visible = code === "301" || code === "302";
@@ -92,8 +94,8 @@ export default function StudentTkinterGitCard({
   ];
   const ready = checks.every((item) => checked[item.id]);
 
-  return (
-    <section className="glass mb-6 border border-sky-400/30 p-4 sm:p-6">
+  const card = (
+    <section className={`glass border border-sky-400/30 p-4 sm:p-6 ${past ? "" : "mb-6"}`}>
       <p className="text-[11px] font-bold uppercase tracking-widest text-sky-200">Actividad Scrum · equipo de proyecto</p>
       <h2 className="mt-1 text-2xl font-bold text-white">{TKINTER_GIT_TITULO}</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-200">
@@ -253,5 +255,15 @@ export default function StudentTkinterGitCard({
       </div>
       <TkinterGitGuide repo={repo} />
     </section>
+  );
+  if (!past) return card;
+  return (
+    <details className="mb-6">
+      <summary className="glass cursor-pointer list-none border border-white/10 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Actividad Scrum anterior</p>
+        <p className="mt-1 text-lg font-bold text-white">{TKINTER_GIT_TITULO}</p>
+      </summary>
+      <div className="mt-2">{card}</div>
+    </details>
   );
 }

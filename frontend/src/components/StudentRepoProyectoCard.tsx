@@ -108,6 +108,11 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
         Vale {REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos. El tiempo máximo es 2 horas 30 minutos. La calificación
         la publica el docente.
       </p>
+      {data?.preview ? (
+        <p className="mt-3 text-sm text-cyan-100">
+          Vista de prueba. No estás en un equipo. Abajo se leen las mismas instrucciones que ve un alumno.
+        </p>
+      ) : null}
       {query.isError ? <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(query.error)}</p> : null}
       {data ? (
         <>
@@ -226,6 +231,10 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
               Agreguen al docente como colaborador. Su usuario es{" "}
               <span className="font-mono font-bold text-violet-100">{REPO_PROYECTO_DOCENTE}</span>. En GitHub: Settings,
               Collaborators, Add people, escriban {REPO_PROYECTO_DOCENTE}.
+            </p>
+            <p>
+              Cuando el cronómetro ya corre, el líder puede anotar si un integrante no está trabajando, está fuera del
+              equipo o no asistió. El docente ve esas notas y publica la calificación.
             </p>
           </div>
 

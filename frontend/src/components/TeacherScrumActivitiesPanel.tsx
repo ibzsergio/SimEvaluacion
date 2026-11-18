@@ -189,7 +189,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              El grupo 301 y el grupo 302 hacen las dos: ACTIVIDAD BASE DE DATOS II y ACTIVIDAD BASE DE DATOS III. ACTIVIDAD BASE DE DATOS II cerró a las 8:00 p. m. del martes 17. ACTIVIDAD BASE DE DATOS III se recibe hasta las 2:00 p. m. de hoy, miércoles 18 de noviembre. En el 302, el líder reparte una tabla por integrante y todo el equipo junta su script y su Tkinter en un solo proyecto de GitHub, además del PDF. 2000 puntos.
+              La actividad de hoy es Repositorio Proyecto en GitHub. Las anteriores están contraídas.
             </p>
           </section>
 
@@ -211,6 +211,11 @@ export default function TeacherScrumActivitiesPanel({
             </span>
           </button>
 
+          <details className="glass p-4">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-slate-200 [&::-webkit-details-marker]:hidden">
+              Actividades Scrum anteriores
+            </summary>
+            <div className="mt-3 space-y-3">
           <button
             type="button"
             onClick={() => setCurrent("tkinter-git")}
@@ -460,6 +465,8 @@ export default function TeacherScrumActivitiesPanel({
               {avionReleased ? "Liberada" : "Solo prueba"}
             </span>
           </button>
+            </div>
+          </details>
         </div>
       )}
     </div>
