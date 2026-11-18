@@ -12,6 +12,7 @@ import {
 import {
   formatoReloj,
   REPO_PROYECTO_DOCENTE,
+  REPO_PROYECTO_INSTRUCTIVO,
   REPO_PROYECTO_NOTAS_LIDER,
   REPO_PROYECTO_PDF_MAX_BYTES,
   REPO_PROYECTO_PUNTOS,
@@ -108,6 +109,14 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
         Vale {REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos. El tiempo máximo es 2 horas 30 minutos. La calificación
         la publica el docente.
       </p>
+      <a
+        href={REPO_PROYECTO_INSTRUCTIVO}
+        download="Repositorio Proyecto en GitHub.pdf"
+        className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-400"
+      >
+        Descargar instructivo (PDF)
+      </a>
+      <p className="mt-2 text-sm text-slate-300">Este archivo son las instrucciones. No lo suban como evidencia.</p>
       {data?.preview ? (
         <p className="mt-3 text-sm text-cyan-100">
           Vista de prueba. No estás en un equipo. Abajo se leen las mismas instrucciones que ve un alumno.
