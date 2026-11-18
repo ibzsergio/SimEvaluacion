@@ -15,6 +15,22 @@ export const REPO_PROYECTO_TABLAS = [
   "historial",
 ];
 
+export const REPO_PROYECTO_NOTAS_LIDER = [
+  { code: "no_trabaja", label: "No está trabajando" },
+  { code: "fuera", label: "Está fuera del equipo" },
+  { code: "no_asistio", label: "No asistió" },
+] as const;
+
+export type RepoLeaderNote = {
+  id: string;
+  code: string;
+  label: string;
+  studentId: string;
+  studentName: string;
+  comment: string;
+  at: string;
+};
+
 export const REPO_PROYECTO_NOTAS = [
   { code: "colaborador", label: "No agregaron a ibzsergio", points: 500 },
   { code: "sin_commit", label: "No tiene commit en el repositorio", points: 500 },

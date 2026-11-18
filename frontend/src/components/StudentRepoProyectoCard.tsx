@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
+  addRepoLeaderNote,
   fetchStudentRepoProyecto,
   getApiErrorMessage,
+  removeRepoLeaderNote,
   saveRepoProyectoLink,
   startRepoProyectoClock,
   uploadRepoProyectoPdf,
@@ -10,6 +12,7 @@ import {
 import {
   formatoReloj,
   REPO_PROYECTO_DOCENTE,
+  REPO_PROYECTO_NOTAS_LIDER,
   REPO_PROYECTO_PDF_MAX_BYTES,
   REPO_PROYECTO_PUNTOS,
   REPO_PROYECTO_TABLAS,
@@ -32,6 +35,7 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
   const queryClient = useQueryClient();
   const [now, setNow] = useState(() => Date.now());
   const [liga, setLiga] = useState("");
+  const [detalle, setDetalle] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
   const query = useQuery({
@@ -43,6 +47,22 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
   });
   const startMutation = useMutation({
     mutationFn: startRepoProyectoClock,
+    onSuccess: async () => {
+      setError("");
+      await queryClient.invalidateQueries({ queryKey: ["student-repo-proyecto"] });
+    },
+    onError: (err) => setError(getApiErrorMessage(err)),
+  });
+  const leaderNoteMutation = useMutation({
+    mutationFn: addRepoLeaderNote,
+    onSuccess: async () => {
+      setError("");
+      await queryClient.invalidateQueries({ queryKey: ["student-repo-proyecto"] });
+    },
+    onError: (err) => setError(getApiErrorMessage(err)),
+  });
+  const removeLeaderNoteMutation = useMutation({
+    mutationFn: removeRepoLeaderNote,
     onSuccess: async () => {
       setError("");
       await queryClient.invalidateQueries({ queryKey: ["student-repo-proyecto"] });
@@ -85,7 +105,8 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
       <p className="text-[11px] font-bold uppercase tracking-widest text-violet-200">Actividad Scrum · equipo de proyecto</p>
       <h2 className="mt-1 text-2xl font-bold text-white">{REPO_PROYECTO_TITULO}</h2>
       <p className="mt-3 rounded-xl bg-amber-400 px-3 py-2 text-sm font-bold text-slate-950">
-        Vale {REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos. El tiempo máximo es 2 horas 30 minutos.
+        Vale {REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos. El tiempo máximo es 2 horas 30 minutos. La calificación
+        la publica el docente.
       </p>
       {query.isError ? <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(query.error)}</p> : null}
       {data ? (
@@ -113,12 +134,83 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
               ) : (
                 <p className="mt-3 text-sm text-amber-100">
                   {data.hasLeader
-                    ? "Solo el líder puede iniciar el cronómetro. Hasta entonces el equipo no puede subir el PDF."
+                    ? "Solo el líder puede iniciar el cronómetro. Hasta entonces el equipo no puede subir el PDF ni anotar integrantes."
                     : "Este equipo no tiene líder. Pide al docente que lo nombre en Roles / Equipos."}
                 </p>
               )
             ) : null}
           </div>
+
+          {startedAt ? (
+            <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-400/10 p-4">
+              <p className="text-sm font-semibold text-white">Notas del líder para el docente</p>
+              <p className="mt-1 text-sm text-slate-200">
+                Si un integrante no está trabajando, está fuera del equipo o no asistió, el líder lo anota. El docente ve
+                esas notas y con ellas publica la calificación.
+              </p>
+              {data.isLeader ? (
+                <ul className="mt-3 space-y-3">
+                  {data.members.filter((member) => !member.isLeader).map((member) => (
+                    <li key={member.id} className="rounded-xl border border-white/10 p-3">
+                      <p className="text-sm font-semibold text-white">{member.displayName}</p>
+                      <input
+                        value={detalle[member.id] ?? ""}
+                        onChange={(event) => setDetalle((prev) => ({ ...prev, [member.id]: event.target.value }))}
+                        maxLength={200}
+                        placeholder="Detalle opcional"
+                        className="mt-2 w-full rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white"
+                      />
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {REPO_PROYECTO_NOTAS_LIDER.map((nota) => (
+                          <button
+                            key={nota.code}
+                            type="button"
+                            disabled={leaderNoteMutation.isPending}
+                            onClick={() =>
+                              leaderNoteMutation.mutate({
+                                studentId: member.id,
+                                code: nota.code,
+                                comment: (detalle[member.id] ?? "").trim(),
+                              })
+                            }
+                            className="min-h-10 rounded-lg border border-white/15 bg-slate-950/40 px-2 py-1 text-xs font-semibold text-slate-100 disabled:opacity-50"
+                          >
+                            {nota.label}
+                          </button>
+                        ))}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {data.members.filter((member) => !member.isLeader).length === 0 && data.isLeader ? (
+                <p className="mt-2 text-sm text-amber-100">No hay más integrantes en el equipo.</p>
+              ) : null}
+              {(data.leaderNotes ?? []).length > 0 ? (
+                <ul className="mt-3 space-y-1 text-sm text-amber-100">
+                  {data.leaderNotes.map((nota) => (
+                    <li key={nota.id} className="flex items-start justify-between gap-2">
+                      <span>
+                        {nota.studentName}: {nota.label}
+                        {nota.comment ? `. ${nota.comment}` : ""}
+                      </span>
+                      {data.isLeader ? (
+                        <button
+                          type="button"
+                          onClick={() => removeLeaderNoteMutation.mutate(nota.id)}
+                          className="shrink-0 text-rose-200"
+                        >
+                          Quitar
+                        </button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-slate-300">Todavía no hay notas de integrantes.</p>
+              )}
+            </div>
+          ) : null}
 
           <div className="mt-4 space-y-2 text-sm leading-relaxed text-slate-100">
             <p>Un solo integrante sube a GitHub el proyecto de lo que llevan hasta el momento. Los demás lo clonan y colaboran.</p>
@@ -168,7 +260,8 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
             <p className="mt-1 text-sm text-slate-300">
               Lo sube el líder o un integrante. Primero la carátula de Canva. Después, un separador con el nombre de cada
               integrante y sus capturas: clonación, cambios o CRUD, el CRUD guardando en XAMPP y los comandos de Git. Al
-              final, el líder muestra los commits de cada integrante.
+              final, el líder muestra los commits de cada integrante. Subir el PDF no publica la calificación: la publica
+              el docente.
             </p>
             {data.delivery ? (
               <p className="mt-2 text-sm text-emerald-100">

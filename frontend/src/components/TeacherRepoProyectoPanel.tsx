@@ -90,7 +90,8 @@ export default function TeacherRepoProyectoPanel({
         <h2 className="mt-1 text-2xl font-bold text-white">{REPO_PROYECTO_TITULO}</h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
           Grupo {selectedGroup?.code ?? "—"}. {REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos. El líder inicia 2
-          horas 30 minutos. Sin ese cronómetro el equipo no puede subir el PDF. Te agregan como colaborador:{" "}
+          horas 30 minutos y puede anotar quién no está trabajando, está fuera del equipo o no asistió. Esas notas no
+          restan solas: tú las ves y publicas la calificación. Te agregan como colaborador:{" "}
           <span className="font-mono font-bold text-violet-100">{REPO_PROYECTO_DOCENTE}</span>.
         </p>
         {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
@@ -135,6 +136,21 @@ export default function TeacherRepoProyectoPanel({
               ) : (
                 <p className="mt-2 text-xs text-slate-400">Sin PDF</p>
               )}
+              <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-400/10 p-3">
+                <p className="text-xs font-bold uppercase tracking-widest text-amber-100">Notas del líder</p>
+                {(team.leaderNotes ?? []).length > 0 ? (
+                  <ul className="mt-2 space-y-1 text-sm text-amber-50">
+                    {team.leaderNotes.map((nota) => (
+                      <li key={nota.id}>
+                        <span className="font-semibold">{nota.studentName}:</span> {nota.label}
+                        {nota.comment ? `. ${nota.comment}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-sm text-slate-300">El líder todavía no anota integrantes.</p>
+                )}
+              </div>
               <ul className="mt-3 space-y-1 text-sm text-slate-200">
                 {team.members.map((member) => (
                   <li key={member.id} className="flex items-center justify-between gap-2">
@@ -191,10 +207,15 @@ export default function TeacherRepoProyectoPanel({
               <button
                 type="button"
                 disabled={gradeMutation.isPending}
-                onClick={() => gradeMutation.mutate(team.teamKey)}
+                onClick={() => {
+                  const ok = window.confirm(
+                    `¿Publicar la calificación de ${team.teamName}?\n\nQuedará en ${REPO_PROYECTO_PUNTOS.toLocaleString("es-MX")} puntos menos las notas que tú hayas puesto. Las notas del líder no restan solas.`,
+                  );
+                  if (ok) gradeMutation.mutate(team.teamKey);
+                }}
                 className="mt-3 min-h-10 rounded-xl bg-emerald-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
               >
-                Registrar puntos de este equipo
+                Publicar calificación de este equipo
               </button>
             </li>
           );

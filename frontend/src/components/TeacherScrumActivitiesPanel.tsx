@@ -202,8 +202,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">Repositorio Proyecto en GitHub</h3>
               <p className="mt-1 text-sm text-slate-400">
-                El líder inicia 2 horas 30 minutos. Un integrante sube el proyecto, los demás clonan y colaboran. PDF de
-                máximo 8 MB. 3000 puntos.
+                El líder inicia 2 horas 30 minutos y anota quién no trabaja, está fuera del equipo o no asistió. Tú ves esas
+                notas y publicas la calificación. PDF de máximo 8 MB. 3000 puntos.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-violet-400/40 bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-100">

@@ -23,14 +23,31 @@ type Nota = {
   at: string;
 };
 
+type LeaderNota = {
+  id: string;
+  code: string;
+  label: string;
+  studentId: string;
+  studentName: string;
+  comment: string;
+  at: string;
+};
+
 type Estado = {
   v: 1;
   clocks: Record<string, string>;
   links: Record<string, string>;
   notes: Record<string, Nota[]>;
+  leaderNotes: Record<string, LeaderNota[]>;
 };
 
-const EMPTY: Estado = { v: 1, clocks: {}, links: {}, notes: {} };
+const EMPTY: Estado = { v: 1, clocks: {}, links: {}, notes: {}, leaderNotes: {} };
+
+const NOTAS_LIDER = [
+  { code: "no_trabaja", label: "No está trabajando" },
+  { code: "fuera", label: "Está fuera del equipo" },
+  { code: "no_asistio", label: "No asistió" },
+] as const;
 
 const NOTAS = [
   { code: "colaborador", label: "No agregaron a ibzsergio", points: 500 },
@@ -52,10 +69,36 @@ function estadoDe(body: string): Estado {
       clocks: parsed.clocks && typeof parsed.clocks === "object" ? parsed.clocks : {},
       links: parsed.links && typeof parsed.links === "object" ? parsed.links : {},
       notes: parsed.notes && typeof parsed.notes === "object" ? parsed.notes : {},
+      leaderNotes: notasLiderDe(parsed.leaderNotes),
     };
   } catch {
     return { ...EMPTY, clocks: {}, links: {}, notes: {} };
   }
+}
+
+function notasLiderDe(raw: unknown): Record<string, LeaderNota[]> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, LeaderNota[]> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    out[key] = value.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const row = item as Partial<LeaderNota>;
+      if (!row.id || !row.studentId || !row.label) return [];
+      return [
+        {
+          id: String(row.id),
+          code: String(row.code ?? ""),
+          label: String(row.label).slice(0, 140),
+          studentId: String(row.studentId),
+          studentName: String(row.studentName ?? "").slice(0, 120),
+          comment: String(row.comment ?? "").slice(0, 200),
+          at: String(row.at ?? ""),
+        },
+      ];
+    });
+  }
+  return out;
 }
 
 function serializar(estado: Estado) {
@@ -272,6 +315,7 @@ repoProyectoTeacherRouter.get("/groups/:groupId/repo-proyecto", async (req: Auth
         endsAt: startedAt ? new Date(new Date(startedAt).getTime() + DURACION_MS).toISOString() : null,
         link: estado.links[teamKey] ?? null,
         notes: estado.notes[teamKey] ?? [],
+        leaderNotes: estado.leaderNotes[teamKey] ?? [],
         members: [...team.members]
           .sort((a, b) => a.student.displayName.localeCompare(b.student.displayName, "es"))
           .map((member) => ({
@@ -399,6 +443,7 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
       startedAt,
       endsAt: startedAt ? new Date(new Date(startedAt).getTime() + DURACION_MS).toISOString() : null,
       link: estado.links[team.teamKey] ?? null,
+      leaderNotes: estado.leaderNotes[team.teamKey] ?? [],
       delivery: row
         ? { fileName: row.fileName, sizeBytes: row.sizeBytes, uploadedAt: row.uploadedAt.toISOString(), uploadedByName }
         : null,
@@ -447,6 +492,51 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
     estado.links[team.teamKey] = url;
     await guardarEstado(team.groupId, estado, anuncio?.id);
     return res.json({ link: url });
+  });
+
+  app.post("/student/repo-proyecto/leader-notes", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
+    const team = await equipoDelAlumno(req.auth!.userId);
+    if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
+    if (!team.isLeader) {
+      return res.status(403).json({ error: "not_leader", message: "Solo el líder puede anotar a los integrantes." });
+    }
+    const { anuncio, estado } = await leerEstado(team.groupId);
+    if (!estado.clocks[team.teamKey]) {
+      return res.status(403).json({ error: "not_started", message: "Primero inicia el cronómetro. Sin eso no puedes anotar." });
+    }
+    const code = String(req.body?.code ?? "");
+    const preset = NOTAS_LIDER.find((item) => item.code === code);
+    if (!preset) return res.status(400).json({ error: "invalid_body", message: "Elige si no está trabajando, está fuera del equipo o no asistió." });
+    const studentId = String(req.body?.studentId ?? "");
+    const member = team.members.find((item) => item.id === studentId);
+    if (!member) return res.status(400).json({ error: "invalid_body", message: "Ese alumno no está en tu equipo." });
+    const comment = String(req.body?.comment ?? "").trim().slice(0, 200);
+    const nota: LeaderNota = {
+      id: `lider-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      code: preset.code,
+      label: preset.label,
+      studentId: member.id,
+      studentName: member.displayName,
+      comment,
+      at: new Date().toISOString(),
+    };
+    const actuales = estado.leaderNotes[team.teamKey] ?? [];
+    estado.leaderNotes[team.teamKey] = [...actuales.filter((item) => !(item.studentId === member.id && item.code === preset.code)), nota];
+    await guardarEstado(team.groupId, estado, anuncio?.id);
+    return res.json({ ok: true });
+  });
+
+  app.post("/student/repo-proyecto/leader-notes/remove", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
+    const team = await equipoDelAlumno(req.auth!.userId);
+    if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
+    if (!team.isLeader) {
+      return res.status(403).json({ error: "not_leader", message: "Solo el líder puede quitar sus notas." });
+    }
+    const noteId = String(req.body?.noteId ?? "");
+    const { anuncio, estado } = await leerEstado(team.groupId);
+    estado.leaderNotes[team.teamKey] = (estado.leaderNotes[team.teamKey] ?? []).filter((nota) => nota.id !== noteId);
+    await guardarEstado(team.groupId, estado, anuncio?.id);
+    return res.json({ ok: true });
   });
 
   app.post(
@@ -512,11 +602,6 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
             uploadedById: req.auth!.userId,
           },
         });
-        try {
-          await aplicarPuntos(team.groupId, team.teamKey, estado);
-        } catch (err) {
-          console.error("repo proyecto award failed", err);
-        }
         const uploader = await prisma.user.findUnique({ where: { id: req.auth!.userId }, select: { displayName: true } });
         return res.json({
           delivery: {

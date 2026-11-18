@@ -1468,6 +1468,7 @@ export type RepoProyectoStudent = {
   startedAt: string | null;
   endsAt: string | null;
   link: string | null;
+  leaderNotes: import("./repoProyecto").RepoLeaderNote[];
   delivery: { fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string } | null;
 };
 
@@ -1484,6 +1485,14 @@ export async function startRepoProyectoClock() {
 export async function saveRepoProyectoLink(url: string) {
   const { data } = await api.post<{ link: string }>("/student/repo-proyecto/repo", { url });
   return data.link;
+}
+
+export async function addRepoLeaderNote(payload: { studentId: string; code: string; comment?: string }) {
+  await api.post("/student/repo-proyecto/leader-notes", payload);
+}
+
+export async function removeRepoLeaderNote(noteId: string) {
+  await api.post("/student/repo-proyecto/leader-notes/remove", { noteId });
 }
 
 export async function uploadRepoProyectoPdf(file: File) {
@@ -1504,6 +1513,7 @@ export type RepoProyectoTeacher = {
     endsAt: string | null;
     link: string | null;
     notes: Array<{ id: string; code: string; label: string; points: number; studentId: string | null; studentName: string | null }>;
+    leaderNotes: import("./repoProyecto").RepoLeaderNote[];
     members: Array<{ id: string; displayName: string; isLeader: boolean }>;
   }>;
   deliveries: Array<{ teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string }>;
