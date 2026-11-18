@@ -1,5 +1,5 @@
 export const REPO_PROYECTO_TITULO = "Repositorio Proyecto en GitHub";
-export const REPO_PROYECTO_INSTRUCTIVO = "/Repositorio%20Proyecto%20en%20GitHub.pdf?v=1";
+export const REPO_PROYECTO_INSTRUCTIVO = "/Repositorio%20Proyecto%20en%20GitHub.pdf?v=2";
 export const REPO_PROYECTO_PUNTOS = 3000;
 export const REPO_PROYECTO_MS = 150 * 60 * 1000;
 export const REPO_PROYECTO_PDF_MAX_BYTES = 8 * 1024 * 1024;
