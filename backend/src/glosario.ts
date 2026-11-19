@@ -9,19 +9,28 @@ const PDF_MAX_BYTES = 3 * 1024 * 1024;
 const PUNTOS = 1000;
 const ACTIVITY_KEY = "glosario";
 const TITLE = "Glosario Bilingüe";
-const HORARIO = ["2026-11-19T09:30:00-06:00", "2026-11-19T11:00:00-06:00", "2026-11-19T13:10:00-06:00"] as const;
-const TRAMO_PUNTOS = [1000, 500, 300];
+const HORARIOS = {
+  "301": [
+    { until: "2026-11-19T09:30:00-06:00", points: 1000 },
+    { until: "2026-11-19T11:00:00-06:00", points: 500 },
+    { until: "2026-11-19T13:10:00-06:00", points: 300 },
+  ],
+  "302": [
+    { until: "2026-11-19T11:00:00-06:00", points: 1000 },
+    { until: "2026-11-19T12:00:00-06:00", points: 500 },
+    { until: "2026-11-19T13:10:00-06:00", points: 300 },
+  ],
+} as const;
 const CIERRE_MENSAJE = "Después de la 1:10 p. m. de hoy, jueves 19 de noviembre, ya no se acepta el PDF.";
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: PDF_MAX_BYTES } });
 
 function entregaDe(groupCode: string, at: number | Date = Date.now()) {
   const code = groupCode.trim();
-  if (code !== "301" && code !== "302") return { open: false, points: 0 };
+  const horario = code === "301" || code === "302" ? HORARIOS[code] : null;
+  if (!horario) return { open: false, points: 0 };
   const ms = at instanceof Date ? at.getTime() : at;
-  for (let i = 0; i < HORARIO.length; i += 1) {
-    const until = HORARIO[i];
-    const points = TRAMO_PUNTOS[i];
-    if (until && points !== undefined && ms < new Date(until).getTime()) return { open: true, points };
+  for (const tramo of horario) {
+    if (ms < new Date(tramo.until).getTime()) return { open: true, points: tramo.points };
   }
   return { open: false, points: 0 };
 }

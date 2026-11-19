@@ -211,7 +211,7 @@ export default function TeacherScrumActivitiesPanel({
               <h3 className="mt-1 text-xl font-bold text-white">Glosario Bilingüe</h3>
               <p className="mt-1 text-sm text-slate-400">
                 Glosario de la interfaz en español, carátula de Canva y lo que hizo cada integrante. Un PDF de máximo 3
-                MB. Hasta las 9:30 a. m. son 1000 puntos; después baja, y a la 1:10 p. m. se cierra.
+                MB. El 301 tiene 1000 puntos hasta las 9:30 a. m. El 302 los tiene hasta las 11:00 a. m. A la 1:10 p. m. se cierra.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-teal-400/40 bg-teal-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-100">

@@ -66,7 +66,7 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
         </p>
       </div>
       <div className="mt-3 rounded-xl border border-rose-300/40 bg-rose-500/15 p-3 text-sm text-rose-50">
-        <p className="font-bold">Grupos 301 y 302. Hoy, jueves 19 de noviembre.</p>
+        <p className="font-bold">Grupo {code}. Hoy, jueves 19 de noviembre.</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           {glosarioTramos(code).map((tramo) => (
             <li key={tramo.until}>{tramo.texto}</li>
