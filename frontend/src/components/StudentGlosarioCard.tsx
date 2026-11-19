@@ -12,7 +12,8 @@ import {
 
 const CHECKS = [
   { id: "caratula", label: "La primera hoja es la carátula de Canva, con los datos del equipo, el nombre del proyecto y el título Glosario Bilingüe." },
-  { id: "glosario", label: "El glosario de la interfaz está en español. La traducción al inglés se hará después." },
+  { id: "glosario", label: "El glosario trae cada palabra clave de la interfaz y, aparte, su descripción. Está en español." },
+  { id: "reporte", label: "Está el reporte general: cómo funciona la aplicación, para quién está dirigida, el objetivo y lo demás que la explique." },
   { id: "integrantes", label: "Se indica qué hizo cada integrante." },
 ];
 
@@ -56,13 +57,17 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
       <h2 className="mt-1 text-2xl font-bold text-white">{GLOSARIO_TITULO}</h2>
       <div className="mt-3 space-y-2 text-sm leading-relaxed text-slate-100">
         <p>
-          El equipo elabora el glosario de la interfaz de su proyecto. Ese glosario servirá, más adelante, para el
-          glosario bilingüe español-inglés y para un reporte general del sistema en inglés, de difusión institucional.
+          El equipo elabora el glosario de la interfaz de su proyecto. Cada entrada es una palabra clave y, aparte, su
+          descripción. En esta entrega va solo en español. La traducción al inglés se hace después, en la asignatura.
         </p>
-        <p>En esta entrega el glosario va solo en español. La traducción al inglés se hace después, en la asignatura.</p>
+        <p>
+          En el mismo archivo agregan el reporte general del sistema: cómo funciona la aplicación, para quién está
+          dirigida, cuál es su objetivo y lo demás que la explique. Ese reporte servirá para la difusión institucional
+          y, más adelante, se podrá presentar en inglés.
+        </p>
         <p>
           Todo va en un solo PDF, de máximo 3 MB. Primero la carátula de Canva, con los datos del equipo, el nombre del
-          proyecto y el título Glosario Bilingüe. Después el glosario, indicando qué hizo cada integrante.
+          proyecto y el título Glosario Bilingüe. Después el glosario y el reporte, indicando qué hizo cada integrante.
         </p>
       </div>
       <div className="mt-3 rounded-xl border border-rose-300/40 bg-rose-500/15 p-3 text-sm text-rose-50">
@@ -130,7 +135,7 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
             }}
           />
           {!entrega.open ? <p className="mt-2 text-sm font-semibold text-rose-200">{GLOSARIO_CIERRE}</p> : null}
-          {entrega.open && !ready ? <p className="mt-2 text-sm text-slate-400">Marca las tres casillas para elegir el archivo.</p> : null}
+          {entrega.open && !ready ? <p className="mt-2 text-sm text-slate-400">Marca las casillas para elegir el archivo.</p> : null}
           {uploadMutation.isPending ? <p className="mt-2 text-sm text-slate-300">Subiendo...</p> : null}
           {error ? <p className="mt-2 text-sm text-rose-200">{error}</p> : null}
         </div>

@@ -210,8 +210,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-teal-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">Glosario Bilingüe</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Glosario de la interfaz en español, carátula de Canva y lo que hizo cada integrante. Un PDF de máximo 3
-                MB. El 301 tiene 1000 puntos hasta las 9:30 a. m. El 302 los tiene hasta las 11:00 a. m. A la 1:10 p. m. se cierra.
+                Palabra clave y su descripción, más el reporte de cómo funciona la aplicación, para quién va y su objetivo.
+                Un PDF de máximo 3 MB. El 301 tiene 1000 puntos hasta las 9:30 a. m. El 302 los tiene hasta las 11:00 a. m. A la 1:10 p. m. se cierra.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-teal-400/40 bg-teal-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-100">

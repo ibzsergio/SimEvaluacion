@@ -259,7 +259,7 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
       if (req.body?.completo !== "si") {
         return res.status(400).json({
           error: "checks_incomplete",
-          message: "Antes de subir, marca la carátula, el glosario en español y lo que hizo cada integrante.",
+          message: "Antes de subir, marca la carátula, el glosario con palabra y descripción, el reporte general y lo que hizo cada integrante.",
         });
       }
       const file = req.file;
