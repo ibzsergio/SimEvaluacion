@@ -103,7 +103,7 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
   const ready = CHECKS.every((item) => checked[item.id]);
   const entrega = repoEntrega(code, now);
   const guardada = data?.delivery?.uploadedAt ? repoEntrega(code, data.delivery.uploadedAt) : null;
-  const puedeSubir = abierto && Boolean(data?.link) && entrega.open;
+  const puedeSubir = Boolean(data?.link) && entrega.open;
 
   return (
     <section className="glass mb-6 border border-violet-400/30 p-4 sm:p-6">
@@ -113,7 +113,7 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
         El cronómetro dura 2 horas 30 minutos. La calificación la publica el docente y la máxima depende de la hora del PDF.
       </p>
       <div className="mt-3 rounded-xl border border-rose-300/40 bg-rose-500/15 p-3 text-sm text-rose-50">
-        <p className="font-bold">Grupo {code}. Hoy, miércoles 18 de noviembre.</p>
+        <p className="font-bold">Grupos 301 y 302. Hoy, jueves 19 de noviembre.</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           {repoTramos(code).map((tramo) => (
             <li key={tramo.until}>{tramo.texto}</li>
@@ -282,13 +282,13 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
             <input
               value={liga}
               onChange={(event) => setLiga(event.target.value)}
-              disabled={!abierto || linkMutation.isPending}
+              disabled={!entrega.open || linkMutation.isPending}
               placeholder="https://github.com/usuario/nombre-del-proyecto"
               className="mt-2 w-full rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white disabled:opacity-50"
             />
             <button
               type="button"
-              disabled={!abierto || linkMutation.isPending || liga.trim().length < 18}
+              disabled={!entrega.open || linkMutation.isPending || liga.trim().length < 18}
               onClick={() => linkMutation.mutate(liga.trim())}
               className="mt-2 min-h-11 rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
@@ -345,10 +345,6 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
             />
             {!entrega.open ? (
               <p className="mt-2 text-sm font-semibold text-rose-200">{REPO_PROYECTO_CIERRE}</p>
-            ) : !startedAt ? (
-              <p className="mt-2 text-sm font-semibold text-rose-200">Sin el cronómetro del líder no se puede subir el PDF.</p>
-            ) : !abierto ? (
-              <p className="mt-2 text-sm font-semibold text-rose-200">Se acabó el tiempo del cronómetro. Ya no se acepta el PDF.</p>
             ) : !data.link ? (
               <p className="mt-2 text-sm text-amber-100">Guarda primero la liga del repositorio.</p>
             ) : null}

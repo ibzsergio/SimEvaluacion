@@ -123,12 +123,10 @@ function ligaValida(raw: unknown) {
   }
 }
 
-const TRAMOS = {
-  "302": ["2026-11-18T09:30:00-06:00", "2026-11-18T13:00:00-06:00", "2026-11-18T17:00:00-06:00"],
-  "301": ["2026-11-18T12:30:00-06:00", "2026-11-18T15:00:00-06:00", "2026-11-18T17:00:00-06:00"],
-} as const;
+const HORARIO = ["2026-11-19T13:00:00-06:00", "2026-11-19T15:00:00-06:00", "2026-11-19T17:00:00-06:00"] as const;
+const TRAMOS = { "301": HORARIO, "302": HORARIO };
 const TRAMO_PUNTOS = [3000, 2000, 1000];
-const CIERRE_MENSAJE = "Después de las 5:00 p. m. de hoy, miércoles 18 de noviembre, ya no se acepta el PDF.";
+const CIERRE_MENSAJE = "Después de las 5:00 p. m. de hoy, jueves 19 de noviembre, ya no se acepta el PDF.";
 
 function entregaDe(groupCode: string, at: number | Date = Date.now()) {
   const code = groupCode.trim();
@@ -141,11 +139,6 @@ function entregaDe(groupCode: string, at: number | Date = Date.now()) {
     if (until && points !== undefined && ms < new Date(until).getTime()) return { open: true, points };
   }
   return { open: false, points: 0 };
-}
-
-function abierto(startedAt: string | null, now = Date.now()) {
-  if (!startedAt) return false;
-  return now < new Date(startedAt).getTime() + DURACION_MS;
 }
 
 function isPdf(file: Express.Multer.File) {
@@ -526,14 +519,10 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
   app.post("/student/repo-proyecto/repo", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
     const team = await equipoDelAlumno(req.auth!.userId);
     if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
+    if (!entregaDe(team.groupCode).open) {
+      return res.status(403).json({ error: "closed", message: CIERRE_MENSAJE });
+    }
     const { anuncio, estado } = await leerEstado(team.groupId);
-    const startedAt = estado.clocks[team.teamKey] ?? null;
-    if (!startedAt) {
-      return res.status(403).json({ error: "not_started", message: "El líder todavía no inicia el cronómetro." });
-    }
-    if (!abierto(startedAt)) {
-      return res.status(403).json({ error: "closed", message: "Se acabaron las 2 horas 30 minutos. Ya no se puede guardar la liga." });
-    }
     const url = ligaValida(req.body?.url);
     if (!url) {
       return res.status(400).json({
@@ -620,17 +609,10 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
       }
       const team = await equipoDelAlumno(req.auth!.userId);
       if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
-      const { estado } = await leerEstado(team.groupId);
-      const startedAt = estado.clocks[team.teamKey] ?? null;
-      if (!startedAt) {
-        return res.status(403).json({ error: "not_started", message: "El líder no ha iniciado el cronómetro. Sin eso no se puede subir el PDF." });
-      }
       if (!entregaDe(team.groupCode).open) {
         return res.status(403).json({ error: "closed", message: CIERRE_MENSAJE });
       }
-      if (!abierto(startedAt)) {
-        return res.status(403).json({ error: "closed", message: "Se acabaron las 2 horas 30 minutos. Ya no se recibe el PDF." });
-      }
+      const { estado } = await leerEstado(team.groupId);
       if (!estado.links[team.teamKey]) {
         return res.status(400).json({ error: "repo_required", message: "Primero guarda la liga del repositorio y agrega a ibzsergio como colaborador." });
       }
