@@ -1565,9 +1565,24 @@ export async function uploadGlosarioPdf(file: File) {
   return data.delivery;
 }
 
+export type GlosarioNote = {
+  id: string;
+  code: string;
+  label: string;
+  points: number;
+  studentId: string | null;
+  studentName: string | null;
+};
+
 export type GlosarioTeacher = {
   groupCode: string;
-  teams: Array<{ teamKey: string; teamName: string; leaderName: string | null }>;
+  teams: Array<{
+    teamKey: string;
+    teamName: string;
+    leaderName: string | null;
+    notes: GlosarioNote[];
+    members: Array<{ id: string; displayName: string; isLeader: boolean }>;
+  }>;
   deliveries: Array<{ teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string; points: number }>;
 };
 
@@ -1578,6 +1593,21 @@ export async function fetchTeacherGlosario(groupId: string) {
 
 export async function downloadGlosarioPdf(groupId: string, teamKey: string, fileName: string) {
   await downloadTeacherBlob(`/teacher/groups/${groupId}/glosario/${encodeURIComponent(teamKey)}/file`, fileName);
+}
+
+export async function addGlosarioNote(
+  groupId: string,
+  payload: { teamKey: string; code: string; studentId?: string; studentName?: string },
+) {
+  await api.post(`/teacher/groups/${groupId}/glosario/notes`, payload);
+}
+
+export async function removeGlosarioNote(groupId: string, payload: { teamKey: string; noteId: string }) {
+  await api.post(`/teacher/groups/${groupId}/glosario/notes/remove`, payload);
+}
+
+export async function publishGlosarioGrade(groupId: string, teamKey: string) {
+  await api.post(`/teacher/groups/${groupId}/glosario/grades`, { teamKey });
 }
 
 export async function fetchTeacherTkinterGit(groupId: string) {

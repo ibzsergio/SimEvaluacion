@@ -80,7 +80,7 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
         <p className="mt-2 font-semibold">{GLOSARIO_CIERRE}</p>
         <p className="mt-2">
           {entrega.open
-            ? `Si suben el PDF en este momento, quedan ${entrega.points.toLocaleString("es-MX")} puntos.`
+            ? `Si suben el PDF en este momento, la máxima es ${entrega.points.toLocaleString("es-MX")}. La calificación la publica el docente después de revisar el archivo.`
             : "En este momento ya no se acepta el PDF."}
         </p>
       </div>
@@ -97,7 +97,8 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
           {data.delivery ? (
             <p className="mt-2 text-sm text-emerald-100">
               Ya está: {data.delivery.fileName}. Lo subió {data.delivery.uploadedByName} a las{" "}
-              {formatoHoraGlosario(data.delivery.uploadedAt)}. Quedó en {data.delivery.points.toLocaleString("es-MX")} puntos.
+              {formatoHoraGlosario(data.delivery.uploadedAt)}. La máxima de esa hora es{" "}
+              {data.delivery.points.toLocaleString("es-MX")}. La calificación la publica el docente.
             </p>
           ) : (
             <p className="mt-2 text-sm text-amber-100">El equipo todavía no sube el PDF.</p>

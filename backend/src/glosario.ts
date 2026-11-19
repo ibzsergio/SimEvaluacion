@@ -9,6 +9,7 @@ const PDF_MAX_BYTES = 3 * 1024 * 1024;
 const PUNTOS = 1000;
 const ACTIVITY_KEY = "glosario";
 const TITLE = "Glosario Bilingüe";
+const MARK = "[[glosario-state]]";
 const HORARIOS = {
   "301": [
     { until: "2026-11-19T09:30:00-06:00", points: 1000 },
@@ -33,6 +34,64 @@ function entregaDe(groupCode: string, at: number | Date = Date.now()) {
     if (ms < new Date(tramo.until).getTime()) return { open: true, points: tramo.points };
   }
   return { open: false, points: 0 };
+}
+
+type Nota = {
+  id: string;
+  code: string;
+  label: string;
+  points: number;
+  studentId: string | null;
+  studentName: string | null;
+  at: string;
+};
+
+type Estado = { v: 1; notes: Record<string, Nota[]> };
+
+const NOTAS = [
+  { code: "participa", label: "No participó", points: 200 },
+  { code: "caratula", label: "Falta la carátula de Canva", points: 200 },
+  { code: "descripcion", label: "La palabra clave no trae descripción", points: 200 },
+  { code: "reporte", label: "Falta el reporte general", points: 300 },
+  { code: "integrantes", label: "No se indica qué hizo cada integrante", points: 200 },
+] as const;
+
+function estadoDe(body: string): Estado {
+  const idx = body.indexOf(MARK);
+  if (idx < 0) return { v: 1, notes: {} };
+  try {
+    const parsed = JSON.parse(body.slice(idx + MARK.length).trim()) as Partial<Estado>;
+    if (parsed?.v !== 1 || !parsed.notes || typeof parsed.notes !== "object") return { v: 1, notes: {} };
+    return { v: 1, notes: parsed.notes };
+  } catch {
+    return { v: 1, notes: {} };
+  }
+}
+
+async function leerEstado(groupId: string) {
+  const anuncio = await prisma.announcement.findFirst({
+    where: { groupId, title: TITLE },
+    orderBy: { createdAt: "desc" },
+  });
+  return { anuncio, estado: anuncio ? estadoDe(anuncio.body) : { v: 1 as const, notes: {} } };
+}
+
+async function guardarEstado(groupId: string, estado: Estado, anuncioId?: string) {
+  const body = `${TITLE}\n\n${MARK}\n${JSON.stringify(estado)}`;
+  if (anuncioId) {
+    await prisma.announcement.update({ where: { id: anuncioId }, data: { body } });
+    return;
+  }
+  const group = await prisma.classGroup.findUnique({ where: { id: groupId }, select: { teacherId: true } });
+  if (!group) throw new Error("group_not_found");
+  await prisma.announcement.create({ data: { teacherId: group.teacherId, groupId, title: TITLE, body } });
+}
+
+function puntosDe(notas: Nota[], studentId: string, max: number) {
+  const corte = notas
+    .filter((nota) => !nota.studentId || nota.studentId === studentId)
+    .reduce((acc, nota) => acc + Math.max(0, nota.points), 0);
+  return Math.max(0, max - corte);
 }
 
 function isPdf(file: Express.Multer.File) {
@@ -94,7 +153,7 @@ async function ensureActivity(groupId: string, teacherId: string) {
   return created.id;
 }
 
-async function awardTeam(groupId: string, teamKey: string, points: number) {
+async function awardTeam(groupId: string, teamKey: string, max: number, notas: Nota[]) {
   const teamId = teamKey.startsWith("project:") ? teamKey.slice("project:".length) : "";
   const [team, group] = await Promise.all([
     prisma.projectTeam.findFirst({
@@ -107,6 +166,7 @@ async function awardTeam(groupId: string, teamKey: string, points: number) {
   const activityId = await ensureActivity(groupId, group.teacherId);
   const gradedAt = new Date();
   for (const member of team.members) {
+    const points = puntosDe(notas, member.studentId, max);
     await prisma.grade.upsert({
       where: { activityId_studentId: { activityId, studentId: member.studentId } },
       update: { points, signatures: 0, gradedById: group.teacherId },
@@ -150,7 +210,8 @@ glosarioTeacherRouter.get("/groups/:groupId/glosario", async (req: AuthedRequest
     select: { id: true, code: true },
   });
   if (!group) return res.status(404).json({ error: "group_not_found" });
-  const [rows, teams] = await Promise.all([
+  const [{ estado }, rows, teams] = await Promise.all([
+    leerEstado(groupId),
     prisma.sqlScrumDelivery.findMany({
       where: { groupId, activityKey: ACTIVITY_KEY },
       select: { teamKey: true, teamName: true, fileName: true, sizeBytes: true, uploadedAt: true, uploadedById: true },
@@ -169,11 +230,22 @@ glosarioTeacherRouter.get("/groups/:groupId/glosario", async (req: AuthedRequest
   const ordered = [...teams].sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }) || a.id.localeCompare(b.id));
   return res.json({
     groupCode: group.code,
-    teams: ordered.map((team) => ({
-      teamKey: `project:${team.id}`,
-      teamName: team.name,
-      leaderName: team.members.find((member) => member.student.id === team.leaderId)?.student.displayName ?? null,
-    })),
+    teams: ordered.map((team) => {
+      const teamKey = `project:${team.id}`;
+      return {
+        teamKey,
+        teamName: team.name,
+        leaderName: team.members.find((member) => member.student.id === team.leaderId)?.student.displayName ?? null,
+        notes: estado.notes[teamKey] ?? [],
+        members: [...team.members]
+          .sort((a, b) => a.student.displayName.localeCompare(b.student.displayName, "es"))
+          .map((member) => ({
+            id: member.student.id,
+            displayName: member.student.displayName,
+            isLeader: member.student.id === team.leaderId,
+          })),
+      };
+    }),
     deliveries: rows.map((row) => ({
       teamKey: row.teamKey,
       teamName: row.teamName,
@@ -184,6 +256,70 @@ glosarioTeacherRouter.get("/groups/:groupId/glosario", async (req: AuthedRequest
       points: entregaDe(group.code, row.uploadedAt).points,
     })),
   });
+});
+
+glosarioTeacherRouter.post("/groups/:groupId/glosario/notes", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const teamKey = String(req.body?.teamKey ?? "");
+  const code = String(req.body?.code ?? "");
+  const preset = NOTAS.find((item) => item.code === code);
+  if (!teamKey.startsWith("project:") || !preset) {
+    return res.status(400).json({ error: "invalid_body", message: "Elige una nota." });
+  }
+  const { anuncio, estado } = await leerEstado(groupId);
+  const nota: Nota = {
+    id: `glosario-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    code: preset.code,
+    label: preset.label,
+    points: preset.points,
+    studentId: typeof req.body?.studentId === "string" ? req.body.studentId : null,
+    studentName: typeof req.body?.studentName === "string" ? req.body.studentName : null,
+    at: new Date().toISOString(),
+  };
+  estado.notes[teamKey] = [...(estado.notes[teamKey] ?? []), nota];
+  await guardarEstado(groupId, estado, anuncio?.id);
+  return res.json({ ok: true });
+});
+
+glosarioTeacherRouter.post("/groups/:groupId/glosario/notes/remove", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const teamKey = String(req.body?.teamKey ?? "");
+  const noteId = String(req.body?.noteId ?? "");
+  const { anuncio, estado } = await leerEstado(groupId);
+  estado.notes[teamKey] = (estado.notes[teamKey] ?? []).filter((nota) => nota.id !== noteId);
+  await guardarEstado(groupId, estado, anuncio?.id);
+  return res.json({ ok: true });
+});
+
+glosarioTeacherRouter.post("/groups/:groupId/glosario/grades", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true, code: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const teamKey = String(req.body?.teamKey ?? "");
+  if (!teamKey.startsWith("project:")) return res.status(400).json({ error: "invalid_body", message: "Elige un equipo." });
+  const [{ estado }, delivery] = await Promise.all([
+    leerEstado(groupId),
+    prisma.sqlScrumDelivery.findUnique({
+      where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY, groupId, teamKey } },
+      select: { uploadedAt: true },
+    }),
+  ]);
+  const max = delivery ? entregaDe(group.code, delivery.uploadedAt).points : 0;
+  await awardTeam(groupId, teamKey, max, estado.notes[teamKey] ?? []);
+  return res.json({ ok: true });
 });
 
 glosarioTeacherRouter.get("/groups/:groupId/glosario/:teamKey/file", async (req: AuthedRequest, res) => {
@@ -294,12 +430,6 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
             uploadedById: req.auth!.userId,
           },
         });
-        const points = entregaDe(team.groupCode, saved.uploadedAt).points || ahora.points;
-        try {
-          await awardTeam(team.groupId, team.teamKey, points);
-        } catch (err) {
-          console.error("glosario award failed", err);
-        }
         const uploader = await prisma.user.findUnique({ where: { id: req.auth!.userId }, select: { displayName: true } });
         return res.json({
           delivery: {
@@ -307,7 +437,7 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
             sizeBytes: saved.sizeBytes,
             uploadedAt: saved.uploadedAt.toISOString(),
             uploadedByName: uploader?.displayName ?? "Un integrante",
-            points,
+            points: entregaDe(team.groupCode, saved.uploadedAt).points || ahora.points,
           },
         });
       } catch (err) {
