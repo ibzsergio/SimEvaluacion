@@ -11,6 +11,7 @@ import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherBasedatosPanel from "./TeacherBasedatosPanel";
 import TeacherCrudPanel from "./TeacherCrudPanel";
 import TeacherSqlScrumPanel from "./TeacherSqlScrumPanel";
+import TeacherGlosarioPanel from "./TeacherGlosarioPanel";
 import TeacherRepoProyectoPanel from "./TeacherRepoProyectoPanel";
 import TeacherTkinterGitPanel from "./TeacherTkinterGitPanel";
 import TeacherExamenPanel from "./TeacherExamenPanel";
@@ -30,7 +31,7 @@ export default function TeacherScrumActivitiesPanel({
   onSelectGroup: (id: string) => void;
 }) {
   const [current, setCurrent] = useState<
-    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3" | "tkinter-git" | "repo-proyecto"
+    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3" | "tkinter-git" | "repo-proyecto" | "glosario"
   >("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
@@ -98,7 +99,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "repo-proyecto" ? (
+      {current === "glosario" ? (
+        <TeacherGlosarioPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "repo-proyecto" ? (
         <TeacherRepoProyectoPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -189,9 +197,27 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              La actividad de hoy es Repositorio Proyecto en GitHub. Las anteriores están contraídas.
+              Hoy están abiertas Glosario Bilingüe y Repositorio Proyecto en GitHub. Las anteriores están contraídas.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("glosario")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-teal-300">Actividad Scrum · hoy</p>
+              <h3 className="mt-1 text-xl font-bold text-white">Glosario Bilingüe</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Glosario de la interfaz en español, carátula de Canva y lo que hizo cada integrante. Un PDF de máximo 3
+                MB. Hasta las 9:30 a. m. son 1000 puntos; después baja, y a la 1:10 p. m. se cierra.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full border border-teal-400/40 bg-teal-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-100">
+              Publicada
+            </span>
+          </button>
 
           <button
             type="button"

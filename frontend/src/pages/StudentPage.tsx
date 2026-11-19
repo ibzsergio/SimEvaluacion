@@ -7,6 +7,7 @@ import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentExamenCard from "../components/StudentExamenCard";
+import StudentGlosarioCard from "../components/StudentGlosarioCard";
 import StudentRepoProyectoCard from "../components/StudentRepoProyectoCard";
 import StudentSqlScrumCard from "../components/StudentSqlScrumCard";
 import StudentTkinterGitCard from "../components/StudentTkinterGitCard";
@@ -154,6 +155,7 @@ export default function StudentPage() {
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
       <StudentExamenCard groupCode={data.group?.code} />
+      <StudentGlosarioCard groupCode={data.group?.code} />
       <StudentRepoProyectoCard groupCode={data.group?.code} />
       <StudentSqlScrumCard activityKey="bd2" groupCode={data.group?.code} studentId={user?.id} past />
       <StudentSqlScrumCard activityKey="bd3" groupCode={data.group?.code} studentId={user?.id} past />

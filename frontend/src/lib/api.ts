@@ -1544,6 +1544,42 @@ export async function downloadRepoProyectoPdf(groupId: string, teamKey: string, 
   await downloadTeacherBlob(`/teacher/groups/${groupId}/repo-proyecto/${encodeURIComponent(teamKey)}/file`, fileName);
 }
 
+export type GlosarioStudent = {
+  preview?: boolean;
+  groupCode: string;
+  teamKey: string;
+  teamName: string;
+  delivery: { fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string; points: number } | null;
+};
+
+export async function fetchStudentGlosario() {
+  const { data } = await api.get<GlosarioStudent>("/student/glosario");
+  return data;
+}
+
+export async function uploadGlosarioPdf(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("completo", "si");
+  const { data } = await api.post<{ delivery: GlosarioStudent["delivery"] }>("/student/glosario/delivery", form);
+  return data.delivery;
+}
+
+export type GlosarioTeacher = {
+  groupCode: string;
+  teams: Array<{ teamKey: string; teamName: string; leaderName: string | null }>;
+  deliveries: Array<{ teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string; points: number }>;
+};
+
+export async function fetchTeacherGlosario(groupId: string) {
+  const { data } = await api.get<GlosarioTeacher>(`/teacher/groups/${groupId}/glosario`);
+  return data;
+}
+
+export async function downloadGlosarioPdf(groupId: string, teamKey: string, fileName: string) {
+  await downloadTeacherBlob(`/teacher/groups/${groupId}/glosario/${encodeURIComponent(teamKey)}/file`, fileName);
+}
+
 export async function fetchTeacherTkinterGit(groupId: string) {
   const { data } = await api.get<import("./tkinterGit").TkinterGitResponse>(`/teacher/groups/${groupId}/tkinter-git`);
   return data;
