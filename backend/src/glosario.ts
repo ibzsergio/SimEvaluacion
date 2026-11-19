@@ -376,6 +376,18 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
     });
   });
 
+  app.get("/student/glosario/file", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
+    const team = await equipoDelAlumno(req.auth!.userId);
+    if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
+    const row = await prisma.sqlScrumDelivery.findUnique({
+      where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY, groupId: team.groupId, teamKey: team.teamKey } },
+    });
+    if (!row) return res.status(404).json({ error: "delivery_not_found", message: "Tu equipo todavía no sube su PDF." });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeFileName(row.fileName)}"`);
+    return res.send(Buffer.from(row.fileData));
+  });
+
   app.post(
     "/student/glosario/delivery",
     requireAuth,

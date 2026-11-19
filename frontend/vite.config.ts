@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261119-glosario-califica",
+        cacheId: "simeval-20261119-glosario-reemplazo",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

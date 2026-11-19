@@ -1565,6 +1565,10 @@ export async function uploadGlosarioPdf(file: File) {
   return data.delivery;
 }
 
+export async function downloadStudentGlosarioPdf(fileName: string) {
+  await downloadTeacherBlob("/student/glosario/file", fileName);
+}
+
 export type GlosarioNote = {
   id: string;
   code: string;

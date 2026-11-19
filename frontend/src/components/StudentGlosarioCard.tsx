@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { fetchStudentGlosario, getApiErrorMessage, uploadGlosarioPdf } from "../lib/api";
+import { downloadStudentGlosarioPdf, fetchStudentGlosario, getApiErrorMessage, uploadGlosarioPdf } from "../lib/api";
 import {
   formatoHoraGlosario,
   GLOSARIO_CIERRE,
@@ -24,6 +24,7 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
   const [now, setNow] = useState(() => Date.now());
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState(false);
   const query = useQuery({
     queryKey: ["student-glosario"],
     queryFn: fetchStudentGlosario,
@@ -50,6 +51,7 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
   const entrega = glosarioEntrega(code, now);
   const ready = CHECKS.every((item) => checked[item.id]);
   const puedeSubir = entrega.open && !data?.preview;
+  const puedeReemplazar = puedeSubir && Boolean(data?.delivery);
 
   return (
     <section className="glass mb-6 border border-teal-400/30 p-4 sm:p-6">
@@ -93,13 +95,33 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
       {data && !data.preview ? (
         <div className="mt-4 rounded-2xl border border-white/10 p-4">
           <p className="text-sm font-semibold text-white">PDF del equipo, máximo 3 MB</p>
-          <p className="mt-1 text-sm text-slate-300">Lo sube el líder o un integrante. Si lo vuelven a subir, cuenta la hora del archivo nuevo.</p>
+          <p className="mt-1 text-sm text-slate-300">
+            Lo sube el líder o un integrante. Si se equivocaron de archivo o quieren corregirlo, descárguenlo y vuelvan a
+            subirlo mientras la entrega siga abierta. Cuenta la hora del archivo nuevo.
+          </p>
           {data.delivery ? (
-            <p className="mt-2 text-sm text-emerald-100">
-              Ya está: {data.delivery.fileName}. Lo subió {data.delivery.uploadedByName} a las{" "}
-              {formatoHoraGlosario(data.delivery.uploadedAt)}. La máxima de esa hora es{" "}
-              {data.delivery.points.toLocaleString("es-MX")}. La calificación la publica el docente.
-            </p>
+            <div className="mt-2">
+              <p className="text-sm text-emerald-100">
+                Ya está: {data.delivery.fileName}. Lo subió {data.delivery.uploadedByName} a las{" "}
+                {formatoHoraGlosario(data.delivery.uploadedAt)}. La máxima de esa hora es{" "}
+                {data.delivery.points.toLocaleString("es-MX")}. La calificación la publica el docente.
+              </p>
+              <button
+                type="button"
+                disabled={downloading}
+                className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-teal-500 px-4 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50"
+                onClick={() => {
+                  const fileName = data.delivery?.fileName ?? "glosario.pdf";
+                  setDownloading(true);
+                  setError("");
+                  downloadStudentGlosarioPdf(fileName)
+                    .catch((err) => setError(getApiErrorMessage(err)))
+                    .finally(() => setDownloading(false));
+                }}
+              >
+                {downloading ? "Descargando..." : "Descargar PDF"}
+              </button>
+            </div>
           ) : (
             <p className="mt-2 text-sm text-amber-100">El equipo todavía no sube el PDF.</p>
           )}
@@ -122,7 +144,7 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
           <input
             type="file"
             accept="application/pdf,.pdf"
-            disabled={!puedeSubir || !ready || uploadMutation.isPending}
+            disabled={!(puedeSubir && (ready || puedeReemplazar)) || uploadMutation.isPending}
             className="mt-3 block w-full text-sm text-slate-200 disabled:opacity-50"
             onChange={(event) => {
               const file = event.target.files?.[0];
@@ -136,7 +158,12 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
             }}
           />
           {!entrega.open ? <p className="mt-2 text-sm font-semibold text-rose-200">{GLOSARIO_CIERRE}</p> : null}
-          {entrega.open && !ready ? <p className="mt-2 text-sm text-slate-400">Marca las casillas para elegir el archivo.</p> : null}
+          {entrega.open && !ready && !puedeReemplazar ? (
+            <p className="mt-2 text-sm text-slate-400">Marca las casillas para elegir el archivo.</p>
+          ) : null}
+          {puedeReemplazar ? (
+            <p className="mt-2 text-sm text-slate-300">Pueden elegir otro PDF para reemplazar el actual.</p>
+          ) : null}
           {uploadMutation.isPending ? <p className="mt-2 text-sm text-slate-300">Subiendo...</p> : null}
           {error ? <p className="mt-2 text-sm text-rose-200">{error}</p> : null}
         </div>
