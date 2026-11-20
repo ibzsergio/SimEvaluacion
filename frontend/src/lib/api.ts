@@ -1584,6 +1584,66 @@ export async function downloadStudentGlosarioEnglishPdf(fileName: string) {
   await downloadTeacherBlob("/student/glosario/english/file", fileName);
 }
 
+export type ArbolArchivo = { fileName: string; sizeBytes: number; uploadedAt: string } | null;
+
+export type ArbolStudent = {
+  preview?: boolean;
+  groupCode: string;
+  released: boolean;
+  text: string;
+  updatedAt?: string | null;
+  file: ArbolArchivo;
+};
+
+export type ArbolTeacherStudent = {
+  id: string;
+  displayName: string;
+  text: string;
+  updatedAt: string | null;
+  file: ArbolArchivo;
+};
+
+export type ArbolTeacher = {
+  groupCode: string;
+  released: boolean;
+  students: ArbolTeacherStudent[];
+};
+
+export async function fetchStudentArbol() {
+  const { data } = await api.get<ArbolStudent>("/student/arbol-navidad");
+  return data;
+}
+
+export async function saveStudentArbol(text: string) {
+  const { data } = await api.post<{ text: string; updatedAt: string }>("/student/arbol-navidad", { text });
+  return data;
+}
+
+export async function uploadStudentArbolPdf(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<{ file: ArbolArchivo }>("/student/arbol-navidad/file", form);
+  return data.file;
+}
+
+export async function downloadStudentArbolPdf(fileName: string) {
+  await downloadTeacherBlob("/student/arbol-navidad/file", fileName);
+}
+
+export async function fetchTeacherArbol(groupId: string) {
+  const { data } = await api.get<ArbolTeacher>(`/teacher/groups/${groupId}/arbol-navidad`);
+  return data;
+}
+
+export async function setArbolReleased(groupId: string, released: boolean) {
+  const { data } = await api.post<{ released: boolean }>(`/teacher/groups/${groupId}/arbol-navidad/release`, { released });
+  return data;
+}
+
+export async function downloadTeacherArbolPdf(groupId: string, studentId: string, fileName: string) {
+  await downloadTeacherBlob(`/teacher/groups/${groupId}/arbol-navidad/${studentId}/file`, fileName);
+}
+
 export type ReporteArchivo = { fileName: string; sizeBytes: number } | null;
 
 export type ReporteMember = {

@@ -5,6 +5,7 @@ import { BASEDATOS_ANNOUNCEMENT_TITLE, basedatosPublicText } from "../lib/baseda
 import { CRUD_ANNOUNCEMENT_TITLE, crudPublicText, isCrudAnnouncement } from "../lib/crudLive";
 import { isSqlScrumAnnouncement, sqlScrumPublicText } from "../lib/sqlScrumLive";
 import { GLOSARIO_TITULO } from "../lib/glosario";
+import { ARBOL_TITULO } from "../lib/arbolNavidad";
 import { REPORTE_TITULO } from "../lib/reporteProyecto";
 import { REPO_PROYECTO_TITULO } from "../lib/repoProyecto";
 import { TKINTER_GIT_TITULO } from "../lib/tkinterGit";
@@ -21,6 +22,7 @@ function scrumAnnouncementHidden(title: string) {
     title === REPO_PROYECTO_TITULO ||
     title === GLOSARIO_TITULO ||
     title === REPORTE_TITULO ||
+    title === ARBOL_TITULO ||
     isCrudAnnouncement(title) ||
     isSqlScrumAnnouncement(title)
   );

@@ -7,6 +7,7 @@ import StudentMotivationCard from "../components/StudentMotivationCard";
 import StudentSeatingCard from "../components/StudentSeatingCard";
 import StudentColorReadingCard from "../components/StudentColorReadingCard";
 import StudentExamenCard from "../components/StudentExamenCard";
+import StudentArbolNavidadCard from "../components/StudentArbolNavidadCard";
 import StudentReporteProyectoCard from "../components/StudentReporteProyectoCard";
 import StudentGlosarioCard from "../components/StudentGlosarioCard";
 import StudentRepoProyectoCard from "../components/StudentRepoProyectoCard";
@@ -156,6 +157,7 @@ export default function StudentPage() {
       {data.lectura ? <StudentColorReadingCard lectura={data.lectura} /> : null}
 
       <StudentExamenCard groupCode={data.group?.code} />
+      <StudentArbolNavidadCard groupCode={data.group?.code} />
       <StudentReporteProyectoCard groupCode={data.group?.code} />
       <StudentGlosarioCard groupCode={data.group?.code} />
       <StudentRepoProyectoCard groupCode={data.group?.code} />

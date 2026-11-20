@@ -72,6 +72,7 @@ import { registerStudentTkinterGitRoutes, tkinterGitTeacherRouter } from "./tkin
 import { registerStudentRepoProyectoRoutes, repoProyectoTeacherRouter } from "./repoProyecto.js";
 import { glosarioTeacherRouter, registerStudentGlosarioRoutes } from "./glosario.js";
 import { registerStudentReporteProyectoRoutes, reporteProyectoTeacherRouter } from "./reporteProyecto.js";
+import { arbolNavidadTeacherRouter, registerStudentArbolRoutes } from "./arbolNavidad.js";
 import {
   chooseImproLeader,
   improErrorHttp,
@@ -356,6 +357,7 @@ app.use("/teacher", tkinterGitTeacherRouter);
 app.use("/teacher", repoProyectoTeacherRouter);
 app.use("/teacher", glosarioTeacherRouter);
 app.use("/teacher", reporteProyectoTeacherRouter);
+app.use("/teacher", arbolNavidadTeacherRouter);
 app.use("/teacher/office-exam", officeExamTeacherRouter);
 app.use("/teacher/comms", commsTeacherRouter);
 
@@ -887,6 +889,7 @@ registerStudentTkinterGitRoutes(app);
 registerStudentRepoProyectoRoutes(app);
 registerStudentGlosarioRoutes(app);
 registerStudentReporteProyectoRoutes(app);
+registerStudentArbolRoutes(app);
 
 app.post("/student/extra/leader", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
   const body = z.object({ leaderId: z.string().min(1) }).safeParse(req.body ?? {});

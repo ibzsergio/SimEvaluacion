@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAvionSession, fetchBasedatosSession, fetchCrudSession, fetchExtraSession, fetchImproSession, fetchMaquinaSession } from "../lib/api";
+import { fetchAvionSession, fetchBasedatosSession, fetchCrudSession, fetchExtraSession, fetchImproSession, fetchMaquinaSession, fetchTeacherArbol } from "../lib/api";
 import { BASEDATOS_TITULO } from "../lib/basedatosScrum";
 import { CRUD_TITULO } from "../lib/crudScrum";
 import { EXAMEN_TITULO } from "../lib/examScrum";
@@ -11,6 +11,7 @@ import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherBasedatosPanel from "./TeacherBasedatosPanel";
 import TeacherCrudPanel from "./TeacherCrudPanel";
 import TeacherSqlScrumPanel from "./TeacherSqlScrumPanel";
+import TeacherArbolNavidadPanel from "./TeacherArbolNavidadPanel";
 import TeacherReporteProyectoPanel from "./TeacherReporteProyectoPanel";
 import TeacherGlosarioPanel from "./TeacherGlosarioPanel";
 import TeacherRepoProyectoPanel from "./TeacherRepoProyectoPanel";
@@ -32,7 +33,7 @@ export default function TeacherScrumActivitiesPanel({
   onSelectGroup: (id: string) => void;
 }) {
   const [current, setCurrent] = useState<
-    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3" | "tkinter-git" | "repo-proyecto" | "glosario" | "reporte-proyecto"
+    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3" | "tkinter-git" | "repo-proyecto" | "glosario" | "reporte-proyecto" | "arbol-navidad"
   >("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
@@ -70,6 +71,13 @@ export default function TeacherScrumActivitiesPanel({
     enabled: !!selectedGroupId && current === "list",
   });
   const crudReleased = crudQuery.data?.released ?? false;
+  const selectedCode = groups.find((group) => group.id === selectedGroupId)?.code;
+  const arbolQuery = useQuery({
+    queryKey: ["arbol-navidad", selectedGroupId],
+    queryFn: () => fetchTeacherArbol(selectedGroupId),
+    enabled: !!selectedGroupId && selectedCode === "301" && (current === "list" || current === "arbol-navidad"),
+  });
+  const arbolReleased = arbolQuery.data?.released ?? false;
 
   return (
     <div>
@@ -100,7 +108,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "reporte-proyecto" ? (
+      {current === "arbol-navidad" ? (
+        <TeacherArbolNavidadPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "reporte-proyecto" ? (
         <TeacherReporteProyectoPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -208,6 +223,25 @@ export default function TeacherScrumActivitiesPanel({
               Hoy está abierto REPORTE PROYECTO, en días hábiles del 20 al 25 de noviembre. Es el reporte diario del líder y todavía no lleva calificación.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("arbol-navidad")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-rose-200">Actividad Scrum · grupo 301</p>
+              <h3 className="mt-1 text-xl font-bold text-white">Propuesta Árbol de Navidad</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Cada alumno escribe su propuesta y sube un PDF de imágenes de máximo 5 MB. No hay calificación.
+                {selectedCode === "301"
+                  ? arbolReleased
+                    ? " Ya está liberada."
+                    : " Sin liberar: los alumnos no la ven."
+                  : " Ábrela con el grupo 301 seleccionado."}
+              </p>
+            </div>
+          </button>
 
           <button
             type="button"
