@@ -1,5 +1,5 @@
 export const REPO_PROYECTO_TITULO = "Repositorio Proyecto en GitHub";
-export const REPO_PROYECTO_INSTRUCTIVO = "/Repositorio%20Proyecto%20en%20GitHub.pdf?v=5";
+export const REPO_PROYECTO_INSTRUCTIVO = "/Repositorio%20Proyecto%20en%20GitHub.pdf?v=6";
 export const REPO_PROYECTO_PUNTOS = 3000;
 export const REPO_PROYECTO_MS = 150 * 60 * 1000;
 export const REPO_PROYECTO_PDF_MAX_BYTES = 8 * 1024 * 1024;
@@ -46,7 +46,7 @@ export const REPO_PROYECTO_NOTAS = [
 
 export function repoCierre(groupCode: string | null | undefined) {
   if (groupCode?.trim() === "301") {
-    return "Después de las 3:00 p. m. de hoy, viernes 20 de noviembre, ya no se permite subir el PDF.";
+    return "Después de las 5:00 p. m. de hoy, viernes 20 de noviembre, ya no se permite subir el PDF.";
   }
   return "Esta entrega no está abierta para este grupo.";
 }
@@ -63,9 +63,9 @@ const HORARIO_301 = [
     texto: "Si lo suben después de las 9:30 a. m. y hasta las 12:00 p. m., la máxima es 2000.",
   },
   {
-    until: "2026-11-20T15:00:00-06:00",
+    until: "2026-11-20T17:00:00-06:00",
     points: 1000,
-    texto: "Si lo suben después de las 12:00 p. m. y hasta las 3:00 p. m., la máxima es 1000.",
+    texto: "Si lo suben después de las 12:00 p. m. y hasta las 5:00 p. m., la máxima es 1000.",
   },
 ] as const;
 

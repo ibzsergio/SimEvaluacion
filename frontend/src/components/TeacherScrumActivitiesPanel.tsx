@@ -254,7 +254,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">Repositorio Proyecto en GitHub</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Grupo 301, hoy: 3000 hasta las 9:30 a. m., 2000 hasta las 12:00 p. m. y 1000 hasta las 3:00 p. m. El líder
+                Grupo 301, hoy: 3000 hasta las 9:30 a. m., 2000 hasta las 12:00 p. m. y 1000 hasta las 5:00 p. m. El líder
                 anota a cada compañero las veces que haga falta. Tú ves esas notas y publicas la calificación.
               </p>
             </div>
