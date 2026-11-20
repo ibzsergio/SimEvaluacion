@@ -10,8 +10,8 @@ import {
   uploadRepoProyectoPdf,
 } from "../lib/api";
 import {
+  formatoHoraClase,
   formatoReloj,
-  REPO_PROYECTO_CIERRE,
   REPO_PROYECTO_DOCENTE,
   REPO_PROYECTO_INSTRUCTIVO,
   REPO_PROYECTO_NOTAS_LIDER,
@@ -20,6 +20,7 @@ import {
   REPO_PROYECTO_TITULO,
   repoAbierto,
   repoEntrega,
+  repoCierre,
   repoRestante,
   repoTramos,
 } from "../lib/repoProyecto";
@@ -58,8 +59,9 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
   });
   const leaderNoteMutation = useMutation({
     mutationFn: addRepoLeaderNote,
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       setError("");
+      setDetalle((prev) => ({ ...prev, [variables.studentId]: "" }));
       await queryClient.invalidateQueries({ queryKey: ["student-repo-proyecto"] });
     },
     onError: (err) => setError(getApiErrorMessage(err)),
@@ -104,6 +106,7 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
   const entrega = repoEntrega(code, now);
   const guardada = data?.delivery?.uploadedAt ? repoEntrega(code, data.delivery.uploadedAt) : null;
   const puedeSubir = Boolean(data?.link) && entrega.open;
+  const notasAbiertas = Boolean(startedAt) || (code === "301" && now < new Date("2026-11-21T00:00:00-06:00").getTime());
 
   return (
     <section className="glass mb-6 border border-violet-400/30 p-4 sm:p-6">
@@ -113,13 +116,15 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
         El cronómetro dura 2 horas 30 minutos. La calificación la publica el docente y la máxima depende de la hora del PDF.
       </p>
       <div className="mt-3 rounded-xl border border-rose-300/40 bg-rose-500/15 p-3 text-sm text-rose-50">
-        <p className="font-bold">Grupos 301 y 302. Hoy, jueves 19 de noviembre.</p>
+        <p className="font-bold">
+          {code === "301" ? "Grupo 301. Hoy, viernes 20 de noviembre." : "Grupo 302. Esta entrega no está abierta."}
+        </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           {repoTramos(code).map((tramo) => (
             <li key={tramo.until}>{tramo.texto}</li>
           ))}
         </ul>
-        <p className="mt-2 font-semibold">{REPO_PROYECTO_CIERRE}</p>
+        <p className="mt-2 font-semibold">{repoCierre(code)}</p>
         <p className="mt-2">
           {entrega.open
             ? `Si suben el PDF en este momento y cumplen con todo, la máxima es ${entrega.points.toLocaleString("es-MX")}.`
@@ -160,7 +165,7 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
                   disabled={startMutation.isPending || !data.hasLeader}
                   onClick={() => {
                     const ok = window.confirm(
-                      "Al iniciar, corren 2 horas 30 minutos para todo el equipo.\n\nEl cronómetro no se reinicia. Cuando llegue a cero ya no se puede subir el PDF.",
+                      "Al iniciar, corren 2 horas 30 minutos para todo el equipo.\n\nEl cronómetro no se reinicia. El PDF se sube en el horario de hoy, aunque el cronómetro ya haya llegado a cero.",
                     );
                     if (ok) startMutation.mutate();
                   }}
@@ -171,19 +176,20 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
               ) : (
                 <p className="mt-3 text-sm text-amber-100">
                   {data.hasLeader
-                    ? "Solo el líder puede iniciar el cronómetro. Hasta entonces el equipo no puede subir el PDF ni anotar integrantes."
+                    ? "Solo el líder puede iniciar el cronómetro. El PDF se sube en el horario de hoy."
                     : "Este equipo no tiene líder. Pide al docente que lo nombre en Roles / Equipos."}
                 </p>
               )
             ) : null}
           </div>
 
-          {startedAt ? (
+          {notasAbiertas ? (
             <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-400/10 p-4">
               <p className="text-sm font-semibold text-white">Notas del líder para el docente</p>
               <p className="mt-1 text-sm text-slate-200">
-                Si un integrante no está trabajando, está fuera del equipo o no asistió, el líder lo anota. El docente ve
-                esas notas y con ellas publica la calificación.
+                El líder elige a un compañero y anota si no está trabajando, no asistió, no está en su lugar, está jugando
+                o es otra situación. Puede anotarlo varias veces. Esas notas le llegan al docente, que decide la
+                calificación: ese integrante no tiene por qué valer lo mismo que los demás.
               </p>
               {data.isLeader ? (
                 <ul className="mt-3 space-y-3">
@@ -202,7 +208,10 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
                           <button
                             key={nota.code}
                             type="button"
-                            disabled={leaderNoteMutation.isPending}
+                            disabled={
+                              leaderNoteMutation.isPending ||
+                              (nota.code === "otra" && !(detalle[member.id] ?? "").trim())
+                            }
                             onClick={() =>
                               leaderNoteMutation.mutate({
                                 studentId: member.id,
@@ -228,7 +237,7 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
                   {data.leaderNotes.map((nota) => (
                     <li key={nota.id} className="flex items-start justify-between gap-2">
                       <span>
-                        {nota.studentName}: {nota.label}
+                        {formatoHoraClase(nota.at)} · {nota.studentName}: {nota.label}
                         {nota.comment ? `. ${nota.comment}` : ""}
                       </span>
                       {data.isLeader ? (
@@ -265,8 +274,8 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
               Collaborators, Add people, escriban {REPO_PROYECTO_DOCENTE}.
             </p>
             <p>
-              Cuando el cronómetro ya corre, el líder puede anotar si un integrante no está trabajando, está fuera del
-              equipo o no asistió. El docente ve esas notas y publica la calificación.
+              El líder anota a cada compañero las veces que haga falta: si no trabaja, no asistió, no está en su lugar,
+              está jugando u otra situación. El docente ve esas notas y publica la calificación.
             </p>
           </div>
 
@@ -344,7 +353,7 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
               }}
             />
             {!entrega.open ? (
-              <p className="mt-2 text-sm font-semibold text-rose-200">{REPO_PROYECTO_CIERRE}</p>
+              <p className="mt-2 text-sm font-semibold text-rose-200">{repoCierre(code)}</p>
             ) : !data.link ? (
               <p className="mt-2 text-sm text-amber-100">Guarda primero la liga del repositorio.</p>
             ) : null}

@@ -197,7 +197,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Hoy están abiertas Glosario Bilingüe y Repositorio Proyecto en GitHub. Las anteriores están contraídas.
+              Hoy está abierta Repositorio Proyecto en GitHub para el grupo 301. Las anteriores están contraídas.
             </p>
           </section>
 
@@ -228,8 +228,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">Repositorio Proyecto en GitHub</h3>
               <p className="mt-1 text-sm text-slate-400">
-                El líder inicia 2 horas 30 minutos y anota quién no trabaja, está fuera del equipo o no asistió. Tú ves esas
-                notas y publicas la calificación. PDF de máximo 8 MB. 3000 puntos.
+                Grupo 301, hoy: 3000 hasta las 9:30 a. m., 2000 hasta las 12:00 p. m. y 1000 hasta las 3:00 p. m. El líder
+                anota a cada compañero las veces que haga falta. Tú ves esas notas y publicas la calificación.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-violet-400/40 bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-100">

@@ -1,5 +1,5 @@
 export const REPO_PROYECTO_TITULO = "Repositorio Proyecto en GitHub";
-export const REPO_PROYECTO_INSTRUCTIVO = "/Repositorio%20Proyecto%20en%20GitHub.pdf?v=4";
+export const REPO_PROYECTO_INSTRUCTIVO = "/Repositorio%20Proyecto%20en%20GitHub.pdf?v=5";
 export const REPO_PROYECTO_PUNTOS = 3000;
 export const REPO_PROYECTO_MS = 150 * 60 * 1000;
 export const REPO_PROYECTO_PDF_MAX_BYTES = 8 * 1024 * 1024;
@@ -18,8 +18,11 @@ export const REPO_PROYECTO_TABLAS = [
 
 export const REPO_PROYECTO_NOTAS_LIDER = [
   { code: "no_trabaja", label: "No está trabajando" },
-  { code: "fuera", label: "Está fuera del equipo" },
   { code: "no_asistio", label: "No asistió" },
+  { code: "no_lugar", label: "No está en su lugar de trabajo" },
+  { code: "jugando", label: "Está jugando" },
+  { code: "fuera", label: "Está fuera del equipo" },
+  { code: "otra", label: "Otra situación" },
 ] as const;
 
 export type RepoLeaderNote = {
@@ -41,28 +44,32 @@ export const REPO_PROYECTO_NOTAS = [
   { code: "commits", label: "No se ven los commits de los integrantes", points: 400 },
 ] as const;
 
-export const REPO_PROYECTO_CIERRE =
-  "Después de las 5:00 p. m. de hoy, jueves 19 de noviembre, ya no se permite subir el PDF.";
+export function repoCierre(groupCode: string | null | undefined) {
+  if (groupCode?.trim() === "301") {
+    return "Después de las 3:00 p. m. de hoy, viernes 20 de noviembre, ya no se permite subir el PDF.";
+  }
+  return "Esta entrega no está abierta para este grupo.";
+}
 
-const HORARIO = [
+const HORARIO_301 = [
   {
-    until: "2026-11-19T13:00:00-06:00",
+    until: "2026-11-20T09:30:00-06:00",
     points: 3000,
-    texto: "Si lo suben hasta la 1:00 p. m. y cumplen con todo, la calificación máxima es 3000.",
+    texto: "Si lo suben hasta las 9:30 a. m. y cumplen con todo, la máxima es 3000.",
   },
   {
-    until: "2026-11-19T15:00:00-06:00",
+    until: "2026-11-20T12:00:00-06:00",
     points: 2000,
-    texto: "Si lo suben después de la 1:00 p. m. y hasta las 3:00 p. m., la máxima es 2000.",
+    texto: "Si lo suben después de las 9:30 a. m. y hasta las 12:00 p. m., la máxima es 2000.",
   },
   {
-    until: "2026-11-19T17:00:00-06:00",
+    until: "2026-11-20T15:00:00-06:00",
     points: 1000,
-    texto: "Si lo suben después de las 3:00 p. m. y hasta las 5:00 p. m., la máxima es 1000.",
+    texto: "Si lo suben después de las 12:00 p. m. y hasta las 3:00 p. m., la máxima es 1000.",
   },
 ] as const;
 
-const TRAMOS = { "301": HORARIO, "302": HORARIO };
+const TRAMOS = { "301": HORARIO_301, "302": [] as const };
 
 export function repoTramos(groupCode: string | null | undefined) {
   const code = groupCode?.trim();

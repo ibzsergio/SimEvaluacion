@@ -45,8 +45,11 @@ const EMPTY: Estado = { v: 1, clocks: {}, links: {}, notes: {}, leaderNotes: {} 
 
 const NOTAS_LIDER = [
   { code: "no_trabaja", label: "No está trabajando" },
-  { code: "fuera", label: "Está fuera del equipo" },
   { code: "no_asistio", label: "No asistió" },
+  { code: "no_lugar", label: "No está en su lugar de trabajo" },
+  { code: "jugando", label: "Está jugando" },
+  { code: "fuera", label: "Está fuera del equipo" },
+  { code: "otra", label: "Otra situación" },
 ] as const;
 
 const NOTAS = [
@@ -123,22 +126,35 @@ function ligaValida(raw: unknown) {
   }
 }
 
-const HORARIO = ["2026-11-19T13:00:00-06:00", "2026-11-19T15:00:00-06:00", "2026-11-19T17:00:00-06:00"] as const;
-const TRAMOS = { "301": HORARIO, "302": HORARIO };
-const TRAMO_PUNTOS = [3000, 2000, 1000];
-const CIERRE_MENSAJE = "Después de las 5:00 p. m. de hoy, jueves 19 de noviembre, ya no se acepta el PDF.";
+const HORARIOS: Record<string, { until: string; points: number }[]> = {
+  "301": [
+    { until: "2026-11-20T09:30:00-06:00", points: 3000 },
+    { until: "2026-11-20T12:00:00-06:00", points: 2000 },
+    { until: "2026-11-20T15:00:00-06:00", points: 1000 },
+  ],
+};
+const NOTAS_ABIERTAS_301 = "2026-11-21T00:00:00-06:00";
+
+function cierreMensaje(groupCode: string) {
+  if (groupCode.trim() === "301") {
+    return "Después de las 3:00 p. m. de hoy, viernes 20 de noviembre, ya no se acepta el PDF.";
+  }
+  return "Esta entrega no está abierta para tu grupo.";
+}
 
 function entregaDe(groupCode: string, at: number | Date = Date.now()) {
-  const code = groupCode.trim();
-  const tramos = code === "301" || code === "302" ? TRAMOS[code] : null;
+  const tramos = HORARIOS[groupCode.trim()];
   const ms = at instanceof Date ? at.getTime() : at;
   if (!tramos) return { open: false, points: 0 };
-  for (let i = 0; i < tramos.length; i += 1) {
-    const until = tramos[i];
-    const points = TRAMO_PUNTOS[i];
-    if (until && points !== undefined && ms < new Date(until).getTime()) return { open: true, points };
+  for (const tramo of tramos) {
+    if (ms < new Date(tramo.until).getTime()) return { open: true, points: tramo.points };
   }
   return { open: false, points: 0 };
+}
+
+function puedeAnotar(groupCode: string, started: boolean) {
+  if (started) return true;
+  return groupCode.trim() === "301" && Date.now() < new Date(NOTAS_ABIERTAS_301).getTime();
 }
 
 function isPdf(file: Express.Multer.File) {
@@ -520,7 +536,7 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
     const team = await equipoDelAlumno(req.auth!.userId);
     if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
     if (!entregaDe(team.groupCode).open) {
-      return res.status(403).json({ error: "closed", message: CIERRE_MENSAJE });
+      return res.status(403).json({ error: "closed", message: cierreMensaje(team.groupCode) });
     }
     const { anuncio, estado } = await leerEstado(team.groupId);
     const url = ligaValida(req.body?.url);
@@ -542,16 +558,25 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
       return res.status(403).json({ error: "not_leader", message: "Solo el líder puede anotar a los integrantes." });
     }
     const { anuncio, estado } = await leerEstado(team.groupId);
-    if (!estado.clocks[team.teamKey]) {
-      return res.status(403).json({ error: "not_started", message: "Primero inicia el cronómetro. Sin eso no puedes anotar." });
+    if (!puedeAnotar(team.groupCode, Boolean(estado.clocks[team.teamKey]))) {
+      return res.status(403).json({ error: "not_started", message: "Hoy el líder del grupo 301 puede anotar a sus compañeros." });
     }
     const code = String(req.body?.code ?? "");
     const preset = NOTAS_LIDER.find((item) => item.code === code);
-    if (!preset) return res.status(400).json({ error: "invalid_body", message: "Elige si no está trabajando, está fuera del equipo o no asistió." });
+    if (!preset) {
+      return res.status(400).json({
+        error: "invalid_body",
+        message: "Elige si no está trabajando, no asistió, no está en su lugar, está jugando, está fuera o es otra situación.",
+      });
+    }
     const studentId = String(req.body?.studentId ?? "");
     const member = team.members.find((item) => item.id === studentId);
     if (!member) return res.status(400).json({ error: "invalid_body", message: "Ese alumno no está en tu equipo." });
+    if (member.isLeader) return res.status(400).json({ error: "invalid_body", message: "Anota a un compañero del equipo." });
     const comment = String(req.body?.comment ?? "").trim().slice(0, 200);
+    if (preset.code === "otra" && !comment) {
+      return res.status(400).json({ error: "invalid_body", message: "En otra situación escribe qué está pasando." });
+    }
     const nota: LeaderNota = {
       id: `lider-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       code: preset.code,
@@ -562,7 +587,7 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
       at: new Date().toISOString(),
     };
     const actuales = estado.leaderNotes[team.teamKey] ?? [];
-    estado.leaderNotes[team.teamKey] = [...actuales.filter((item) => !(item.studentId === member.id && item.code === preset.code)), nota];
+    estado.leaderNotes[team.teamKey] = [...actuales, nota];
     await guardarEstado(team.groupId, estado, anuncio?.id);
     return res.json({ ok: true });
   });
@@ -610,7 +635,7 @@ export function registerStudentRepoProyectoRoutes(app: import("express").Express
       const team = await equipoDelAlumno(req.auth!.userId);
       if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
       if (!entregaDe(team.groupCode).open) {
-        return res.status(403).json({ error: "closed", message: CIERRE_MENSAJE });
+        return res.status(403).json({ error: "closed", message: cierreMensaje(team.groupCode) });
       }
       const { estado } = await leerEstado(team.groupId);
       if (!estado.links[team.teamKey]) {

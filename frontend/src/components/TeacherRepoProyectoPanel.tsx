@@ -11,11 +11,11 @@ import {
 import {
   formatoHoraClase,
   formatoReloj,
-  REPO_PROYECTO_CIERRE,
   REPO_PROYECTO_DOCENTE,
   REPO_PROYECTO_NOTAS,
   REPO_PROYECTO_TITULO,
   repoAbierto,
+  repoCierre,
   repoEntrega,
   repoRestante,
   repoTramos,
@@ -92,8 +92,9 @@ export default function TeacherRepoProyectoPanel({
         <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad Scrum · publicada</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{REPO_PROYECTO_TITULO}</h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
-          Grupo {selectedGroup?.code ?? "—"}. El líder inicia 2 horas 30 minutos. Tú publicas la calificación. La máxima
-          es la de la hora en que quedó el PDF, menos tus notas. {REPO_PROYECTO_CIERRE} Te agregan como colaborador:{" "}
+          Grupo {selectedGroup?.code ?? "—"}. El líder anota a sus compañeros, las veces que haga falta. Esas notas te
+          llegan para que decidas la calificación: un integrante anotado no tiene por qué valer lo mismo. La máxima es
+          la de la hora del PDF, menos tus notas. {repoCierre(selectedGroup?.code)} Te agregan como colaborador:{" "}
           <span className="font-mono font-bold text-violet-100">{REPO_PROYECTO_DOCENTE}</span>.
         </p>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-200">
@@ -157,6 +158,7 @@ export default function TeacherRepoProyectoPanel({
                       <li key={nota.id}>
                         <span className="font-semibold">{nota.studentName}:</span> {nota.label}
                         {nota.comment ? `. ${nota.comment}` : ""}
+                        {nota.at ? ` · ${formatoHoraClase(nota.at)}` : ""}
                       </li>
                     ))}
                   </ul>
