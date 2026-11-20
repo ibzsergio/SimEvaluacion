@@ -8,6 +8,7 @@ import { getPreviewViewGroup, isPreviewControlNumber, requireNotPreviewStudent }
 const PDF_MAX_BYTES = 3 * 1024 * 1024;
 const PUNTOS = 1000;
 const ACTIVITY_KEY = "glosario";
+const ACTIVITY_KEY_EN = "glosario-en";
 const TITLE = "Glosario Bilingüe";
 const MARK = "[[glosario-state]]";
 const HORARIOS = {
@@ -197,6 +198,7 @@ async function vistaDePrueba(userId: string) {
     teamKey: "preview",
     teamName: "Vista de prueba",
     delivery: null,
+    english: null,
   };
 }
 
@@ -213,8 +215,8 @@ glosarioTeacherRouter.get("/groups/:groupId/glosario", async (req: AuthedRequest
   const [{ estado }, rows, teams] = await Promise.all([
     leerEstado(groupId),
     prisma.sqlScrumDelivery.findMany({
-      where: { groupId, activityKey: ACTIVITY_KEY },
-      select: { teamKey: true, teamName: true, fileName: true, sizeBytes: true, uploadedAt: true, uploadedById: true },
+      where: { groupId, activityKey: { in: [ACTIVITY_KEY, ACTIVITY_KEY_EN] } },
+      select: { activityKey: true, teamKey: true, teamName: true, fileName: true, sizeBytes: true, uploadedAt: true, uploadedById: true },
       orderBy: { uploadedAt: "desc" },
     }),
     prisma.projectTeam.findMany({
@@ -246,15 +248,27 @@ glosarioTeacherRouter.get("/groups/:groupId/glosario", async (req: AuthedRequest
           })),
       };
     }),
-    deliveries: rows.map((row) => ({
-      teamKey: row.teamKey,
-      teamName: row.teamName,
-      fileName: row.fileName,
-      sizeBytes: row.sizeBytes,
-      uploadedAt: row.uploadedAt.toISOString(),
-      uploadedByName: nameById.get(row.uploadedById) ?? "Un integrante",
-      points: entregaDe(group.code, row.uploadedAt).points,
-    })),
+    deliveries: rows
+      .filter((row) => row.activityKey === ACTIVITY_KEY)
+      .map((row) => ({
+        teamKey: row.teamKey,
+        teamName: row.teamName,
+        fileName: row.fileName,
+        sizeBytes: row.sizeBytes,
+        uploadedAt: row.uploadedAt.toISOString(),
+        uploadedByName: nameById.get(row.uploadedById) ?? "Un integrante",
+        points: entregaDe(group.code, row.uploadedAt).points,
+      })),
+    englishDeliveries: rows
+      .filter((row) => row.activityKey === ACTIVITY_KEY_EN)
+      .map((row) => ({
+        teamKey: row.teamKey,
+        teamName: row.teamName,
+        fileName: row.fileName,
+        sizeBytes: row.sizeBytes,
+        uploadedAt: row.uploadedAt.toISOString(),
+        uploadedByName: nameById.get(row.uploadedById) ?? "Un integrante",
+      })),
   });
 });
 
@@ -339,6 +353,23 @@ glosarioTeacherRouter.get("/groups/:groupId/glosario/:teamKey/file", async (req:
   return res.send(Buffer.from(row.fileData));
 });
 
+glosarioTeacherRouter.get("/groups/:groupId/glosario/:teamKey/english", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const teamKey = String(req.params.teamKey);
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const row = await prisma.sqlScrumDelivery.findUnique({
+    where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY_EN, groupId, teamKey } },
+  });
+  if (!row) return res.status(404).json({ error: "delivery_not_found", message: "Este equipo todavía no sube el PDF en inglés." });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${safeFileName(row.fileName)}"`);
+  return res.send(Buffer.from(row.fileData));
+});
+
 export function registerStudentGlosarioRoutes(app: import("express").Express) {
   app.get("/student/glosario", requireAuth, requireStudent, async (req: AuthedRequest, res) => {
     const team = await equipoDelAlumno(req.auth!.userId);
@@ -350,15 +381,21 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
         message: "No estás en un equipo de proyecto. Pide al docente que te asigne en Roles / Equipos.",
       });
     }
-    const row = await prisma.sqlScrumDelivery.findUnique({
-      where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY, groupId: team.groupId, teamKey: team.teamKey } },
-      select: { fileName: true, sizeBytes: true, uploadedAt: true, uploadedById: true },
-    });
-    let uploadedByName = "";
-    if (row) {
-      const uploader = await prisma.user.findUnique({ where: { id: row.uploadedById }, select: { displayName: true } });
-      uploadedByName = uploader?.displayName ?? "Un integrante";
-    }
+    const [row, english] = await Promise.all([
+      prisma.sqlScrumDelivery.findUnique({
+        where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY, groupId: team.groupId, teamKey: team.teamKey } },
+        select: { fileName: true, sizeBytes: true, uploadedAt: true, uploadedById: true },
+      }),
+      prisma.sqlScrumDelivery.findUnique({
+        where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY_EN, groupId: team.groupId, teamKey: team.teamKey } },
+        select: { fileName: true, sizeBytes: true, uploadedAt: true, uploadedById: true },
+      }),
+    ]);
+    const ids = [row?.uploadedById, english?.uploadedById].filter((id): id is string => Boolean(id));
+    const uploaders = ids.length
+      ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, displayName: true } })
+      : [];
+    const nameById = new Map(uploaders.map((user) => [user.id, user.displayName]));
     return res.json({
       preview: false,
       groupCode: team.groupCode,
@@ -369,8 +406,16 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
             fileName: row.fileName,
             sizeBytes: row.sizeBytes,
             uploadedAt: row.uploadedAt.toISOString(),
-            uploadedByName,
+            uploadedByName: nameById.get(row.uploadedById) ?? "Un integrante",
             points: entregaDe(team.groupCode, row.uploadedAt).points,
+          }
+        : null,
+      english: english
+        ? {
+            fileName: english.fileName,
+            sizeBytes: english.sizeBytes,
+            uploadedAt: english.uploadedAt.toISOString(),
+            uploadedByName: nameById.get(english.uploadedById) ?? "Un integrante",
           }
         : null,
     });
@@ -454,6 +499,93 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
         });
       } catch (err) {
         console.error("glosario upload failed", err);
+        return res.status(500).json({
+          error: "upload_failed",
+          message: "No se pudo guardar el PDF. Si pesa cerca de 3 MB, redúcelo y vuelve a subirlo.",
+        });
+      }
+    },
+  );
+
+  app.get("/student/glosario/english/file", requireAuth, requireStudent, requireNotPreviewStudent, async (req: AuthedRequest, res) => {
+    const team = await equipoDelAlumno(req.auth!.userId);
+    if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
+    const row = await prisma.sqlScrumDelivery.findUnique({
+      where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY_EN, groupId: team.groupId, teamKey: team.teamKey } },
+    });
+    if (!row) return res.status(404).json({ error: "delivery_not_found", message: "Tu equipo todavía no sube el PDF en inglés." });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeFileName(row.fileName)}"`);
+    return res.send(Buffer.from(row.fileData));
+  });
+
+  app.post(
+    "/student/glosario/english",
+    requireAuth,
+    requireStudent,
+    requireNotPreviewStudent,
+    (req, res, next) => {
+      upload.single("file")(req, res, (err: unknown) => {
+        const code = (err as { code?: string } | null)?.code;
+        if (code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ error: "pdf_too_big", message: "El PDF pesa más de 3 MB. Redúcelo y vuelve a subirlo." });
+        }
+        if (err) return res.status(400).json({ error: "upload_failed", message: "No se pudo leer el archivo." });
+        next();
+      });
+    },
+    async (req: AuthedRequest, res) => {
+      if (req.body?.completo !== "si") {
+        return res.status(400).json({
+          error: "checks_incomplete",
+          message: "Antes de subir, marca la portada, el glosario en inglés ordenado alfabéticamente y la descripción del proyecto.",
+        });
+      }
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "pdf_required", message: "Selecciona el PDF en inglés." });
+      if (file.size > PDF_MAX_BYTES || !isPdf(file)) {
+        return res.status(400).json({ error: "pdf_only", message: "Solo se puede subir un PDF de 3 MB o menos." });
+      }
+      const team = await equipoDelAlumno(req.auth!.userId);
+      if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
+      if (team.groupCode !== "301" && team.groupCode !== "302") {
+        return res.status(403).json({ error: "closed", message: "Este apartado está abierto para los grupos 301 y 302." });
+      }
+      try {
+        const saved = await prisma.sqlScrumDelivery.upsert({
+          where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY_EN, groupId: team.groupId, teamKey: team.teamKey } },
+          create: {
+            activityKey: ACTIVITY_KEY_EN,
+            groupId: team.groupId,
+            teamKey: team.teamKey,
+            teamName: team.teamName,
+            fileName: safeFileName(file.originalname || "glosario-ingles.pdf"),
+            mimeType: "application/pdf",
+            fileData: file.buffer,
+            sizeBytes: file.size,
+            uploadedById: req.auth!.userId,
+          },
+          update: {
+            teamName: team.teamName,
+            fileName: safeFileName(file.originalname || "glosario-ingles.pdf"),
+            mimeType: "application/pdf",
+            fileData: file.buffer,
+            sizeBytes: file.size,
+            uploadedById: req.auth!.userId,
+          },
+          select: { fileName: true, sizeBytes: true, uploadedAt: true },
+        });
+        const uploader = await prisma.user.findUnique({ where: { id: req.auth!.userId }, select: { displayName: true } });
+        return res.json({
+          english: {
+            fileName: saved.fileName,
+            sizeBytes: saved.sizeBytes,
+            uploadedAt: saved.uploadedAt.toISOString(),
+            uploadedByName: uploader?.displayName ?? "Un integrante",
+          },
+        });
+      } catch (err) {
+        console.error("glosario english upload failed", err);
         return res.status(500).json({
           error: "upload_failed",
           message: "No se pudo guardar el PDF. Si pesa cerca de 3 MB, redúcelo y vuelve a subirlo.",

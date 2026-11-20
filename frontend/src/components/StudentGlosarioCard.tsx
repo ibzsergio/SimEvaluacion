@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { downloadStudentGlosarioPdf, fetchStudentGlosario, getApiErrorMessage, uploadGlosarioPdf } from "../lib/api";
+import {
+  downloadStudentGlosarioEnglishPdf,
+  downloadStudentGlosarioPdf,
+  fetchStudentGlosario,
+  getApiErrorMessage,
+  uploadGlosarioEnglishPdf,
+  uploadGlosarioPdf,
+} from "../lib/api";
 import {
   formatoHoraGlosario,
   GLOSARIO_CIERRE,
@@ -9,6 +16,12 @@ import {
   glosarioEntrega,
   glosarioTramos,
 } from "../lib/glosario";
+
+const CHECKS_EN = [
+  { id: "portada", label: "La primera hoja es la portada de Canva, con los datos del equipo, el nombre del proyecto y el título Glosario Bilingüe." },
+  { id: "glosario", label: "El glosario está traducido al inglés, con cada palabra clave y su descripción, y va ordenado alfabéticamente." },
+  { id: "descripcion", label: "Está la descripción del proyecto en inglés: cómo funciona, para quién es y cuál es su objetivo." },
+];
 
 const CHECKS = [
   { id: "caratula", label: "La primera hoja es la carátula de Canva, con los datos del equipo, el nombre del proyecto y el título Glosario Bilingüe." },
@@ -23,8 +36,11 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
   const queryClient = useQueryClient();
   const [now, setNow] = useState(() => Date.now());
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [checkedEn, setCheckedEn] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
+  const [errorEn, setErrorEn] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [downloadingEn, setDownloadingEn] = useState(false);
   const query = useQuery({
     queryKey: ["student-glosario"],
     queryFn: fetchStudentGlosario,
@@ -40,6 +56,14 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
     },
     onError: (err) => setError(getApiErrorMessage(err)),
   });
+  const englishMutation = useMutation({
+    mutationFn: uploadGlosarioEnglishPdf,
+    onSuccess: async () => {
+      setErrorEn("");
+      await queryClient.invalidateQueries({ queryKey: ["student-glosario"] });
+    },
+    onError: (err) => setErrorEn(getApiErrorMessage(err)),
+  });
   useEffect(() => {
     if (!visible) return;
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -50,8 +74,11 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
   const data = query.data;
   const entrega = glosarioEntrega(code, now);
   const ready = CHECKS.every((item) => checked[item.id]);
+  const readyEn = CHECKS_EN.every((item) => checkedEn[item.id]);
   const puedeSubir = entrega.open && !data?.preview;
   const puedeReemplazar = puedeSubir && Boolean(data?.delivery);
+  const puedeIngles = Boolean(data && !data.preview);
+  const puedeReemplazarIngles = puedeIngles && Boolean(data?.english);
 
   return (
     <section className="glass mb-6 border border-teal-400/30 p-4 sm:p-6">
@@ -60,7 +87,8 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
       <div className="mt-3 space-y-2 text-sm leading-relaxed text-slate-100">
         <p>
           El equipo elabora el glosario de la interfaz de su proyecto. Cada entrada es una palabra clave y, aparte, su
-          descripción. En esta entrega va solo en español. La traducción al inglés se hace después, en la asignatura.
+          descripción. La primera entrega va en español. Abajo está el apartado para subir el mismo trabajo ya traducido
+          al inglés.
         </p>
         <p>
           En el mismo archivo agregan el reporte general del sistema: cómo funciona la aplicación, para quién está
@@ -170,6 +198,80 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
       ) : query.isLoading ? (
         <p className="mt-3 text-sm text-slate-400">Cargando el equipo...</p>
       ) : null}
+      <div className="mt-4 rounded-2xl border border-sky-300/30 p-4">
+        <p className="text-sm font-semibold text-white">Glosario en inglés, máximo 3 MB</p>
+        <p className="mt-1 text-sm text-slate-300">
+          Grupos 301 y 302. Es el mismo trabajo, ya traducido. Un solo PDF: portada, glosario en inglés ordenado
+          alfabéticamente y descripción del proyecto. Lo sube el líder o un integrante. Si lo vuelven a subir, reemplaza
+          al anterior. La calificación la publica el docente después de revisar el archivo.
+        </p>
+        {data?.english ? (
+          <div className="mt-2">
+            <p className="text-sm text-emerald-100">
+              Ya está: {data.english.fileName}. Lo subió {data.english.uploadedByName} a las{" "}
+              {formatoHoraGlosario(data.english.uploadedAt)}.
+            </p>
+            <button
+              type="button"
+              disabled={downloadingEn}
+              className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-sky-400 px-4 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50"
+              onClick={() => {
+                const fileName = data.english?.fileName ?? "glosario-ingles.pdf";
+                setDownloadingEn(true);
+                setErrorEn("");
+                downloadStudentGlosarioEnglishPdf(fileName)
+                  .catch((err) => setErrorEn(getApiErrorMessage(err)))
+                  .finally(() => setDownloadingEn(false));
+              }}
+            >
+              {downloadingEn ? "Descargando..." : "Descargar PDF en inglés"}
+            </button>
+          </div>
+        ) : data && !data.preview ? (
+          <p className="mt-2 text-sm text-amber-100">El equipo todavía no sube el PDF en inglés.</p>
+        ) : null}
+        <ul className="mt-3 space-y-2">
+          {CHECKS_EN.map((item) => (
+            <li key={item.id}>
+              <label className="flex items-start gap-2 text-sm text-slate-100">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={Boolean(checkedEn[item.id])}
+                  disabled={!puedeIngles}
+                  onChange={(event) => setCheckedEn((prev) => ({ ...prev, [item.id]: event.target.checked }))}
+                />
+                <span>{item.label}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        <input
+          type="file"
+          accept="application/pdf,.pdf"
+          disabled={!(puedeIngles && (readyEn || puedeReemplazarIngles)) || englishMutation.isPending}
+          className="mt-3 block w-full text-sm text-slate-200 disabled:opacity-50"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            if (file.size > GLOSARIO_PDF_MAX_BYTES) {
+              setErrorEn("El PDF pesa más de 3 MB. Redúcelo y vuelve a subirlo.");
+              return;
+            }
+            englishMutation.mutate(file);
+          }}
+        />
+        {puedeIngles && !readyEn && !puedeReemplazarIngles ? (
+          <p className="mt-2 text-sm text-slate-400">Marca las casillas para elegir el archivo en inglés.</p>
+        ) : null}
+        {puedeReemplazarIngles ? (
+          <p className="mt-2 text-sm text-slate-300">Pueden elegir otro PDF para reemplazar el de inglés.</p>
+        ) : null}
+        {data?.preview ? <p className="mt-2 text-sm text-cyan-100">La cuenta de prueba no sube este PDF.</p> : null}
+        {englishMutation.isPending ? <p className="mt-2 text-sm text-slate-300">Subiendo...</p> : null}
+        {errorEn ? <p className="mt-2 text-sm text-rose-200">{errorEn}</p> : null}
+      </div>
     </section>
   );
 }

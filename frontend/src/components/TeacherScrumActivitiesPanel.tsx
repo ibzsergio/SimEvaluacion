@@ -237,7 +237,7 @@ export default function TeacherScrumActivitiesPanel({
               <h3 className="mt-1 text-xl font-bold text-white">Glosario Bilingüe</h3>
               <p className="mt-1 text-sm text-slate-400">
                 Palabra clave y su descripción, más el reporte de cómo funciona la aplicación, para quién va y su objetivo.
-                Un PDF de máximo 3 MB. El 301 tiene 1000 puntos hasta las 9:30 a. m. El 302 los tiene hasta las 11:00 a. m. A la 1:10 p. m. se cierra.
+                Un PDF de máximo 3 MB. El apartado en inglés ya está abierto para los dos grupos: portada, glosario alfabético y descripción del proyecto.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-teal-400/40 bg-teal-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-100">

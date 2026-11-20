@@ -1544,12 +1544,15 @@ export async function downloadRepoProyectoPdf(groupId: string, teamKey: string, 
   await downloadTeacherBlob(`/teacher/groups/${groupId}/repo-proyecto/${encodeURIComponent(teamKey)}/file`, fileName);
 }
 
+export type GlosarioEnglish = { fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string } | null;
+
 export type GlosarioStudent = {
   preview?: boolean;
   groupCode: string;
   teamKey: string;
   teamName: string;
   delivery: { fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string; points: number } | null;
+  english?: GlosarioEnglish;
 };
 
 export async function fetchStudentGlosario() {
@@ -1567,6 +1570,18 @@ export async function uploadGlosarioPdf(file: File) {
 
 export async function downloadStudentGlosarioPdf(fileName: string) {
   await downloadTeacherBlob("/student/glosario/file", fileName);
+}
+
+export async function uploadGlosarioEnglishPdf(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("completo", "si");
+  const { data } = await api.post<{ english: GlosarioEnglish }>("/student/glosario/english", form);
+  return data.english;
+}
+
+export async function downloadStudentGlosarioEnglishPdf(fileName: string) {
+  await downloadTeacherBlob("/student/glosario/english/file", fileName);
 }
 
 export type ReporteArchivo = { fileName: string; sizeBytes: number } | null;
@@ -1670,6 +1685,7 @@ export type GlosarioTeacher = {
     members: Array<{ id: string; displayName: string; isLeader: boolean }>;
   }>;
   deliveries: Array<{ teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string; points: number }>;
+  englishDeliveries?: Array<{ teamKey: string; teamName: string; fileName: string; sizeBytes: number; uploadedAt: string; uploadedByName: string }>;
 };
 
 export async function fetchTeacherGlosario(groupId: string) {
@@ -1679,6 +1695,10 @@ export async function fetchTeacherGlosario(groupId: string) {
 
 export async function downloadGlosarioPdf(groupId: string, teamKey: string, fileName: string) {
   await downloadTeacherBlob(`/teacher/groups/${groupId}/glosario/${encodeURIComponent(teamKey)}/file`, fileName);
+}
+
+export async function downloadGlosarioEnglishPdf(groupId: string, teamKey: string, fileName: string) {
+  await downloadTeacherBlob(`/teacher/groups/${groupId}/glosario/${encodeURIComponent(teamKey)}/english`, fileName);
 }
 
 export async function addGlosarioNote(
