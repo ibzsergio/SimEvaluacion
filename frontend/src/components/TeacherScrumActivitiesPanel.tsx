@@ -11,6 +11,7 @@ import TeacherAvionPanel from "./TeacherAvionPanel";
 import TeacherBasedatosPanel from "./TeacherBasedatosPanel";
 import TeacherCrudPanel from "./TeacherCrudPanel";
 import TeacherSqlScrumPanel from "./TeacherSqlScrumPanel";
+import TeacherReporteProyectoPanel from "./TeacherReporteProyectoPanel";
 import TeacherGlosarioPanel from "./TeacherGlosarioPanel";
 import TeacherRepoProyectoPanel from "./TeacherRepoProyectoPanel";
 import TeacherTkinterGitPanel from "./TeacherTkinterGitPanel";
@@ -31,7 +32,7 @@ export default function TeacherScrumActivitiesPanel({
   onSelectGroup: (id: string) => void;
 }) {
   const [current, setCurrent] = useState<
-    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3" | "tkinter-git" | "repo-proyecto" | "glosario"
+    "list" | "torre" | "avion" | "extra" | "interfaces" | "impro" | "maquina" | "basedatos" | "examen" | "crud" | "bd2" | "bd3" | "tkinter-git" | "repo-proyecto" | "glosario" | "reporte-proyecto"
   >("list");
   const avionQuery = useQuery({
     queryKey: ["avion-session", selectedGroupId],
@@ -99,7 +100,14 @@ export default function TeacherScrumActivitiesPanel({
         </button>
       ) : null}
 
-      {current === "glosario" ? (
+      {current === "reporte-proyecto" ? (
+        <TeacherReporteProyectoPanel
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={onSelectGroup}
+          hideGroupPicker
+        />
+      ) : current === "glosario" ? (
         <TeacherGlosarioPanel
           groups={groups}
           selectedGroupId={selectedGroupId}
@@ -197,9 +205,27 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Hoy está abierta Repositorio Proyecto en GitHub para el grupo 301. Las anteriores están contraídas.
+              Hoy está abierto REPORTE PROYECTO, del 20 al 25 de noviembre. Es el reporte diario del líder y todavía no lleva calificación.
             </p>
           </section>
+
+          <button
+            type="button"
+            onClick={() => setCurrent("reporte-proyecto")}
+            className="glass flex w-full items-start justify-between gap-3 p-5 text-left hover:bg-white/5"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Actividad Scrum · hoy</p>
+              <h3 className="mt-1 text-xl font-bold text-white">REPORTE PROYECTO</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                El líder reporta cada día, del viernes 20 al miércoles 25, qué hace cada integrante, su evidencia y los
+                commits del repositorio. Las observaciones te llegan aquí. Por ahora no pone calificación.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full border border-sky-400/40 bg-sky-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-sky-100">
+              Publicada
+            </span>
+          </button>
 
           <button
             type="button"

@@ -1569,6 +1569,88 @@ export async function downloadStudentGlosarioPdf(fileName: string) {
   await downloadTeacherBlob("/student/glosario/file", fileName);
 }
 
+export type ReporteArchivo = { fileName: string; sizeBytes: number } | null;
+
+export type ReporteMember = {
+  id: string;
+  displayName: string;
+  isLeader: boolean;
+  doing: string;
+  observation: string;
+  file: ReporteArchivo;
+};
+
+export type ReporteDia = {
+  commitsNote: string;
+  commitsFile: ReporteArchivo;
+  members: ReporteMember[];
+};
+
+export type ReporteStudent = {
+  preview?: boolean;
+  groupCode: string;
+  open: boolean;
+  today: string;
+  days: string[];
+  teamKey: string;
+  teamName: string;
+  isLeader: boolean;
+  hasLeader: boolean;
+  members: Array<{ id: string; displayName: string; isLeader: boolean }>;
+  reports: Record<string, ReporteDia>;
+};
+
+export async function fetchStudentReporte() {
+  const { data } = await api.get<ReporteStudent>("/student/reporte-proyecto");
+  return data;
+}
+
+export async function saveReporteDia(payload: {
+  day: string;
+  commitsNote: string;
+  members: Array<{ studentId: string; doing: string; observation: string }>;
+}) {
+  await api.post("/student/reporte-proyecto", payload);
+}
+
+export async function uploadReporteArchivo(day: string, who: string, file: File) {
+  const form = new FormData();
+  form.append("day", day);
+  form.append("who", who);
+  form.append("file", file);
+  const { data } = await api.post<{ file: { fileName: string; sizeBytes: number } }>("/student/reporte-proyecto/file", form);
+  return data.file;
+}
+
+export async function downloadStudentReporteArchivo(day: string, who: string, fileName: string) {
+  await downloadTeacherBlob(`/student/reporte-proyecto/file?day=${encodeURIComponent(day)}&who=${encodeURIComponent(who)}`, fileName);
+}
+
+export type ReporteTeacher = {
+  groupCode: string;
+  open: boolean;
+  today: string;
+  days: string[];
+  teams: Array<{
+    teamKey: string;
+    teamName: string;
+    leaderName: string | null;
+    reports: Record<string, ReporteDia>;
+  }>;
+};
+
+export async function fetchTeacherReporte(groupId: string) {
+  const { data } = await api.get<ReporteTeacher>(`/teacher/groups/${groupId}/reporte-proyecto`);
+  return data;
+}
+
+export async function downloadTeacherReporteArchivo(groupId: string, teamKey: string, day: string, who: string, fileName: string) {
+  await downloadTeacherBlob(
+    `/teacher/groups/${groupId}/reporte-proyecto/${encodeURIComponent(teamKey)}/file?day=${encodeURIComponent(day)}&who=${encodeURIComponent(who)}`,
+    fileName,
+  );
+}
+
 export type GlosarioNote = {
   id: string;
   code: string;

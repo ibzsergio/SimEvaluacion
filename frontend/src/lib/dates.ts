@@ -95,6 +95,7 @@ export function getActivityKindLabel(index: number, name: string) {
   if (/^actividad tkinter en git$/i.test(text.trim())) return "SCRUM";
   if (/^repositorio proyecto en github$/i.test(text.trim())) return "SCRUM";
   if (/^glosario biling[uü]e$/i.test(text.trim())) return "SCRUM";
+  if (/^reporte proyecto$/i.test(text.trim())) return "SCRUM";
   const practica = text.match(/pr[aá]cti[cç]a\s*[#]?\s*(\d+)/i);
   if (practica) return `Práctica ${practica[1]}`;
   const actividad = text.match(/actividad\s*[#]?\s*(\d+)/i);
