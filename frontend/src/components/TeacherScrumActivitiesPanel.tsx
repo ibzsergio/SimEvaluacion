@@ -205,7 +205,7 @@ export default function TeacherScrumActivitiesPanel({
           <section className="glass p-5">
             <h2 className="text-lg font-bold text-white">Actividades — Scrum</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Hoy está abierto REPORTE PROYECTO, del 20 al 25 de noviembre. Es el reporte diario del líder y todavía no lleva calificación.
+              Hoy está abierto REPORTE PROYECTO, en días hábiles del 20 al 25 de noviembre. Es el reporte diario del líder y todavía no lleva calificación.
             </p>
           </section>
 
@@ -218,7 +218,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">REPORTE PROYECTO</h3>
               <p className="mt-1 text-sm text-slate-400">
-                El líder reporta cada día, del viernes 20 al miércoles 25, qué hace cada integrante, su evidencia y los
+                El líder reporta cada día hábil, viernes 20, lunes 23, martes 24 y miércoles 25, qué hace cada integrante, su evidencia y los
                 commits del repositorio. Las observaciones te llegan aquí. Por ahora no pone calificación.
               </p>
             </div>

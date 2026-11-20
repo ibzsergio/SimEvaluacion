@@ -96,7 +96,7 @@ export default function StudentReporteProyectoCard({ groupCode }: { groupCode?: 
         <p>Por ahora esta actividad es solo el reporte diario. La calificación la pone el docente después.</p>
       </div>
       <div className="mt-3 rounded-xl border border-sky-300/40 bg-sky-500/15 p-3 text-sm text-sky-50">
-        <p className="font-bold">Grupo {code}. Del viernes 20 al miércoles 25 de noviembre.</p>
+        <p className="font-bold">Grupo {code}. Días hábiles: viernes 20, lunes 23, martes 24 y miércoles 25.</p>
         <p className="mt-2">{REPORTE_CIERRE_TEXTO}</p>
         <p className="mt-2">{open ? "Hoy se puede llenar y corregir cualquier día de ese periodo." : "En este momento el reporte ya no se puede modificar."}</p>
       </div>

@@ -10,7 +10,7 @@ const MARK = "[[reporte-proyecto-state]]";
 const INICIO = "2026-11-20T00:00:00-06:00";
 const CIERRE = "2026-11-26T00:00:00-06:00";
 const CIERRE_MENSAJE = "Después del miércoles 25 de noviembre ya no se puede modificar el reporte.";
-const DIAS = ["2026-11-20", "2026-11-21", "2026-11-22", "2026-11-23", "2026-11-24", "2026-11-25"] as const;
+const DIAS = ["2026-11-20", "2026-11-23", "2026-11-24", "2026-11-25"] as const;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: FILE_MAX_BYTES } });
 
@@ -329,7 +329,7 @@ export function registerStudentReporteProyectoRoutes(app: import("express").Expr
     if (!team.isLeader) return res.status(403).json({ error: "not_leader", message: "Solo el líder del proyecto llena el reporte." });
     if (!abierto()) return res.status(403).json({ error: "closed", message: CIERRE_MENSAJE });
     const day = req.body?.day;
-    if (!diaValido(day)) return res.status(400).json({ error: "invalid_body", message: "Elige un día del 20 al 25 de noviembre." });
+    if (!diaValido(day)) return res.status(400).json({ error: "invalid_body", message: "Elige un día hábil: viernes 20, lunes 23, martes 24 o miércoles 25." });
     const incoming = Array.isArray(req.body?.members) ? req.body.members : [];
     const { anuncio, estado } = await leerEstado(team.groupId);
     const actual = diaDe(estado, team.teamKey, day);

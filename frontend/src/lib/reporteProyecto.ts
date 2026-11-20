@@ -3,12 +3,10 @@ export const REPORTE_INICIO = "2026-11-20T00:00:00-06:00";
 export const REPORTE_CIERRE = "2026-11-26T00:00:00-06:00";
 export const REPORTE_FILE_MAX_BYTES = 4 * 1024 * 1024;
 export const REPORTE_CIERRE_TEXTO =
-  "El reporte se llena del viernes 20 al miércoles 25 de noviembre. Después de ese día ya no se puede modificar.";
+  "El reporte se llena en días hábiles, del viernes 20 al miércoles 25 de noviembre. Sábado y domingo no se reportan. Después del miércoles 25 ya no se puede modificar.";
 
 export const REPORTE_DIAS = [
   { id: "2026-11-20", label: "Vie 20" },
-  { id: "2026-11-21", label: "Sáb 21" },
-  { id: "2026-11-22", label: "Dom 22" },
   { id: "2026-11-23", label: "Lun 23" },
   { id: "2026-11-24", label: "Mar 24" },
   { id: "2026-11-25", label: "Mié 25" },
