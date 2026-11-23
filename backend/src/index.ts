@@ -71,7 +71,7 @@ import { registerStudentSqlScrumRoutes, sqlScrumTeacherRouter } from "./sqlScrum
 import { registerStudentTkinterGitRoutes, tkinterGitTeacherRouter } from "./tkinterGit.js";
 import { registerStudentRepoProyectoRoutes, repoProyectoTeacherRouter } from "./repoProyecto.js";
 import { glosarioTeacherRouter, registerStudentGlosarioRoutes } from "./glosario.js";
-import { registerStudentReporteProyectoRoutes, reporteProyectoTeacherRouter } from "./reporteProyecto.js";
+import { ensureReporteSchema, registerStudentReporteProyectoRoutes, reporteProyectoTeacherRouter } from "./reporteProyecto.js";
 import { arbolNavidadTeacherRouter, registerStudentArbolRoutes } from "./arbolNavidad.js";
 import {
   chooseImproLeader,
@@ -1144,7 +1144,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, next: expre
   console.error("request failed", err);
   return res.status(500).json({
     error: "server_error",
-    message: "No se pudo completar la acción. Vuelve a elegir el PDF e inténtalo otra vez.",
+        message: "No se pudo completar la acción. Inténtalo otra vez.",
   });
 });
 
@@ -1186,6 +1186,7 @@ void (async () => {
     await ensureExamSchema();
     await ensureCrudSchema();
     await ensureSqlScrumSchema();
+    await ensureReporteSchema();
     await dropPythonPracticeSchema();
     await ensureCompilerSchema();
   } catch (err) {

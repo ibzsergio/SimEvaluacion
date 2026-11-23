@@ -295,7 +295,7 @@ model Announcement {
   teacherId String
   groupId   String?
   title     String
-  body      String   @db.Text
+  body      String   @db.MediumText
 
   teacher User        @relation("TeacherAnnouncements", fields: [teacherId], references: [id], onDelete: Cascade)
   group   ClassGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)

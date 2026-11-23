@@ -70,7 +70,7 @@ export default function TeacherReporteProyectoPanel({
           ))}
         </div>
         {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
-        {query.isError ? <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(query.error)}</p> : null}
+        {query.isError && !query.data ? <p className="mt-3 text-sm text-rose-200">{getApiErrorMessage(query.error)}</p> : null}
       </section>
       {query.isLoading ? <p className="text-sm text-slate-400">Cargando equipos...</p> : null}
       <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
@@ -99,18 +99,44 @@ export default function TeacherReporteProyectoPanel({
                       key={`${day}:${member.id}`}
                       saved={member.teacherNote ?? ""}
                       onSave={async (note) => {
+                        setError("");
                         try {
-                          setError("");
                           await saveTeacherReporteNote(selectedGroupId, {
                             teamKey: team.teamKey,
                             day,
                             studentId: member.id,
                             note,
                           });
-                          await qc.invalidateQueries({ queryKey: ["reporte-proyecto", selectedGroupId] });
                         } catch (err) {
                           setError(getApiErrorMessage(err));
+                          throw err;
                         }
+                        qc.setQueryData<Awaited<ReturnType<typeof fetchTeacherReporte>>>(
+                          ["reporte-proyecto", selectedGroupId],
+                          (current) => {
+                            if (!current) return current;
+                            return {
+                              ...current,
+                              teams: current.teams.map((item) => {
+                                if (item.teamKey !== team.teamKey) return item;
+                                const report = item.reports[day];
+                                if (!report) return item;
+                                return {
+                                  ...item,
+                                  reports: {
+                                    ...item.reports,
+                                    [day]: {
+                                      ...report,
+                                      members: report.members.map((row) =>
+                                        row.id === member.id ? { ...row, teacherNote: note } : row,
+                                      ),
+                                    },
+                                  },
+                                };
+                              }),
+                            };
+                          },
+                        );
                       }}
                     />
                     {member.file ? (
@@ -192,6 +218,7 @@ function NotaDocente({ saved, onSave }: { saved: string; onSave: (note: string) 
           setSaving(true);
           void onSave(shown.trim())
             .then(() => setEditing(false))
+            .catch(() => setEditing(true))
             .finally(() => setSaving(false));
         }}
       >

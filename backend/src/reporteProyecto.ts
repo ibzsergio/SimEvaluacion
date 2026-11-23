@@ -87,6 +87,14 @@ async function leerEstado(groupId: string) {
   return { anuncio, estado: anuncio ? estadoDe(anuncio.body) : { ...EMPTY, days: {} } };
 }
 
+export async function ensureReporteSchema() {
+  try {
+    await prisma.$executeRawUnsafe("ALTER TABLE `Announcement` MODIFY `body` MEDIUMTEXT NOT NULL");
+  } catch (err) {
+    console.warn("[startup] Announcement.body", err instanceof Error ? err.message : err);
+  }
+}
+
 async function guardarEstado(groupId: string, estado: Estado, anuncioId?: string) {
   const body = `${TITLE}\n\n${MARK}\n${JSON.stringify(estado)}`;
   if (anuncioId) {
@@ -288,7 +296,7 @@ reporteProyectoTeacherRouter.get("/groups/:groupId/reporte-proyecto", async (req
 
 reporteProyectoTeacherRouter.post("/groups/:groupId/reporte-proyecto/note", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
-  const body = z
+  const parsed = z
     .object({
       teamKey: z.string().min(1),
       day: z.string(),
@@ -296,35 +304,51 @@ reporteProyectoTeacherRouter.post("/groups/:groupId/reporte-proyecto/note", asyn
       note: z.string().max(400),
     })
     .safeParse(req.body);
-  if (!body.success || !diaValido(body.data?.day)) {
+  if (!parsed.success || !diaValido(parsed.data.day)) {
     return res.status(400).json({ error: "invalid_body", message: "Elige el día y al alumno." });
   }
-  const group = await prisma.classGroup.findFirst({
-    where: { id: groupId, teacherId: req.auth!.userId },
-    select: { id: true },
-  });
-  if (!group) return res.status(404).json({ error: "group_not_found" });
-  const teamId = body.data.teamKey.startsWith("project:") ? body.data.teamKey.slice("project:".length) : "";
-  const team = await prisma.projectTeam.findFirst({
-    where: { id: teamId, groupId },
-    select: { members: { select: { studentId: true } } },
-  });
-  if (!team || !team.members.some((member) => member.studentId === body.data.studentId)) {
-    return res.status(400).json({ error: "invalid_body", message: "Ese alumno no está en el equipo." });
+  const note = clip(parsed.data.note, 400);
+  try {
+    const group = await prisma.classGroup.findFirst({
+      where: { id: groupId, teacherId: req.auth!.userId },
+      select: { id: true, teacherId: true },
+    });
+    if (!group) return res.status(404).json({ error: "group_not_found" });
+    const teamId = parsed.data.teamKey.startsWith("project:") ? parsed.data.teamKey.slice("project:".length) : "";
+    const team = await prisma.projectTeam.findFirst({
+      where: { id: teamId, groupId },
+      select: { members: { select: { studentId: true } } },
+    });
+    if (!team || !team.members.some((member) => member.studentId === parsed.data.studentId)) {
+      return res.status(400).json({ error: "invalid_body", message: "Ese alumno no está en el equipo." });
+    }
+    const { anuncio, estado } = await leerEstado(groupId);
+    const actual = diaDe(estado, parsed.data.teamKey, parsed.data.day);
+    const previo = actual.members[parsed.data.studentId];
+    actual.members[parsed.data.studentId] = {
+      doing: previo?.doing ?? "",
+      observation: previo?.observation ?? "",
+      teacherNote: note,
+    };
+    const teamDays = { ...(estado.days[parsed.data.teamKey] ?? {}) };
+    teamDays[parsed.data.day] = actual;
+    estado.days[parsed.data.teamKey] = teamDays;
+    const body = `${TITLE}\n\n${MARK}\n${JSON.stringify(estado)}`;
+    if (anuncio) {
+      await prisma.announcement.update({ where: { id: anuncio.id }, data: { body } });
+    } else {
+      await prisma.announcement.create({
+        data: { teacherId: group.teacherId, groupId, title: TITLE, body },
+      });
+    }
+    return res.json({ ok: true, teacherNote: note });
+  } catch (err) {
+    console.error("reporte note failed", err);
+    return res.status(500).json({
+      error: "note_failed",
+      message: "No se pudo guardar la anotación. Inténtalo otra vez.",
+    });
   }
-  const { anuncio, estado } = await leerEstado(groupId);
-  const actual = diaDe(estado, body.data.teamKey, body.data.day);
-  const previo = actual.members[body.data.studentId];
-  actual.members[body.data.studentId] = {
-    doing: previo?.doing ?? "",
-    observation: previo?.observation ?? "",
-    teacherNote: clip(body.data.note, 400),
-  };
-  const teamDays = { ...(estado.days[body.data.teamKey] ?? {}) };
-  teamDays[body.data.day] = actual;
-  estado.days[body.data.teamKey] = teamDays;
-  await guardarEstado(groupId, estado, anuncio?.id);
-  return res.json({ ok: true, teacherNote: clip(body.data.note, 400) });
 });
 
 reporteProyectoTeacherRouter.get("/groups/:groupId/reporte-proyecto/:teamKey/file", async (req: AuthedRequest, res) => {

@@ -105,7 +105,11 @@ export function getApiErrorMessage(error: unknown): string {
       const local =
         typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
       if (local) return "No se pudo conectar al servidor. Verifica que el backend esté en ejecución (puerto 4000).";
-      return "La subida se interrumpió. Vuelve a elegir el PDF e inténtalo otra vez.";
+      const url = String(error.config?.url ?? "");
+      if (/delivery|\/file|glosario|arbol/.test(url)) {
+        return "La subida se interrumpió. Vuelve a elegir el PDF e inténtalo otra vez.";
+      }
+      return "No hubo respuesta del servidor. Inténtalo otra vez.";
     }
     const code = error.response.data?.error;
     if (code === "invalid_body") {
