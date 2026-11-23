@@ -10,7 +10,7 @@ import {
 } from "../lib/api";
 import {
   formatoHoraGlosario,
-  GLOSARIO_CIERRE,
+  glosarioCierre,
   GLOSARIO_PDF_MAX_BYTES,
   GLOSARIO_TITULO,
   glosarioEntrega,
@@ -77,7 +77,7 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
   const readyEn = CHECKS_EN.every((item) => checkedEn[item.id]);
   const puedeSubir = entrega.open && !data?.preview;
   const puedeReemplazar = puedeSubir && Boolean(data?.delivery);
-  const puedeIngles = Boolean(data && !data.preview);
+  const puedeIngles = Boolean(data && !data.preview) && (code === "302" || entrega.open);
   const puedeReemplazarIngles = puedeIngles && Boolean(data?.english);
 
   return (
@@ -101,13 +101,15 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
         </p>
       </div>
       <div className="mt-3 rounded-xl border border-rose-300/40 bg-rose-500/15 p-3 text-sm text-rose-50">
-        <p className="font-bold">Grupo {code}. Hoy, jueves 19 de noviembre.</p>
+        <p className="font-bold">
+          {code === "301" ? "Grupo 301. Hoy, lunes 23 de noviembre, hasta la 1:00 p. m." : `Grupo ${code}. Esta entrega ya cerró.`}
+        </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           {glosarioTramos(code).map((tramo) => (
             <li key={tramo.until}>{tramo.texto}</li>
           ))}
         </ul>
-        <p className="mt-2 font-semibold">{GLOSARIO_CIERRE}</p>
+        <p className="mt-2 font-semibold">{glosarioCierre(code)}</p>
         <p className="mt-2">
           {entrega.open
             ? `Si suben el PDF en este momento, la máxima es ${entrega.points.toLocaleString("es-MX")}. La calificación la publica el docente después de revisar el archivo.`
@@ -185,7 +187,7 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
               uploadMutation.mutate(file);
             }}
           />
-          {!entrega.open ? <p className="mt-2 text-sm font-semibold text-rose-200">{GLOSARIO_CIERRE}</p> : null}
+          {!entrega.open ? <p className="mt-2 text-sm font-semibold text-rose-200">{glosarioCierre(code)}</p> : null}
           {entrega.open && !ready && !puedeReemplazar ? (
             <p className="mt-2 text-sm text-slate-400">Marca las casillas para elegir el archivo.</p>
           ) : null}
@@ -201,10 +203,14 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
       <div className="mt-4 rounded-2xl border border-sky-300/30 p-4">
         <p className="text-sm font-semibold text-white">Glosario en inglés, máximo 3 MB</p>
         <p className="mt-1 text-sm text-slate-300">
-          Grupos 301 y 302. Es el mismo trabajo, ya traducido. Un solo PDF: portada, glosario en inglés ordenado
-          alfabéticamente y descripción del proyecto. Lo sube el líder o un integrante. Si lo vuelven a subir, reemplaza
-          al anterior. La calificación la publica el docente después de revisar el archivo.
+          Es el mismo trabajo, ya traducido. Un solo PDF: portada, glosario en inglés ordenado alfabéticamente y
+          descripción del proyecto. Lo sube el líder o un integrante. Si lo vuelven a subir, reemplaza al anterior. La
+          calificación la publica el docente después de revisar el archivo.
+          {code === "301" ? " El grupo 301 lo puede subir hasta la 1:00 p. m. de hoy, lunes 23 de noviembre." : ""}
         </p>
+        {code === "301" && !entrega.open ? (
+          <p className="mt-2 text-sm font-semibold text-rose-200">{glosarioCierre(code)}</p>
+        ) : null}
         {data?.english ? (
           <div className="mt-2">
             <p className="text-sm text-emerald-100">

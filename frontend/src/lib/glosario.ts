@@ -8,25 +8,19 @@ export const GLOSARIO_NOTAS = [
   { code: "integrantes", label: "No se indica qué hizo cada integrante", points: 200 },
 ] as const;
 export const GLOSARIO_PDF_MAX_BYTES = 3 * 1024 * 1024;
-export const GLOSARIO_CIERRE =
-  "Después de la 1:10 p. m. de hoy, jueves 19 de noviembre, ya no se permite subir el PDF.";
+export function glosarioCierre(groupCode: string | null | undefined) {
+  if (groupCode?.trim() === "301") {
+    return "Después de la 1:00 p. m. de hoy, lunes 23 de noviembre, ya no se permite subir el PDF.";
+  }
+  return "Después de la 1:10 p. m. del jueves 19 de noviembre, ya no se permite subir el PDF.";
+}
 
 const HORARIOS = {
   "301": [
     {
-      until: "2026-11-19T09:30:00-06:00",
+      until: "2026-11-23T13:00:00-06:00",
       points: 1000,
-      texto: "Si lo suben hasta las 9:30 a. m., la máxima es 1000 puntos.",
-    },
-    {
-      until: "2026-11-19T11:00:00-06:00",
-      points: 500,
-      texto: "Si lo suben después de las 9:30 a. m. y hasta las 11:00 a. m., la máxima es 500 puntos.",
-    },
-    {
-      until: "2026-11-19T13:10:00-06:00",
-      points: 300,
-      texto: "Si lo suben después de las 11:00 a. m. y hasta la 1:10 p. m., la máxima es 300 puntos.",
+      texto: "Si lo suben hoy, lunes 23 de noviembre, hasta la 1:00 p. m., la máxima es 1000 puntos.",
     },
   ],
   "302": [

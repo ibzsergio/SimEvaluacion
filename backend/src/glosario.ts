@@ -12,18 +12,19 @@ const ACTIVITY_KEY_EN = "glosario-en";
 const TITLE = "Glosario Bilingüe";
 const MARK = "[[glosario-state]]";
 const HORARIOS = {
-  "301": [
-    { until: "2026-11-19T09:30:00-06:00", points: 1000 },
-    { until: "2026-11-19T11:00:00-06:00", points: 500 },
-    { until: "2026-11-19T13:10:00-06:00", points: 300 },
-  ],
+  "301": [{ until: "2026-11-23T13:00:00-06:00", points: 1000 }],
   "302": [
     { until: "2026-11-19T11:00:00-06:00", points: 1000 },
     { until: "2026-11-19T12:00:00-06:00", points: 500 },
     { until: "2026-11-19T13:10:00-06:00", points: 300 },
   ],
 } as const;
-const CIERRE_MENSAJE = "Después de la 1:10 p. m. de hoy, jueves 19 de noviembre, ya no se acepta el PDF.";
+function cierreMensaje(groupCode: string) {
+  if (groupCode.trim() === "301") {
+    return "Después de la 1:00 p. m. de hoy, lunes 23 de noviembre, ya no se acepta el PDF.";
+  }
+  return "Después de la 1:10 p. m. del jueves 19 de noviembre, ya no se acepta el PDF.";
+}
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: PDF_MAX_BYTES } });
 
 function entregaDe(groupCode: string, at: number | Date = Date.now()) {
@@ -463,7 +464,7 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
       const team = await equipoDelAlumno(req.auth!.userId);
       if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
       const ahora = entregaDe(team.groupCode);
-      if (!ahora.open) return res.status(403).json({ error: "closed", message: CIERRE_MENSAJE });
+      if (!ahora.open) return res.status(403).json({ error: "closed", message: cierreMensaje(team.groupCode) });
       try {
         const saved = await prisma.sqlScrumDelivery.upsert({
           where: { activityKey_groupId_teamKey: { activityKey: ACTIVITY_KEY, groupId: team.groupId, teamKey: team.teamKey } },
@@ -550,6 +551,9 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
       if (!team) return res.status(400).json({ error: "no_team", message: "No estás en un equipo de proyecto." });
       if (team.groupCode !== "301" && team.groupCode !== "302") {
         return res.status(403).json({ error: "closed", message: "Este apartado está abierto para los grupos 301 y 302." });
+      }
+      if (team.groupCode === "301" && !entregaDe(team.groupCode).open) {
+        return res.status(403).json({ error: "closed", message: cierreMensaje(team.groupCode) });
       }
       try {
         const saved = await prisma.sqlScrumDelivery.upsert({

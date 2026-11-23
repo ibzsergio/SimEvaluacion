@@ -9,7 +9,7 @@ import {
   publishGlosarioGrade,
   removeGlosarioNote,
 } from "../lib/api";
-import { formatoHoraGlosario, GLOSARIO_CIERRE, GLOSARIO_NOTAS, GLOSARIO_TITULO, glosarioTramos } from "../lib/glosario";
+import { formatoHoraGlosario, glosarioCierre, GLOSARIO_NOTAS, GLOSARIO_TITULO, glosarioTramos } from "../lib/glosario";
 import type { ClassGroup } from "../lib/types";
 
 export default function TeacherGlosarioPanel({
@@ -78,9 +78,9 @@ export default function TeacherGlosarioPanel({
         <h2 className="mt-1 text-2xl font-bold text-white">{GLOSARIO_TITULO}</h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
           Grupo {selectedGroup?.code ?? "—"}. Revisa el PDF en español y publica tú la calificación. La máxima es la de
-          la hora en que subieron ese archivo, menos las notas que pongas. Subir el PDF no califica. {GLOSARIO_CIERRE}{" "}
-          Los grupos 301 y 302 también pueden subir el PDF ya traducido al inglés: portada, glosario alfabético y
-          descripción del proyecto. Ese archivo no cambia la máxima del español.
+          la hora en que subieron ese archivo, menos las notas que pongas. Subir el PDF no califica.{" "}
+          {glosarioCierre(selectedGroup?.code)} El PDF en inglés del 301 también cierra a esa hora. El del 302 sigue
+          disponible y no cambia la máxima del español.
         </p>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-200">
           {glosarioTramos(selectedGroup?.code).map((tramo) => (

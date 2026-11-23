@@ -271,7 +271,7 @@ export default function TeacherScrumActivitiesPanel({
               <h3 className="mt-1 text-xl font-bold text-white">Glosario Bilingüe</h3>
               <p className="mt-1 text-sm text-slate-400">
                 Palabra clave y su descripción, más el reporte de cómo funciona la aplicación, para quién va y su objetivo.
-                Un PDF de máximo 3 MB. El apartado en inglés ya está abierto para los dos grupos: portada, glosario alfabético y descripción del proyecto.
+                Un PDF de máximo 3 MB. El grupo 301 lo puede subir hoy hasta la 1:00 p. m., con máxima de 1000. El 302 sigue cerrado.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-teal-400/40 bg-teal-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-100">
@@ -346,7 +346,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD BASE DE DATOS III</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Base TALLER. Portada y evidencias en Tkinter de cada tabla. Un solo PDF, máximo 8 MB. 2000 puntos.
+                Base TALLER. El grupo 301 la puede subir hoy hasta la 1:00 p. m. y vale 2000 puntos. El 302 sigue cerrado.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-100">

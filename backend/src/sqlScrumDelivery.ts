@@ -32,16 +32,23 @@ function activityOf(key: string): (typeof ACTIVITIES)[ActivityKey] | null {
   return key in ACTIVITIES ? ACTIVITIES[key as ActivityKey] : null;
 }
 
+function cierreIso(activityKey: ActivityKey, groupCode?: string | null) {
+  if (activityKey === "bd3" && groupCode?.trim() === "301") return "2026-11-23T13:00:00-06:00";
+  return CIERRE_ISO[activityKey];
+}
+
 function cierreDe(groupCode: string | null | undefined, activityKey: ActivityKey, now = Date.now()) {
   const code = groupCode?.trim();
   const nombre = activityKey === "bd3" ? "ACTIVIDAD BASE DE DATOS III" : "ACTIVIDAD BASE DE DATOS II";
   const hora =
-    activityKey === "bd3"
-      ? "2:00 p. m. de hoy, miércoles 18 de noviembre"
-      : "8:00 p. m. del martes 17 de noviembre";
+    activityKey === "bd3" && code === "301"
+      ? "1:00 p. m. de hoy, lunes 23 de noviembre"
+      : activityKey === "bd3"
+        ? "2:00 p. m. del miércoles 18 de noviembre"
+        : "8:00 p. m. del martes 17 de noviembre";
   const texto = `La entrega y la subida del archivo de ${nombre} del grupo ${code || "—"} se cierran a las ${hora}. Después ya no se puede subir y el equipo pierde los 2000 puntos.`;
   if (code !== "301" && code !== "302") return { texto, open: false };
-  return { texto, open: now < new Date(CIERRE_ISO[activityKey]).getTime() };
+  return { texto, open: now < new Date(cierreIso(activityKey, code)).getTime() };
 }
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: PDF_MAX_BYTES } });

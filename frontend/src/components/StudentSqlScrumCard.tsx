@@ -176,7 +176,7 @@ export default function StudentSqlScrumCard({
       </div>
     </section>
   );
-  if (!past) return card;
+  if (!past || abierto) return card;
   return (
     <details className="mb-6">
       <summary className="glass cursor-pointer list-none border border-white/10 px-4 py-3 [&::-webkit-details-marker]:hidden">
