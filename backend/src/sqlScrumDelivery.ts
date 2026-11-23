@@ -33,7 +33,7 @@ function activityOf(key: string): (typeof ACTIVITIES)[ActivityKey] | null {
 }
 
 function cierreIso(activityKey: ActivityKey, groupCode?: string | null) {
-  if (activityKey === "bd3" && groupCode?.trim() === "301") return "2026-11-23T13:00:00-06:00";
+  if (groupCode?.trim() === "301" && (activityKey === "bd2" || activityKey === "bd3")) return "2026-11-23T13:00:00-06:00";
   return CIERRE_ISO[activityKey];
 }
 
@@ -41,7 +41,7 @@ function cierreDe(groupCode: string | null | undefined, activityKey: ActivityKey
   const code = groupCode?.trim();
   const nombre = activityKey === "bd3" ? "ACTIVIDAD BASE DE DATOS III" : "ACTIVIDAD BASE DE DATOS II";
   const hora =
-    activityKey === "bd3" && code === "301"
+    code === "301" && (activityKey === "bd2" || activityKey === "bd3")
       ? "1:00 p. m. de hoy, lunes 23 de noviembre"
       : activityKey === "bd3"
         ? "2:00 p. m. del miércoles 18 de noviembre"

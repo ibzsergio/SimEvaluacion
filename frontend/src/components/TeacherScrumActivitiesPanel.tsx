@@ -288,7 +288,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">Repositorio Proyecto en GitHub</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Grupo 301, hoy: 3000 hasta las 9:30 a. m., 2000 hasta las 12:00 p. m. y 1000 hasta las 5:00 p. m. El líder
+                Grupo 301, hoy hasta la 1:00 p. m., máxima 3000. El 302 sigue cerrado. El líder
                 anota a cada compañero las veces que haga falta. Tú ves esas notas y publicas la calificación.
               </p>
             </div>
@@ -329,7 +329,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD BASE DE DATOS II</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Base UNIFORME. Portada y evidencias en Tkinter de cada tabla. Un solo PDF, máximo 8 MB. 2000 puntos.
+                Base UNIFORME. El grupo 301 la puede subir hoy hasta la 1:00 p. m. y vale 2000 puntos. El 302 sigue cerrado.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-100">

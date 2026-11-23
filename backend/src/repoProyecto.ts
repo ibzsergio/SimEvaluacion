@@ -127,17 +127,13 @@ function ligaValida(raw: unknown) {
 }
 
 const HORARIOS: Record<string, { until: string; points: number }[]> = {
-  "301": [
-    { until: "2026-11-20T09:30:00-06:00", points: 3000 },
-    { until: "2026-11-20T12:00:00-06:00", points: 2000 },
-    { until: "2026-11-20T17:00:00-06:00", points: 1000 },
-  ],
+  "301": [{ until: "2026-11-23T13:00:00-06:00", points: 3000 }],
 };
 const NOTAS_ABIERTAS_301 = "2026-11-21T00:00:00-06:00";
 
 function cierreMensaje(groupCode: string) {
   if (groupCode.trim() === "301") {
-    return "Después de las 5:00 p. m. de hoy, viernes 20 de noviembre, ya no se acepta el PDF.";
+    return "Después de la 1:00 p. m. de hoy, lunes 23 de noviembre, ya no se acepta el PDF.";
   }
   return "Esta entrega no está abierta para tu grupo.";
 }
