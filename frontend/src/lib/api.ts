@@ -1693,6 +1693,7 @@ export type ReporteStudent = {
   teamName: string;
   isLeader: boolean;
   hasLeader: boolean;
+  studentId?: string;
   members: Array<{ id: string; displayName: string; isLeader: boolean }>;
   reports: Record<string, ReporteDia>;
 };

@@ -90,8 +90,9 @@ export default function StudentReporteProyectoCard({ groupCode }: { groupCode?: 
       <div className="mt-3 space-y-2 text-sm leading-relaxed text-slate-100">
         <p>
           El líder del proyecto reporta el avance del día. De cada integrante escribe qué está haciendo y sube una
-          evidencia. Aparte sube la evidencia de los commits del repositorio. También puede dejar una observación de
-          cada integrante: esa observación le llega al docente.
+          evidencia. Aparte sube la evidencia de los commits del repositorio.           También puede dejar una observación de
+          cada integrante: esa observación le llega al docente. Si el docente anota algo, el líder lo ve en cada
+          integrante y el alumno lo ve en el suyo.
         </p>
         <p>Por ahora esta actividad es solo el reporte diario. La calificación la pone el docente después.</p>
       </div>
@@ -133,7 +134,10 @@ export default function StudentReporteProyectoCard({ groupCode }: { groupCode?: 
           )}
           <ul className="mt-4 space-y-3">
             {members.map((member) => {
-              const file = report?.members.find((item) => item.id === member.id)?.file ?? null;
+              const fila = report?.members.find((item) => item.id === member.id);
+              const file = fila?.file ?? null;
+              const notaDocente = fila?.teacherNote?.trim() ?? "";
+              const puedeVerNota = Boolean(data.isLeader) || member.id === data.studentId;
               return (
                 <li key={member.id} className="rounded-2xl border border-white/10 p-3">
                   <p className="text-sm font-semibold text-white">
@@ -166,6 +170,12 @@ export default function StudentReporteProyectoCard({ groupCode }: { groupCode?: 
                       rows={2}
                     />
                   </label>
+                  {puedeVerNota && notaDocente ? (
+                    <p className="mt-2 rounded-lg border border-sky-300/40 bg-sky-500/15 px-3 py-2 text-sm text-sky-50">
+                      <span className="font-semibold">Anotación del docente: </span>
+                      {notaDocente}
+                    </p>
+                  ) : null}
                   <p className="mt-2 text-xs text-slate-300">
                     {file ? `Evidencia: ${file.fileName}` : "Todavía no hay evidencia de este integrante."}
                   </p>

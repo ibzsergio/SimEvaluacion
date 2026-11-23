@@ -51,7 +51,8 @@ export default function TeacherReporteProyectoPanel({
         <h2 className="mt-1 text-2xl font-bold text-white">{REPORTE_TITULO}</h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
           Grupo {selectedGroup?.code ?? "—"}. El líder reporta qué hace cada integrante, su evidencia y los commits del
-          repositorio. Su observación queda aparte. Tú también puedes anotar a cada alumno. Por ahora no hay calificación.
+          repositorio. Su observación queda aparte. Tu anotación se queda guardada en este mismo alumno y en el día que
+          elegiste. El alumno y el líder la ven en su reporte. Por ahora no hay calificación.
           {` ${REPORTE_CIERRE_TEXTO}`}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -76,7 +77,9 @@ export default function TeacherReporteProyectoPanel({
       <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         {(query.data?.teams ?? []).map((team) => {
           const report = team.reports[day];
-          const hayTexto = Boolean(report?.commitsNote) || Boolean(report?.members.some((member) => member.doing || member.observation));
+          const hayTexto =
+            Boolean(report?.commitsNote) ||
+            Boolean(report?.members.some((member) => member.doing || member.observation || member.teacherNote));
           const hayArchivo = Boolean(report?.commitsFile) || Boolean(report?.members.some((member) => member.file));
           return (
             <li key={team.teamKey} className="glass p-4">
@@ -193,9 +196,18 @@ function NotaDocente({ saved, onSave }: { saved: string; onSave: (note: string) 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const shown = editing ? text : saved;
+  const guardada = saved.trim().length > 0 && shown.trim() === saved.trim();
   return (
     <div className="mt-3">
       <label className="text-xs font-bold uppercase tracking-widest text-sky-200">Tu anotación</label>
+      {saved.trim() ? (
+        <p className="mt-1 text-sm text-sky-100">
+          <span className="font-semibold">Anotación guardada: </span>
+          {saved}
+        </p>
+      ) : (
+        <p className="mt-1 text-xs text-slate-400">Todavía no hay anotación guardada para este alumno en este día.</p>
+      )}
       <textarea
         value={shown}
         maxLength={400}
@@ -222,8 +234,9 @@ function NotaDocente({ saved, onSave }: { saved: string; onSave: (note: string) 
             .finally(() => setSaving(false));
         }}
       >
-        {saving ? "Guardando..." : "Guardar anotación"}
+        {saving ? "Guardando..." : guardada ? "Guardada" : "Guardar anotación"}
       </button>
+      {guardada ? <p className="mt-1 text-xs text-sky-200">El alumno y el líder ya pueden verla en este día.</p> : null}
     </div>
   );
 }

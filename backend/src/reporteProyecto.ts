@@ -183,7 +183,6 @@ function reporteDe(
   teamKey: string,
   members: { id: string; displayName: string; isLeader: boolean }[],
   files: Map<string, { fileName: string; sizeBytes: number }>,
-  paraDocente = false,
 ) {
   const reports: Record<string, unknown> = {};
   for (const day of DIAS) {
@@ -197,7 +196,7 @@ function reporteDe(
         isLeader: member.isLeader,
         doing: clip(dia.members[member.id]?.doing, 500),
         observation: clip(dia.members[member.id]?.observation, 400),
-        ...(paraDocente ? { teacherNote: clip(dia.members[member.id]?.teacherNote, 400) } : {}),
+        teacherNote: clip(dia.members[member.id]?.teacherNote, 400),
         file: files.get(`${day}:${member.id}`) ?? null,
       })),
     };
@@ -288,7 +287,7 @@ reporteProyectoTeacherRouter.get("/groups/:groupId/reporte-proyecto", async (req
         teamKey,
         teamName: team.name,
         leaderName: members.find((member) => member.isLeader)?.displayName ?? null,
-        reports: reporteDe(estado, teamKey, members, teamFiles, true),
+        reports: reporteDe(estado, teamKey, members, teamFiles),
       };
     }),
   });
@@ -396,6 +395,7 @@ export function registerStudentReporteProyectoRoutes(app: import("express").Expr
       teamName: team.teamName,
       isLeader: team.isLeader,
       hasLeader: Boolean(team.leaderId),
+      studentId: req.auth!.userId,
       members: team.members,
       reports: reporteDe(estado, team.teamKey, team.members, files),
     });
