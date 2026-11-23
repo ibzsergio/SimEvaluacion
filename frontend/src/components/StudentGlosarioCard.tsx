@@ -16,6 +16,7 @@ import {
   glosarioEntrega,
   glosarioTramos,
 } from "../lib/glosario";
+import { copiarPdf } from "../lib/pdfArchivo";
 
 const CHECKS_EN = [
   { id: "portada", label: "La primera hoja es la portada de Canva, con los datos del equipo, el nombre del proyecto y el título Glosario Bilingüe." },
@@ -177,14 +178,18 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
             disabled={!(puedeSubir && (ready || puedeReemplazar)) || uploadMutation.isPending}
             className="mt-3 block w-full text-sm text-slate-200 disabled:opacity-50"
             onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
+              const input = event.target;
+              const file = input.files?.[0];
               if (!file) return;
-              if (file.size > GLOSARIO_PDF_MAX_BYTES) {
-                setError("El PDF pesa más de 3 MB. Redúcelo y vuelve a subirlo.");
-                return;
-              }
-              uploadMutation.mutate(file);
+              void copiarPdf(file, GLOSARIO_PDF_MAX_BYTES)
+                .then((pdf) => {
+                  input.value = "";
+                  uploadMutation.mutate(pdf);
+                })
+                .catch((error: unknown) => {
+                  input.value = "";
+                  setError(error instanceof Error ? error.message : "No se pudo leer el PDF. Vuelve a elegirlo.");
+                });
             }}
           />
           {!entrega.open ? <p className="mt-2 text-sm font-semibold text-rose-200">{glosarioCierre(code)}</p> : null}
@@ -258,14 +263,18 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
           disabled={!(puedeIngles && (readyEn || puedeReemplazarIngles)) || englishMutation.isPending}
           className="mt-3 block w-full text-sm text-slate-200 disabled:opacity-50"
           onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
+            const input = event.target;
+            const file = input.files?.[0];
             if (!file) return;
-            if (file.size > GLOSARIO_PDF_MAX_BYTES) {
-              setErrorEn("El PDF pesa más de 3 MB. Redúcelo y vuelve a subirlo.");
-              return;
-            }
-            englishMutation.mutate(file);
+            void copiarPdf(file, GLOSARIO_PDF_MAX_BYTES)
+              .then((pdf) => {
+                input.value = "";
+                englishMutation.mutate(pdf);
+              })
+              .catch((error: unknown) => {
+                input.value = "";
+                setErrorEn(error instanceof Error ? error.message : "No se pudo leer el PDF. Vuelve a elegirlo.");
+              });
           }}
         />
         {puedeIngles && !readyEn && !puedeReemplazarIngles ? (

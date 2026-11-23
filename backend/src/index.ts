@@ -1139,6 +1139,15 @@ app.use((req, res) => {
   res.status(404).json({ error: "not_found", method: req.method, path: req.path });
 });
 
+app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (res.headersSent) return next(err);
+  console.error("request failed", err);
+  return res.status(500).json({
+    error: "server_error",
+    message: "No se pudo completar la acción. Vuelve a elegir el PDF e inténtalo otra vez.",
+  });
+});
+
 // Listen only after migrations + seating schema are ready.
 void (async () => {
   resolveDatabaseUrl();

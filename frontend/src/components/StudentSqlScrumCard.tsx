@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchStudentComms, fetchStudentSqlDelivery, getApiErrorMessage, uploadSqlPdf } from "../lib/api";
+import { copiarPdf } from "../lib/pdfArchivo";
 import {
   SQL_SCRUM_PDF_MAX_BYTES,
   SQL_SCRUM_PUNTOS,
@@ -80,12 +81,12 @@ export default function StudentSqlScrumCard({
       setLocalError("Solo se puede subir un PDF.");
       return;
     }
-    if (next.size > SQL_SCRUM_PDF_MAX_BYTES) {
-      setFile(null);
-      setLocalError("El PDF pesa más de 8 MB. Redúcelo y vuelve a elegirlo.");
-      return;
-    }
-    setFile(next);
+    void copiarPdf(next, SQL_SCRUM_PDF_MAX_BYTES)
+      .then((pdf) => setFile(pdf))
+      .catch((error: unknown) => {
+        setFile(null);
+        setLocalError(error instanceof Error ? error.message : "No se pudo leer el PDF. Vuelve a elegirlo.");
+      });
   }
 
   const card = (

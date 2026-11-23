@@ -9,6 +9,7 @@ import {
   startRepoProyectoClock,
   uploadRepoProyectoPdf,
 } from "../lib/api";
+import { copiarPdf } from "../lib/pdfArchivo";
 import {
   formatoHoraClase,
   formatoReloj,
@@ -342,14 +343,18 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
               disabled={!puedeSubir || !ready || uploadMutation.isPending}
               className="mt-3 block w-full text-sm text-slate-200 disabled:opacity-50"
               onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
+                const input = event.target;
+                const file = input.files?.[0];
                 if (!file) return;
-                if (file.size > REPO_PROYECTO_PDF_MAX_BYTES) {
-                  setError("El PDF pesa más de 8 MB. Redúcelo y vuelve a subirlo.");
-                  return;
-                }
-                uploadMutation.mutate(file);
+                void copiarPdf(file, REPO_PROYECTO_PDF_MAX_BYTES)
+                  .then((pdf) => {
+                    input.value = "";
+                    uploadMutation.mutate(pdf);
+                  })
+                  .catch((error: unknown) => {
+                    input.value = "";
+                    setError(error instanceof Error ? error.message : "No se pudo leer el PDF. Vuelve a elegirlo.");
+                  });
               }}
             />
             {!entrega.open ? (

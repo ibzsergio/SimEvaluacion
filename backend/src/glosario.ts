@@ -487,6 +487,7 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
             sizeBytes: file.size,
             uploadedById: req.auth!.userId,
           },
+          select: { fileName: true, sizeBytes: true, uploadedAt: true },
         });
         const uploader = await prisma.user.findUnique({ where: { id: req.auth!.userId }, select: { displayName: true } });
         return res.json({

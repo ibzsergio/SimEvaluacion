@@ -102,7 +102,10 @@ const baseURL = getApiBaseUrl();
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return "No se pudo conectar al servidor. Verifica que el backend esté en ejecución (puerto 4000).";
+      const local =
+        typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname);
+      if (local) return "No se pudo conectar al servidor. Verifica que el backend esté en ejecución (puerto 4000).";
+      return "La subida se interrumpió. Vuelve a elegir el PDF e inténtalo otra vez.";
     }
     const code = error.response.data?.error;
     if (code === "invalid_body") {
@@ -1400,7 +1403,9 @@ export async function uploadSqlPdf(key: SqlScrumKey, file: File) {
   const form = new FormData();
   form.append("file", file);
   form.append("completo", "si");
-  const { data } = await api.post<{ delivery: SqlScrumDeliveryFile }>(`/student/sql-scrum/${key}/delivery`, form);
+  const { data } = await api.post<{ delivery: SqlScrumDeliveryFile }>(`/student/sql-scrum/${key}/delivery`, form, {
+    timeout: 120_000,
+  });
   return data.delivery;
 }
 
@@ -1500,7 +1505,11 @@ export async function uploadRepoProyectoPdf(file: File) {
   const form = new FormData();
   form.append("file", file);
   form.append("completo", "si");
-  const { data } = await api.post<{ delivery: { fileName: string; uploadedByName: string } }>("/student/repo-proyecto/delivery", form);
+  const { data } = await api.post<{ delivery: { fileName: string; uploadedByName: string } }>(
+    "/student/repo-proyecto/delivery",
+    form,
+    { timeout: 120_000 },
+  );
   return data.delivery;
 }
 
@@ -1564,7 +1573,9 @@ export async function uploadGlosarioPdf(file: File) {
   const form = new FormData();
   form.append("file", file);
   form.append("completo", "si");
-  const { data } = await api.post<{ delivery: GlosarioStudent["delivery"] }>("/student/glosario/delivery", form);
+  const { data } = await api.post<{ delivery: GlosarioStudent["delivery"] }>("/student/glosario/delivery", form, {
+    timeout: 120_000,
+  });
   return data.delivery;
 }
 
@@ -1576,7 +1587,9 @@ export async function uploadGlosarioEnglishPdf(file: File) {
   const form = new FormData();
   form.append("file", file);
   form.append("completo", "si");
-  const { data } = await api.post<{ english: GlosarioEnglish }>("/student/glosario/english", form);
+  const { data } = await api.post<{ english: GlosarioEnglish }>("/student/glosario/english", form, {
+    timeout: 120_000,
+  });
   return data.english;
 }
 

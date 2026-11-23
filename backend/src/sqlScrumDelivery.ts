@@ -344,6 +344,7 @@ export function registerStudentSqlScrumRoutes(app: import("express").Express) {
           sizeBytes: file.size,
           uploadedById: req.auth!.userId,
         },
+        select: { teamKey: true, teamName: true, fileName: true, sizeBytes: true, uploadedAt: true },
       });
       try {
         await awardTeam(team.groupId, activity, team.teamKey);
