@@ -7,7 +7,7 @@ import {
   saveStudentArbol,
   uploadStudentArbolPdf,
 } from "../lib/api";
-import { ARBOL_PDF_MAX_BYTES, ARBOL_TEXTO_MAX, ARBOL_TITULO, formatoHoraArbol } from "../lib/arbolNavidad";
+import { ARBOL_PDF_MAX_BYTES, ARBOL_TEXTO_MAX, ARBOL_TITULO, formatoHoraArbol, pdfPareceValido } from "../lib/arbolNavidad";
 
 export default function StudentArbolNavidadCard({ groupCode }: { groupCode?: string | null }) {
   const puedeVer = groupCode === "301" || groupCode === "PRUEBA";
@@ -108,22 +108,48 @@ export default function StudentArbolNavidadCard({ groupCode }: { groupCode?: str
         ) : (
           <p className="mt-2 text-sm text-amber-100">Todavía no subes el PDF.</p>
         )}
-        <input
-          type="file"
-          accept="application/pdf,.pdf"
-          disabled={!puedeEscribir || uploadMutation.isPending}
-          className="mt-3 block w-full text-sm text-slate-200 disabled:opacity-50"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (!file) return;
-            if (file.size > ARBOL_PDF_MAX_BYTES) {
-              setError("El PDF pesa más de 5 MB. Redúcelo y vuelve a subirlo.");
-              return;
-            }
-            uploadMutation.mutate(file);
-          }}
-        />
+        <label
+          className={`mt-3 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl bg-green-600 px-5 py-3 text-sm font-bold text-white shadow-sm ${
+            !puedeEscribir || uploadMutation.isPending ? "pointer-events-none opacity-50" : "hover:bg-green-500"
+          }`}
+        >
+          {uploadMutation.isPending ? "Subiendo PDF..." : "Seleccionar archivo"}
+          <input
+            type="file"
+            accept=".pdf,application/pdf"
+            disabled={!puedeEscribir || uploadMutation.isPending}
+            className="sr-only"
+            onChange={(event) => {
+              const input = event.target;
+              const picked = input.files?.[0];
+              if (!picked) return;
+              setError("");
+              void picked.arrayBuffer().then(
+                (bytes) => {
+                  input.value = "";
+                  if (bytes.byteLength === 0) {
+                    setError("No se pudo leer el PDF. Ciérralo si está abierto y vuelve a elegirlo.");
+                    return;
+                  }
+                  if (bytes.byteLength > ARBOL_PDF_MAX_BYTES) {
+                    setError("El PDF pesa más de 5 MB. Redúcelo y vuelve a subirlo.");
+                    return;
+                  }
+                  if (!pdfPareceValido(bytes)) {
+                    setError("Ese archivo no es un PDF. Sube un solo PDF de máximo 5 MB.");
+                    return;
+                  }
+                  const name = picked.name?.toLowerCase().endsWith(".pdf") ? picked.name : "propuesta-arbol.pdf";
+                  uploadMutation.mutate(new File([bytes], name, { type: "application/pdf" }));
+                },
+                () => {
+                  input.value = "";
+                  setError("No se pudo leer el PDF. Vuelve a elegirlo.");
+                },
+              );
+            }}
+          />
+        </label>
         {data.file ? <p className="mt-2 text-sm text-slate-300">Puedes elegir otro PDF para reemplazar el actual.</p> : null}
         {uploadMutation.isPending ? <p className="mt-2 text-sm text-slate-300">Subiendo...</p> : null}
       </div>

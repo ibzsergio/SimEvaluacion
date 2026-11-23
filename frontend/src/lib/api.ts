@@ -1621,8 +1621,12 @@ export async function saveStudentArbol(text: string) {
 
 export async function uploadStudentArbolPdf(file: File) {
   const form = new FormData();
-  form.append("file", file);
-  const { data } = await api.post<{ file: ArbolArchivo }>("/student/arbol-navidad/file", form);
+  form.append("file", file, file.name || "propuesta-arbol.pdf");
+  const { data } = await api.post<{ file: ArbolArchivo }>("/student/arbol-navidad/file", form, {
+    timeout: 120_000,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+  });
   return data.file;
 }
 

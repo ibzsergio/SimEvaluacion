@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261120-arbol",
+        cacheId: "simeval-20261123-arbol-pdf",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

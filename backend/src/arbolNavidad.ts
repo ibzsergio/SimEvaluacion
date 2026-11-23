@@ -109,7 +109,10 @@ function safeFileName(name: string) {
 }
 
 function isPdf(file: Express.Multer.File) {
-  return file.buffer.length >= 5 && file.buffer.subarray(0, 5).toString("utf8") === "%PDF";
+  const buffer = file.buffer;
+  if (!buffer || buffer.length < 5) return false;
+  const head = buffer.subarray(0, Math.min(buffer.length, 1024));
+  return head.includes(Buffer.from("%PDF"));
 }
 
 function clip(value: unknown) {
@@ -300,9 +303,14 @@ export function registerStudentArbolRoutes(app: import("express").Express) {
     },
     async (req: AuthedRequest, res) => {
       const file = req.file;
-      if (!file) return res.status(400).json({ error: "pdf_required", message: "Selecciona el PDF con las imágenes." });
-      if (file.size > PDF_MAX_BYTES || !isPdf(file)) {
-        return res.status(400).json({ error: "pdf_only", message: "Solo se puede subir un PDF de 5 MB o menos." });
+      if (!file?.buffer?.length) {
+        return res.status(400).json({ error: "pdf_required", message: "No llegó el PDF. Vuelve a elegir el archivo." });
+      }
+      if (file.size > PDF_MAX_BYTES || file.buffer.length > PDF_MAX_BYTES) {
+        return res.status(400).json({ error: "pdf_too_big", message: "El PDF pesa más de 5 MB. Redúcelo y vuelve a subirlo." });
+      }
+      if (!isPdf(file)) {
+        return res.status(400).json({ error: "pdf_only", message: "Ese archivo no es un PDF. Sube un solo PDF de máximo 5 MB." });
       }
       const alumno = await alumnoActual(req.auth!.userId);
       if (!alumno || alumno.groupCode !== "301") return res.status(403).json({ error: "wrong_group", message: SOLO_301 });
