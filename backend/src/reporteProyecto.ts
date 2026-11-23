@@ -1,5 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
+import { z } from "zod";
 import { prisma } from "./prisma.js";
 import { requireAuth, requireStudent, requireTeacher, type AuthedRequest } from "./middleware.js";
 import { getPreviewViewGroup, isPreviewControlNumber, requireNotPreviewStudent } from "./previewStudent.js";
@@ -14,7 +15,7 @@ const DIAS = ["2026-11-20", "2026-11-23", "2026-11-24", "2026-11-25"] as const;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: FILE_MAX_BYTES } });
 
-type Miembro = { doing: string; observation: string };
+type Miembro = { doing: string; observation: string; teacherNote: string };
 type Dia = { members: Record<string, Miembro>; commitsNote: string };
 type Estado = { v: 1; days: Record<string, Record<string, Dia>> };
 const EMPTY: Estado = { v: 1, days: {} };
@@ -97,13 +98,23 @@ async function guardarEstado(groupId: string, estado: Estado, anuncioId?: string
   await prisma.announcement.create({ data: { teacherId: group.teacherId, groupId, title: TITLE, body } });
 }
 
+function miembroDe(raw: Partial<Miembro> | undefined): Miembro {
+  return {
+    doing: clip(raw?.doing, 500),
+    observation: clip(raw?.observation, 400),
+    teacherNote: clip(raw?.teacherNote, 400),
+  };
+}
+
 function diaDe(estado: Estado, teamKey: string, day: string): Dia {
   const team = estado.days[teamKey];
   const dia = team?.[day];
-  return {
-    members: dia?.members && typeof dia.members === "object" ? dia.members : {},
-    commitsNote: clip(dia?.commitsNote, 300),
-  };
+  const source = dia?.members && typeof dia.members === "object" ? dia.members : {};
+  const members: Record<string, Miembro> = {};
+  for (const [studentId, row] of Object.entries(source)) {
+    members[studentId] = miembroDe(row);
+  }
+  return { members, commitsNote: clip(dia?.commitsNote, 300) };
 }
 
 async function equipoDelAlumno(studentId: string) {
@@ -164,6 +175,7 @@ function reporteDe(
   teamKey: string,
   members: { id: string; displayName: string; isLeader: boolean }[],
   files: Map<string, { fileName: string; sizeBytes: number }>,
+  paraDocente = false,
 ) {
   const reports: Record<string, unknown> = {};
   for (const day of DIAS) {
@@ -177,6 +189,7 @@ function reporteDe(
         isLeader: member.isLeader,
         doing: clip(dia.members[member.id]?.doing, 500),
         observation: clip(dia.members[member.id]?.observation, 400),
+        ...(paraDocente ? { teacherNote: clip(dia.members[member.id]?.teacherNote, 400) } : {}),
         file: files.get(`${day}:${member.id}`) ?? null,
       })),
     };
@@ -267,10 +280,51 @@ reporteProyectoTeacherRouter.get("/groups/:groupId/reporte-proyecto", async (req
         teamKey,
         teamName: team.name,
         leaderName: members.find((member) => member.isLeader)?.displayName ?? null,
-        reports: reporteDe(estado, teamKey, members, teamFiles),
+        reports: reporteDe(estado, teamKey, members, teamFiles, true),
       };
     }),
   });
+});
+
+reporteProyectoTeacherRouter.post("/groups/:groupId/reporte-proyecto/note", async (req: AuthedRequest, res) => {
+  const groupId = String(req.params.groupId);
+  const body = z
+    .object({
+      teamKey: z.string().min(1),
+      day: z.string(),
+      studentId: z.string().min(1),
+      note: z.string().max(400),
+    })
+    .safeParse(req.body);
+  if (!body.success || !diaValido(body.data?.day)) {
+    return res.status(400).json({ error: "invalid_body", message: "Elige el día y al alumno." });
+  }
+  const group = await prisma.classGroup.findFirst({
+    where: { id: groupId, teacherId: req.auth!.userId },
+    select: { id: true },
+  });
+  if (!group) return res.status(404).json({ error: "group_not_found" });
+  const teamId = body.data.teamKey.startsWith("project:") ? body.data.teamKey.slice("project:".length) : "";
+  const team = await prisma.projectTeam.findFirst({
+    where: { id: teamId, groupId },
+    select: { members: { select: { studentId: true } } },
+  });
+  if (!team || !team.members.some((member) => member.studentId === body.data.studentId)) {
+    return res.status(400).json({ error: "invalid_body", message: "Ese alumno no está en el equipo." });
+  }
+  const { anuncio, estado } = await leerEstado(groupId);
+  const actual = diaDe(estado, body.data.teamKey, body.data.day);
+  const previo = actual.members[body.data.studentId];
+  actual.members[body.data.studentId] = {
+    doing: previo?.doing ?? "",
+    observation: previo?.observation ?? "",
+    teacherNote: clip(body.data.note, 400),
+  };
+  const teamDays = { ...(estado.days[body.data.teamKey] ?? {}) };
+  teamDays[body.data.day] = actual;
+  estado.days[body.data.teamKey] = teamDays;
+  await guardarEstado(groupId, estado, anuncio?.id);
+  return res.json({ ok: true, teacherNote: clip(body.data.note, 400) });
 });
 
 reporteProyectoTeacherRouter.get("/groups/:groupId/reporte-proyecto/:teamKey/file", async (req: AuthedRequest, res) => {
@@ -339,7 +393,12 @@ export function registerStudentReporteProyectoRoutes(app: import("express").Expr
       const studentId = String((item as { studentId?: unknown }).studentId ?? "");
       if (!team.members.some((member) => member.id === studentId)) continue;
       const row = item as { doing?: unknown; observation?: unknown };
-      members[studentId] = { doing: clip(row.doing, 500), observation: clip(row.observation, 400) };
+      const previo = actual.members[studentId];
+      members[studentId] = {
+        doing: clip(row.doing, 500),
+        observation: clip(row.observation, 400),
+        teacherNote: previo?.teacherNote ?? "",
+      };
     }
     const teamDays = { ...(estado.days[team.teamKey] ?? {}) };
     teamDays[day] = { members, commitsNote: clip(req.body?.commitsNote, 300) };

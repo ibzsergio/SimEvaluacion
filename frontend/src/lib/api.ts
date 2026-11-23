@@ -1669,6 +1669,7 @@ export type ReporteMember = {
   isLeader: boolean;
   doing: string;
   observation: string;
+  teacherNote?: string;
   file: ReporteArchivo;
 };
 
@@ -1734,6 +1735,10 @@ export type ReporteTeacher = {
 export async function fetchTeacherReporte(groupId: string) {
   const { data } = await api.get<ReporteTeacher>(`/teacher/groups/${groupId}/reporte-proyecto`);
   return data;
+}
+
+export async function saveTeacherReporteNote(groupId: string, payload: { teamKey: string; day: string; studentId: string; note: string }) {
+  await api.post(`/teacher/groups/${groupId}/reporte-proyecto/note`, payload);
 }
 
 export async function downloadTeacherReporteArchivo(groupId: string, teamKey: string, day: string, who: string, fileName: string) {

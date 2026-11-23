@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { downloadTeacherReporteArchivo, fetchTeacherReporte, getApiErrorMessage } from "../lib/api";
+import { downloadTeacherReporteArchivo, fetchTeacherReporte, getApiErrorMessage, saveTeacherReporteNote } from "../lib/api";
 import { REPORTE_CIERRE_TEXTO, REPORTE_DIAS, REPORTE_TITULO, reporteDiaInicial } from "../lib/reporteProyecto";
 import type { ClassGroup } from "../lib/types";
 
@@ -15,6 +15,7 @@ export default function TeacherReporteProyectoPanel({
   onSelectGroup: (id: string) => void;
   hideGroupPicker?: boolean;
 }) {
+  const qc = useQueryClient();
   const [day, setDay] = useState(() => reporteDiaInicial());
   const [error, setError] = useState("");
   const selectedGroup = groups.find((group) => group.id === selectedGroupId);
@@ -50,7 +51,7 @@ export default function TeacherReporteProyectoPanel({
         <h2 className="mt-1 text-2xl font-bold text-white">{REPORTE_TITULO}</h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-300">
           Grupo {selectedGroup?.code ?? "—"}. El líder reporta qué hace cada integrante, su evidencia y los commits del
-          repositorio. Las observaciones te llegan aquí. Por ahora no hay calificación: este espacio es el reporte.
+          repositorio. Su observación queda aparte. Tú también puedes anotar a cada alumno. Por ahora no hay calificación.
           {` ${REPORTE_CIERRE_TEXTO}`}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -91,9 +92,27 @@ export default function TeacherReporteProyectoPanel({
                     </p>
                     <p className="mt-1 text-slate-200">{member.doing || "Sin avance escrito."}</p>
                     <p className="mt-2 text-amber-100">
-                      <span className="font-semibold">Observación: </span>
+                      <span className="font-semibold">Observación del líder: </span>
                       {member.observation || "Sin observación."}
                     </p>
+                    <NotaDocente
+                      key={`${day}:${member.id}`}
+                      saved={member.teacherNote ?? ""}
+                      onSave={async (note) => {
+                        try {
+                          setError("");
+                          await saveTeacherReporteNote(selectedGroupId, {
+                            teamKey: team.teamKey,
+                            day,
+                            studentId: member.id,
+                            note,
+                          });
+                          await qc.invalidateQueries({ queryKey: ["reporte-proyecto", selectedGroupId] });
+                        } catch (err) {
+                          setError(getApiErrorMessage(err));
+                        }
+                      }}
+                    />
                     {member.file ? (
                       <button
                         type="button"
@@ -139,6 +158,45 @@ export default function TeacherReporteProyectoPanel({
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+function NotaDocente({ saved, onSave }: { saved: string; onSave: (note: string) => Promise<void> }) {
+  const [text, setText] = useState(saved);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const shown = editing ? text : saved;
+  return (
+    <div className="mt-3">
+      <label className="text-xs font-bold uppercase tracking-widest text-sky-200">Tu anotación</label>
+      <textarea
+        value={shown}
+        maxLength={400}
+        rows={2}
+        className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-sm text-white"
+        onFocus={() => {
+          if (!editing) setText(saved);
+          setEditing(true);
+        }}
+        onChange={(event) => {
+          setEditing(true);
+          setText(event.target.value);
+        }}
+      />
+      <button
+        type="button"
+        disabled={saving || shown.trim() === saved.trim()}
+        className="mt-2 rounded-lg bg-sky-400 px-3 py-1 text-xs font-bold text-slate-950 disabled:opacity-50"
+        onClick={() => {
+          setSaving(true);
+          void onSave(shown.trim())
+            .then(() => setEditing(false))
+            .finally(() => setSaving(false));
+        }}
+      >
+        {saving ? "Guardando..." : "Guardar anotación"}
+      </button>
     </div>
   );
 }
