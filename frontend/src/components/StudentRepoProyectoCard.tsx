@@ -118,7 +118,9 @@ export default function StudentRepoProyectoCard({ groupCode }: { groupCode?: str
       </p>
       <div className="mt-3 rounded-xl border border-rose-300/40 bg-rose-500/15 p-3 text-sm text-rose-50">
         <p className="font-bold">
-          {code === "301" ? "Grupo 301. Hoy, lunes 23 de noviembre, hasta la 1:00 p. m." : "Grupo 302. Esta entrega no está abierta."}
+          {code === "301" || code === "302"
+            ? `Grupo ${code}. Hasta las 6:00 p. m. del miércoles 25 de noviembre.`
+            : "Esta entrega no está abierta."}
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           {repoTramos(code).map((tramo) => (

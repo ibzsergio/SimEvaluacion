@@ -9,25 +9,19 @@ export const SQL_SCRUM_NOTAS = [
   { code: "ruido", label: "Está haciendo ruido", points: 300 },
 ] as const;
 
-const CIERRE_ISO: Record<SqlScrumKey, string> = {
-  bd2: "2026-11-17T20:00:00-06:00",
-  bd3: "2026-11-18T14:00:00-06:00",
-};
+const ENTREGA_ISO = "2026-11-25T18:00:00-06:00";
+const ENTREGA_HORA = "6:00 p. m. del miércoles 25 de noviembre";
 
-function cierreIso(activityKey: SqlScrumKey, groupCode?: string | null) {
-  if (groupCode?.trim() === "301" && (activityKey === "bd2" || activityKey === "bd3")) return "2026-11-23T13:00:00-06:00";
-  return CIERRE_ISO[activityKey];
+function cierreIso(groupCode?: string | null) {
+  const code = groupCode?.trim();
+  if (code === "301" || code === "302") return ENTREGA_ISO;
+  return "";
 }
 
 export function sqlScrumCierre(groupCode?: string | null, now = Date.now(), activityKey: SqlScrumKey = "bd2") {
   const code = groupCode?.trim();
   const nombre = activityKey === "bd3" ? "ACTIVIDAD BASE DE DATOS III" : "ACTIVIDAD BASE DE DATOS II";
-  const hora =
-    code === "301" && (activityKey === "bd2" || activityKey === "bd3")
-      ? "1:00 p. m. de hoy, lunes 23 de noviembre"
-      : activityKey === "bd3"
-        ? "2:00 p. m. del miércoles 18 de noviembre"
-        : "8:00 p. m. del martes 17 de noviembre";
+  const hora = ENTREGA_HORA;
   if (code !== "301" && code !== "302") {
     return {
       texto: `Los grupos 301 y 302 entregan ${nombre} hasta las ${hora}. Después de esa hora ya no se puede subir y el equipo pierde los 2000 puntos.`,
@@ -35,7 +29,7 @@ export function sqlScrumCierre(groupCode?: string | null, now = Date.now(), acti
       open: false,
     };
   }
-  const until = new Date(cierreIso(activityKey, code)).getTime();
+  const until = new Date(cierreIso(code)).getTime();
   return {
     texto: `La entrega y la subida del archivo de ${nombre} del grupo ${code} se cierran a las ${hora}. Después ya no se puede subir y el equipo pierde los 2000 puntos.`,
     until,

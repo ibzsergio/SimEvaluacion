@@ -8,9 +8,9 @@ const PDF_MAX_BYTES = 8 * 1024 * 1024;
 const ACTIVITY_KEY = "git";
 const ACTIVITY_TITLE = "ACTIVIDAD TKINTER EN GIT";
 const MARK = "[[tkinter-git-state]]";
-const CIERRE = "2026-11-17T20:00:00-06:00";
+const CIERRE = "2026-11-25T18:00:00-06:00";
 const MENSAJE_CIERRE =
-  "Ya pasó la hora. El PDF se recibe hasta las 8:00 p. m. de hoy, martes 17 de noviembre.";
+  "Ya pasó la hora. El PDF se recibe hasta las 6:00 p. m. del miércoles 25 de noviembre.";
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: PDF_MAX_BYTES } });
 
 type TeamRow = {

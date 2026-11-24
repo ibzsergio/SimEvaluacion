@@ -271,7 +271,7 @@ export default function TeacherScrumActivitiesPanel({
               <h3 className="mt-1 text-xl font-bold text-white">Glosario Bilingüe</h3>
               <p className="mt-1 text-sm text-slate-400">
                 Palabra clave y su descripción, más el reporte de cómo funciona la aplicación, para quién va y su objetivo.
-                Un PDF de máximo 3 MB. El grupo 301 lo puede subir hoy hasta la 1:00 p. m., con máxima de 1000. El 302 sigue cerrado.
+                Un PDF de máximo 3 MB. Los grupos 301 y 302 lo pueden subir hasta las 6:00 p. m. del miércoles 25, con máxima de 1000.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-teal-400/40 bg-teal-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-100">
@@ -288,7 +288,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">Repositorio Proyecto en GitHub</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Grupo 301, hoy hasta la 1:00 p. m., máxima 3000. El 302 sigue cerrado. El líder
+                Grupos 301 y 302, hasta las 6:00 p. m. del miércoles 25, máxima 3000. El líder
                 anota a cada compañero las veces que haga falta. Tú ves esas notas y publicas la calificación.
               </p>
             </div>
@@ -311,8 +311,8 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-sky-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD TKINTER EN GIT</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Cada equipo tiene un programa distinto, con base de datos y CRUD. La liberas cuando quieras. Un
-                integrante sube el PDF.
+                Cada equipo tiene un programa distinto, con base de datos y CRUD. Los grupos 301 y 302 suben el PDF
+                hasta las 6:00 p. m. del miércoles 25. La liberas cuando quieras.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">
@@ -329,7 +329,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD BASE DE DATOS II</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Base UNIFORME. El grupo 301 la puede subir hoy hasta la 1:00 p. m. y vale 2000 puntos. El 302 sigue cerrado.
+                Base UNIFORME. Los grupos 301 y 302 la pueden subir hasta las 6:00 p. m. del miércoles 25 y vale 2000 puntos.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-100">
@@ -346,7 +346,7 @@ export default function TeacherScrumActivitiesPanel({
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Actividad Scrum · hoy</p>
               <h3 className="mt-1 text-xl font-bold text-white">ACTIVIDAD BASE DE DATOS III</h3>
               <p className="mt-1 text-sm text-slate-400">
-                Base TALLER. El grupo 301 la puede subir hoy hasta la 1:00 p. m. y vale 2000 puntos. El 302 sigue cerrado.
+                Base TALLER. Los grupos 301 y 302 la pueden subir hasta las 6:00 p. m. del miércoles 25 y vale 2000 puntos.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-100">

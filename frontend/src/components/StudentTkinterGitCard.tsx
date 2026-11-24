@@ -201,7 +201,7 @@ export default function StudentTkinterGitCard({
           </button>
         </div>
       ) : null}
-      {!es302 && cierre.texto ? (
+      {cierre.texto ? (
         <p className="mt-4 rounded-xl bg-amber-400 px-3 py-2 text-sm font-bold text-slate-950">{cierre.texto}</p>
       ) : null}
       <div className="mt-4 rounded-2xl border border-white/10 p-4">
@@ -256,7 +256,7 @@ export default function StudentTkinterGitCard({
       <TkinterGitGuide repo={repo} />
     </section>
   );
-  if (!past) return card;
+  if (!past || cierre.open) return card;
   return (
     <details className="mb-6">
       <summary className="glass cursor-pointer list-none border border-white/10 px-4 py-3 [&::-webkit-details-marker]:hidden">

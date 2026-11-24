@@ -11,19 +11,17 @@ const ACTIVITY_KEY = "glosario";
 const ACTIVITY_KEY_EN = "glosario-en";
 const TITLE = "Glosario Bilingüe";
 const MARK = "[[glosario-state]]";
+const ENTREGA = { until: "2026-11-25T18:00:00-06:00", points: 1000 } as const;
 const HORARIOS = {
-  "301": [{ until: "2026-11-23T13:00:00-06:00", points: 1000 }],
-  "302": [
-    { until: "2026-11-19T11:00:00-06:00", points: 1000 },
-    { until: "2026-11-19T12:00:00-06:00", points: 500 },
-    { until: "2026-11-19T13:10:00-06:00", points: 300 },
-  ],
+  "301": [ENTREGA],
+  "302": [ENTREGA],
 } as const;
 function cierreMensaje(groupCode: string) {
-  if (groupCode.trim() === "301") {
-    return "Después de la 1:00 p. m. de hoy, lunes 23 de noviembre, ya no se acepta el PDF.";
+  const code = groupCode.trim();
+  if (code === "301" || code === "302") {
+    return "Después de las 6:00 p. m. del miércoles 25 de noviembre, ya no se acepta el PDF.";
   }
-  return "Después de la 1:10 p. m. del jueves 19 de noviembre, ya no se acepta el PDF.";
+  return "Esta entrega no está abierta para tu grupo.";
 }
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: PDF_MAX_BYTES } });
 
@@ -553,7 +551,7 @@ export function registerStudentGlosarioRoutes(app: import("express").Express) {
       if (team.groupCode !== "301" && team.groupCode !== "302") {
         return res.status(403).json({ error: "closed", message: "Este apartado está abierto para los grupos 301 y 302." });
       }
-      if (team.groupCode === "301" && !entregaDe(team.groupCode).open) {
+      if (!entregaDe(team.groupCode).open) {
         return res.status(403).json({ error: "closed", message: cierreMensaje(team.groupCode) });
       }
       try {

@@ -78,7 +78,7 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
   const readyEn = CHECKS_EN.every((item) => checkedEn[item.id]);
   const puedeSubir = entrega.open && !data?.preview;
   const puedeReemplazar = puedeSubir && Boolean(data?.delivery);
-  const puedeIngles = Boolean(data && !data.preview) && (code === "302" || entrega.open);
+  const puedeIngles = Boolean(data && !data.preview && entrega.open);
   const puedeReemplazarIngles = puedeIngles && Boolean(data?.english);
 
   return (
@@ -103,7 +103,9 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
       </div>
       <div className="mt-3 rounded-xl border border-rose-300/40 bg-rose-500/15 p-3 text-sm text-rose-50">
         <p className="font-bold">
-          {code === "301" ? "Grupo 301. Hoy, lunes 23 de noviembre, hasta la 1:00 p. m." : `Grupo ${code}. Esta entrega ya cerró.`}
+          {code === "301" || code === "302"
+            ? `Grupo ${code}. Hasta las 6:00 p. m. del miércoles 25 de noviembre.`
+            : `Grupo ${code}. Esta entrega no está abierta.`}
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           {glosarioTramos(code).map((tramo) => (
@@ -210,10 +212,10 @@ export default function StudentGlosarioCard({ groupCode }: { groupCode?: string 
         <p className="mt-1 text-sm text-slate-300">
           Es el mismo trabajo, ya traducido. Un solo PDF: portada, glosario en inglés ordenado alfabéticamente y
           descripción del proyecto. Lo sube el líder o un integrante. Si lo vuelven a subir, reemplaza al anterior. La
-          calificación la publica el docente después de revisar el archivo.
-          {code === "301" ? " El grupo 301 lo puede subir hasta la 1:00 p. m. de hoy, lunes 23 de noviembre." : ""}
+          calificación la publica el docente después de revisar el archivo. Los grupos 301 y 302 lo pueden subir
+          hasta las 6:00 p. m. del miércoles 25 de noviembre.
         </p>
-        {code === "301" && !entrega.open ? (
+        {!entrega.open ? (
           <p className="mt-2 text-sm font-semibold text-rose-200">{glosarioCierre(code)}</p>
         ) : null}
         {data?.english ? (

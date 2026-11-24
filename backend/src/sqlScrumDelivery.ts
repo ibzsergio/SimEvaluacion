@@ -23,32 +23,26 @@ const ACTIVITIES = {
 
 type ActivityKey = keyof typeof ACTIVITIES;
 
-const CIERRE_ISO: Record<ActivityKey, string> = {
-  bd2: "2026-11-17T20:00:00-06:00",
-  bd3: "2026-11-18T14:00:00-06:00",
-};
+const ENTREGA_ISO = "2026-11-25T18:00:00-06:00";
+const ENTREGA_HORA = "6:00 p. m. del miércoles 25 de noviembre";
 
 function activityOf(key: string): (typeof ACTIVITIES)[ActivityKey] | null {
   return key in ACTIVITIES ? ACTIVITIES[key as ActivityKey] : null;
 }
 
-function cierreIso(activityKey: ActivityKey, groupCode?: string | null) {
-  if (groupCode?.trim() === "301" && (activityKey === "bd2" || activityKey === "bd3")) return "2026-11-23T13:00:00-06:00";
-  return CIERRE_ISO[activityKey];
+function cierreIso(groupCode?: string | null) {
+  const code = groupCode?.trim();
+  if (code === "301" || code === "302") return ENTREGA_ISO;
+  return "";
 }
 
 function cierreDe(groupCode: string | null | undefined, activityKey: ActivityKey, now = Date.now()) {
   const code = groupCode?.trim();
   const nombre = activityKey === "bd3" ? "ACTIVIDAD BASE DE DATOS III" : "ACTIVIDAD BASE DE DATOS II";
-  const hora =
-    code === "301" && (activityKey === "bd2" || activityKey === "bd3")
-      ? "1:00 p. m. de hoy, lunes 23 de noviembre"
-      : activityKey === "bd3"
-        ? "2:00 p. m. del miércoles 18 de noviembre"
-        : "8:00 p. m. del martes 17 de noviembre";
+  const hora = ENTREGA_HORA;
   const texto = `La entrega y la subida del archivo de ${nombre} del grupo ${code || "—"} se cierran a las ${hora}. Después ya no se puede subir y el equipo pierde los 2000 puntos.`;
   if (code !== "301" && code !== "302") return { texto, open: false };
-  return { texto, open: now < new Date(cierreIso(activityKey, code)).getTime() };
+  return { texto, open: now < new Date(cierreIso(code)).getTime() };
 }
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: PDF_MAX_BYTES } });

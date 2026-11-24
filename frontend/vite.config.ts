@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        cacheId: "simeval-20261123-reporte-ver-nota",
+        cacheId: "simeval-20261125-entrega-6pm",
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

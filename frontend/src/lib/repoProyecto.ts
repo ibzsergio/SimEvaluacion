@@ -1,5 +1,5 @@
 export const REPO_PROYECTO_TITULO = "Repositorio Proyecto en GitHub";
-export const REPO_PROYECTO_INSTRUCTIVO = "/Repositorio%20Proyecto%20en%20GitHub.pdf?v=7";
+export const REPO_PROYECTO_INSTRUCTIVO = "/Repositorio%20Proyecto%20en%20GitHub.pdf?v=8";
 export const REPO_PROYECTO_PUNTOS = 3000;
 export const REPO_PROYECTO_MS = 150 * 60 * 1000;
 export const REPO_PROYECTO_PDF_MAX_BYTES = 8 * 1024 * 1024;
@@ -45,21 +45,22 @@ export const REPO_PROYECTO_NOTAS = [
 ] as const;
 
 export function repoCierre(groupCode: string | null | undefined) {
-  if (groupCode?.trim() === "301") {
-    return "Después de la 1:00 p. m. de hoy, lunes 23 de noviembre, ya no se permite subir el PDF.";
+  const code = groupCode?.trim();
+  if (code === "301" || code === "302") {
+    return "Después de las 6:00 p. m. del miércoles 25 de noviembre, ya no se permite subir el PDF.";
   }
   return "Esta entrega no está abierta para este grupo.";
 }
 
-const HORARIO_301 = [
+const HORARIO = [
   {
-    until: "2026-11-23T13:00:00-06:00",
+    until: "2026-11-25T18:00:00-06:00",
     points: 3000,
-    texto: "Si lo suben hoy, lunes 23 de noviembre, hasta la 1:00 p. m. y cumplen con todo, la máxima es 3000.",
+    texto: "Si lo suben hasta las 6:00 p. m. del miércoles 25 de noviembre y cumplen con todo, la máxima es 3000.",
   },
 ] as const;
 
-const TRAMOS = { "301": HORARIO_301, "302": [] as const };
+const TRAMOS = { "301": HORARIO, "302": HORARIO };
 
 export function repoTramos(groupCode: string | null | undefined) {
   const code = groupCode?.trim();

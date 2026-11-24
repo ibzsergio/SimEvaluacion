@@ -126,14 +126,17 @@ function ligaValida(raw: unknown) {
   }
 }
 
+const HORARIO = [{ until: "2026-11-25T18:00:00-06:00", points: 3000 }];
 const HORARIOS: Record<string, { until: string; points: number }[]> = {
-  "301": [{ until: "2026-11-23T13:00:00-06:00", points: 3000 }],
+  "301": HORARIO,
+  "302": HORARIO,
 };
 const NOTAS_ABIERTAS_301 = "2026-11-21T00:00:00-06:00";
 
 function cierreMensaje(groupCode: string) {
-  if (groupCode.trim() === "301") {
-    return "Después de la 1:00 p. m. de hoy, lunes 23 de noviembre, ya no se acepta el PDF.";
+  const code = groupCode.trim();
+  if (code === "301" || code === "302") {
+    return "Después de las 6:00 p. m. del miércoles 25 de noviembre, ya no se acepta el PDF.";
   }
   return "Esta entrega no está abierta para tu grupo.";
 }
