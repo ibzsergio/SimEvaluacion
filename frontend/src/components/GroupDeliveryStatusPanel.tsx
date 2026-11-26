@@ -95,7 +95,7 @@ export default function GroupDeliveryStatusPanel({
           if (!selectedGroupId) return;
           setDownloading("group");
           try {
-            await downloadGroupLagReport(selectedGroupId, selectedGroup?.code ?? "grupo", 3);
+            await downloadGroupLagReport(selectedGroupId, selectedGroup?.code ?? "grupo", 3, lagQuery.data?.reportDate);
           } catch (err) {
             window.alert(getApiErrorMessage(err));
           } finally {
@@ -105,7 +105,7 @@ export default function GroupDeliveryStatusPanel({
         onDownloadAll={async () => {
           setDownloading("all");
           try {
-            await downloadFridayLagReport();
+            await downloadFridayLagReport(lagQuery.data?.reportDate);
           } catch (err) {
             window.alert(getApiErrorMessage(err));
           } finally {
@@ -286,7 +286,10 @@ function FridayLagSection({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-white">Reporte de actividades · Tercer parcial</h2>
-          <p className="mt-1 text-sm text-slate-400">Solo el tercer parcial, hasta el día de hoy.</p>
+          <p className="mt-1 text-sm text-slate-400">
+            Solo el tercer parcial. El corte se hace hasta el día en que lo descargues: hoy, mañana, el viernes, el
+            sábado, cuando lo pidas. Cada descarga sale con la fecha de ese día.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button

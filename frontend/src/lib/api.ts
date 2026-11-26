@@ -2899,16 +2899,19 @@ export async function fetchLagReport(groupId: string, partialNumber?: number) {
   return data;
 }
 
-export async function downloadGroupLagReport(groupId: string, groupCode: string, partialNumber?: number) {
+export async function downloadGroupLagReport(groupId: string, groupCode: string, partialNumber?: number, reportDate?: string) {
   const query = partialNumber ? `?partialNumber=${partialNumber}` : "";
   await downloadTeacherBlob(
     `/teacher/groups/${groupId}/lag-report.pdf${query}`,
-    `reporte_tercer_parcial_grupo_${groupCode}.pdf`,
+    `reporte_tercer_parcial_grupo_${groupCode}${reportDate ? `_${reportDate}` : ""}.pdf`,
   );
 }
 
-export async function downloadFridayLagReport() {
-  await downloadTeacherBlob("/teacher/reports/lag-friday.pdf", "reporte_tercer_parcial_todos_los_grupos.pdf");
+export async function downloadFridayLagReport(reportDate?: string) {
+  await downloadTeacherBlob(
+    "/teacher/reports/lag-friday.pdf",
+    `reporte_tercer_parcial_todos_los_grupos${reportDate ? `_${reportDate}` : ""}.pdf`,
+  );
 }
 
 export async function fetchSeatingPlan(groupId: string, date: string) {
