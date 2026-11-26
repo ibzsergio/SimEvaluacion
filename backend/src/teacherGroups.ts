@@ -1463,7 +1463,9 @@ function sendLagPdf(res: Response, reports: Awaited<ReturnType<typeof getTeacher
 teacherGroupsRouter.get("/groups/:groupId/lag-report", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
   try {
-    const report = await getLagReport(req.auth!.userId, groupId, 2);
+    const requested = Number(req.query.partialNumber);
+    const partialNumber = Number.isFinite(requested) && requested >= 1 && requested <= 6 ? Math.floor(requested) : 3;
+    const report = await getLagReport(req.auth!.userId, groupId, partialNumber);
     return res.json(report);
   } catch (err) {
     if (err instanceof Error && err.message === "group_not_found") {
@@ -1477,7 +1479,9 @@ teacherGroupsRouter.get("/groups/:groupId/lag-report", async (req: AuthedRequest
 teacherGroupsRouter.get("/groups/:groupId/lag-report.pdf", async (req: AuthedRequest, res) => {
   const groupId = String(req.params.groupId);
   try {
-    const report = await getLagReport(req.auth!.userId, groupId, 2);
+    const requested = Number(req.query.partialNumber);
+    const partialNumber = Number.isFinite(requested) && requested >= 1 && requested <= 6 ? Math.floor(requested) : 3;
+    const report = await getLagReport(req.auth!.userId, groupId, partialNumber);
     return sendLagPdf(
       res,
       [report],

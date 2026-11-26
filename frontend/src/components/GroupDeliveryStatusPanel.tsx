@@ -33,8 +33,8 @@ export default function GroupDeliveryStatusPanel({
   });
 
   const lagQuery = useQuery({
-    queryKey: ["lag-report", selectedGroupId, 2],
-    queryFn: () => fetchLagReport(selectedGroupId, 2),
+    queryKey: ["lag-report", selectedGroupId, 3],
+    queryFn: () => fetchLagReport(selectedGroupId, 3),
     enabled: !!selectedGroupId,
   });
 
@@ -95,7 +95,7 @@ export default function GroupDeliveryStatusPanel({
           if (!selectedGroupId) return;
           setDownloading("group");
           try {
-            await downloadGroupLagReport(selectedGroupId, selectedGroup?.code ?? "grupo", 2);
+            await downloadGroupLagReport(selectedGroupId, selectedGroup?.code ?? "grupo", 3);
           } catch (err) {
             window.alert(getApiErrorMessage(err));
           } finally {
@@ -285,7 +285,8 @@ function FridayLagSection({
     <section className="glass p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-white">Reporte del viernes · Segundo parcial</h2>
+          <h2 className="text-lg font-semibold text-white">Reporte de actividades · Tercer parcial</h2>
+          <p className="mt-1 text-sm text-slate-400">Solo el tercer parcial, hasta el día de hoy.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button

@@ -2903,12 +2903,12 @@ export async function downloadGroupLagReport(groupId: string, groupCode: string,
   const query = partialNumber ? `?partialNumber=${partialNumber}` : "";
   await downloadTeacherBlob(
     `/teacher/groups/${groupId}/lag-report.pdf${query}`,
-    `reporte_viernes_grupo_${groupCode}.pdf`,
+    `reporte_tercer_parcial_grupo_${groupCode}.pdf`,
   );
 }
 
 export async function downloadFridayLagReport() {
-  await downloadTeacherBlob("/teacher/reports/lag-friday.pdf", "reporte_viernes_atrasos.pdf");
+  await downloadTeacherBlob("/teacher/reports/lag-friday.pdf", "reporte_tercer_parcial_todos_los_grupos.pdf");
 }
 
 export async function fetchSeatingPlan(groupId: string, date: string) {

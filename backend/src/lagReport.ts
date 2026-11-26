@@ -308,13 +308,13 @@ export async function getLagReport(
   };
 }
 
-const SECOND_PARTIAL = 2;
+const THIRD_PARTIAL = 3;
 
 export async function getTeacherLagReports(teacherId: string) {
   const groups = await listTeacherGroups(teacherId);
   const reports: LagReport[] = [];
   for (const group of groups) {
-    reports.push(await getLagReport(teacherId, group.id, SECOND_PARTIAL));
+    reports.push(await getLagReport(teacherId, group.id, THIRD_PARTIAL));
   }
   return reports;
 }
@@ -407,7 +407,7 @@ function drawKpis(doc: PdfDoc, report: LagReport) {
     {
       value: String(report.counts.due),
       label: "Actividades del corte",
-      hint: "segundo parcial",
+      hint: report.group.partialLabel.toLowerCase(),
       color: "#0f172a",
     },
     {
@@ -470,11 +470,11 @@ const ACTIVITY_COLS = [
 
 function drawActivityTable(doc: PdfDoc, report: LagReport, onPageBreak: () => void) {
   const activities = report.activities.filter((activity) => activity.due);
-  drawSectionTitle(doc, "Actividades del segundo parcial");
+  drawSectionTitle(doc, `Actividades del ${report.group.partialLabel.toLowerCase()}`);
   if (!activities.length) {
     textAt(
       doc,
-      "No hay actividades del segundo parcial con fecha cumplida.",
+      `No hay actividades del ${report.group.partialLabel.toLowerCase()} con fecha cumplida.`,
       MARGIN,
       doc.y,
       CONTENT_W,
